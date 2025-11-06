@@ -1,0 +1,168 @@
+	<ul class="bo-view-comment-list-title">
+		<i class="far fa-comment-dots"></i> <b>댓글</b> [<?=$total_count?>]
+	</ul>
+	<ul class="bo-view-comment-list">
+
+<?
+	while($comment_list = wepix_fetch_array($comment_result)){
+
+		$_show_my_comment = "no";
+		if( $comment_list[COMMENT_ID] == $_user_id ){ $_show_my_comment = "yes"; }
+		$comment_name = $comment_list[COMMENT_NAME];
+		$comment_date = date("y-m-d H:i", $comment_list[COMMENT_DATE]);
+		$comment_body = nl2br($comment_list[COMMENT_BODY]);
+?>
+		<div class="comment-list-wrap">
+			<ul class=" comment-list-m-icon display-table-cell">
+				<div class="comment-list-no-m-icon" style="background-image:url('/skin/kodang/img/m_icon/member<?=mt_rand(1, 20)?>.png');"></div>
+				<div class="comment-list-name"><?=$comment_name?></div>
+			</ul>
+			<ul class=" comment-list-body display-table-cell">
+				<div class="clb-wrap">
+					<ul class="clb-wrap-body"><?=$comment_body?></ul>
+					<ul class="clb-wrap-info">
+						<span class="clb-wrap-info-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?=$comment_date?></span>
+					</ul>
+				</div>
+				<div class="text-wrap-img"><img src="/skin/kodang/img/comment_text_wrap_img.png" alt=""></div>
+			</ul>
+		</div>
+<? } ?>
+
+	</ul>
+
+<?
+//댓글쓰기 권한
+if( $_show_comment_write_active == "on" ){
+?>
+	<ul class="bo-view-comment-write" id="comment_form">
+		<div class="comment-write-wrap">
+			<ul><textarea name="comm_body" id="comm_body"></textarea></ul>
+			<ul class="comment-write-btn">
+				<button class="bo-btn bo-btn-pink" onclick="commentSubmit();"> <i class="fa fa-pencil m-r-5" ></i> 댓글등록  </button>
+			</ul>
+		</div>
+	</ul>
+
+<script type="text/javascript"> 
+<!-- 
+function commentSubmit(mode, key){
+	//ajaxLoading();
+
+	if( mode == "modify" ){
+		var comm_body = $("#comm_body_"+ key).val();
+		var a_mode = "commModify";
+		var cKey = key;
+	}else{
+		var comm_body = $("#comm_body").val();
+		var a_mode = "commWrite";
+		var cKey = "";
+	}
+/*
+	alert(a_mode+"/"+bCode+"/"+bKey+"/"+cKey+"/"+comm_body);
+	return false;
+*/
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":a_mode,
+			"ajax_mode":"on",
+			"b_code":bCode,
+			"b_key":bKey,
+			"c_key":cKey,
+			"comm_body":comm_body
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					//ajaxLoadingClose(ckmsg);
+					showComment();
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+//--> 
+</script>
+<? } ?>
+
+<script type="text/javascript"> 
+<!-- 
+$(function(){
+	$(".clbtn-wrap").mouseover(function(e) {
+        $("div.clbtn-menu", this).show();
+	}).mouseout(function(e) {
+        $("div.clbtn-menu", this).hide();
+	});
+});
+
+function commentModify(key){
+	$("#comment_form").hide();
+	$("#comment_modify_"+key).show();
+}
+
+function commentModifyCancel(key){
+	$("#comment_form").show();
+	$("#comment_modify_"+key).hide();
+}
+
+function commentDel(key){
+	//location.href="board_ok.php?a_mode=commDel&b_code="+ bCode +"&b_key="+ bKey +"&c_key="+ key;
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":"commDel",
+			"ajax_mode":"on",
+			"b_code":bCode,
+			"b_key":bKey,
+			"c_key":key
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					//ajaxLoadingClose(ckmsg);
+					showComment();
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+}
+
+function commentComment(key){
+	$("#comment_form").hide();
+	$("#comment_comment_"+key).show();
+}
+
+//--> 
+</script> 

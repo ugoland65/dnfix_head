@@ -1,0 +1,326 @@
+	<ul class="bo-view-comment-list-title">
+		<i class="far fa-comment-dots"></i> <b>댓글</b> [<?=$total_count?>]
+	</ul>
+	<ul class="bo-view-comment-list">
+
+<?
+while($comment_list = wepix_fetch_array($comment_result)){
+
+	$_comment_menu_active = "N";
+	if( $comment_list[COMMENT_ID] != "" && $_sess_id == $comment_list[COMMENT_ID] ){
+		$_comment_menu_active = "Y";
+	}
+	if( $comment_list[COMMENT_MODE] == "IG2" ||  $comment_list[COMMENT_MODE] == "BS" && $comment_list[COMMENT_ID] == "" ){
+		$_comment_menu_active = "Y";
+	}
+
+	$_show_my_comment = "no";
+	if( $comment_list[COMMENT_ID] == $_user_id ){ $_show_my_comment = "yes"; }
+	$comment_date = date("y-m-d H:i", $comment_list[COMMENT_DATE]);
+	$comment_body = nl2br($comment_list[COMMENT_BODY]);
+
+	$_view_ip = "";
+	if( $comment_list[COMMENT_ADMIN] == "Y" ){
+		//$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_admin.png\" class='micon'>";
+		$_view_micon = "<i class=\"fas fa-certificate micon-i micon-i-y\"></i>";
+		$comment_name = "<b>".$comment_list[COMMENT_NAME]."</b>";
+
+	}elseif( $comment_list[COMMENT_ADMIN] == "M2" ){
+		//$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_manager.png\" class='micon'>";
+		$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-m2\"></i>";
+		$comment_name = "<b>".$comment_list[COMMENT_NAME]."</b>";
+
+	}else{
+
+		$_view_micon = "";
+		$comment_name = $comment_list[COMMENT_NAME];
+		$_view_ip = "<span class='clb-wrap-info-view-ip'>(".$comment_list[COMMENT_IP_SHOW].")</span>";
+
+		if( $comment_list[COMMENT_MODE] != "IG2" && $comment_list[COMMENT_ID] ){
+			$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-n\"></i>";
+			$comment_name = "<b>".$comment_list[COMMENT_NAME]."</b>";
+			$_view_ip = "";
+		}
+
+	}
+
+?>
+
+
+<? if( $comment_list[COMMENT_SHOW] == "delview" ){ ?>
+		<div class="comment-list-wrap">
+			<div class="del-now">해당 댓글은 삭제되었습니다.</div>
+		</div>
+<? }else{ ?>
+
+		<div class="comment-list-wrap <? if( $comment_list[DEPTH] > 0 ) echo "depth-1";?>">
+		<?
+			if( $comment_list[DEPTH] > 0 ){ 
+		?>
+			<ul class="comment-list-depth-gap display-table-cell">
+				<i class="fas fa-reply fa-flip-both"></i>
+			</ul>
+		<? } ?>
+
+		<?
+		if( $_show_comment_write_active == "on" && $comment_list[DEPTH] == 0 ){
+		?>
+			<ul class=" comment-list-body display-table-cell" onclick="commentComment('<?=$comment_list[COMMENT_IDX]?>')" style="cursor:pointer;">
+		<? }else{ ?>
+			<ul class=" comment-list-body display-table-cell">
+		<? } ?>
+
+				<div class="clb-wrap">
+					<ul class="clb-wrap-name"><?=$_view_micon?><?=$comment_name?><?=$_view_ip?></ul>
+					<ul class="clb-wrap-body"><?=$comment_body?></ul>
+					<ul class="clb-wrap-info">
+						<span class="clb-wrap-info-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?=$comment_date?></span>
+					</ul>
+				</div>
+			</ul>
+			<? if( $_comment_menu_active == "Y" ){ ?>
+			<ul class="comment-list-menu display-table-cell">
+				<i class="far fa-times-circle" onclick="commentPw('Del','<?=$comment_list[COMMENT_IDX]?>')"></i>
+			</ul>
+			<? } ?>
+		</div>
+
+
+		<div class="comment-pw <? if( $comment_list[DEPTH] > 0 ) echo "depth-1";?>" id="comment_pw_<?=$comment_list[COMMENT_IDX]?>" state="off">
+			<div class="comment-pw-wrap">
+				<input type='password' name='comm_pw_pw' id='comm_pw_pw_<?=$comment_list[COMMENT_IDX]?>' class='comm-input-text' placeholder="비밀번호">
+				<button class="bo-btn bo-btn-darkgray bo-btn-sm" onclick="commentDel('<?=$comment_list[COMMENT_IDX]?>');">삭제</button>
+			</div>
+		</div>
+
+		<div class="comment-comment" id="comment_comment_<?=$comment_list[COMMENT_IDX]?>" state="off">
+	<? if( $_sess_id ){ ?>
+	<? }else{ ?>
+			<div class="comment-write-name-wrap">
+				<input type='text' name='comm_name' id="comm_name_reply_<?=$comment_list[COMMENT_IDX]?>" class='comm-input-text' placeholder="익명"><input type='password' name='comm_pw' id="comm_pw_reply_<?=$comment_list[COMMENT_IDX]?>" class='comm-input-text' placeholder="비밀번호">
+			</div>
+	<? } ?>
+			<div class="comment-write-wrap">
+				<ul><textarea name="comm_body" name="comm_body_reply_<?=$comment_list[COMMENT_IDX]?>" id="comm_body_reply_<?=$comment_list[COMMENT_IDX]?>"></textarea></ul>
+				<ul class="comment-write-btn">
+					<button class="bo-btn bo-btn-pink" onclick="commentSubmit('reply','<?=$comment_list[COMMENT_IDX]?>');"> <i class="fa fa-pencil m-r-5" ></i> 댓글등록  </button>
+				</ul>
+			</div>
+		</div>
+<? } ?>
+
+	<? } ?>
+
+	</ul>
+
+<?
+//댓글쓰기 권한
+if( $_show_comment_write_active == "on" ){
+?>
+	<ul class="bo-view-comment-write" id="comment_form">
+<? if( $_sess_id ){ ?>
+<? }else{ ?>
+		<div class="comment-write-name-wrap">
+			<input type='text' name='comm_name' id='comm_name' class='comm-input-text' placeholder="익명"><input type='password' name='comm_pw' id='comm_pw' class='comm-input-text' placeholder="비밀번호">
+		</div>
+<? } ?>
+		<div class="comment-write-wrap">
+			<ul><textarea name="comm_body" id="comm_body"></textarea></ul>
+			<ul class="comment-write-btn">
+				<button class="bo-btn bo-btn-pink" onclick="commentSubmit();"> <i class="fa fa-pencil m-r-5" ></i> 댓글등록  </button>
+			</ul>
+		</div>
+	</ul>
+
+<script type="text/javascript"> 
+<!-- 
+function commentSubmit(mode, key){
+
+	if( mode == "modify" ){
+		var comm_body = $("#comm_body_"+ key).val();
+		var a_mode = "commModify";
+		var cKey = key;
+		var replyMode = "off";
+		var replyKey = "";
+
+	}else if( mode == "reply" ){
+		var comm_body = $("#comm_body_reply_"+ key).val();
+		var a_mode = "commWrite";
+		var cKey = "";
+		var replyMode = "on";
+		var replyKey = key;
+
+	}else{
+		var comm_body = $("#comm_body").val();
+		var a_mode = "commWrite";
+		var cKey = "";
+		var replyMode = "off";
+		var replyKey = "";
+	}
+
+	if( mode == "reply" ){
+		var commName = $("#comm_name_reply_" + key).val();
+		var commPw = $("#comm_pw_reply_" + key).val();
+	}else{
+		var commName = $("#comm_name").val();
+		var commPw = $("#comm_pw").val();
+	}
+
+	if( ws_user_id == "" ){
+
+		if( commName == "" ) commName = "익명";
+
+		if( commPw == "" ){
+			$('#modal_alert_msg').html('비밀번호를 입력해주세요.');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+			$("#comm_pw").focus();
+			return false;
+		}
+
+	}else{
+	}
+
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":a_mode,
+			"ajax_mode":"on",
+			"b_code":bCode,
+			"b_key":bKey,
+			"c_key":cKey,
+			"reply_mode":replyMode,
+			"reply_key":replyKey,
+			"comm_name":commName,
+			"comm_pw":commPw,
+			"comm_body":comm_body
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					//ajaxLoadingClose(ckmsg);
+					showComment();
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+//--> 
+</script>
+<? } ?>
+
+<script type="text/javascript"> 
+<!-- 
+$(function(){
+	$(".clbtn-wrap").mouseover(function(e) {
+        $("div.clbtn-menu", this).show();
+	}).mouseout(function(e) {
+        $("div.clbtn-menu", this).hide();
+	});
+});
+
+
+function commentPw(mode, key){
+
+	$(".comment-pw").each(function(){
+		$(this).hide();
+	});
+
+	var thisState = $("#comment_pw_"+key).attr("state");
+
+	//alert(thisState);
+	if( thisState == "off" ){
+		$("#comment_pw_"+ key).show();
+		$("#comment_pw_"+ key).attr("state","on");
+	}else{
+		$("#comment_pw_"+ key).attr("state","off");
+	}
+
+	if( mode == "Del" ){
+
+	}
+}
+
+function commentDel(key){
+
+	var commPw = $("#comm_pw_pw_" + key).val();
+
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":"commDel",
+			"ajax_mode":"on",
+			"b_code":bCode,
+			"b_key":bKey,
+			"c_key":key,
+			"comm_pw":commPw
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					//ajaxLoadingClose(ckmsg);
+					showComment();
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+}
+
+function commentComment(key){
+	$(".comment-comment").each(function(){
+		$(this).hide();
+	});
+	
+	var thisState = $("#comment_comment_"+key).attr("state");
+	//alert(thisState);
+	if( thisState == "off" ){
+		$("#comment_comment_"+key).show();
+		$("#comment_comment_"+key).attr("state","on");
+	}else{
+		$("#comment_comment_"+key).attr("state","off");
+	}
+}
+
+
+function commentModify(key){
+	$("#comment_form").hide();
+	$("#comment_modify_"+key).show();
+}
+
+function commentModifyCancel(key){
+	$("#comment_form").show();
+	$("#comment_modify_"+key).hide();
+}
+
+//--> 
+</script> 

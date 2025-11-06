@@ -1,0 +1,60 @@
+<link rel="stylesheet" type="text/css" href="/skin/pink/board/board_style.css?ver=<?=$wepix_now_time?>" />
+
+<div id="contents">
+	<table style="width:1100px">
+		<tr>
+			<td style="width:300px">
+<?
+include ($docRoot."/skin/".$glv_skin_name."/board/board_submenu.html");
+?>
+			</td>
+			<td style="width:800px; padding-left:10px; box-sizing:border-box; ">
+				<div id="board_wrap" class="board-wrap">
+					<div class="board-title">
+						<?=$show_board_name?>
+					</div>
+					<table class="board-list-table">
+<?
+while($list = wepix_fetch_array($result)){
+
+	$depth = $list[DEPTH];
+	if($depth) {
+		$show_board_number = $total_show;
+	}else{
+		$show_board_number = $total_show;
+	}
+
+	$subject = $list[BOARD_SUBJECT];
+
+	$week_num = date("w",$list[BOARD_DATE]);
+	$board_date = date("Y.m.d (".$gva_week_w[$week_num].")", $list[BOARD_DATE]);
+
+	$total_comment = ($list[TOTAL_COMMENT]) ? "[<b>".$list[TOTAL_COMMENT]."</b>]" : "";
+
+	if( $list[BOARD_POWER] == "A" ){
+		$board_witer_name = "<img src='/skin/pink/img/admin_icon.png'>";
+	}else{
+		$board_witer_name = $list[BOARD_WITER_NAME];
+	}
+
+	//$show_board_number
+?>
+						<tr>
+							<td class="board-list-number"><?=$show_board_number?></td>
+							<td class="board-list-subject">
+								<a href="/board/?b_mode=view&b_code=<?=$_b_code?>&b_key=<?=$list[UID]?>"><?=$subject?></a>
+								<span style="color:#ff3477"><?=$total_comment?></span>
+							</td>
+							<td class="board-list-witer_name"><?=$board_witer_name?></td>
+							<td class="board-list-date"><?=$board_date?></td>
+						</tr>
+<? 
+$total_show--;
+} 
+?>
+					</table>
+				</div>
+			</td>
+		</tr>
+	</table>
+</div>

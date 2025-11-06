@@ -1,0 +1,153 @@
+<div class="comparison-comment">
+<?
+while($pd_comment_list = wepix_fetch_array($pd_comment_result)){
+	
+	//$comment_date = date("y-m-d H:i", $pd_comment_list[COMMENT_DATE]);
+	$comment_date = date("y-m-d", $pd_comment_list[COMMENT_DATE]);
+	$comment_body = nl2br($pd_comment_list[COMMENT_BODY]);
+
+	$_view_idx = $pd_comment_list[COMMENT_IDX];
+	$_view_like_good = $pd_comment_list[LIKE_GOOD];
+	$_view_like_bad = $pd_comment_list[LIKE_BAD];
+
+	$_view_like_btn_active_class_good = "";
+	$_view_like_btn_active_class_bad = "";
+
+	if( $_sess_id ){
+		$like_data = wepix_fetch_array(wepix_query_error("select LIKE_KEY, LIKE_SELECTED from "._DB_LIKE." where LIKE_IDX = '".$pd_comment_list[COMMENT_IDX]."' and LIKE_MODE = 'comparison_comm' and LIKE_ID = '".$_sess_id."' "));
+		if( $like_data[LIKE_KEY] ){
+			if( $like_data[LIKE_SELECTED] == "good" ){
+				$_view_like_btn_active_class_good = "active";
+			}else{
+				$_view_like_btn_active_class_bad = "active";
+			}
+		}
+	}
+
+	$_view_micon = "";
+	$_view_board_name = $pd_comment_list[COMMENT_NAME];
+	$_view_ip = "<span class='view-ip'>(".ipShortCut($pd_comment_list[COMMENT_IP]).")</span>";
+
+	if( $pd_comment_list[COMMENT_MODE] == 'IG2' ){
+			$_view_board_name = $pd_comment_list[COMMENT_NAME];
+			$_view_ip = "<span class='view-ip'>(".$pd_comment_list[COMMENT_IP_SHOW].")</span>";
+	}else{
+		if( $pd_comment_list[COMMENT_ID] ){
+			$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-m2\"></i>";
+			$_view_board_name = "<b>".$pd_comment_list[COMMENT_NAME]."</b>";
+			$_view_ip = "";
+		}
+	}
+
+
+?>
+	<div class="comparison-comment-wrap">
+		<ul class="comment-list-body display-table-cell">
+			<div class="clb-wrap">
+				<ul class="clb-wrap-body">
+					<?=$comment_body?>
+				</ul>
+				<ul class="clb-wrap-info">
+					<span class="clb-wrap-info-name"><?=$_view_micon?><?=$_view_board_name?> <?=$_view_ip?></span>
+					<span class="clb-wrap-info-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?=$comment_date?></span>
+				</ul>
+			</div>
+		</ul>
+		<ul class="comment-list-btn display-table-cell">
+
+			<button id="like_btn_good_<?=$_view_idx?>" class="comment-like-btn good <?=$_view_like_btn_active_class_good?>" onclick="commentLike('good','<?=$_view_idx?>')"><i class="far fa-thumbs-up"></i> <span class="count"><?=$_view_like_good?></span></button>
+			<button id="like_btn_bad_<?=$_view_idx?>" class="comment-like-btn bad <?=$_view_like_btn_active_class_bad?>" onclick="commentLike('bad','<?=$_view_idx?>')"><i class="far fa-thumbs-down"></i> <span class="count"><?=$_view_like_bad?></span></button>
+<? /* ?>
+			<div class="clbtn-wrap">
+				<i class="fas fa-ellipsis-v"></i>
+				<div class="clbtn-menu">
+					<? if( $_show_comment2_active == "on" ){ ?><ul onclick="commentComment('<?=$comment_list[COMMENT_IDX]?>')">댓글답변</ul><? } ?>
+					<? if( $_show_my_comment == "yes" ){ ?>
+							<ul onclick="commentModify('<?=$comment_list[COMMENT_IDX]?>')">댓글수정</ul>
+							<ul onclick="commentDel('<?=$comment_list[COMMENT_IDX]?>')">댓글삭제</ul>
+					<? } ?>
+					<ul>댓글신고</ul>
+				</div>
+			</div>
+<? */ ?>
+		</ul>
+	</div>
+<? } ?>
+</div>
+
+<div class="comparison-comment-pageing">
+	<?=publicAjaxPaging($_pn, $total_page, $list_num, $page_num, "showComment", $function_value);?>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function commentLike(str, idx){
+
+	if( ws_user_id == "" ){
+		$('#modal_alert_msg').html('회원 로그인후 이용해 주세요.');
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+	}
+
+	var target_btn_this = $('#like_btn_'+ str +'_'+ idx);
+	var target_btn_good = $('#like_btn_good_'+ idx);
+	var target_btn_bad = $('#like_btn_bad_'+ idx);
+
+	var target_count_this = $('#like_btn_'+ str +'_'+ idx +' span.count').text()*1;
+	var target_count_good = $('#like_btn_good_'+ idx +' span.count').text()*1;
+	var target_count_bad = $('#like_btn_bad_'+ idx +' span.count').text()*1;
+
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":"commLike",
+			"ajax_mode":"on",
+			"c_idx":idx,
+			"c_selected":str
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				ckval = redatawa[3];
+				if(ckcode == "Processing_Complete"){
+					if( ckval == "NEW" ){
+						target_btn_this.addClass('active');
+						$('#like_btn_'+ str +'_'+ idx +' span.count').html(target_count_this + 1);
+					}else if( ckval == "MODIFY" ){
+						if(str=="good"){
+							target_btn_good.addClass('active');
+							target_btn_bad.removeClass('active');
+							$('#like_btn_good_'+ idx +' span.count').html(target_count_good + 1);
+							$('#like_btn_bad_'+ idx +' span.count').html(target_count_bad - 1);
+						}else{
+							target_btn_good.removeClass('active');
+							target_btn_bad.addClass('active');
+							$('#like_btn_good_'+ idx +' span.count').html(target_count_good - 1);
+							$('#like_btn_bad_'+ idx +' span.count').html(target_count_bad + 1);
+						}
+					}else if( ckval == "DEL" ){
+						target_btn_this.removeClass('active');
+						$('#like_btn_'+ str +'_'+ idx +' span.count').html(target_count_this - 1);
+					}
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+
+}
+//--> 
+</script> 

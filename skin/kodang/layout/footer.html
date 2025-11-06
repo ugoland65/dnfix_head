@@ -1,0 +1,165 @@
+
+	</div>
+	<div id="sub_layout_right">
+
+<? if( $_sess_id ){ ?>
+		<div class="member-box-wrap">
+			<div class="member-box display-table">
+				<ul class="m-icon display-table-cell v-align-top"><div class="member-no-m-icon"><i class="far fa-user"></i></div></ul>
+				<ul class="display-table-cell v-align-top">
+					<div>
+						<ul><b><?=$_user_nick?></b></ul>
+						<ul class="m-t-3"><?=$_user_id?></ul>
+						<ul class="m-t-6">
+							<button type="submit" class="basic-btn basic-btn-gray basic-btn-sm" onclick="location.href='<?=_PATH_MEMBER_ACCOUNT?>'"><i class="fas fa-cog"></i> 정보수정</button>
+							<button type="submit" class="basic-btn basic-btn-blue basic-btn-sm" onclick="location.href='/front/board/list.php?b_code=help'">1:1 문의게시판</button>
+						</ul>
+					</div>
+<!-- 
+					<div class="m-t-10">
+						<ul><i class="fas fa-coins"></i> 포인트</ul>
+						<ul></ul>
+					</div>
+ -->
+				</ul>
+			</div>
+		</div>
+<? }else{ ?>
+		<form id="out_login" method='POST'>
+		<input type='hidden' name='a_mode' id='a_mode' value='doLogin'>
+		<input type='hidden' name='returnUrl' value='<?=$check_request_uri?>'>
+		<div class="out-login-wrap">
+			<div class="out-login">
+				<ul class="out-login-input">
+					<li><input type="text" id="userId" name="userId" required maxlength="20" placeholder="아이디"></li>
+					<li><input type="password" name="userPw" id="userPw" required maxlength="20" placeholder="비밀번호"></li>
+				</ul>
+				<ul class="out-login-btn"><input type="button" id="ol_submit" value="로그인" class="btn_b02" onclick="outLogin()"></ul>
+			</div>
+			<div class="out-login-link">
+				<a href="<?=_PATH_JOIN?>">회원가입</a> | 계정찾기
+			</div>
+		</div>
+		</form>
+
+<script type="text/javascript"> 
+<!-- 
+function outLogin(){
+
+	var userId = $("#userId").val();
+	var userPw = $("#userPw").val();
+
+	if( userId == "" ||  userId == null ){
+		$('#modal_alert_msg').html("회원 아이디를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	if( userPw == "" ||  userPw == null ){
+		$('#modal_alert_msg').html("비밀번호를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	//$("#a_mode").val("doLogin"); 
+	$("#out_login").attr("action", "<?=_PATH_LOGIN_OK?>"); 
+	$("#out_login").submit();
+
+}
+//--> 
+</script> 
+<? } ?>
+
+<STYLE TYPE="text/css">
+.right-link-wrap{ margin-top:15px; margin-bottom:30px;}
+.right-link-wrap a{ font-size:15px; }
+</STYLE>
+
+<?
+//게시판 매니저 메뉴
+if( $pageGroup == "board" && $_state_board_manager == "manager"){
+?>
+<div>
+	게시판 매니저 입니다.
+</div>
+<? } ?>
+
+		<div class="right-link-wrap">
+			<ul><a href="/front/comparison/ranking.php?key=18"><b>2020년 10월 오나홀 아마존 판매 랭킹</b></a> NEW</ul>
+			<ul><a href="/front/comparison/ranking.php?key=17">2020년 9월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=16">2020년 8월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=15">2020년 상반기 아마존 판매 랭킹 30</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=14">DMM 2020년 7월 오나홀 월간랭킹 12</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=13">2020년 7월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=12">2020년 6월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=11">2020년 5월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=6">2020년 4월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=8">2020년 3월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=9">2020년 2월 오나홀 아마존 판매 랭킹</a></ul>
+			<ul><a href="/front/comparison/ranking.php?key=10">2020년 1월 오나홀 아마존 판매 랭킹</a></ul>
+		</div>
+
+<div class="m-t-10" style="width:290px">
+<script src="https://ads-partners.coupang.com/g.js"></script>
+<script>
+	new PartnersCoupang.G({ id:361860 });
+</script>
+</div>
+
+<div class="m-t-10" style="width:290px">
+<iframe width="290" height="250" allowtransparency="true" src="https://tab2.clickmon.co.kr/pop/wp_ad_300.php?PopAd=CM_M_1003067%7C%5E%7CCM_A_1069341%7C%5E%7CAdver_M_1046207&mon_rf=REFERRER_URL" frameborder="0" scrolling="no"></iframe>
+</div>
+
+	</div>
+</div>
+
+
+</div><!-- #wrap -->
+
+<div id="footer">
+	<div id="footer_wrap">
+		<ul>
+			Copyright ©2019 <b>KO EDGE</b> All rights reserved. E-mail : koedge24@gmail.com
+		</ul>
+
+		<div id="footer_social">
+			<li><img src="/skin/<?=$show_skin_name?>/img/social_instar.png" alt=""></li>
+			<li><img src="/skin/<?=$show_skin_name?>/img/social_facebook.png" alt=""></li>
+		</div>
+	</div>
+</div><!-- #footer  -->
+
+<div id="side_left_wrap">
+<!-- 
+	<div id="side_left_1"><iframe src="https://coupa.ng/bMkQf3" width="120" height="240" frameborder="0" scrolling="no"></iframe></div>
+	<div id="side_left_2"><iframe src="https://coupa.ng/bMkYNV" width="120" height="240" frameborder="0" scrolling="no"></iframe></div>
+	<div id="side_left_5"><iframe src="https://coupa.ng/bMnt48" width="120" height="240" frameborder="0" scrolling="no"></iframe></div>
+ -->
+</div>
+
+<div class="modal fade" id="modal-alert">
+  <div class="modal-dialog">
+    <div class="modal-content">
+      <div class="modal-header">
+        <button type="button" class="close" data-dismiss="modal" aria-label="Close"><span aria-hidden="true">&times;</span></button>
+        <h4 class="modal-title" id="modal_alert_title">알림메시지</h4>
+      </div>
+      <div class="modal-body" id="modal_alert_msg">
+        <p>...</p>
+      </div>
+      <div class="modal-footer" id="modal_footer_btn_wrap">
+        <button type="button" class="btn btn-primary" data-dismiss="modal">창닫기 ( Close )</button>
+        <!-- <button type="button" class="btn btn-primary">Save changes</button> -->
+      </div>
+      <div class="modal-footer display-none" id="modal_footer_confirm_btn_wrap">
+        <button type="button" class="btn btn-default" data-dismiss="modal">취소</button>
+        <button type="button" class="btn btn-primary" id="confirm-ok">실행</button>
+      </div>
+    </div><!-- /.modal-content -->
+  </div><!-- /.modal-dialog -->
+</div><!-- /.modal -->
+
+</body>
+</html>
+
+

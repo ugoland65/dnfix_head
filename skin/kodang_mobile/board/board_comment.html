@@ -1,0 +1,201 @@
+<div class="comment-title-wrap">
+	<ul class="comment-title">
+		<b>댓글</b> &nbsp;&nbsp;Total : <?=$comment_count?>
+	</ul>
+	<ul class="comment-refresh">
+		<button onclick="showComment('<?=$_b_code?>', '<?=$_b_key?>');"><i class="fas fa-sync-alt"></i> 새로고침</button>
+	</ul>
+</div>
+
+<?
+if( $sess_id ){
+?>
+<div class="comment-write-wrap">
+	<div class="comment-write">
+		<ul class="comment-write-name"><?=$sess_nick?></ul>
+		<ul>
+			<textarea name="comment_body" id="comment_body"></textarea>
+		</ul>
+		<ul class="comment-write-btn-wrap">
+			<li></li>
+			<li class="comment-write-btn"><button onclick="commentSubmit('<?=$_b_code?>', '<?=$_b_key?>');"><i class="fas fa-pencil-alt m-r-5"></i>등록</button></li>
+		</ul>
+	</div>
+</div>
+<? } ?>
+
+<script type="text/javascript"> 
+<!-- 
+function comment2Activate(bc_key){
+	$('#comment_list_write_'+bc_key).show();
+}
+
+function commentDel(b_code, b_key, bc_key){
+
+	$.ajax({
+		url: "board_ok.php",
+		data: {
+			"action_mode":"comment_del",
+			"b_code":b_code,
+			"b_key":b_key,
+			"bc_key":bc_key
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckname = redatawa[2];
+				if(ckcode == "comment_del_ok"){
+					showComment('<?=$_b_code?>', '<?=$_b_key?>');
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_content_zone').html('접근에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+
+function commentSubmit(b_code, b_key, depth, mom_key, mom_headnum){
+	
+	if( depth == "" ) depth = "0";
+	if( mom_key == "" ) mom_key = "0";
+	if( mom_headnum == ""  ) mom_headnum = "0";
+
+	if( depth == "1" ){
+		var comment_body = $("#comment_body_"+mom_key).val();
+	}else{
+		var comment_body = $("#comment_body").val();
+	}
+
+	if( comment_body == "" ){
+		alert('내용을 입력해주세요.'); 
+		return false;
+	}
+
+
+
+	$.ajax({
+		url: "board_ok.php",
+		data: {
+			"action_mode":"comment_new",
+			"b_code":b_code,
+			"b_key":b_key,
+			"depth":depth,
+			"mom_key":mom_key,
+			"mom_headnum":mom_headnum,
+			"comment_body":comment_body
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmemo = redatawa[2];
+				if(ckcode == "comment_ok"){
+					showComment(b_code, b_key);
+/*
+					var commentHtml = '';
+						commentHtml += '<div class="comment-list">';
+						commentHtml += '<ul class="comment-list-info">';
+						commentHtml += '<b>'+ ckname +'</b> I '+ ckdata;
+						commentHtml += '</ul>';
+						commentHtml += '<ul class="comment-list-body">';
+						commentHtml += ckbody;
+						commentHtml += '</ul>';
+						commentHtml += '</div>';
+
+					$("#comment_list").prepend(commentHtml);
+					$("#comment_body").val("");
+					//alert('등록완료');
+*/
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_content_zone').html('접근에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+}
+//--> 
+</script>
+
+<div id="comment_list" class="comment-list-wrap">
+<?
+	while($comment_list = wepix_fetch_array($comment_result)){
+		
+		if( $comment_list[COMMENT_POWER] == "A" ){
+			$comment_name = "<img src='/skin/pink/img/admin_icon.png'>";
+		}else{
+			$comment_name = $comment_list[COMMENT_NAME];
+		}
+
+		$week_num = date("w",$comment_list[COMMENT_DATE]);
+		$comment_date = date("Y.m.d (".$gva_week_w[$week_num].")", $comment_list[COMMENT_DATE]);
+		$comment_body = nl2br($comment_list[COMMENT_BODY]);
+
+		if( $comment_list[DEPTH] == 0 ){
+?>
+	<div class="comment-list" id="comment_list_<?=$comment_list[COMMENT_ID]?>">
+		<ul class="comment-list-info">
+			<b><?=$comment_name?></b> I <?=$comment_date?>
+		</ul>
+		<ul class="comment-list-body">
+			<?=$comment_body?>
+		</ul>
+		<ul class="comment-list-btn">
+			<? if( $sess_id && $comment_list[COMMENT_ID] == $sess_id ){ ?>
+			<span class="comment-list-del" onclick="commentDel('<?=$_b_code?>','<?=$_b_key?>','<?=$comment_list[COMMENT_IDX]?>');">삭제</span> &nbsp;I&nbsp; 
+			<? } ?>
+			신고
+			<? if( $activate_comment2 == "Y" ){ ?>
+				I <span onclick="comment2Activate('<?=$comment_list[COMMENT_IDX]?>');">댓글</span>
+			<? } ?>
+		</ul>
+
+		<? if( $activate_comment2 == "Y" ){ ?>
+		<ul class="comment-list-write" id="comment_list_write_<?=$comment_list[COMMENT_IDX]?>" style="display:none;">
+			<div class="comment-write2">
+				<ul class="comment-write-name"><?=$sess_nick?></ul>
+				<ul>
+					<textarea name="comment_body" id="comment_body_<?=$comment_list[COMMENT_IDX]?>"></textarea>
+				</ul>
+				<ul class="comment-write-btn-wrap">
+					<li></li>
+					<li class="comment-write-btn"><button onclick="commentSubmit('<?=$_b_code?>', '<?=$_b_key?>', '1', '<?=$comment_list[COMMENT_IDX]?>', '<?=$comment_list[HEADNUM]?>');"> <i class="fa fa-pencil m-r-5" ></i> 등록  </button></li>
+				</ul>
+			</div>
+		</ul>
+		<? } ?>
+
+	</div>
+
+	<? }else{ ?>
+	<div class="comment-list2" id="comment_list_<?=$comment_list[COMMENT_ID]?>">
+		<ul class="comment-list-info">
+			<b><?=$comment_name?></b> I <?=$comment_date?>
+		</ul>
+		<ul class="comment-list-body">
+			<?=$comment_body?>
+		</ul>
+		<ul class="comment-list-btn">
+			<? if( $comment_list[COMMENT_ID] == $sess_id ){ ?>
+			<span class="comment-list-del" onclick="commentDel('<?=$_b_code?>','<?=$_b_key?>','<?=$comment_list[COMMENT_IDX]?>');">삭제</span> &nbsp;I&nbsp; 
+			<? } ?>
+			신고
+		</ul>
+	</div>
+	<? } ?>
+
+<? } ?>
+</div>

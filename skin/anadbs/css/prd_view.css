@@ -1,0 +1,181 @@
+.img-blur{
+	-webkit-filter:blur(2px) !important;
+	-moz-filter:blur(2px) !important;
+	-o-filter:blur(2px) !important;
+	-ms-filter:blur(2px) !important;
+	filter:blur(2px)!important;
+
+}
+
+.pv-wrap{ padding-bottom:15px; }
+.pv-info{ margin-top:20px; border-bottom:1px solid #3b4250; padding:0 10px; cursor:pointer; }
+.pv-info ul{ margin:0 !important; padding:0 !important; }
+.pd-name{ height:30px; line-height:30px; font-family: 'Noto Sans KR', sans-serif;  font-size:24px; color:#fff; }
+.pd-name-og{ height:26px; line-height:26px; color:#999; }
+
+.pd-info-div{}
+.pd-info-div ul{ height:20px; line-height:20px; }
+
+.pv-pd{ width:100%; margin-top:10px; }
+.pv-pd .img{ width:350px; }
+.pv-pd .graph{ width:390px; box-sizing:border-box;  }
+.pv-pd .graph .pd-graph-wrap{ width:390px; height:350px; padding:0 0 0 0; background-color:#fff; border-radius:10px; box-sizing:border-box;  }
+.pv-pd .img img{  }
+.pv-pd-wrap{ width:300px; }
+
+.img-box{ width:350px; height:350px; padding:24px; overflow:hidden; background-color:#fff; border-radius:10px; }
+
+.min-price-box{ width:100%; }
+.min-price-name{ font-family: 'Noto Sans KR', sans-serif;  font-size:14px; color:#000;  }
+.min-price-wrap{ color:#0097fa; margin-top:9px; }
+.min-price{ font-family: 'Noto Sans KR', sans-serif;  font-size:22px;  font-weight:700; }
+.pv-site-title{ margin-top:10px; height:24px; line-height:24px; font-family: 'Noto Sans KR', sans-serif;  font-size:14px; font-weight:700; color:#000; }
+.pv-site{ width:100%; border:1px solid #ddd; box-sizing:border-box; border-radius:5px; margin-top:5px; padding:5px; }
+.pv-site table{ width:100%; }
+.pv-site table tr td { height:28px; line-height:120%; text-align:center; border:1px solid #eee !important; box-sizing:border-box; }
+
+.pv-site .site-price{ width:80px; padding-right:5px; }
+.pv-site .site-delivery{ width:60px; padding-right:5px; }
+.pv-site .site-etc{ width:110px; font-size:11px; }
+.pv-site .pv-site-link{ width:66px; padding:3px 0 !important; }
+
+.pv-view-tap-wrap{ width:100%; /* border-bottom:2px solid #0e2a4f; */ box-sizing:border-box; height:38px;  }
+.pv-view-tap{ display:table;   }
+.pv-view-tap ul{ cursor:pointer !important; display:table-cell; width:130px; height:37px; border-top:1px solid #e5e6e8 !important;  border-right:1px solid #e5e6e8 !important; text-align:center; }
+
+.pv-view-tap ul a { overflow:hidden; display:inline-block; width:100%; height:37px; line-height:37px; text-align:center; vertical-align:middle; white-space:nowrap; text-overflow:ellipsis;  box-sizing:border-box; padding:0 !important; background-color:#f1f2f4 !important; color:#333; }
+.pv-view-tap ul.active a,
+.pv-view-tap ul.all-active a{ background-color:#0e2a4f !important; color:#ffff;  }
+
+.pv-view-tap ul.active{ background-color:#0e2a4f !important; color:#ffff;  }
+.pv-view-site-count{ color:#ff4842; }
+
+.pv-view-list{ width:100%; }
+.pv-view-list table{ width:100%; }
+
+.pv-title{ height:40px; font-family: 'Godo', sans-serif; font-size:18px; box-sizing:border-box;  padding-top:15px; margin:0 !important; border-top:2px solid #0e2a4f; }
+/* .pv-title.frist{ border-top:none !important; } */
+.pv-review-point{ width:100%; background-color:#f7fafc; border:1px solid #eaedef; box-sizing:border-box; display:table; padding:20px; }
+.pv-review-point ul{ box-sizing:border-box; vertical-align:top; }
+.crp-section{ width:100%;}
+.crp-section-name{  font-family: 'Noto Sans KR', sans-serif;  font-size:16px; color:#000; font-weight:500; text-align:center; }
+.crp-section-score-icon{ text-align:center; margin-top:25px;  }
+.crp-section-score-icon i { font-size:22px;  }
+.crp-section-score-icon .on{ color:#f84a44; }
+.crp-section-score-icon .off{ color:#ddd; }
+.crp-section-score{ margin-top:20px; text-align:center; font-family: 'Noto Sans KR', sans-serif;  font-weight:700; font-size:18px; color:#ddd; }
+.crp-section-score span{ color:#000; }
+.crp-section-icon{ text-align:center; margin-top:20px; color:#ccc; font-size:30px; }
+.crp-section-count{ margin-top:15px; text-align:center; font-family: 'Noto Sans KR', sans-serif;  font-weight:700; font-size:18px; color:#000; }
+
+.pv-review-list{ width:100%; padding:10px 0 10px 6px; border-bottom:1px solid #f1f1f1 !important; box-sizing:border-box;  }
+.pv-review-list ul{ width:100%; }
+.pv-review-list .fas.fa-star.on{ color:#f84a44; }
+.pv-review-list .far.fa-star.off{ color:#ddd; }
+.pv-review-list .grade-icon{  font-size:18px; }
+.pv-review-list .grade-text{  font-size:18px; color:#000;  }
+.review-contents{ padding:3px 15px 0 0 ; box-sizing:border-box; }
+.review-contents-subject{ height:24px; line-height:24px; font-family: 'Noto Sans KR', sans-serif;  font-size:16px; color:#000; font-weight:500; margin-bottom:5px; 
+ overflow: hidden;
+ text-overflow: ellipsis;
+ display: -webkit-box;
+ -webkit-line-clamp: 1; /* 라인수 */
+ -webkit-box-orient: vertical;
+ word-wrap:break-word; 
+}
+.review-contents-body{ color:#666; 
+width:670px;
+line-height:140%;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ display: -webkit-box;
+ -webkit-line-clamp: 4; /* 라인수 */
+ -webkit-box-orient: vertical;
+ word-wrap:break-word; 
+}
+
+.review-img { width:100px; }
+.review-img img { width:98px; border:1px solid #ddd; }
+.pv-review-pageing{ margin-top:10px; }
+.pv-review-btn{ margin:10px 0 20px 0; text-align:center; }
+
+.pv-comment-pageing{ margin:10px 0 20px 0; }
+
+.fixed-menu{
+	position:fixed;
+	top:0; left:0;
+	width:100%; height:100px; background-color:#fff; border-bottom:2px solid #0e2a4f; box-sizing:border-box; 
+	display:none;
+	z-index:99;
+}
+
+.fixed-menu-wrap{ width:1100px; margin:0 auto; }
+.fixed-menu-pd-info{ height:60px; box-sizing:border-box; padding:5px 0 0 0; }
+.fixed-menu-pd-img img{ height:50px; }
+.fixed-menu-pd-info-name{ height:26px; line-height:26px; font-family: 'Noto Sans KR', sans-serif; font-weight:700; font-size:15px; color:#000;  }
+.fixed-menu-pd-info-price{ font-family: 'Noto Sans KR', sans-serif; font-weight:700; font-size:13px; color:#ff0000; }
+.sc-m-icon{ width:50px; height:50px; padding:0 !important; margin:0 !important; border:1px solid #ccc !important; border-radius:50%; overflow:hidden; box-sizing:border-box; background-size:100% 100%; }
+
+.pv-comment{ background-color:#0b1323; box-sizing:border-box; }
+.pv-comment-wrap{ width:100%; border-bottom:6px solid #172032; display:table; }
+.pv-comment-wrap ul{ vertical-align:top; }
+.comment-list-m-icon{ width: 60px; padding:10px 8px 10px 15px;  }
+.comment-list-body{ padding:12px 0 15px 25px; }
+.comment-list-btn{ width:150px; text-align:right; vertical-align:middle !important; padding-right:10px; box-sizing:border-box;   }
+
+.clb-wrap-info-name{ font-size:11px; color:#999; margin-right:10px; }
+
+.micon-i{ margin-right:2px; }
+
+.clb-wrap-info-date{ font-size:11px; color:#999999; }
+.clb-wrap-body{ margin-top:5px !important; margin-bottom:10px !important; color:#eee; font-size:13px; line-height:140%; }
+.clbtn-wrap{ width:100%; height:35px; position:relative; color:#999; margin-top:15px; cursor:pointer;  }
+.clbtn-menu{ width:70px; padding:7px; border:1px solid #dde1e2; top:0; left:-65px; background-color:#fff; position:absolute; display:none; }
+.clbtn-menu ul{ height:20px; line-height:20px; }
+
+.comment-like-btn{ min-width:50px; overflow:hidden; border:1px solid #d5d5d5; border-radius:3px; background-color:#fff; padding:5px !important; }
+.comment-like-btn.good{ color:#3569c7; }
+.comment-like-btn.bad{ color:#ff0000; }
+.comment-like-btn.good.active{ color:#fff; border:1px solid #3569c7; background-color:#3569c7; } 
+.comment-like-btn.bad.active{ color:#fff; border:1px solid #ff0000; background-color:#ff0000; }
+
+.pv-pd-info-nodata{ width:100%; height:200px; background-color:#f7f7f7; border:1px solid #eee; box-sizing:border-box; padding:20px; }
+.pv-pd-info-nodata ul{ text-align:center; }
+.nodata-icon{ font-size:50px; color:#ddd; padding-top:30px; }
+
+.related-goods-title{ height:36px; line-height:36px; color:#555; border-bottom:1px solid #ccc; margin: 15px 0 0 0 !important; padding: 0 !important; }
+.related-goods-title h2{ font-family: 'Noto Sans KR', sans-serif; font-weight:400; font-size:18px; color:#555; display:inline-block; margin: 0 10px 0 0 !important; padding: 0 !important; }
+.related-goods{ width:100%; overflow:hidden; box-sizing:border-box; }
+.related-goods-li{ width:25%; height:270px; box-sizing:border-box; float:left; }
+.goods-box{ width:100%; padding:10px; box-sizing:border-box; }
+.goods-box ul{ margin:0 !important; padding:0 !important; }
+.thum img{ width:100%; border:1px solid #e2e2e2; }
+.goods-box ul.name{ padding-top:8px !important; }
+.goods-box ul.price-wrap{ padding-top:10px !important; color:#0073be; }
+.goods-box ul.price-wrap .price{ font-weight:bold; }
+.goods-box ul.score-icon{ padding-top:4px !important; color:#ccc;  }
+.goods-box ul.score-icon .on{ color:#f84a44; }
+.goods-box ul.score-icon .off{ color:#ddd; }
+.goods-box ul.score-icon .score{ font-weight:bold; color:#000; }
+
+#pv_site{ border-top:1px solid #eeeeee; box-sizing:border-box;  }
+.site-box{ width:100%; height:80px; display:table; vertical-align:top; padding:0 !important; margin:0 !important; border-bottom:1px solid #eeeeee; box-sizing:border-box; }
+.site-box li{ display:table-cell; vertical-align:middle; }
+.site-logo{ width:110px;  box-sizing:border-box; padding-left:15px;}
+.site-logo img{ width:60px; }
+.site-info{ }
+.site-name{ font-size:13px; }
+.site-price{ width:110px; }
+.site-price-text{ font-size:13px; }
+.site-delivery-price{ width:90px; color:#999; text-align:center; }
+.site-go{ width:80px; }
+
+.site-kind-qodp{ color:#dc3545; line-height:22px; }
+.sum-price{ font-size:13px; color:#1e8fff; line-height:22px; }
+.delivery-time{ color:#1e8fff; line-height:22px; }
+
+.prd-detail-info{ display:table; margin-top:10px; }
+.prd-detail-info ul{ display:table-row; }
+.prd-detail-info ul li{ color:#eee; font-size:13px; display:table-cell; height:26px; vertical-align:middle; box-sizing:border-box; }
+.prd-detail-info ul li.sname{ color:#858c99; width:60px; text-align:right; }
+.prd-detail-info ul li.svalue{ padding-left:10px; }

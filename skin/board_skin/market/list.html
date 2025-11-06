@@ -1,0 +1,257 @@
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+<link rel="stylesheet" href="/skin/board_skin/market/style.css?v=<?=time()?>">
+
+<div class="bo-title">
+	<?=$_view_bc_name_show?>
+</div>
+
+<?
+//매니져가 있을경우
+if( $_show_bc_manager_active == "Y" ){
+?>
+<div class="bo-list-manager">
+	게시판 매니저 : 
+	<? for ($i=0; $i<count($_ary_manager_name); $i++){ ?>
+		<?=$_ary_manager_name[$i]?><? if( $i < count($_ary_manager_name) -1 ) echo ",";?>
+	<? } ?>
+</div>
+<? } ?>
+
+<?
+//매니저 전용메뉴
+if( $_state_board_manager == "manager" ){
+?>
+<div class="bo-manager-menu">
+	<ul class="msg">이 게시판의 매니저 입니다.</ul>
+	<ul><i class="fas fa-cog"></i> 게시판 설정</ul>
+</div>
+<? } ?>
+
+<?
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" ){
+?>
+<div class="bo-list-category-menu">
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" class="<? if($_show_b_category=="") echo "active"; ?>">전체</button>
+	<? for ($i=1; $i<count($_ary_bc_category); $i++){ ?>
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>&ct=<?=$i?>'" class="<? if($i == $_show_b_category) echo "active"; ?>"><?=$_ary_bc_category[$i]?></button>
+	<? } ?>
+</div>
+<? } ?>
+<? } ?>
+
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left">
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+        <form name="fsearch" method="get">
+        <input type="hidden" name="b_code" value="<?=$_show_b_code?>">
+        <input type="hidden" name="s_active" value="on">
+		<div class="bo-list-search-wrap">
+			<select name="s_kind">
+				<option value="subject_body" <? if( $_s_kind == "subject_body" ) echo "selected"; ?>>제목+내용</option>
+				<option value="subject" <? if( $_s_kind == "subject" ) echo "selected"; ?>>제목</option>
+				<option value="writer_name" <? if( $_s_kind == "writer_name" ) echo "selected"; ?>>글쓴이</option>
+			</select>
+			<input type="text" name="s_text" value="<?=$_s_text?>">
+			<button type="submit" class="bo-btn bo-btn-pink bo-btn-sm"><i class='fas fa-search'></i> 검색</button>
+		</div>
+        </form>
+<? } ?>
+	</ul>
+	<ul class="bo-btn-area-right">
+		<div class="bo-list-page-info">
+			Total <?=$total_count?>건 / <?=$_c_page?>Page
+		</div>
+	</ul>
+</div>
+
+<table class="bo-list">
+	<tr>
+		<th class="bo-list-no">번호</th>
+		<th class="bo-list-prdimg">이미지</th>
+		<th class="bo-list-prdinfo">제목</th>
+		<th class="bo-list-mprice">판매가</th>
+		<th class="bo-list-mwriter">등록일</th>
+
+	</tr>
+
+<?
+	//공지사항
+	while($list = wepix_fetch_array($result_notice)){
+
+		if( $list[BOARD_DATE] > $gva_today_mktime_start ){
+			$_view_register_date = date("H:i", $list[BOARD_DATE]);
+		}else{
+			if( date("Y", $list[BOARD_DATE]) < date("Y") ){
+				$_view_register_date = date("y.m.d", $list[BOARD_DATE]);
+			}else{
+				$_view_register_date = date("m.d", $list[BOARD_DATE]);
+			}
+		}
+
+		$_view_comment = ( $list[BOARD_COMMENT] > 0 ) ? "<span class='bo-list-comment'>".$list[BOARD_COMMENT]."</span>" : "";
+		//$_view_upload_img = ( $list[board_thumbnail] ) ? "<span class='bo-list-img'><i class='far fa-image'></i></span>" : "";
+		$_view_category = ( $list[BOARD_CATEGORY] > 0 ) ? "<span class='bo-list-category'>".$_ary_bc_category[$list[BOARD_CATEGORY]]."</span>" : "";
+		$_view_subject = $list[BOARD_SUBJECT];
+		$_view_hit = $list[BOARD_HIT];
+		$_view_recom = $list[BOARD_LIKE];
+
+		if( $list[BOARD_ADMIN] == "Y" ){
+			$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_admin.png\" class='micon'>";
+			$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+		}elseif( $list[BOARD_ADMIN] == "M2" ){
+			//$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_manager.png\" class='micon'>";
+			$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-m2\"></i>";
+			$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+		}else{
+			$_view_micon = "";
+			$_view_board_name = $list[BOARD_WITER_NAME];
+		}
+
+		
+?>
+	<tr class="bo-list-tr">
+		<td class="bo-list-no"><b>공지</b></td>
+		<td class="bo-list-subject" style="text-align:left !important;" colspan="4">
+			<?=$_view_category?>
+			<a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" >
+				<? if( $list[depth] > 0 ){ ?>
+					<img src="/bboo/skin/board_skin/board_basic/img/icon_reply.gif" class="icon_reply" alt="답변글">
+				<? } ?>
+				<?=$_view_subject?>
+			</a>
+			<?=$_view_comment?>
+			<?=$_view_upload_img?>
+		</td>
+	</tr>
+<? } ?>
+
+<?
+while($list = wepix_fetch_array($result)){
+
+	if( $list[BOARD_DATE] > $gva_today_mktime_start ){
+		$_view_register_date = date("H:i", $list[BOARD_DATE]);
+	}else{
+		if( date("Y", $list[BOARD_DATE]) < date("Y") ){
+			$_view_register_date = date("y.m.d", $list[BOARD_DATE]);
+		}else{
+			$_view_register_date = date("m.d", $list[BOARD_DATE]);
+		}
+	}
+
+	$_view_comment = ( $list[BOARD_COMMENT] > 0 ) ? "<span class='bo-list-comment'>".$list[BOARD_COMMENT]."</span>" : "";
+	//$_view_upload_img = ( $list[board_thumbnail] ) ? "<span class='bo-list-img'><i class='far fa-image'></i></span>" : "";
+	$_view_category = ( $list[BOARD_CATEGORY] > 0 ) ? "<span class='bo-list-category'>".$_ary_bc_category[$list[BOARD_CATEGORY]]."</span>" : "";
+	$_view_subject = $list[BOARD_SUBJECT];
+	$_view_hit = $list[BOARD_HIT];
+	$_view_recom = $list[BOARD_LIKE];
+
+	if( $list[BOARD_ADMIN] == "Y" ){
+		$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_admin.png\" class='micon'>";
+		$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+	}elseif( $list[BOARD_ADMIN] == "M2" ){
+		//$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_manager.png\" class='micon'>";
+		$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-m2\"></i>";
+		$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+	}else{
+
+		$_view_micon = "";
+		$_view_board_name = $list[BOARD_WITER_NAME];
+		$_view_ip = "<span class='view-ip'>(".$list[BOARD_IP_SHOW].")</span>";
+
+		//가상 비회원일경우
+		if( $list[BOARD_MODE] != "IG2" && $list[BOARD_WITER_ID] ){
+			$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-n\"></i>";
+			$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+			$_view_ip = "";
+		
+		//}elseif( $list[BOARD_MODE] == "IG" || ( $list[BOARD_MODE] == "BS" && $list[BOARD_WITER_ID] ) ){
+
+		}
+	}
+
+	if( $_s_active == "on" AND $_s_text != "" AND ( $_s_kind == "subject_body" OR $_s_kind == "subject" ) ){
+		$_view_subject = str_replace($_s_text, "<b class='s_word'>".$_s_text."</b>", $_view_subject);
+	}
+
+	$_view_thumbnail = "";
+	if( $list[BOARD_THUMBNAIL] != "" ){
+		$_view_thumbnail = "<span class=\"thumbnail-icon\"></span>";
+	}
+
+	//마켓 게시판 일경우
+	//$market_data = wepix_fetch_array(wepix_query_error("select * from user_market where um_b_code = '".$_b_code."' AND um_b_token = '".$list[BOARD_TOKEN]."' "));
+
+	//마켓 게시판 일경우
+	if( $list[BOARD_PD_IDX] ){
+		$prd_data = wepix_fetch_array(wepix_query_error("select * from "._DB_COMPARISON." where CD_IDX = '".$list[BOARD_PD_IDX]."' "));
+		$prd_img_path = '../../data/comparion/'.$prd_data[CD_IMG];
+	}
+
+	if( !$list[BOARD_PD_IDX] && $list[BOARD_THUMBNAIL] ){
+		$prd_img_path = $list[BOARD_THUMBNAIL];
+	}
+
+	if( $list[um_state] == "ing" ){
+		$_view_sale_state = "<div><span class='bo-list-sale-state active'>판매중</span></div>";
+		$_view_sale_state_class = "";
+	}else{
+		$_view_sale_state = "<div><span class='bo-list-sale-state end'>판매종료</span></div>";
+		$_view_sale_state_class = "grayscale";
+	}
+
+	$_view_prd_name = "";
+	if( $prd_data[CD_NAME] ) $_view_prd_name = "<div class='bo-list-prd-name'>".$prd_data[CD_NAME]."</div>";
+
+	$_href = "view.php?b_code=".$_show_b_code."&b_key=".$list[UID];
+?>
+	<tr class="bo-list-tr" onclick="location.href='<?=$_href?>'" style="cursor:pointer;">
+		<td class="bo-list-no"><?=$_view_no?></td>
+		<td class="bo-list-prdimg">
+			<div class="prd-img-box"><img src="<?=$prd_img_path?>" class="<?=$_view_sale_state_class?>"><div>
+		</td>
+		<td class="bo-list-prdinfo" style="text-align:left !important;">
+			<?=$_view_sale_state?>
+			<?=$_view_prd_name?>
+			<?=$_view_category?>
+
+			<? if( $list[depth] > 0 ){ ?>
+				<img src="/bboo/skin/board_skin/board_basic/img/icon_reply.gif" class="icon_reply" alt="답변글">
+			<? } ?>
+			<?=$_view_subject?>
+
+			<?=$_view_thumbnail?>
+			<?=$_view_comment?>
+			<?=$_view_upload_img?>
+		</td>
+		<td class="bo-list-mprice"><b><?=number_format($list[um_price])?></b>원</td>
+		<td class="bo-list-mwriter">
+			<?=$_view_register_date?><br>
+			<?=$_view_micon?><?=$_view_board_name?>
+		</td>
+
+	</tr>
+<? 
+$_view_no--;
+} ?>
+
+</table>
+
+
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left"><div class="bo-paging"><?=$_view_paging?></div></ul>
+	<ul class="bo-btn-area-right">
+<?
+if($_show_board_write_btn=="on"){
+	if( $_view_foot_list_mode != "on" ){
+?>
+		<button type="button" id="" class="bo-btn bo-btn-blue" onclick="location.href='/front/board/write.php?b_code=<?=$_show_b_code?>'" > 
+			<i class="far fa-check-circle"></i> 판매글 등록
+		</button>
+<? } } ?>
+	</ul>
+</div>

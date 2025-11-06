@@ -1,0 +1,81 @@
+<STYLE TYPE="text/css">
+.search-top{ height:80px; padding-top:25px; box-sizing:border-box; font-size:22px; font-family: 'Noto Sans KR', sans-serif; color:#999999; line-height: 24px; border-bottom:1px solid #000; }
+.search-text{ color:#0073be;  font-size:24px;  font-family: 'Godo', sans-serif; }
+.search-count{ color:#999; font-size:12px; }
+.search-count-number{ color:#0073be; }
+
+.comparison-list { width:100%; font-size:0; padding-top:20px; }
+.comparison-list-ul{ width:25%; display:inline-block; box-sizing:border-box; margin-bottom:40px; }
+.comparison-list-box{ display:table; } 
+.comparison-list-box ul.img{ width:90px; display:table-cell; vertical-align:top; }
+.comparison-list-box ul.info{ display:table-cell; vertical-align:top; padding: 0 20px 0 0; box-sizing:border-box; }
+
+.thum{ width:80px; height:80px;  overflow:hidden; border:4px solid #000; }
+.thum .thum-icon{ width:76px; }
+.thum .thum-no-icon{ width:180px; margin-top:-45px; margin-left:-45px; }
+
+.thum{ width:80px; height:80px;  overflow:hidden; border:4px solid #000; }
+.thum .thum-icon{ width:76px; }
+.thum .thum-no-icon{ width:180px; margin-top:-45px; margin-left:-45px; }
+
+.pd-info{ padding-top:10px; }
+.pd-name{ font-family: 'Noto Sans KR', sans-serif;  font-size:14px; line-height:135%; }
+.pd-name a{ color:#f5f5f5; }
+.pd-brand-info{ padding-top:5px; line-height:120%;  }
+.pd-brand-info a{ color:#798499; }
+
+.pd-shorttext{ padding-top:5px; line-height:120%; color:#888; }
+.pd-tag{ margin-top:15px; }
+.pd-review-info{  margin-top:15px;  }
+.pd-price{ margin-top:10px; width:100%; color:#1996ec; }
+.pd-price span.price{ font-family: 'Noto Sans KR', sans-serif;  font-size:18px; font-weight:700; }
+.pd-comparison{ width:100px; height:34px; line-height:28px; background-color:#3598dc; border:1px solid #3598dc; border-radius:5px; text-align:center; color:#fff; }
+.pd-comparison span.count{ font-family: 'Noto Sans KR', sans-serif;  font-size:16px; font-weight:700;  }
+.on-star{ color:#fb4700;  }
+.off-star{ color:#999; }
+
+</STYLE>
+
+<div class="search-top">
+	<span class="search-text">" <?=$_search_text ?> "</span> 검색결과 
+	<span class="search-count">( 상품수 <span class="search-count-number"><?=number_format($total_count)?></span> )</span>
+</div>
+
+<div class="comparison-list">
+<?	
+while($list = wepix_fetch_array($result)){ 
+
+	$_view_score_icon = "";
+	for ($i=0; $i<$list[CD_SCORE]; $i++){
+		$_view_score_icon .= "<i class='fas fa-star on-star'></i>";
+	}
+	$_view_score_icon_empty = "";
+	for ($i=0; $i<(5-$list[CD_SCORE]); $i++){
+		$_view_score_icon_empty .= "<i class='far fa-star off-star'></i>";
+	}
+
+	if( $list[CD_IMG2] ){
+		$img_path = '../../data/comparion/'.$list[CD_IMG2];
+		$img_class = "thum-icon";
+	}else{
+		$img_path = '../../data/comparion/'.$list[CD_IMG];
+		$img_class = "thum-no-icon";
+	}
+
+	$brand_data = wepix_fetch_array(wepix_query_error("select BD_NAME from "._DB_BRAND." where BD_IDX = '".$list[CD_BRAND_IDX]."' "));
+?>
+<ul class="comparison-list-ul">
+	<div class="comparison-list-box">
+		<ul class="img">
+			<div class="thum"><a href="view.php?key=<?=$list[CD_IDX]?>" ><img src="<?=$img_path?>" class="<?=$img_class?>"></a></div>
+		</ul>
+		<ul class="info">
+			<div class="pd-info">
+				<ul class="pd-name"><a href="view.php?key=<?=$list[CD_IDX]?>" ><?=$list[CD_NAME]?></a></ul>
+				<ul class="pd-brand-info"><a href="/front/product/brand_view.php?idx=<?=$list[CD_BRAND_IDX]?>" target="_blank"><?=$brand_data[BD_NAME]?></a></ul>
+			</div>
+		</ul>
+	</div>
+</ul>
+<? } ?>
+</div>

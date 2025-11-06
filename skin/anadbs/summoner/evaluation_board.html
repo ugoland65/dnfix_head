@@ -1,0 +1,89 @@
+<?
+if( $total_count == 0 ){
+?>
+<div id="evaluation_nodata">
+	<img src="/skin/pink/img/nodata.png" alt="">
+</div>
+<? }else{ ?>
+<div id="evaluation_board_count">
+	총 <b><?=$total_count?></b>건 &nbsp;&nbsp;<span style="color:#ccc">I</span>&nbsp;&nbsp;  평점 : <b style="color:#ff216a"><?=round($average_grade,2);?></b>
+
+	<span class="paging-now float-right"><b><?=$pn?></b> / <?=$total_page?>page</span>
+<!-- 
+	<span class="float-right"><b>MPSBA</b> : Mental ( <b><?=$evaluation_sum[value1]?></b> ) Personality( <b><?=$evaluation_sum[value2]?></b> ) Swear ( <b><?=$evaluation_sum[value3]?></b> ) Blame( <b><?=$evaluation_sum[value4]?></b> ) Ability( <b><?=$evaluation_sum[value5]?></b>)</span>
+ -->
+</div>
+<div id="evaluation_board_wrap">
+<?
+/*
+	$fs_star_1 = '<i class="fas fa-star-half-alt"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_2 = '<i class="fas fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_3 = '<i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_4 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_5 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_6 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_7 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i><i class="far fa-star"></i>';
+	$fs_star_8 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="far fa-star"></i>';
+	$fs_star_9 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star-half-alt"></i>';
+	$fs_star_10 = '<i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i><i class="fas fa-star"></i>';
+*/
+	$fs_star_1 = '<img src="/skin/pink/img/star_icon_1_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_2 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_3 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_1_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_4 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_5 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_1_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_6 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_7 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_1_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_8 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_0_s.png" >';
+	$fs_star_9 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_1_s.png" >';
+	$fs_star_10 = '<img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" ><img src="/skin/pink/img/star_icon_2_s.png" >';
+
+while($list = wepix_fetch_array($query_result)){
+
+	$evaluation_board_id = substr($list[EAT_REQ_ID], 0,3)."***";
+	$register_date = date("Y.m.d H:i ",$list[EAT_REQ_DATE]);
+	$eat_evaluate = nl2br($list[EAT_EVALUATE]);
+
+	$eat_score_star_text = ${'fs_star_'.$list[EAT_SCORE]};
+
+?>
+	<div id="evaluation_board">
+		<table>
+			<tr>
+				<td class="evaluation">
+<!-- 
+					<? if($list[EAT_MENTAL_SCORE] == 1){ ?><div class="evaluation_box">멘탈</div><? } ?>
+					<? if($list[EAT_PERSONALITY_SCORE] == 1){ ?><div class="evaluation_box">인성</div><? } ?>
+					<? if($list[EAT_CURSING_SCORE] == 1){ ?><div class="evaluation_box">욕설</div><? } ?>
+					<? if($list[EAT_ASSIST_SCORE] == 1){ ?><div class="evaluation_box">남탓</div><? } ?>
+					<? if($list[EAT_INDIVIDUAL_SCORE] == 1){ ?><div class="evaluation_box">실력</div><? } ?>
+ -->
+					 <div class="evaluation-star">
+						<?=$eat_score_star_text?>
+					</div>
+					<div class="evaluation-score">
+						<?=$list[EAT_SCORE] ?>
+					</div>
+				</td>
+				<td class="evaluation-text">
+					<li class="eat-evaluate"><?=$eat_evaluate?></li>
+					<li class="eat-info"><?=$list[EAT_REQ_NICK]?>(<?=$evaluation_board_id?>) I <?=$register_date?> I <span onclick="comingSoon()">신고</span></li>
+				</td>
+				<td class="like-btn">
+					<div>
+						<ul class="float-left like-btn-count fontc-2270ff" ><?=$list[EAT_LIKE_COUNT]?></ul>
+						<ul class="float-left like-btn-button"><button onclick="dolike('up','<?=$list[EAT_IDX]?>');"><i class="fa fa-thumbs-up fontc-2270ff"></i></button></ul>
+					</div>
+					<div>
+						<ul class="float-left like-btn-count fontc-f62569"><?=$list[EAT_DISLIKE_COUNT]?></ul>
+						<ul class="float-left like-btn-button"><button onclick="dolike('down','<?=$list[EAT_IDX]?>');"><i class="fa fa-thumbs-down fontc-f62569"></i></button></ul>
+					</div>
+				</td>
+			</tr>
+		</table>
+	</div>
+<? } ?>
+</div>
+
+<div class="paging-wrap"><?=$view_paging?></div>
+<? } ?>

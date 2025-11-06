@@ -1,0 +1,44 @@
+<div id="list_wrap">
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var prdList = function() {
+
+	var B;
+
+	var C = function() {
+	};
+
+	return {
+		init : function() {
+
+		},
+		show : function(pn) {
+
+			$.ajax({
+				url: "/ajax-prdList",
+				data: {},
+				type: "POST",
+				dataType: "html",
+				success: function(shtml){
+					$("#list_wrap").html(shtml);
+				},
+				error: function(request, status, error){
+					console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+					showAlert("Error", "에러", "alert2" );
+					return false;
+				},
+				complete: function() {
+
+				}
+			});
+
+		}
+	};
+
+}();
+
+prdList.show();
+//--> 
+</script> 

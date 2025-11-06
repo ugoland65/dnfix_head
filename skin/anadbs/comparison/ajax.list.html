@@ -1,0 +1,80 @@
+<div class="comparison-list-topmenu-wrap">
+	<div class="comparison-list-topmenu">
+		<ul>Total <span><?=$total_count?></span></ul>
+	</div>
+</div>
+
+<div class="comparison-list-sort-wrap display-table">
+	<ul class="display-table-cel v-align-top display-none">
+		<div class="comparison-list-sort">
+			<ul class="<? if( $_sort_mode == "best" ) echo "active";?>" onclick="listSort('best')"><? if( $_sort_mode == "best" ){ ?><i class="fas fa-check"></i>  <? } ?>인기순</ul>
+			<ul class="<? if( $_sort_mode == "launch" ) echo "active";?>" onclick="listSort('launch')"><? if( $_sort_mode == "launch" ){ ?><i class="fas fa-check"></i>  <? } ?>출시일순</ul>
+			<ul class="<? if( $_sort_mode == "review" ) echo "active";?>" onclick="listSort('review')"><? if( $_sort_mode == "review" ){ ?><i class="fas fa-check"></i>  <? } ?>상품평 많은순</ul>
+			<ul class="<? if( $_sort_mode == "price_d" ) echo "active";?>" onclick="listSort('price_d')"><? if( $_sort_mode == "price_d" ){ ?><i class="fas fa-check"></i>  <? } ?>최저가순</ul>
+			<ul class="<? if( $_sort_mode == "price_a" ) echo "active";?>" onclick="listSort('price_a')"><? if( $_sort_mode == "price_a" ){ ?><i class="fas fa-check"></i>  <? } ?>최고가순</ul>
+			<ul class="<? if( $_sort_mode == "new" ) echo "active";?>" onclick="listSort('new')"><? if( $_sort_mode == "new" ){ ?><i class="fas fa-check"></i>  <? } ?>최근등록순</ul>
+		</div>
+	</ul>
+	<ul class="display-table-cell v-align-top display-none">
+		<div class="comparison-list-output float-right ">
+			<ul class="v-align-top" >
+				<select name="list_num" onchange="listNum(this.value);">
+					<option value="30" <? if( $_view_list_num == "30" ) echo "selected"; ?>>30개씩 보기</option>
+					<option value="50" <? if( $_view_list_num == "50" ) echo "selected"; ?>>50개씩 보기</option>
+					<option value="100" <? if( $_view_list_num == "100" ) echo "selected"; ?>>100개씩 보기</option>
+				</select>
+			</ul>
+			<ul class="v-align-top">
+				<nav>
+				  <ul class="pagination">
+					<li class="active"><a><i class="fas fa-bars"></i></a></li>
+					<li ><a><i class="fas fa-th-large"></i></a></li>
+				  </ul>
+				</nav>
+			</ul>
+		</div>
+	</ul>
+</div>
+
+<div class="comparison-list">
+<?	
+while($list = wepix_fetch_array($result)){ 
+
+	$_view_score_icon = "";
+	for ($i=0; $i<$list[CD_SCORE]; $i++){
+		$_view_score_icon .= "<i class='fas fa-star on-star'></i>";
+	}
+	$_view_score_icon_empty = "";
+	for ($i=0; $i<(5-$list[CD_SCORE]); $i++){
+		$_view_score_icon_empty .= "<i class='far fa-star off-star'></i>";
+	}
+
+	if( $list[CD_IMG2] ){
+		$img_path = '../../data/comparion/'.$list[CD_IMG2];
+		$img_class = "thum-icon";
+	}else{
+		$img_path = '../../data/comparion/'.$list[CD_IMG];
+		$img_class = "thum-no-icon";
+	}
+
+	$brand_data = wepix_fetch_array(wepix_query_error("select BD_NAME from "._DB_BRAND." where BD_IDX = '".$list[CD_BRAND_IDX]."' "));
+?>
+<ul class="comparison-list-ul">
+	<div class="comparison-list-box">
+		<ul class="img">
+			<div class="thum"><a href="view.php?key=<?=$list[CD_IDX]?>" ><img src="<?=$img_path?>" class="<?=$img_class?>"></a></div>
+		</ul>
+		<ul class="info">
+			<div class="pd-info">
+				<ul class="pd-name"><a href="view.php?key=<?=$list[CD_IDX]?>" ><?=$list[CD_NAME]?></a></ul>
+				<ul class="pd-brand-info"><a href="/front/product/brand_view.php?idx=<?=$list[CD_BRAND_IDX]?>" target="_blank"><?=$brand_data[BD_NAME]?></a></ul>
+			</div>
+		</ul>
+	</div>
+</ul>
+<? } ?>
+</div>
+
+<div class="comparison-list-pageing">
+	<?=publicAjaxPaging($_pn, $total_page, $list_num, $page_num, "showList", ",'paging'");?>
+</div>

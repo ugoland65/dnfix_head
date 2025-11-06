@@ -1,0 +1,144 @@
+<STYLE TYPE="text/css">
+.page-sub-title{ margin-bottom:10px; }
+.page-sub-title h2{ font-family: 'Godo', sans-serif; color:#000; font-size:18px; }
+.account-wrap{ width:100%; padding:30px 20px 0; box-sizing:border-box; }
+.account{ width:100%; box-sizing:border-box; padding:20px; border:1px solid #e1e1e1; border-radius:5px; background-color:#f5f5f5; }
+.account ul li{ height:34px; line-height:34px; }
+.account ul li.fn{ width:150px; }
+.account input[type=text],
+.account input[type=password]{ width:100%; height:40px !important; line-height:40px !important; box-sizing:border-box; background-color:#ffffff; border:1px solid #ccc; color:#000; border-radius:3px; padding:5px; }
+.account input::placeholder { color:#000; }
+</STYLE>
+
+<div class='page-title'>
+	계정 관리
+</div>
+
+<div class='account-wrap'>
+	<div class='page-sub-title'>
+		<h2>계정 정보 수정</h2>
+	</div>
+	<div class='account'>
+		<form>
+		<div class="form-group">
+			<label>아이디</label>
+			<div><?=$_view_account_id?></div>
+		</div>
+		<div class="form-group">
+			<label>가입일</label>
+			<div><?=$_view_account_reg_date?></div>
+		</div>
+		<div class="form-group">
+			<label for="account_nickname">닉네임</label>
+			<input type='text' name='account_nickname' id='account_nickname' value="<?=$_view_account_nickname?>">
+		</div>
+		<div class="form-group">
+			<label for="account_email">이메일</label>
+			<input type='text' name='account_email' id='account_email' value="<?=$_view_account_email?>">
+		</div>
+		<div class="checkbox">
+			<label for="account_pw_modify">
+				<input type="checkbox" name="account_pw_modify" id="account_pw_modify" value="Y" style="position:relative; top:1px;" >  비밀번호 변경
+			</label>
+		</div>
+		<div class="form-group">
+			<label for="account_pw">비밀번호 입력 </label>
+			<input type='password' name='account_pw' id='account_pw' >
+		</div>
+		<div class="form-group">
+			<label for="account_pw2">비밀번호 입력확인</label>
+			<input type='password' name='account_pw2' id='account_pw2' >
+		</div>
+		</form>
+	</div>
+
+	<ul class="m-t-10 text-center">
+		<button type="button" class="basic-btn basic-btn-blue basic-btn-md width-full" id="login_btn" onclick="doAccountModify();"><i class="fa fa-cog fa-spin fa-lg"></i> 정보수정</button>
+	</ul>
+
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function doAccountModify(){
+
+	var account_nickname = $("#account_nickname").val();
+	var account_email = $("#account_email").val();
+	var account_pw_modify = $("#account_pw_modify:checked").val();
+
+	if( account_nickname == "" ||  account_nickname == null ){
+		$('#modal_alert_msg').html("닉네임을 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	if( account_email == "" ||  account_email == null ){
+		$('#modal_alert_msg').html("이메일을 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	if( account_pw_modify == "Y" ){
+		var account_pw = $("#account_pw").val();
+		var account_pw2 = $("#account_pw2").val();
+
+		if( account_pw == "" ||  account_pw == null ){
+			$('#modal_alert_msg').html("비밀번호 입력을 입력해주세요!");
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+			return false;
+		}
+
+		if( account_pw2 == "" ||  account_pw2 == null ){
+			$('#modal_alert_msg').html("비밀번호 입력확인을 입력해주세요!");
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+			return false;
+		}
+
+		if( account_pw != account_pw2 ){
+			$('#modal_alert_msg').html("비밀번호 입력과 확인이 같지 않습니다.");
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+			return false;
+		}
+
+	}else{
+		account_pw_modify = "N";
+		var account_pw = "";
+		var account_pw2 = "";
+	}
+
+	$.ajax({
+		url: "<?=_PATH_MEMBER_OK?>",
+		data: {
+			"a_mode":"accountModify",
+			"ajax_mode":"on",
+			"account_nickname":account_nickname,
+			"account_email":account_email,
+			"account_pw_modify":account_pw_modify,
+			"account_pw":account_pw,
+			"account_pw2":account_pw2
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					$('#modal_alert_msg').html("수정이 완료되었습니다.");
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_content_zone').html('접근에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+//--> 
+</script> 

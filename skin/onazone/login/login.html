@@ -1,0 +1,221 @@
+<STYLE TYPE="text/css">
+body { background-color:#f1f1f1; }
+.login-body{ width:450px; height:500px; margin:0 auto; background-color:#fff; border:1px solid #ddd; border-radius:10px; margin-top:30px; 
+	padding-top:10px;
+	text-align:center;	
+}
+.login-img{width:350px; height:140px; margin:25px auto 15px; }
+.login-form{ width:400px; margin:0 auto; }
+.login-form input{ width:400px; height:36px !important; line-height:36px !important; box-sizing:border-box; border:1px solid #ddd;  border-radius:5px; padding:5px; }
+.login-form button{ width:400px; height:36px !important; line-height:36px !important; box-sizing:border-box;  }
+.login-btn2{ background-color:#18b1a1; color:#fff; border:1px solid #099586; border-radius:5px; }
+.join-btn2{ background-color:#333; color:#fff; border:1px solid #111; border-radius:5px; }
+.login-facebook{ background-color:#4267b2; color:#fff; border:1px solid #111; border-radius:5px; }
+.login-kakao{ background-color:#FFEB46; color:#3c1e1e; border:1px solid #CCC; border-radius:5px; }
+</STYLE>
+
+<script src="//developers.kakao.com/sdk/js/kakao.min.js"></script>
+
+<script type="text/javascript"> 
+<!-- 
+function statusChangeCallback(response) {
+    console.log('statusChangeCallback');
+    console.log(response);
+    if (response.status === 'connected') {
+		//testAPI();
+    } else {
+		alert('오류');
+    }
+}
+
+function checkLoginState() {
+    FB.getLoginStatus(function(response) {
+      statusChangeCallback(response);
+    });
+}
+
+window.fbAsyncInit = function() {
+    FB.init({
+      appId      : '651565985298153',
+      cookie     : true,
+      xfbml      : true,
+      version    : 'v3.2'
+    });
+/*
+    FB.getLoginStatus(function(response) {
+      statusChangeCallback(response);
+    });
+*/
+};
+
+// Load the SDK asynchronously
+(function(d, s, id) {
+    var js, fjs = d.getElementsByTagName(s)[0];
+    if (d.getElementById(id)) return;
+    js = d.createElement(s); js.id = id;
+    js.src = "https://connect.facebook.net/ko_KR/sdk.js";
+    fjs.parentNode.insertBefore(js, fjs);
+}(document, 'script', 'facebook-jssdk'));
+
+function testAPI() {
+    console.log('Welcome!  Fetching your information.... ');
+    FB.api('/me',  {fields: 'email,name'},function(response) {
+/*
+      console.log('Successful login for: ' + response.name);
+      document.getElementById('status').innerHTML =
+        'Thanks for logging in, ' + response.name + '/' + response.id + '/' + response.email;
+*/
+    });
+}
+
+function FB_loginCheck() {
+    FB.api('/me',  {fields: 'email,name'},function(response) {
+		var social_id = response.id;
+		var social_name = response.name;
+		var social_email = response.email;
+		loginCheck(social_id, social_name, social_email, "facebook" );
+    });
+}
+
+function Email_reconfirm() {
+	FB.login(function(response) {
+		console.log(response);
+	}, {scope: 'email', auth_type: 'rerequest' });
+}
+
+function FB_login() {
+/*
+	FB.login(function(response) {
+	  // handle the response
+	}, {scope: 'public_profile,email'});
+*/
+	FB.login(function(response) {
+	  if (response.status === 'connected') {
+		//alert("작업중1");
+		FB_loginCheck();
+	  } else {
+		alert("작업중2");
+	  }
+	}, {scope: 'public_profile,email'});
+
+}
+
+
+function loginCheck(id, name, email, social_mode ) {
+
+		$.ajax({
+			url: "login_check.php",
+			data: {
+				"a_mode":"social_check",
+				"social_mode":social_mode,
+				"social_id":id,
+				"social_name":name,
+				"social_email":email
+			},
+			type: "POST",
+			dataType: "text",
+			success: function(getdata){
+				if (getdata){
+					redatawa = getdata.split('|');
+					ckcode = redatawa[1];
+					ckmemo= redatawa[2];
+					if(ckcode == "social_join_success"){
+						$("#a_mode").val("social_login");
+						$("#login_id").val(id);
+						$("#login_pass").val("");
+						login();
+					}else if (ckcode == "social_join_impossibility"){
+						alert("이미 가입되어 있는 회원입니다.("+email+")/"+ckmemo);
+					}
+				}
+			},
+			error: function(){
+			}
+		});
+
+}
+
+//--> 
+</script> 
+
+<div class='login-body'>
+
+	<div class='login-img'>
+		<a href='/'><img src="/skin/<?=$show_skin_name?>/img/logo.jpg" alt=""></a>
+	</div>
+
+	<form id="loginform" method='POST'>
+	<input type='hidden' name='a_mode' id='a_mode' >
+	<input type='hidden' name='returnUrl' value='<?=$_return_url?>'>
+	<div class='login-form'>
+		<ul><input type='text' name='userId' id='userId' placeholder="회원 아이디"></ul>
+		<ul style="margin-top:6px;"><input type='password' name='userPw' id='userPw' placeholder="비밀번호"></ul>
+		<ul style="margin-top:10px;"><button type="button" class="login-btn2" id="login_btn" onclick="login();"><i class="fa fa-sign-in fa-lg m-r-5"></i> 로그인</button></ul>
+		<ul style="margin-top:3px;"><button type="button" class="join-btn2" onclick="location.href='<?=_PATH_JOIN?>'"><i class="fa fa-user fa-lg m-r-5"></i> 회원가입</button></ul>
+
+<!-- 
+		<ul style="margin-top:25px;"><button type="button" class="login-facebook" onclick="FB_login()"><i class="fa fa-facebook-official fa-lg m-r-5" ></i> 페이스북 로그인</button></ul>
+		<ul style="margin-top:5px;"><button type="button" class="login-kakao" onclick="loginWithKakao()"><i class="fa fa-comment fa-lg m-r-5"></i> 카카오톡 로그인</button></ul>
+ -->
+
+<!-- 
+		<ul style="margin-top:5px;"><a id="kakao-login-btn"></a><a href="http://developers.kakao.com/logout">aaaaaaa</a></ul>
+ -->
+
+	</div>
+	</form>
+
+</div>
+
+<script type='text/javascript'>
+  //<![CDATA[
+	Kakao.init('bc5f87df21b363aa50097d83323cd363');
+    function loginWithKakao() {
+      Kakao.Auth.login({
+        success: function(authObj) {
+			//alert(JSON.stringify(authObj));
+				Kakao.API.request({
+				url: '/v1/user/me',
+				success: function(res){
+					var social_id = res.id;
+					var social_name = res.properties['nickname'];
+					var social_email = res.kaccount_email;
+					//alert(social_id+"/"+social_name+"/"+social_email);
+					loginCheck(social_id, social_name, social_email, "kakao" );
+				}
+        })
+      },
+        fail: function(err) {
+          alert(JSON.stringify(err));
+        }
+      });
+    };
+  //]]>
+</script>
+
+<script type="text/javascript"> 
+<!-- 
+function login(){
+
+	var userId = $("#userId").val();
+	var userPw = $("#userPw").val();
+
+	if( userId == "" ||  userId == null ){
+		$('#modal_alert_msg').html("회원 아이디를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	if( userPw == "" ||  userPw == null ){
+		$('#modal_alert_msg').html("비밀번호를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+
+	$("#a_mode").val("doLogin"); 
+	$("#loginform").attr("action", "<?=_PATH_LOGIN_OK?>"); 
+	$("#loginform").submit();
+
+}
+//--> 
+</script> 

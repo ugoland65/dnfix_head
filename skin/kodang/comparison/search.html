@@ -1,0 +1,111 @@
+<STYLE TYPE="text/css">
+.search-top{ height:80px; padding-top:25px; box-sizing:border-box; font-size:22px; font-family: 'Noto Sans KR', sans-serif; color:#333; line-height: 24px; border-bottom:1px solid #000; }
+.search-text{ color:#0073be;  font-size:24px;  font-family: 'Godo', sans-serif; }
+.search-count{ color:#999; font-size:12px; }
+.search-count-number{ color:#0073be; }
+
+.comparison-list { width:100%; }
+.comparison-list table { width:100%; }
+.comparison-list table tr td { padding:15px 0; border-bottom:1px solid #ccc; }
+.comparison-list table tr td.img{ width:152px; }
+.comparison-list table tr td.img img{ width:138px; border:1px solid #ddd; }
+.comparison-list table tr td.info{ padding-right:20px; box-sizing:border-box; }
+.comparison-list table tr td.price{ width:130px;  }
+.pd-info{ padding-top:13px; }
+.pd-name{ font-family: 'Noto Sans KR', sans-serif;  font-size:20px; }
+.pd-name a{ color:#000; }
+.pd-shorttext{ padding-top:5px; line-height:120%; color:#888; }
+.pd-brand-info{ padding-top:3px; line-height:120%;  }
+.pd-tag{ margin-top:15px; }
+.pd-review-info{  margin-top:15px;  }
+.pd-price{ margin-top:10px; width:100%; color:#1996ec; }
+.pd-price span.price{ font-family: 'Noto Sans KR', sans-serif;  font-size:18px; font-weight:700; }
+.pd-comparison{ width:100px; height:34px; line-height:28px; background-color:#3598dc; border:1px solid #3598dc; border-radius:5px; text-align:center; color:#fff; }
+.pd-comparison span.count{ font-family: 'Noto Sans KR', sans-serif;  font-size:16px; font-weight:700;  }
+.on-star{ color:#fb4700;  }
+.off-star{ color:#999; }
+
+</STYLE>
+
+<div class="search-top">
+	<span class="search-text">" <?=$_search_text ?> "</span> 검색결과 
+	<span class="search-count">( 상품수 <span class="search-count-number"><?=number_format($total_count)?></span> )</span>
+</div>
+
+<div class="comparison-list">
+	<table>
+<?	
+while($list = wepix_fetch_array($result)){ 
+
+	$_view_score_icon = "";
+	for ($i=0; $i<$list[CD_SCORE]; $i++){
+		$_view_score_icon .= "<i class='fas fa-star on-star'></i>";
+	}
+	$_view_score_icon_empty = "";
+	for ($i=0; $i<(5-$list[CD_SCORE]); $i++){
+		$_view_score_icon_empty .= "<i class='far fa-star off-star'></i>";
+	}
+
+	if($list[CD_IMG] == ''){
+		$img_path = '/test_pd_img.jpg';
+	}else{
+		$img_path = '../../data/comparion/'.$list[CD_IMG];
+	}
+
+	$brand_data = wepix_fetch_array(wepix_query_error("select BD_NAME from "._DB_BRAND." where BD_IDX = '".$list[CD_BRAND_IDX]."' "));
+?>
+		<tr>
+			<td class="img"><a href="view.php?key=<?=$list[CD_IDX]?>" target="_blank"><img src="<?=$img_path?>" alt=""></a></td>
+			<td class="info v-align-top">
+				<div class="pd-info">
+					<ul class="pd-name"><a href="view.php?key=<?=$list[CD_IDX]?>" target="_blank"><?=$list[CD_NAME]?></a></ul>
+					<? if( $list[CD_CONT] ){ ?>
+					<ul class="pd-shorttext"><?=$list[CD_CONT]?></ul>
+					<? } ?>
+					<!-- <ul class="pd-tag"><?=$list[CD_HASH_TAG]?></ul> -->
+					<ul class="pd-brand-info"><a href="/front/product/brand_view.php?idx=<?=$list[CD_BRAND_IDX]?>" target="_blank"><?=$brand_data[BD_NAME]?></a><? if( $list[CD_RELEASE_DATE] ){ ?>&nbsp; | &nbsp;출시일 : <?=$list[CD_RELEASE_DATE]?><? } ?></ul>
+					<ul class="pd-review-info">
+
+						<? if( $list[CD_SCORE] > 0 ){ ?>
+						평점 : <?=$_view_score_icon?><?=$_view_score_icon_empty?>&nbsp; | &nbsp;
+						<? } ?>
+
+						<? if( $list[CD_REVIEW] > 0 ){ ?>
+						상품평 : <?=$list[CD_REVIEW]?>건&nbsp; | &nbsp;
+						<? } ?>
+
+						갱신일 : <?=date("y.m.d",$list[CD_UPDATE_DATE])?>
+
+					</ul>
+				</div>
+			</td>
+			<td class="price v-align-top text-align-right">
+				<div class="pd-price">
+
+					<? if( $list[CD_PRICE] > 0 ){ ?>
+					<ul>
+						최저가 <span class="price"><?=number_format($list[CD_PRICE])?></span> 원
+					</ul>
+					<? } ?>
+
+					<? if( $list[CD_LINK_COUNT] > 0 ){ ?>
+					<ul>
+						<a href="view.php?key=<?=$list[CD_IDX]?>" target="_blank">
+							<div class="pd-comparison float-right">
+								가격비교 <span class="count"><?=$list[CD_LINK_COUNT]?></span>
+							</div>
+						</a>
+<!-- 
+						<div class="pd-comparison float-right" onclick="location.href='view.php?key=<?=$list[CD_IDX]?>'">
+							가격비교 <span class="count"><?=$list[CD_LINK_COUNT]?></span>
+						</div>
+ -->
+					<ul>
+					<? } ?>
+
+				</div>
+			</td>
+		</tr>
+<? } ?>
+	</table>
+</div>

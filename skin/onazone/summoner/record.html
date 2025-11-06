@@ -1,0 +1,576 @@
+<link href="https://fonts.googleapis.com/css?family=Russo+One" rel="stylesheet">
+<STYLE TYPE="text/css">
+.match-wrap{ margin-bottom:10px; height:110px; position: relative; box-sizing:border-box; padding:10px 40px 0 0 ; }
+.match-wrap.blue{ background-color:#a3cfec; border:1px solid #67a9d6; }
+.match-wrap.red{ background-color:#e2b6b3;  border:1px solid #d5837d; }
+
+.match-result{ width:90px; height:90px; position: relative; float:left;  }
+.match-result-text{ color:#000; font-family: 'Russo One', sans-serif; font-weight:600; font-size:17px; text-align:center; margin-bottom:10px; } 
+.match-result-info ul{ text-align:center; padding:3px 0; }
+
+.match-result-text.blue{ color:#0384da; }
+.match-result-text.red{ color:#ed0404; }
+.champion-img{ width:90px; height:90px; position: relative; float:left;  }
+.champion-border{ width:90px; height:90px; position: absolute; top:0; left:0; }
+.champion-img img{ width:90px; height:90px; } 
+
+.spell-wrap{ width:58px; height:90px; padding:16px 0 0 0; float:left; box-sizing:border-box; }
+.spell-wrap div{ width:24px; height:24px; background-size:24px 24px; border-radius:3px; margin:1px 1px; float:left; overflow:hidden; }
+.spell-wrap.blue div{ border:1px solid #67a9d6; }
+.spell-wrap.red div{ border:1px solid #d5837d; }
+.spell-wrap div img{ width:28px; height:28px; }
+.bgblack{ background-color:#000; }
+
+.kda-wrap{ width:85px; padding-top:30px; float:left; box-sizing:border-box; }
+.kda{ text-align:center; margin-bottom:5px; }
+.kda span{ font-size:15px; font-family: 'Godo', sans-serif; font-size:17px; }
+.deaths{ color:#f00101; }
+.kda-grade{ color:#000; font-family:Helvetica; font-weight:600; text-align:center; }
+
+.gameinfo-wrap{ width:85px; padding-top:13px; float:left; box-sizing:border-box; }
+.gameinfo-wrap ul{ padding:4px 0; color:#000; text-align:center; }
+
+.item-wrap{ width:96px; float:right; margin-right:15px; padding-top:15px; }
+.item-wrap div{ width:22px; height:22px; float:left; background-size:22px 22px; border-radius:3px; margin:1px; }
+.item-wrap.blue div{ background-color:#67a9d6; /* border:1px solid #a3cfec; */ }
+.item-wrap.red div{ background-color:#d5837d;  /* border:1px solid #e2b6b3; */ }
+.match-summoner-wrap{ width:170px; float:right; margin-top:-2px; }
+.match-summoner-wrap ul{ width:85px; float:left; }
+.match-summoner-wrap ul li { width:85px; height:16px; line-height:16px; font-size:11px; letter-spacing:-1px; padding: 1px 0; overflow:hidden; white-space: nowrap; text-overflow: ellipsis; }
+.match-summoner-wrap ul li img{ width:16px; height:16px; margin-right:3px; }
+.match-summoner-wrap ul li a{ color:#000; }
+
+.detail-btn{ width:37px; height:102px; position: absolute; top:3px; right:3px;  box-sizing:border-box;  }
+.detail-btn button{ width:37px; height:102px; line-height:102px; font-size:15px; text-align:center; border:1px solid #000; border-radius:4px; cursor:pointer;}
+.detail-btn.blue button{ background-color:#67a9d6; border:1px solid #4c98cb; }
+.detail-btn.red button{ background-color:#d5837d;  border:1px solid #ca625a; }
+.detail-btn button:hover{ background-color:#fff;  border:1px solid #333; }
+
+.detail-info{ margin-top:-11px; margin-bottom:10px; position: relative; box-sizing:border-box; padding:0; }
+.detail-info.blue{ background-color:#a3cfec; border:1px solid #67a9d6; }
+.detail-info.red{ background-color:#e2b6b3;  border:1px solid #d5837d; }
+.detail-info-box{ width:736px; margin:5px auto; background-color:#fff; box-sizing:border-box;  border-radius:5px; padding:3px; }
+.detail-info-box.blue{ border:1px solid #67a9d6; }
+.detail-info-box.red{ border:1px solid #d5837d; }
+
+.detail-info-box table { width:100%; border-spacing:1px; border-collapse:collapse; padding:0; margin:0; }
+.detail-info-box table tr th { height:26px; line-height:26px; }
+.detail-info-box table tr td { border:1px solid #e2e2e2; font-size:11px; }
+.detail-champion-img{ width:32px; }
+.detail-spell-td{ width:34px;}
+.detail-name-td{ height:32px; line-height:32px; box-sizing:border-box; padding-left:5px; font-size:12px; }
+.detail-kda-td{ width:70px; }
+.detail-damage-td{ width:65px; }
+.detail-wards-td{ width:50px; }
+.detail-cs-td{ width:70px; }
+.detail-item-td{ width:154px; }
+
+.detail-name-td a{ color:#000; }
+
+.detail-kda-td div { margin-top:4px; }
+.detail-kda-td div ul{ text-align:center; padding:1px 0; font-size:11px; }
+
+.detail-damage{ margin:5px 0 3px; text-align:center; font-size:11px; }
+.damage-graph-wrap{ width:50px; height:6px; margin:0 auto; background-color:#f7f7f7; border:1px solid #cdd2d2; }
+.damage-graph{ width:50px; height:6px; background-color:#ee5a52; border:1px solid #c6443e; margin:-1px 0 0 -1px; }
+
+.detail-wards-td div { margin-top:4px; }
+.detail-wards-td div ul{ text-align:center; padding:1px 0; font-size:11px;  }
+
+.detail-cs-td div { margin-top:4px; }
+.detail-cs-td div ul{ text-align:center; padding:1px 0; font-size:11px; }
+
+.detail-champion-img div{ width:32px; height:32px; border:1px solid #fff; border-radius:16px; background-size:32px 32px; }
+.detail-spell-wrap{ width:34px; height:34px; }
+.detail-spell-wrap li{ width:15px; height:15px; background-color:#000; border:1px solid #fff; border-radius:3px; background-size:15px 15px; float:left; }
+.detail-item-wrap{ margin-top:6px; }
+.detail-item-wrap li{ width:22px; height:22px; background-color:#ddd; border:1px solid #fff; border-radius:3px !important; background-size:22px 22px; box-sizing:border-box; overflow:hidden; float:left; }
+
+.match-detail-info{ width:734px; height:40px; margin:0 auto; }
+.match-detail-info ul{ height:40px; float:left; font-size:11px; box-sizing:border-box; } 
+.match-detail-info ul.center{ width:420px !important; padding-top:4px; } 
+.match-detail-info ul.summary{ width:157px; padding-top:7px; color:#000; } 
+
+.graph-value-td{ width:85px; font-size:11px; }
+.gold-graph-wrap-td{ width:200px; }
+.gold-graph-wrap{ width:190px; height:10px; margin:2px auto 0; background-color:#ee5a52; border:1px solid #c6443e; }
+.gold-graph{ width:190px; height:10px; background-color:#548dca; border:1px solid #2673c5; margin:-1px 0 0 -1px; }
+
+.gv-right{ text-align:right; }
+.gv-left{ text-align:left; }
+
+.summary-graph{ width:100%; border-spacing:0; border-collapse:collapse; padding:0; margin:0; }
+.summary-graph tr td{ height:16px; line-height:16px; font-size:11px; }
+</STYLE>
+
+<?
+for($i=0;$i<10;$i++){
+
+	$self_champion_img = array_search($match[matches][$i][champion], $_champion_img_key );
+	$self_champion_name = array_search($match[matches][$i][champion], $_champion_img_key );
+
+	$gameId = $match[matches][$i][gameId];
+/*
+		echo '★<pre>'; 
+		var_dump($match[matches][$i]); 
+		echo '</pre>★'; 
+*/
+	$url = "https://kr.api.riotgames.com/lol/match/v4/matches/".$match[matches][$i][gameId]."?api_key=".$API_KEY;
+/*
+	$back_result_text = file_get_contents($url);
+	$decode = json_decode($back_result_text, true);
+*/
+//echo $match[matches][$i][gameId];
+		$ch = curl_init();
+		$is_post = false;
+		curl_setopt($ch, CURLOPT_URL, $url);
+		curl_setopt($ch, CURLOPT_POST, $is_post);
+		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+		curl_setopt($ch, CURLOPT_SSL_VERIFYPEER, 0);
+		$response = curl_exec($ch);
+		$status_code = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+		curl_close($ch);
+		$latest_game = json_decode($response, true);
+
+	$total_kill = 0;
+	$damage_array = array();
+
+
+	for($a=0; $a<10; $a++ ){
+	if($match[matches][$i][champion] == $latest_game[participants][$a][championId]){
+			$self_num  = $a;
+		}
+	}
+
+	for( $ten=0; $ten<10; $ten++ ){
+		
+		if($latest_game[participants][$self_num][teamId] == $latest_game[participants][$ten][teamId]){
+			$total_kill += $latest_game[participants][$ten][stats][kills];
+		}
+		$damage_array[] = $latest_game[participants][$ten][stats][totalDamageDealtToChampions];
+	}
+
+	$damage_max = max($damage_array);
+
+	if( $latest_game[participants][$self_num][stats][win] == '1' ){
+		$self_win_yn = "승리";
+		$win_yn = "패배";
+		$match_class = "blue";
+		$match_result = "win";
+		$match_result_ko = "승";
+		$border_color = "#67a9d6";
+	}else{
+		$self_win_yn = "패배";
+		$win_yn = "승리";
+		$match_class = "red";
+		$match_result = "lose";
+		$match_result_ko = "패";
+		$border_color = "#d5837d";
+	}
+
+	$self_spell1_img = array_search($latest_game[participants][$self_num][spell1Id], $_spell_img_key );
+	$self_spell2_img = array_search($latest_game[participants][$self_num][spell2Id], $_spell_img_key );
+
+	$self_kda =  sprintf('%0.2f',($latest_game[participants][$self_num][stats][kills] +  $latest_game[participants][$self_num][stats][assists])/$latest_game[participants][$self_num][stats][deaths]);
+	if($self_kda == 'NaN'){ $self_kda = "0.00"; }
+
+	$self_cs = $latest_game[participants][$self_num][stats][neutralMinionsKilledTeamJungle] + $latest_game[participants][$self_num][stats][totalMinionsKilled];
+	$self_m_cs = sprintf('%0.1f',$self_cs/date("i",$latest_game[gameDuration]));
+	$self_involved_kill  =round((($latest_game[participants][$self_num][stats][kills]+$latest_game[participants][$self_num][stats][assists])/$total_kill)*100);
+
+
+	$day_age_3 = $wepix_now_time - ($latest_game[gameCreation]/1000);
+	$day_age_2 = floor($day_age_3);
+			
+	if($day_age_2 > 0 && $day_age_2 < 60){
+		$day_age = date("s초 전",$day_age_2);
+	}elseif($day_age_2 > 60 && $day_age_2 < 3600){
+		$day_age = date("i 분 전",$day_age_2);
+	}elseif($day_age_2 > 3600 && $day_age_2 < 86400){
+		$day_age = (date("H",$wepix_now_time)+24) - date("H",$latest_game[gameCreation]/1000)."시간 전";
+	}elseif($day_age_2 > 86400 && $day_age_2 < 2073600){
+		$day_age = date("j",$wepix_now_time) - date("j",$latest_game[gameCreation]/1000)."일 전";
+	}elseif($day_age_2 > 2073600 && $day_age_2 < 62208000){
+		$day_age = date("m달 전",$day_age_2);
+	}elseif($day_age_2 > 62208000 && $day_age_2 < 746496000){
+		$day_age = date("y년 전",$day_age_2);
+	}
+
+	$alliance_baron = 0;
+	$alliance_dragon = 0;
+	$alliance_tower = 0;
+	$alliance_gold =0;
+	$alliance_kills = 0;
+	$enemy_baron = 0;
+	$enemy_dragon = 0;
+	$enemy_tower = 0;
+	$enemy_gold =0;
+	$enemy_kills = 0;
+	$total_gold = 0;
+	$total_kills = 0;
+
+	if($latest_game[participants][$self_num][teamId] == '100'){
+
+		$team_name_self = '블루팀';
+		$team_name = '레드팀';
+		$team_color_self = 'blue';
+		$team_color = 'red';
+
+		for( $alliance_num=0; $alliance_num<5; $alliance_num++ ){
+			$enemy_num = 5+$alliance_num;
+			$alliance_baron = $latest_game[teams][0][baronKills];
+			$alliance_dragon = $latest_game[teams][0][dragonKills];
+			$alliance_tower = $latest_game[teams][0][towerKills];
+			$alliance_gold += $latest_game[participants][$alliance_num][stats][goldEarned];
+			$alliance_kills += $latest_game[participants][$alliance_num][stats][kills];
+			$enemy_baron = $latest_game[teams][1][baronKills];
+			$enemy_dragon = $latest_game[teams][1][dragonKills];
+			$enemy_tower = $latest_game[teams][1][towerKills];
+			$enemy_gold  += $latest_game[participants][$enemy_num][stats][goldEarned];
+			$enemy_kills += $latest_game[participants][$enemy_num][stats][kills];
+		}
+
+		$alliance_num = 0;
+		$alliance_num_end = 5;
+		$enemy_num= 5;
+		$enemy_num_end = 10;
+
+	}else{
+
+		$team_name = '블루팀';
+		$team_name_self = '레드팀';
+		$team_color = 'blue';
+		$team_color_self = 'red';
+
+		for( $enemy_num=0;$enemy_num<5;$enemy_num++ ){
+			$alliance_num=$enemy_num+5;
+			$alliance_baron = $latest_game[teams][1][baronKills];
+			$alliance_dragon = $latest_game[teams][1][dragonKills];
+			$alliance_tower = $latest_game[teams][1][towerKills];
+			$alliance_gold += $latest_game[participants][$alliance_num][stats][goldEarned];
+			$alliance_kills += $latest_game[participants][$alliance_num][stats][kills];
+			$enemy_baron = $latest_game[teams][0][baronKills];
+			$enemy_dragon = $latest_game[teams][0][dragonKills];
+			$enemy_tower = $latest_game[teams][0][towerKills];
+			$enemy_gold += $latest_game[participants][$enemy_num][stats][goldEarned];
+			$enemy_kills += $latest_game[participants][$enemy_num][stats][kills];
+		}
+
+		$enemy_num = 0;
+		$enemy_num_end = 5;
+		$alliance_num = 5;
+		$alliance_num_end = 10;
+	}
+
+	$total_gold = $alliance_gold + $enemy_gold;
+	$alliance_gold_percent = round(($alliance_gold/$total_gold)*100);
+	$enemy_gold_percent = 100 - $alliance_gold_percent;
+
+	$total_kills = $alliance_kills + $enemy_kills;
+	$alliance_kills_percent = round(($alliance_kills/$total_kills)*100);
+	$enemy_kills_percent = 100 - $alliance_kills_percent;
+/*
+		echo '★<pre>'; 
+		var_dump($latest_game); 
+		echo '</pre>★'; 
+*/
+?>
+<div class="match-wrap <?=$match_class?>">
+
+	<div class="match-result">
+		<div class="match-result-text <?=$match_class?>"><?=strtoupper($match_result)?></div>
+		<div class="match-result-info">
+			<ul><?=$queueId[$latest_game[queueId]]?></ul>
+			<ul><?=$day_age?></ul>
+			<ul style="margin-top:10px"><?=date("i분 s초",$latest_game[gameDuration])?></ul>
+		</div>
+	</div>
+	<div class="champion-img">
+		<div class="champion-border"><img src="/skin/pink/img/border-<?=$match_result?>.png" alt=""></div>
+		<img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$self_champion_name?>.png" >
+	</div>
+	<div class="spell-wrap <?=$match_class?>">
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$self_spell1_img?>.png')"></div>
+		<div style="background-image:url('http://opgg-static.akamaized.net/images/lol/perk/<?=$latest_game[participants][$self_num][stats][perk0]?>.png')" class="bgblack"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$self_spell2_img?>.png')"></div>
+		<div style="background-image:url('http://opgg-static.akamaized.net/images/lol/perkStyle/<?=$latest_game[participants][$self_num][stats][perkSubStyle]?>.png')" class="bgblack"></div>
+	</div>
+
+	<div class="kda-wrap">
+		<div class="kda">
+			<span><?=$latest_game[participants][$self_num][stats][kills]?></span> / 
+			<span class="deaths"><?=$latest_game[participants][$self_num][stats][deaths]?></span> / 
+			<span><?=$latest_game[participants][$self_num][stats][assists]?></span>
+		</div>
+		<div class="kda-grade">
+			<b><?=$self_kda?></b>:1
+		</div>
+	</div>
+
+	<div class="gameinfo-wrap">
+		<ul>Level <b><?=$latest_game[participants][$self_num][stats][champLevel]?></b></ul>
+		<ul><?=$self_cs?>(<?=$self_m_cs?>) CS</ul>
+		<ul>킬관여 <b><?=$self_involved_kill?></b>%</ul>
+	</div>
+
+	<div class="detail-btn <?=$match_class?>">
+		<button id="di_on_btn_<?=$gameId?>" onclick="detailShow('<?=$gameId?>', 'on')"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+		<button id="di_off_btn_<?=$gameId?>" onclick="detailShow('<?=$gameId?>', 'off')" style="display:none;"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+	</div>
+
+	<div class="match-summoner-wrap">
+		<ul>
+		<?
+			for($user_num=0;$user_num<5;$user_num++){
+				$user_num2=$user_num+5;
+				$use_champion_img = array_search($latest_game[participants][$user_num][championId], $_champion_img_key );
+				$use_champion_img2 = array_search($latest_game[participants][$user_num2][championId], $_champion_img_key );
+		?>
+			<li><img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png"><a href="<?=_A_PATH_SUMMONER?>?name=<?=$latest_game[participantIdentities][$user_num][player][summonerName]?>" target="_blank"><?=$latest_game[participantIdentities][$user_num][player][summonerName]?></a></li>
+		<? } ?>
+		</ul>
+		<ul>
+		<?
+			for($user_num=5;$user_num<10;$user_num++){
+				$user_num2=$user_num+5;
+				$use_champion_img = array_search($latest_game[participants][$user_num][championId], $_champion_img_key );
+				$use_champion_img2 = array_search($latest_game[participants][$user_num2][championId], $_champion_img_key );
+		?>
+			<li><img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png"><a href="<?=_A_PATH_SUMMONER?>?name=<?=$latest_game[participantIdentities][$user_num][player][summonerName]?>" target="_blank"><?=$latest_game[participantIdentities][$user_num][player][summonerName]?></a></li>
+		<? } ?>
+		</ul>
+	</div>
+
+	<div class="item-wrap <?=$match_class?>">
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item0]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item1]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item2]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item6]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item3]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item4]?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$self_num][stats][item5]?>.png');"></div>
+	</div>
+
+</div>
+
+<div class="detail-info <?=$match_class?>" id="di_<?=$gameId?>" style="display:none;">
+
+	<div class="detail-info-box <?=$match_class?>">
+		<table>
+			<tr>
+				<th colspan="3"><?=$team_name_self?> (<?=$self_win_yn?>)</th>
+				<th>KDA</th>
+				<th>피해량</th>
+				<th>와드</th>
+				<th>CS</th>
+				<th>아이템</th>
+			</tr>
+<?
+	for($alliance_num; $alliance_num<$alliance_num_end; $alliance_num++){
+		$use_champion_img = array_search($latest_game[participants][$alliance_num][championId], $_champion_img_key );
+		$use_spell1_img = array_search($latest_game[participants][$alliance_num][spell1Id], $_spell_img_key );
+		$use_spell2_img = array_search($latest_game[participants][$alliance_num][spell2Id], $_spell_img_key );
+
+		$self_kda =  sprintf('%0.2f',($latest_game[participants][$alliance_num][stats][kills] +  $latest_game[participants][$alliance_num][stats][assists])/$latest_game[participants][$alliance_num][stats][deaths]);
+		$self_cs = $latest_game[participants][$alliance_num][stats][neutralMinionsKilledTeamJungle] + $latest_game[participants][$alliance_num][stats][totalMinionsKilled];
+		$self_m_cs = sprintf('%0.1f',$self_cs/date("i",$latest_game[gameDuration]));
+		if($self_kda == 'NaN'){$self_kda = "0.00"; }
+		$self_involved_kill  =round((($latest_game[participants][$alliance_num][stats][kills]+$latest_game[participants][$alliance_num][stats][assists])/$total_kill)*100);		
+
+		$totalDamageDealtToChampions = $latest_game[participants][$alliance_num][stats][totalDamageDealtToChampions];
+		$damage_percent  = round(($totalDamageDealtToChampions/$damage_max)*100);
+		$detail_summonerName = $latest_game[participantIdentities][$alliance_num][player][summonerName];
+?>
+	<tr>
+		<td class="detail-champion-img">
+			<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png')"></div>
+		</td>
+		<td class="detail-spell-td">
+			<div class="detail-spell-wrap">
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$use_spell1_img?>.png')"></li>
+				<li style="background-image:url('http://opgg-static.akamaized.net/images/lol/perk/<?=$latest_game[participants][$alliance_num][stats][perk0]?>.png')"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$use_spell2_img?>.png')"></li>
+				<li style="background-image:url('http://opgg-static.akamaized.net/images/lol/perkStyle/<?=$latest_game[participants][$alliance_num][stats][perkSubStyle]?>.png')"></li>
+			</div>
+		</td>
+		<td class="detail-name-td"><a href="<?=_A_PATH_SUMMONER?>?name=<?=$detail_summonerName?>" target="_blank"><?=$detail_summonerName?></a></td>
+		<td class="detail-kda-td">
+			<div>
+				<ul><b><?=$self_kda?>:1</b></ul>
+				<ul>
+					<span><?=$latest_game[participants][$alliance_num][stats][kills]?></span> / 
+					<span><?=$latest_game[participants][$alliance_num][stats][deaths]?></span> /
+					<span><?=$latest_game[participants][$alliance_num][stats][assists]?></span>
+				</ul>
+			</div>
+		</td>
+		<td class="detail-damage-td">
+			<div class="detail-damage"><?=number_format($totalDamageDealtToChampions)?></div>
+			<div class="damage-graph-wrap"><div class="damage-graph" style="width:<?=$damage_percent?>%"></div></div>
+		</td>
+		<td class="detail-wards-td">
+			<div>
+				<ul><?=$latest_game[participants][$alliance_num][stats][visionWardsBoughtInGame]?></ul>
+				<ul>
+					<span><?=$latest_game[participants][$alliance_num][stats][wardsPlaced]?></span> /
+					<span><?=$latest_game[participants][$alliance_num][stats][wardsKilled]?></span>
+				</ul>
+			</div>
+		</td>
+		<td class="detail-cs-td">
+			<div>
+				<ul><?=$self_cs?></ul>
+				<ul>분당 (<?=$self_m_cs?>)</ul>
+			</div>
+		</td>
+		<td class="detail-item-td">
+			<div class="detail-item-wrap">
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item0]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item1]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item2]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item3]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item4]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item5]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$alliance_num][stats][item6]?>.png');"></li>
+			</div>
+		</td>
+	</tr>
+<? } ?>
+		</table>
+	</div>
+
+	<div class="match-detail-info">
+		<ul class="summary gv-left">
+			<b><?=$team_name_self?></b><br>
+			바론:<b><?=$alliance_baron?></b> /
+			드래곤:<b><?=$alliance_dragon?></b> /
+			타워:<b><?=$alliance_tower?></b>
+		</ul>
+		<ul class="center">
+			<table class="summary-graph">
+				<tr>
+					<td>총 킬수</td>
+					<td class="graph-value-td gv-right"><?=number_format($alliance_kills)?> (<b><?=$alliance_kills_percent?></b>%)</td>
+					<td class="gold-graph-wrap-td"><div class="gold-graph-wrap"><div class="gold-graph" style="width:<?=$alliance_kills_percent?>%"></div></div></td>
+					<td class="graph-value-td gv-left">(<b><?=$enemy_kills_percent?></b>%) <?=number_format($enemy_kills)?></td>
+				</tr>
+				<tr>
+					<td>총 골드</td>
+					<td class="graph-value-td gv-right"><?=number_format($alliance_gold)?> (<b><?=$alliance_gold_percent?></b>%)</td>
+					<td class="gold-graph-wrap-td"><div class="gold-graph-wrap"><div class="gold-graph" style="width:<?=$alliance_gold_percent?>%"></div></div></td>
+					<td class="graph-value-td gv-left">(<b><?=$enemy_gold_percent?></b>%) <?=number_format($enemy_gold)?></td>
+				</tr>
+			</table>
+		</ul>
+		<ul class="summary gv-right">
+			<b><?=$team_name?></b><br>
+			바론:<b><?=$enemy_baron?></b> /
+			드래곤:<b><?=$enemy_dragon?></b> /
+			타워:<b><?=$enemy_tower?></b>
+		</ul>
+	</div>
+
+	<div class="detail-info-box <?=$match_class?>">
+		<table>
+			<tr>
+				<th colspan="3"><?=$team_name?> (<?=$win_yn?>)</th>
+				<th>KDA</th>
+				<th>피해량</th>
+				<th>와드</th>
+				<th>CS</th>
+				<th>아이템</th>
+			</tr>
+<?
+	for($enemy_num; $enemy_num<$enemy_num_end; $enemy_num++){
+		$use_champion_img = array_search($latest_game[participants][$enemy_num][championId], $_champion_img_key );
+		$use_spell1_img = array_search($latest_game[participants][$enemy_num][spell1Id], $_spell_img_key );
+		$use_spell2_img = array_search($latest_game[participants][$enemy_num][spell2Id], $_spell_img_key );
+
+		$self_kda =  sprintf('%0.2f',($latest_game[participants][$enemy_num][stats][kills] +  $latest_game[participants][$enemy_num][stats][assists])/$latest_game[participants][$enemy_num][stats][deaths]);
+		$self_cs = $latest_game[participants][$enemy_num][stats][neutralMinionsKilledTeamJungle] + $latest_game[participants][$enemy_num][stats][totalMinionsKilled];
+		$self_m_cs = sprintf('%0.1f',$self_cs/date("i",$latest_game[gameDuration]));
+		if($self_kda == 'NaN'){$self_kda = "0.00"; }
+		$self_involved_kill  =round((($latest_game[participants][$enemy_num][stats][kills]+$latest_game[participants][$enemy_num][stats][assists])/$total_kill)*100);		
+
+		$totalDamageDealtToChampions = $latest_game[participants][$enemy_num][stats][totalDamageDealtToChampions];
+		$damage_percent  =round(($totalDamageDealtToChampions/$damage_max)*100);
+		$detail_summonerName = $latest_game[participantIdentities][$enemy_num][player][summonerName];
+?>
+	<tr>
+		<td class="detail-champion-img">
+			<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png')"></div>
+		</td>
+		<td class="detail-spell-td">
+			<div class="detail-spell-wrap">
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$use_spell1_img?>.png')"></li>
+				<li style="background-image:url('http://opgg-static.akamaized.net/images/lol/perk/<?=$latest_game[participants][$enemy_num][stats][perk0]?>.png')"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$use_spell2_img?>.png')"></li>
+				<li style="background-image:url('http://opgg-static.akamaized.net/images/lol/perkStyle/<?=$latest_game[participants][$enemy_num][stats][perkSubStyle]?>.png')"></li>
+			</div>
+		</td>
+		<td class="detail-name-td"><a href="<?=_A_PATH_SUMMONER?>?name=<?=$detail_summonerName?>" target="_blank"><?=$detail_summonerName?></a></td>
+		<td class="detail-kda-td">
+			<div>
+				<ul><b><?=$self_kda?>:1</b></ul>
+				<ul>
+					<span><?=$latest_game[participants][$enemy_num][stats][kills]?></span> / 
+					<span><?=$latest_game[participants][$enemy_num][stats][deaths]?></span> /
+					<span><?=$latest_game[participants][$enemy_num][stats][assists]?></span>
+				</ul>
+			</div>
+		</td>
+		<td class="detail-damage-td">
+			<div class="detail-damage"><?=number_format($totalDamageDealtToChampions)?></div>
+			<div class="damage-graph-wrap"><div class="damage-graph" style="width:<?=$damage_percent?>%"></div></div>
+		</td>
+		<td class="detail-wards-td">
+			<div>
+				<ul><?=$latest_game[participants][$enemy_num][stats][wardsPlaced]?></ul>
+				<ul>
+					<span><?=$latest_game[participants][$enemy_num][stats][wardsPlaced]?></span> /
+					<span><?=$latest_game[participants][$enemy_num][stats][wardsKilled]?></span>
+				</ul>
+			</div>
+		</td>
+		<td class="detail-cs-td">
+			<div>
+				<ul><?=$self_cs?></ul>
+				<ul>분당 (<?=$self_m_cs?>)</ul>
+			</div>
+		</td>
+		<td class="detail-item-td">
+			<div class="detail-item-wrap">
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item0]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item1]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item2]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item3]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item4]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item5]?>.png');"></li>
+				<li style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$latest_game[participants][$enemy_num][stats][item6]?>.png');"></li>
+			</div>
+		</td>
+	</tr>
+<? } ?>
+		</table>
+	</div>
+
+
+</div>
+<? } ?>
+
+<script type="text/javascript"> 
+<!-- 
+function detailShow(gameid, mode){
+	if( mode == "on" ){
+		$('#di_'+gameid).show();
+		$('#di_on_btn_'+gameid).hide();
+		$('#di_off_btn_'+gameid).show();
+	}else{
+		$('#di_'+gameid).hide();
+		$('#di_on_btn_'+gameid).show();
+		$('#di_off_btn_'+gameid).hide();
+	}
+}
+//--> 
+</script> 
+

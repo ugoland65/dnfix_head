@@ -1,0 +1,166 @@
+<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/join/join_style.css?ver=<?=$wepix_now_time?>" />
+
+<div class='login-body' >
+<!-- 
+	<div class='login-img'>
+		<a href='/'><img src="/skin/<?=$show_skin_name?>/img/logo.jpg" alt=""></a>
+	</div>
+ -->
+	<div id="join_step_wrap" >
+		<ol class="active">
+			<span class="label">1</span> <strong>1단계</strong>
+			<small>가입 약관</small>
+		</ol>
+		<ol>
+			<span class="label">2</span> <strong>2단계</strong>
+			<small>정보 입력</small>
+		</ol>
+		<ol>
+			<span class="label">3</span> <strong>3단계</strong>
+			<small>가입 인증</small>
+		</ol>
+		<ol>
+			<span class="label">4</span> <strong>4단계</strong>
+			<small>가입 완료</small>
+		</ol>
+	</div>
+
+	<div class="join-form" >
+		<ul class="clause-btn display-table m-t-20" onclick="allCheck()">
+			<li class="display-table-cell join-check-msg">이용약관, 개인정보 수집 및 이용, 프로모션 알림 메일 및 푸시 알림 수신(선택)에 모두 동의합니다.</li>
+			<li class="display-table-cell join-check-btn" id="btnwrap_all"><i class="far fa-check-circle" ></i></li>
+		</ul>
+		
+		<ul class='join-title m-t-15'>
+			이용약관
+		</ul>
+		<ul class='join-clause'>
+			<?=$_view_terms_of_use?>
+		</ul>
+		<ul class="clause-btn display-table m-t-10" onclick="clauseCheck('terms_of_use')">
+			<li class="display-table-cell join-check-msg text-align-right">이용약관에 동의합니다.</li>
+			<li class="display-table-cell join-check-btn" id="btnwrap_terms_of_use"><i class="far fa-check-circle" ></i></li>
+		</ul>
+
+		<ul class='join-title m-t-30'>
+			개인정보처리방침
+		</ul>
+		<ul class='join-clause'>
+			<?=$_view_privacy_policy?>
+		</ul>
+		<ul class="clause-btn display-table m-t-10" onclick="clauseCheck('privacy_policy')">
+			<li class="display-table-cell join-check-msg text-align-right">개인정보처리방침에 동의합니다.</li>
+			<li class="display-table-cell join-check-btn" id="btnwrap_privacy_policy"><i class="far fa-check-circle" ></i></li>
+		</ul>
+		<ul class="clause-btn display-table m-t-20" onclick="clauseCheck('marketing')">
+			<li class="display-table-cell join-check-msg">이벤트 등 프로모션 알림 메일 및 푸시 알림 수신(선택)</li>
+			<li class="display-table-cell join-check-btn" id="btnwrap_marketing"><i class="far fa-check-circle" ></i></li>
+		</ul>
+
+		<ul class="clause-btn display-table m-t-20">
+			<button type="button" id="nextBtn" class="btn disabled" onclick="nextStep2()">다음단계</button>
+		</ul>
+
+	</div>
+
+	<div id="join_step2" style="display:none;">
+		<ul><b id="join_step2_email"></b></ul>
+		<ul style="margin-top:15px; line-height:15px;">
+			(으)로 인증 메일이 발송했습니다.<br>
+			한시간 이내에 URL을 클릭해주세요!
+		</ul>
+		<ul style="margin-top:10px;"><button type="button" class="login-btn2" id="login_btn" onclick="location.href='<?=_PATH_LOGIN?>'"><i class="fa fa-sign-in"></i> 로그인</button></ul>
+		<ul style="margin-top:3px;"><button type="button" class="join-btn2" onclick="location.href='<?=_PATH_MAIN?>'"><i class="fa fa-home"></i> 메인으로</button></ul>
+	</div>
+
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var check_all = "N";
+var check_privacy_policy = "N";
+var check_terms_of_use = "N";
+var check_marketing = "N";
+
+function allCheck(){
+
+	if( check_all == "N" ){
+		
+		check_all = "Y";
+
+		$("#btnwrap_all").addClass('ative');
+		$("#btnwrap_all i").attr("class", "fas fa-check-circle");
+
+		$("#btnwrap_terms_of_use").addClass('ative');
+		$("#btnwrap_terms_of_use i").attr("class", "fas fa-check-circle");
+		check_terms_of_use = "Y";
+
+		$("#btnwrap_privacy_policy").addClass('ative');
+		$("#btnwrap_privacy_policy i").attr("class", "fas fa-check-circle");
+		check_privacy_policy = "Y";
+
+		$("#btnwrap_marketing").addClass('ative');
+		$("#btnwrap_marketing i").attr("class", "fas fa-check-circle");
+		check_privacy_policy = "Y";
+
+		check_marketing = "Y";
+
+	}else{
+
+		check_all = "N";
+
+		$("#btnwrap_all").removeClass('ative');
+		$("#btnwrap_all i").attr("class", "far fa-check-circle");
+
+		$("#btnwrap_terms_of_use").removeClass('ative');
+		$("#btnwrap_terms_of_use i").attr("class", "far fa-check-circle");
+		check_terms_of_use = "N";
+
+		$("#btnwrap_privacy_policy").removeClass('ative');
+		$("#btnwrap_privacy_policy i").attr("class", "far fa-check-circle");
+		check_privacy_policy = "N";
+
+		$("#btnwrap_marketing").removeClass('ative');
+		$("#btnwrap_marketing i").attr("class", "far fa-check-circle");
+		check_privacy_policy = "N";
+
+		check_marketing = "N";
+
+	}
+	permissionCheck();
+}
+
+function clauseCheck(mode){
+	//var t = eval("check_"+mode);
+	if( $("#btnwrap_"+ mode).attr("class") == "display-table-cell join-check-btn" ){
+		$("#btnwrap_"+ mode).addClass('ative');
+		$("#btnwrap_"+ mode +" i").attr("class", "fas fa-check-circle");
+		eval(" check_"+mode+" = 'Y'; ");
+	}else{
+		$("#btnwrap_"+ mode).removeClass('ative');
+		$("#btnwrap_"+ mode +" i").attr("class", "far fa-check-circle");
+		t= "N";
+		eval(" check_"+mode+" = 'N'; ");
+	}
+
+	if( check_privacy_policy == "N" || check_terms_of_use == "N" || check_marketing == "N" ){
+		$("#btnwrap_all").removeClass('ative');
+		$("#btnwrap_all i").attr("class", "far fa-check-circle");
+		check_all = "N";
+	}
+	permissionCheck();
+}
+
+function permissionCheck(){
+	if( check_privacy_policy == "Y" && check_terms_of_use == "Y" ){
+		$("#nextBtn").attr("class", "btn w-btn-pink");
+	}else{
+		$("#nextBtn").attr("class", "btn disabled");
+	}
+}
+
+function nextStep2(){
+	location.href='?step=2&marketing='+check_marketing;
+}
+//--> 
+</script> 

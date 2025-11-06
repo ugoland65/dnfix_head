@@ -1,0 +1,241 @@
+<link rel="stylesheet" href="/skin/board_skin/basic/style.css?v=<?=time()?>">
+
+<div class="bo-title">
+	<?=$_view_bc_name_show?>
+</div>
+
+<div class="bo-view-wrap">
+	<ul class="bo-view-subject"><?=$_view_board_subject?></ul>
+<?
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" && $board_data[BOARD_CATEGORY] ){
+?>
+	<ul class="bo-view-category_wrap"><span class="bo-view-category"><?=$_ary_bc_category[$board_data[BOARD_CATEGORY]]?></span></ul>
+<? } ?>
+
+	<div class="bo-view-col2">
+		<ul class="bo-view-col2-left">
+			<div class="bo-view-info">
+				<ul class="bo-view-info-member-icon no-m-icon">
+					<i class="far fa-user"></i>
+				</ul>
+				<ul class="bo-view-info-data">
+					<li class="bo-view-info-data-name-li"><span class="bo-view-info-data-name"><?=$_view_board_name?></span><?=$_view_ip?></li>
+					<li>
+						<span class="bo-view-info-data-comment"><i class="fa fa-commenting-o" aria-hidden="true"></i> <?php echo number_format($_view_comment) ?>건</span>
+						<span class="bo-view-info-data-hit"><i class="fa fa-eye" aria-hidden="true"></i> <?php echo number_format($_view_hit) ?>회</span>
+						<span class="bo-view-info-data-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?php echo date("y-m-d H:i", $board_data['BOARD_DATE']) ?></span>
+					</li>
+				</ul>
+			</div>
+		</ul>
+		<ul class="bo-view-col2-right">
+
+<?
+//답변 쓰기 권한
+if( $_show_my_access_reply == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=reply&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-reply"></i> 답글
+			</button>
+<? } ?>
+<?
+//내가 쓴 글일경우만
+if( $_show_my_board == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=modify&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-wrench"></i> 수정
+			</button>
+
+			<button type="button" id="" class="nude-btn" onclick="boardDel()" > 
+				<i class="fas fa-trash-alt"></i> 삭제
+			</button>
+<? } ?>			
+			<button type="button" id="" class="nude-btn" onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" > 
+				<i class="fas fa-list"></i> 목록
+			</button>
+
+		</ul>
+	</div>
+
+	<ul class="bo-view-body">
+		<?=$_view_board_body?>
+	</ul>
+
+<?
+//추천 기능
+if( $_show_bc_recom_active == "Y" ){
+?>
+	<ul class="bo-view-like">
+		<button id="like_btn_good_<?=$_b_key?>" class="like-good <? if( $_view_like_my == "Y" ) echo "active"; ?>" onclick="global_Like('good','<?=$_b_key?>','board','<?=$_b_code?>')">
+			<div>
+				<ul><span class="count"><?=$_view_like_count?></span></ul>
+				<ul class="m-t-5"><i class="far fa-thumbs-up m-r-5"></i></ul>
+			</div>
+		</button>
+		<button id="like_btn_bad_<?=$_b_key?>" class="like-bad <? if( $_view_like_my == "N" ) echo "active"; ?>" onclick="global_Like('bad','<?=$_b_key?>','board','<?=$_b_code?>')">
+			<div>
+				<ul><span class="count"><?=$_view_bad_count?></span></ul>
+				<ul class="m-t-5"><i class="far fa-thumbs-down fa-flip-horizontal m-l-5"></i></ul>
+			</div>
+		</button>
+	</ul>
+<? } ?>
+
+	<ul class="bo-view-comment" id="comment">
+	</ul>
+
+	<div class="bo-view-col2">
+		<ul class="bo-view-col2-left">
+		</ul>
+		<ul class="bo-view-col2-right">
+
+<?
+//답변 쓰기 권한
+if( $_show_my_access_reply == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=reply&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-reply"></i> 답글
+			</button>
+<? } ?>
+<?
+//내가 쓴 글일경우만
+if( $_show_my_board == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=modify&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-wrench"></i> 수정
+			</button>
+
+			<button type="button" id="" class="nude-btn" onclick="boardDel()" > 
+				<i class="fas fa-trash-alt"></i> 삭제
+			</button>
+<? } ?>			
+			<button type="button" id="" class="nude-btn" onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" > 
+				<i class="fas fa-list"></i> 목록
+			</button>
+
+		</ul>
+	</div>
+
+</div>
+
+<div class="bo-view-list" id="bo_view_list">
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var bCode = "<?=$_show_b_code?>";
+var bKey = "<?=$_show_b_key?>";
+var likeMy = "<?=$_view_like_my?>";
+
+function boardDel(){
+	if(confirm('게시물을 삭제합니다.\n삭제 후 복구가 불가능 합니다.\n정말 삭제하시겠습니까?')){
+		location.href="<?=_PATH_BOARD_OK?>?a_mode=boardDel&b_code="+ bCode +"&b_key="+ bKey;
+	}
+}
+
+function global_Like(str, idx, mode, group){
+
+	var target_btn_this = $('#like_btn_'+ str +'_'+ idx);
+	var target_btn_good = $('#like_btn_good_'+ idx);
+	var target_btn_bad = $('#like_btn_bad_'+ idx);
+
+	var target_count_this = $('#like_btn_'+ str +'_'+ idx +' span.count').text()*1;
+	var target_count_good = $('#like_btn_good_'+ idx +' span.count').text()*1;
+	var target_count_bad = $('#like_btn_bad_'+ idx +' span.count').text()*1;
+
+	$.ajax({
+		url: "/models/like/processing.like.php",
+		data: {
+			"a_mode":"doLike",
+			"ajax_mode":"on",
+			"c_idx":idx,
+			"c_selected":str,
+			"c_mode":mode,
+			"c_group":group
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				ckval = redatawa[3];
+
+				if(ckcode == "Processing_Complete"){
+					if( ckval == "NEW" ){
+						target_btn_this.addClass('active');
+						$('#like_btn_'+ str +'_'+ idx +' span.count').html(target_count_this + 1);
+					}else if( ckval == "MODIFY" ){
+						if(str=="good"){
+							target_btn_good.addClass('active');
+							target_btn_bad.removeClass('active');
+							$('#like_btn_good_'+ idx +' span.count').html(target_count_good + 1);
+							$('#like_btn_bad_'+ idx +' span.count').html(target_count_bad - 1);
+						}else{
+							target_btn_good.removeClass('active');
+							target_btn_bad.addClass('active');
+							$('#like_btn_good_'+ idx +' span.count').html(target_count_good - 1);
+							$('#like_btn_bad_'+ idx +' span.count').html(target_count_bad + 1);
+						}
+					}else if( ckval == "DEL" ){
+						target_btn_this.removeClass('active');
+						$('#like_btn_'+ str +'_'+ idx +' span.count').html(target_count_this - 1);
+					}
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+
+function showComment(b_code, b_key){
+	$.ajax({
+		url: "ajax.comment.php",
+		data: {
+			"b_code":bCode,
+			"b_key":bKey
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comment').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+showComment();
+
+function showViewFootList(){
+	$.ajax({
+		url: "list.php",
+		data: {
+			"b_code":bCode,
+			"view_foot_list_mode":"on"
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#bo_view_list').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+
+showViewFootList();
+//--> 
+</script> 

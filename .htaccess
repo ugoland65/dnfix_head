@@ -1,0 +1,47 @@
+# 기본 설정
+RewriteEngine On
+RewriteBase /
+
+# router 폴더 요청은 상위 규칙을 타지 않고 그대로 전달
+RewriteRule ^router/ - [L]
+
+# 관리 페이지 Rewrite
+RewriteRule ^ad/processing$ /admin2/processing.php [L]
+RewriteRule ^ad/processing/(.*)$ /admin2/processing.php?processing_mode=$1 [QSA,L]
+RewriteRule ^ad/proc/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/controller.php?class=$1&method=$2 [QSA,L]
+RewriteRule ^ad/proc/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/controller.php?folder=$1&class=$2&method=$3 [QSA,L]
+
+# AJAX 요청 Rewrite
+RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1 [QSA,L]
+RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1&get1=$2 [QSA,L]
+
+# 관리자 페이지 그룹 및 다중 GET 변수
+RewriteRule ^ad/([a-zA-Z0-9]+)/([0-9a-zA-Z\-_]+)$ /admin2/index.php?pgroup=$1&pageN=$2 [QSA,L]
+RewriteRule ^ad/([a-zA-Z0-9]+)/([0-9a-zA-Z\-_]+)/(.*)$ /admin2/index.php?pgroup=$1&pageN=$2&get1=$3 [QSA,L]
+RewriteRule ^ad/([a-zA-Z0-9]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/index.php?pgroup=$1&pageN=$2&get1=$3&get2=$4 [QSA,L]
+
+# 관리자 페이지 기본 페이지 접근
+RewriteRule ^ad/([a-zA-Z0-9]+)$ /admin2/index.php?pageN=$1 [QSA,L]
+RewriteRule ^ad3/([a-zA-Z0-9]+)$ /admin3/index.php?pageN=$1 [QSA,L]
+
+# API 관련 Rewrite
+RewriteRule ^api/brand/(.*)$ /showdang/brand_api.php?cate_no=$1 [QSA,L]
+RewriteRule ^api/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /showdang/api.php?type=$1&nt=$2 [QSA,L]
+RewriteRule ^api$ /showdang/index.php [QSA,L]
+
+# 정적 파일 리소스 경로 Rewrite
+RewriteRule ^dist/js/(.*)$ /f/js/$1 [L]
+RewriteRule ^dist/onadb/(.*)$ /f/skin/onadb/$1 [L]
+RewriteRule ^dist/onadb_mobile/(.*)$ /f/skin/onadb_mobile/$1 [L]
+RewriteRule ^dist/img/(.*)$ /data/comparion/$1 [L]
+
+# 기본 GET 변수 매핑
+RewriteRule ^([a-zA-Z0-9]+)$ /index.php?get1=$1 [QSA,L]
+RewriteRule ^([a-zA-Z0-9]+)/([^/\.]+)$ /index.php?get1=$1&get2=$2 [QSA,L]
+RewriteRule ^([a-zA-Z0-9]+)/([^/\.]+)/([^/\.]+)$ /index.php?get1=$1&get2=$2&get3=$3 [QSA,L]
+
+# AJAX 및 Processing 전용 Rewrite
+RewriteRule ^ajax-([a-zA-Z0-9]+)$ /f/ajax.page.php?page=$1 [L]
+RewriteRule ^processing-([a-zA-Z0-9]+)$ /f/processing.$1.php [L]
+
+

@@ -1,0 +1,52 @@
+<STYLE TYPE="text/css">
+body{ background-color:#e6e8eb; }
+.search-wrap{ width:100%;  }
+.search-top-button{ width:100%; display:table; padding:20px; box-sizing:border-box; }
+.search-top-button ul{ display:table-cell; }
+.closed-btn{ text-align:right; }
+.closed-btn button{ text-align:right; background:none; border:none; }
+.closed-btn button i{ font-size:30px; color:#000; }
+
+.search-box-wrap{ width:100%; padding:20px; box-sizing:border-box;  }
+.search-box{ width:100%; height:46px; background-color:#fff; border:3px solid #3a7bd5; border-radius:23px; display:table; overflow:hidden; }
+.search-box ul{ display:table-cell; vertical-align:top; }
+.search-box ul input{ width:100%; height:46px; background:none; border:none; padding-left:20px; font-size:15px; }
+.search-box-btn{ width:50px; }
+.search-box-btn button{ width:40px; height:46px; background:none; border:none; }
+.search-box-btn button i{ font-size:20px; color:#3a7bd5; }
+
+</STYLE>
+<div class="search-wrap">
+	<div class="search-top-button">
+		<ul></ul>
+		<ul class="closed-btn"><button onclick="history.back();"><i class="far fa-times-circle"></i></button></ul>
+	</div>
+	<div class="search-box-wrap">
+		<div class="search-box">
+			<ul><input type="text" id="mobile_search_text" name="search_text" value="<?=$_search_text?>" placeholder="검색어를 입력해주세요!" onkeypress="if(event.keyCode==13){ mobileSearch(); return false; }"></ul>
+			<ul class="search-box-btn"><button onclick="mobileSearch()"><i class="fas fa-search"></i></button></ul>
+		</div>
+	</div>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function mobileSearch(){
+
+	var searchText = $("#mobile_search_text").val();
+
+	if( searchText == "" ||  searchText == null ){
+		$('#modal_alert_msg').html("검색어를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+/*
+	$("#a_mode").val("doSearch");
+	$("#header_search_form").attr("action", "/front/comparison/search.php");
+	$("#header_search_form").submit();
+*/
+	location.href="/mobile/comparison/search.php?search_text="+searchText;
+
+}
+//--> 
+</script> 

@@ -1,0 +1,203 @@
+<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/join/join_style.css?ver=<?=$wepix_now_time?>" />
+
+<div class='login-body'>
+	<div class='login-img'>
+		<a href='/'><img src="/skin/<?=$show_skin_name?>/img/logo.jpg" alt=""></a>
+	</div>
+
+	<div id="join_step_wrap" >
+		<ol >
+			<span class="label">1</span> <strong>1단계</strong>
+			<small>가입 약관</small>
+		</ol>
+		<ol class="active">
+			<span class="label">2</span> <strong>2단계</strong>
+			<small>정보 입력</small>
+		</ol>
+		<ol>
+			<span class="label">3</span> <strong>3단계</strong>
+			<small>가입 인증</small>
+		</ol>
+		<ol>
+			<span class="label">4</span> <strong>4단계</strong>
+			<small>가입 완료</small>
+		</ol>
+	</div>
+
+	<div class="join-form " >
+		<div class='join-title m-t-20'>
+			회원가입
+		</div>
+		<form id="loginform" method='POST'>
+		<input type='hidden' name='back_url' value='<?=$back_url?>'>
+		<input type='hidden' name='getenv' value='<?=$getenv?>'>
+
+			<ul class="input-wrap">
+				<!-- onkeyup="check('ID');"   -->
+				<input type='text' name='join_id' id='join_id' placeholder="이메일 주소" >
+			</ul>
+			<ul class="input-wrap" >
+				<!-- onkeyup="check('NICK');" -->
+				<input type='text' name='join_nick' id='join_nick' placeholder="닉네임">
+			</ul>
+			<ul class="input-wrap"><input type='password' name='password' id='password' placeholder="비밀번호"></ul>
+			<ul class="input-wrap"><input type='password' name='password_ck' id='password_ck' placeholder="비밀번호 확인"></ul>
+
+			<ul style="margin-top:10px;"><button type="button" class="login-btn2" id="login_btn" onclick="doJoin();">이메일 인증</button></ul>
+			<ul style="margin-top:3px;"><button type="button" class="join-btn2" onclick="location.href='<?=_PATH_JOIN?>'">뒤로가기</button></ul>
+
+		</form>
+	</div>
+
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var join_id_check = "N";
+var join_nick = "N";
+
+function check(mode){
+/*
+	if( mode == "ID" ){
+		var value = $("#join_id").val();
+		var text_id = "join_id_check";
+		var regEmail = /[\w\-]{2,}[@][\w\-]{2,}([.]([\w\-]{2,})){1,3}$/;
+		if(!regEmail.test(value)) {
+			$("#join_id_check").html("형식오류");
+			return false;
+		}
+	}else{
+		var value = $("#join_nick").val();
+		var text_id = "join_nick_check";
+	}
+
+	$.ajax({
+		url: "/join/check.php",
+		data: {
+			"mode":mode,
+			"value":value
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmemo = redatawa[2];
+				if(ckcode == "Check_ok"){
+					$("#"+text_id).html("<span class='check-ok'>사용가능</span>");
+					if( mode == "ID" ){
+						join_id_check = "Y";
+					}else{
+						join_nick = "Y";
+					}
+				}else{
+					$("#"+text_id).html(ckmemo);
+					if( mode == "ID" ){
+						join_id_check = "N";
+					}else{
+						join_nick = "N";
+					}
+				}
+			}
+		},
+		error: function(){
+		}
+	});
+*/
+}
+
+function doJoin(){
+
+	var join_id = $("#join_id").val();
+	var join_nick = $("#join_nick").val();
+	var password = $("#password").val();
+	var password_ck = $("#password_ck").val();
+/*
+	if( join_id_check == "N" ){
+		alert("입력하신 이메일을 사용하실 수 없습니다.");
+		return false; 
+	}
+
+	if( join_nick == "N" ){
+		alert("입력하신 닉네임을 사용하실 수 없습니다.");
+		return false; 
+	}
+*/
+	if( join_id == "" ||  join_id == null ){
+		$('#modal_alert_msg').html("이메일 주소를 입력해 주세요.");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		//alert("이메일 주소를 입력해 주세요.");
+		return false; 
+	}
+	if( join_nick == "" ||  join_nick == null ){
+		$('#modal_alert_msg').html("닉네임을 입력해 주세요.");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		//alert("닉네임을 입력해 주세요.");
+		return false; 
+	}
+	if( password == "" ||  password == null ){
+		$('#modal_alert_msg').html("비밀번호를 입력해 주세요.");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		//alert("비밀번호를 입력해 주세요.");
+		return false; 
+	}
+	if( password_ck == "" ||  password_ck == null ){
+		$('#modal_alert_msg').html("비밀번호 확인을 입력해 주세요.");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		//alert("비밀번호 확인을 입력해 주세요.");
+		return false; 
+	}
+
+	if( password != password_ck ){
+		$('#modal_alert_msg').html("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		//alert("비밀번호와 비밀번호 확인이 일치하지 않습니다.");
+		return false; 
+	}
+/*
+	$("#join_step2_email").html(join_id);
+	$("#join_step1").hide();
+	$("#join_step2").show();
+*/
+	$.ajax({
+		url: "<?=_PATH_JOIN_OK?>",
+		data: {
+			"a_mode":"new",
+			"ajax_mode":"on",
+			"userId":join_id,
+			"userNickName":join_nick,
+			"userPw":password,
+			"userMarketing":"<?=$_marketing?>",
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					location.href = "/front/join/?step=3&email="+join_id;
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+					return false;
+				}else{
+
+				}
+			}
+		},
+		error: function(){
+		}
+	});
+
+}
+
+function login(){
+	$("#loginform").attr("action", "login_ok.php"); 
+	$("#loginform").submit();
+}
+//--> 
+</script> 

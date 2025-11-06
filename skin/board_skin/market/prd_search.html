@@ -1,0 +1,67 @@
+<STYLE TYPE="text/css">
+#prd_search_wrap{ width:100%; height:445px; box-sizing:border-box; display:table; }
+#prd_search_form_wrap{ width:350px; display:table-cell; box-sizing:border-box; padding:20px; vertical-align:top; border-right:1px solid #ddd; }
+#prd_search_list_wrap{ vertical-align:top; display:table-cell;  box-sizing:border-box;  }
+
+</STYLE>
+
+<div id="prd_search_wrap">
+	<ul id="prd_search_form_wrap">
+		<div>
+			<table>
+				<tr>
+					<th>브랜드 : </th>
+					<th>
+						<select name='prd_brand' id='prd_brand'>
+							<option value=''>전체 브랜드</option>
+							<?
+								for ($i=0; $i<count($_ary_brand_idx); $i++){
+							?>
+							<option value="<?=$_ary_brand_idx[$i]?>" ><?=$_ary_brand_name[$i]?></option>
+							<? } ?>
+						</select>
+					</th>
+				</tr>
+				<tr>
+					<th>상품명 : </th>
+					<th>
+						<input type="text" name="prd_name" id='prd_name'>
+					</th>
+				</tr>
+			</table>
+			<button type="submit" class="basic-btn basic-btn-blue basic-btn-md" onclick="searchPrdShow()">상품검색</button>
+		</div>
+	</ul>
+	<ul id="prd_search_list_wrap">
+		상품을 검색해 주세요.
+	</ul>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function searchPrdShow(){
+
+	var prd_brand = $("#prd_brand").val();
+	var prd_name = $("#prd_name").val();
+
+	$.ajax({
+		url: "ajax.prd_search_list.php",
+		data: {
+			"b_code":"<?=$_b_code?>",
+			"prd_brand":prd_brand,
+			"prd_name":prd_name
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(gethtml){
+			$('#prd_search_list_wrap').html(gethtml);
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+//--> 
+</script> 

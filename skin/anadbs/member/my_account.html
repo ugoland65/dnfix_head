@@ -1,0 +1,83 @@
+<link rel="stylesheet" type="text/css" href="/skin/pink/join/join_style.css?ver=<?=$wepix_now_time?>" />
+
+<STYLE TYPE="text/css">
+.account-wrap{ width:400px; margin:0 auto;  }
+.account-wrap table{ width:100%; border-spacing:0;border-collapse:collapse;padding:0;margin:0; }
+.account-wrap table tr { }
+.account-wrap table tr:first-child th,
+.account-wrap table tr:first-child td{ border-top:1px solid #ddd; }
+.account-wrap table th,
+.account-wrap table td{ height:36px; line-height:36px; text-align:left; box-sizing:border-box; border-bottom:1px solid #ddd;  }
+.account-wrap table th{ width:110px; padding-left:20px;  background-color:#f7f7f7; border-right:1px solid #ddd;  box-sizing:border-box; }
+.account-wrap table td{ padding-left:10px; padding-right:10px; }
+
+.account-wrap button{ width:400px; height:36px !important; line-height:36px !important; box-sizing:border-box;  }
+.social-state2{ width:400px; margin:0 auto 15px; padding-bottom:15px; border:1px solid #ddd; box-sizing:border-box; border-radius: 5px !important; }
+.social-state2-title{ font-family: 'Godo', sans-serif;  font-size:17px; height:36px; line-height:36px; }
+</STYLE>
+
+<div class='login-body'>
+	<div class='login-img'>
+		<img src="/skin/pink/img/login_title.png" alt="">
+	</div>
+
+<?
+$_use_join_mode = $user_info[USE_JOIN_MODE];
+$_use_state = $user_info[USE_STATE];
+
+if( ($_use_join_mode =="facebook" OR $_use_join_mode =="kakao") AND $_use_state == "2" ){
+?>
+		<div class='social-state2'>
+			<li><i class="fa fa-gamepad fa-3x" ></i></i>
+			<li class='social-state2-title'><b>환영합니다.</b></li>
+			<li>이제 사용하실 닉네임을 확인하시고 OSI를 이용하실 수 있습니다.</li>
+		</div>
+<? } ?>
+
+	<div id="join_step1" >
+		<div class='join-title'>
+			개인정보 관리
+		</div>
+		<div class='account-wrap'>
+			<ul>
+				<form id="accountform" method='POST'>
+				<input type='hidden' name='a_mode' value='account_modify'>
+<!-- 
+				<input type='hidden' name='account_idx' value='<?=$user_info[USE_IDX]?>'>
+ -->
+				<table>
+					<tr>
+						<th>아이디</th>
+						<td><?=$user_info[USE_ID]?></td>
+					</tr>
+<?
+if( $user_info[USE_EMAIL] ){
+?>
+					<tr>
+						<th>이메일</th>
+						<td><?=$user_info[USE_EMAIL]?></td>
+					</tr>
+<? } ?>
+					<tr>
+						<th>닉네임</th>
+						<td><input type='text' name='account_nick' id='account_nick' placeholder="<?=$user_info[USE_NICK]?>"  value=''></td>
+					</tr>
+				</table>
+				</form>
+			</ul>
+			<ul style="margin-top:10px;">
+				<button type="button" class="login-btn2" id="login_btn" onclick="doSumbit();"><i class="fa fa-cog fa-spin fa-lg"></i> 정보수정</button>
+			</ul>
+		</div>
+	</div>
+
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function doSumbit(){
+	$("#accountform").attr("action", "member_ok.php"); 
+	$("#accountform").submit();
+}
+//--> 
+</script> 

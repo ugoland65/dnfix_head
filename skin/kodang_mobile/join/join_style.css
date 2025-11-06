@@ -1,0 +1,55 @@
+.login-body{ width:100%; box-sizing:border-box;  padding:15px; }
+#join_step_wrap{ width:100%; display: table !important; overflow: hidden !important; margin:0 auto; border:1px solid #ddd; border-radius: 5px !important; }
+#join_step_wrap ol { width:25%;  font-size: 13px !important; line-height: 14px !important; float: none !important; display: table-cell !important; text-align: left; box-sizing:border-box;  padding:14px 5px; 12px}
+#join_step_wrap .label {
+    float: left !important;
+    padding: 0 !important;
+    height: 20px !important;
+    width: 20px !important;
+    line-height: 20px !important;
+    text-align: center !important;
+    margin-right: 7px !important;
+    top: 0 !important;
+    background: #6d7479 !important;
+    -webkit-border-radius: 50% !important;
+    -moz-border-radius: 50% !important;
+    border-radius: 50% !important;
+	color:#fff;
+}
+#join_step_wrap ol small {
+    font-size: 11px !important;
+    color: #999 !important;
+    display: block !important;
+    line-height: 14px !important;
+}
+
+#join_step_wrap ol.active{  background: #212527 !important; color:#37ffc4; }
+#join_step_wrap ol.active small{ color:#37ffc4 !important; }
+#join_step_wrap ol.active .label { background: #1a846c !important; }
+.badge-inverse {
+    background: #242a30;
+    background: rgba(0,0,0,0.4);
+}
+
+.clause-btn{ width:100%; }
+.join-check-btn{ width:30px; color:#ccc; }
+.join-check-btn i { font-size:25px; cursor:pointer;}
+.join-check-btn.ative{ color:#22cca2 !important; }
+.join-check-msg{ text-align: left; line-height:140%; vertical-align:middle; }
+.join-clause{ height:200px; text-align: left; line-height:140%; overflow-y:scroll; background-color:#eeeeee; box-sizing:border-box;  padding:10px; }
+
+.join-title{ width:100%; margin:0 auto; font-family: 'Godo', sans-serif; color:#000; font-size:17px; text-align:left; height:30px !important; line-height:30px !important; }
+
+.btn.disabled{ width:100% !important; height:40px !important; line-height:100% !important; }
+.btn.w-btn-pink{ width:100% !important; height:40px !important; line-height:100% !important; background-color:#18b1a1 !important; color:#fff !important; }
+
+.join-form ul{ margin-bottom:6px; }
+.input-wrap { width:100%; box-sizing:border-box; }
+.input-wrap input{ width:100% !important; height:38px !important; box-sizing:border-box; border:1px solid #ddd;  border-radius:5px; padding-left:10px; }
+
+.join-form button,
+#join_step2 button{ width:100%; height:36px !important; line-height:36px !important; box-sizing:border-box;  }
+.login-btn2{ background-color:#18b1a1; color:#fff; border:1px solid #099586; border-radius:5px; }
+.join-btn2{ background-color:#333; color:#fff; border:1px solid #111; border-radius:5px; }
+
+#join_step3_email { font-family:Helvetica; font-size:17px; }

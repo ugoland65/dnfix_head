@@ -1,0 +1,270 @@
+<link href="https://fonts.googleapis.com/css?family=Russo+One" rel="stylesheet">
+<STYLE TYPE="text/css">
+.match-wrap{ margin-bottom:10px; height:110px; position: relative; box-sizing:border-box; padding:10px 40px 0 0 ; }
+.match-wrap.blue{ background-color:#a3cfec; border:1px solid #67a9d6; }
+.match-wrap.red{ background-color:#e2b6b3;  border:1px solid #d5837d; }
+
+.match-result{ width:90px; height:90px; position: relative; float:left;  }
+.match-result-text{ color:#000; font-family: 'Russo One', sans-serif; font-weight:600; font-size:17px; text-align:center; margin-bottom:10px; } 
+.match-result-info ul{ text-align:center; padding:3px 0; }
+
+.match-result-text.blue{ color:#0384da; }
+.match-result-text.red{ color:#ed0404; }
+.champion-img{ width:90px; height:90px; position: relative; float:left;  }
+.champion-border{ width:90px; height:90px; position: absolute; top:0; left:0; }
+.champion-img img{ width:90px; height:90px; } 
+
+.spell-wrap{ width:58px; height:90px; padding:16px 0 0 0; float:left; box-sizing:border-box; }
+.spell-wrap div{ width:24px; height:24px; background-size:24px 24px; border-radius:3px; margin:1px 1px; float:left; overflow:hidden; }
+.spell-wrap.blue div{ border:1px solid #67a9d6; }
+.spell-wrap.red div{ border:1px solid #d5837d; }
+.spell-wrap div img{ width:28px; height:28px; }
+.bgblack{ background-color:#000; }
+
+.kda-wrap{ width:85px; padding-top:30px; float:left; box-sizing:border-box; }
+.kda{ text-align:center; margin-bottom:5px; }
+.kda span{ font-size:15px; font-family: 'Godo', sans-serif; font-size:17px; }
+.deaths{ color:#f00101; }
+.kda-grade{ color:#000; font-family:Helvetica; font-weight:600; text-align:center; }
+
+.gameinfo-wrap{ width:85px; padding-top:13px; float:left; box-sizing:border-box; }
+.gameinfo-wrap ul{ padding:4px 0; color:#000; text-align:center; }
+
+.item-wrap{ width:96px; float:right; margin-right:15px; padding-top:15px; }
+.item-wrap div{ width:22px; height:22px; float:left; background-size:22px 22px; border-radius:3px; margin:1px; }
+.item-wrap.blue div{ background-color:#67a9d6; /* border:1px solid #a3cfec; */ }
+.item-wrap.red div{ background-color:#d5837d;  /* border:1px solid #e2b6b3; */ }
+
+.match-summoner-wrap{ width:170px; float:right; margin-top:-2px; }
+.match-summoner-wrap ul{ width:85px; float:left; }
+.match-summoner-wrap ul li { width:85px; height:16px; line-height:16px; font-size:11px; letter-spacing:-1px; padding: 1px 0; overflow:hidden; white-space: nowrap; text-overflow: ellipsis; }
+.match-summoner-wrap ul li img{ width:16px; height:16px; margin-right:3px; }
+.match-summoner-wrap ul li a{ color:#000; }
+
+.match-summoner-wrap-wide{ width:170px; padding-top:11px; padding-left:15px; float:right; box-sizing:border-box; }
+.match-summoner-wrap-wide ul { height:22px; margin:4px 0; }
+.match-summoner-wrap-wide ul li { float:left; margin-right:4px; }
+.match-summoner-wrap-wide ul li img{ width:22px; height:22px }
+
+.detail-btn{ width:37px; height:102px; position: absolute; top:3px; right:3px;  box-sizing:border-box;  }
+.detail-btn button{ width:37px; height:102px; line-height:102px; font-size:15px; text-align:center; border:1px solid #000; border-radius:4px; cursor:pointer;}
+.detail-btn.blue button{ background-color:#67a9d6; border:1px solid #4c98cb; }
+.detail-btn.red button{ background-color:#d5837d;  border:1px solid #ca625a; }
+.detail-btn button:hover{ background-color:#fff;  border:1px solid #333; }
+
+.detail-info{ margin-top:-11px; margin-bottom:10px; position: relative; box-sizing:border-box; padding:0; }
+.detail-info.blue{ background-color:#a3cfec; border:1px solid #67a9d6; }
+.detail-info.red{ background-color:#e2b6b3;  border:1px solid #d5837d; }
+.detail-info-box{ width:736px; margin:5px auto; background-color:#fff; box-sizing:border-box;  border-radius:5px; padding:3px; }
+.detail-info-box.blue{ border:1px solid #67a9d6; }
+.detail-info-box.red{ border:1px solid #d5837d; }
+
+.detail-info-box table { width:100%; border-spacing:1px; border-collapse:collapse; padding:0; margin:0; }
+.detail-info-box table tr th { height:26px; line-height:26px; }
+.detail-info-box table tr td { border:1px solid #e2e2e2; font-size:11px; }
+.detail-champion-img{ width:32px; }
+.detail-spell-td{ width:34px;}
+.detail-name-td{ height:32px; line-height:32px; box-sizing:border-box; padding-left:5px; font-size:12px; }
+.detail-involved_kill-td{ width:45px; height:32px; line-height:32px; text-align:center;  }
+.detail-kda-td{ width:70px; }
+.detail-damage-td{ width:65px; }
+.detail-wards-td{ width:50px; }
+.detail-cs-td{ width:70px; }
+.detail-item-td{ width:154px; }
+
+.detail-name-td a{ color:#000; }
+
+.detail-kda-td div { margin-top:4px; }
+.detail-kda-td div ul{ text-align:center; padding:1px 0; font-size:11px; }
+
+.detail-damage{ margin:5px 0 3px; text-align:center; font-size:11px; }
+.damage-graph-wrap{ width:50px; height:6px; margin:0 auto; background-color:#f7f7f7; border:1px solid #cdd2d2; }
+.damage-graph{ width:50px; height:6px; background-color:#ee5a52; border:1px solid #c6443e; margin:-1px 0 0 -1px; }
+
+.detail-wards-td div { margin-top:4px; }
+.detail-wards-td div ul{ text-align:center; padding:1px 0; font-size:11px;  }
+
+.detail-cs-td div { margin-top:4px; }
+.detail-cs-td div ul{ text-align:center; padding:1px 0; font-size:11px; }
+
+.detail-champion-img div{ width:32px; height:32px; border:1px solid #fff; border-radius:16px; background-size:32px 32px; }
+.detail-spell-wrap{ width:34px; height:34px; }
+.detail-spell-wrap li{ width:15px; height:15px; background-color:#000; border:1px solid #fff; border-radius:3px; background-size:15px 15px; float:left; }
+.detail-item-wrap{ margin-top:6px; }
+.detail-item-wrap li{ width:22px; height:22px; background-color:#ddd; border:1px solid #fff; border-radius:3px !important; background-size:22px 22px; box-sizing:border-box; overflow:hidden; float:left; }
+
+.match-detail-info{ width:734px; height:40px; margin:0 auto; }
+.match-detail-info ul{ height:40px; float:left; font-size:11px; box-sizing:border-box; } 
+.match-detail-info ul.center{ width:420px !important; padding-top:4px; } 
+.match-detail-info ul.summary{ width:157px; padding-top:7px; color:#000; } 
+
+.graph-value-td{ width:85px; font-size:11px; }
+.gold-graph-wrap-td{ width:200px; }
+.gold-graph-wrap{ width:190px; height:10px; margin:2px auto 0; background-color:#ee5a52; border:1px solid #c6443e; }
+.gold-graph{ width:190px; height:10px; background-color:#548dca; border:1px solid #2673c5; margin:-1px 0 0 -1px; }
+
+.gv-right{ text-align:right; }
+.gv-left{ text-align:left; }
+
+.summary-graph{ width:100%; border-spacing:0; border-collapse:collapse; padding:0; margin:0; }
+.summary-graph tr td{ height:16px; line-height:16px; font-size:11px; }
+</STYLE>
+
+<?
+for($i=0; $i<$play_count; $i++){
+
+	$play_game_id = $play_game_id_array[$i];
+
+	$play_result = $play_result_array[$i];
+	$play_game_mode = $play_game_mode_array[$i];
+	$play_game_date_about = $play_game_date_about_array[$i];
+	$play_game_time = $play_game_time_array[$i];
+
+	$self_champion_name = $play_game_champion_name_array[$i];
+	$self_spell1_name = $play_game_spell_1_name_array[$i];
+	$self_spell2_name = $play_game_spell_2_name_array[$i];
+	$self_perk1_key = $play_game_perk_1_key_array[$i];
+	$self_perk2_key = $play_game_perk_2_key_array[$i];
+	$self_kills = $play_game_kills_array[$i];
+	$self_deaths = $play_game_deaths_array[$i];
+	$self_assists = $play_game_assists_array[$i];
+
+	$self_kda = $play_game_kda_array[$i];
+
+	$self_level = $play_game_level_array[$i];
+	$self_cs = $play_game_cs_array[$i];
+	$self_m_cs = $play_game_cs_min_array[$i];
+	$self_involved_kill = $play_game_involved_kill[$i];
+
+	$self_item1 = $play_game_item_1_array[$i];
+	$self_item2 = $play_game_item_2_array[$i];
+	$self_item3 = $play_game_item_3_array[$i];
+	$self_item4 = $play_game_item_4_array[$i];
+	$self_item5 = $play_game_item_5_array[$i];
+	$self_item6 = $play_game_item_6_array[$i];
+	$self_item7 = $play_game_item_7_array[$i];
+
+	if( $play_result == "LOSE" ){
+		$match_class = "red";
+	}else{
+		$match_class = "blue";
+	}
+?>
+<div class="match-wrap <?=$match_class?>">
+
+	<div class="match-result">
+		<div class="match-result-text <?=$match_class?>"><?=$play_result?></div>
+		<div class="match-result-info">
+			<ul><?=$play_game_mode?></ul>
+			<ul><?=$play_game_date_about?></ul>
+			<ul style="margin-top:10px"><?=$play_game_time?></ul>
+		</div>
+	</div>
+	<div class="champion-img">
+		<div class="champion-border"><img src="/skin/pink/img/border-<?=strtolower($play_result)?>.png" alt=""></div>
+		<img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$self_champion_name?>.png" >
+	</div>
+	<div class="spell-wrap <?=$match_class?>">
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$self_spell1_name?>.png')"></div>
+		<div style="background-image:url('http://opgg-static.akamaized.net/images/lol/perk/<?=$self_perk1_key?>.png')" class="bgblack"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/spell/<?=$self_spell2_name?>.png')"></div>
+		<div style="background-image:url('http://opgg-static.akamaized.net/images/lol/perkStyle/<?=$self_perk2_key?>.png')" class="bgblack"></div>
+	</div>
+
+	<div class="kda-wrap">
+		<div class="kda">
+			<span><?=$self_kills?></span> / 
+			<span class="deaths"><?=$self_deaths?></span> / 
+			<span><?=$self_assists?></span>
+		</div>
+		<div class="kda-grade">
+			<? if( $self_kda == "Perfect" ){ ?>
+				<b>PERFECT</b>
+			<? }else{ ?>
+				<b><?=$self_kda?></b> : 1
+			<? } ?>
+		</div>
+	</div>
+
+	<div class="gameinfo-wrap">
+		<ul>Level <b><?=$self_level?></b></ul>
+		<ul><?=$self_cs?>(<?=$self_m_cs?>) CS</ul>
+		<ul>킬관여 <b><?=$self_involved_kill?></b>%</ul>
+	</div>
+
+	<div class="detail-btn <?=$match_class?>">
+		<button id="di_on_btn_<?=$play_game_id?>" onclick="detailShow('<?=$play_game_id?>', 'on')"><i class="fa fa-arrow-down" aria-hidden="true"></i></button>
+		<button id="di_off_btn_<?=$play_game_id?>" onclick="detailShow('<?=$play_game_id?>', 'off')" style="display:none;"><i class="fa fa-arrow-up" aria-hidden="true"></i></button>
+	</div>
+
+	<div class="match-summoner-wrap-wide">
+		<ul>
+		<?
+			for($z=1; $z<6; $z++){
+				$use_champion_key = ${'play_game_team1_champ_'.$z.'_array'}[$i];
+				$use_champion_img = array_search($use_champion_key, $_champion_img_key );
+				if( $use_champion_key ){
+		?>
+			<li><img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png"><a href="/summoner/?name=<?=$latest_game[participantIdentities][$user_num][player][summonerName]?>" target="_blank"><?=$latest_game[participantIdentities][$user_num][player][summonerName]?></a></li>
+		<? } } ?>
+		</ul>
+		<ul>
+		<?
+			for($z=1; $z<6; $z++){
+				$use_champion_key = ${'play_game_team2_champ_'.$z.'_array'}[$i];
+				$use_champion_img = array_search($use_champion_key, $_champion_img_key );
+				if( $use_champion_key ){
+		?>
+			<li><img src="http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/champion/<?=$use_champion_img?>.png"><a href="/summoner/?name=<?=$latest_game[participantIdentities][$user_num][player][summonerName]?>" target="_blank"><?=$latest_game[participantIdentities][$user_num][player][summonerName]?></a></li>
+		<? } } ?>
+		</ul>
+	</div>
+
+	<div class="item-wrap <?=$match_class?>">
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item1?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item2?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item3?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item4?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item5?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item6?>.png');"></div>
+		<div style="background-image:url('http://ddragon.leagueoflegends.com/cdn/<?=$patch_version?>/img/item/<?=$self_item7?>.png');"></div>
+	</div>
+
+</div>
+<!-- <?=$play_game_id?> -->
+<div class="detail-info <?=$match_class?>" id="di_<?=$play_game_id?>" style="display:none;">
+</div>
+<? } ?>
+
+<script type="text/javascript"> 
+<!-- 
+function detailShow(gameid, mode){
+	if( mode == "on" ){
+		$('#di_'+gameid).show();
+		$('#di_on_btn_'+gameid).hide();
+		$('#di_off_btn_'+gameid).show();
+
+		$.ajax({
+			url: "record_detail.php",
+			data: {
+				"summoner_name":"<?=$summoner_name?>",
+				"gid":gameid,
+			},
+			type: "POST",
+			dataType: "html",
+			success: function(getdata){
+				$('#di_'+gameid).html(getdata);
+			},
+			error: function(){
+			}
+		});
+
+	}else{
+		$('#di_'+gameid).hide();
+		$('#di_on_btn_'+gameid).show();
+		$('#di_off_btn_'+gameid).hide();
+	}
+}
+//--> 
+</script> 
+

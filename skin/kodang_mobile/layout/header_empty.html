@@ -1,0 +1,97 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+<title><?=$head_title?></title>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, target-densitydpi=medium-dpi" />
+	<meta name="theme-color" content="#4cca7e">
+
+	<meta name="keywords" content="<?=$meta_keywords?>">
+
+	<meta name="title" content="<?=$meta_title?>"/>
+	<meta name="description" content="<?=$meta_description?>"/>
+
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="<?=$meta_title?>" />
+	<meta property="og:description" content="아무도 시도하지 않는 경계의 정보" />
+	<meta property="og:image" content="<?=$og_image?>" />
+	<meta property="og:url" content="http://koedge.com" />
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta http-equiv="content-style-type" content="text/css" />
+	<meta http-equiv="content-script-type" content="text/javascript" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="autocomplete" content="off">
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-153859920-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-153859920-1');
+</script>
+
+	<link rel="shortcut icon" href="/favicon.ico?v2" />
+<!--
+	<link rel="apple-touch-icon-precomposed" href="//opgg-static.akamaized.net/icon/Icon-72.png?v2"/>
+	<link rel="apple-touch-icon-precomposed" sizes="72x72" href="//opgg-static.akamaized.net/icon/Icon-72.png?v2"/>
+	<link rel="apple-touch-icon-precomposed" sizes="114x114" href="//opgg-static.akamaized.net/icon/Icon@2x.png?v2"/>
+	<link rel="apple-touch-icon-precomposed" sizes="144x144" href="//opgg-static.akamaized.net/icon/Icon-144.png?v2"/>
+	<meta name="apple-mobile-web-app-status-bar-style" content="black"/>
+-->
+
+	<script src="/plugins/jquery/jquery-1.11.1.min.js"></script>
+
+	<!-- jqueryui -->
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+	<script src="https://kit.fontawesome.com/1bf24fd3f6.js" crossorigin="anonymous"></script>
+
+	<!-- bootstrap -->
+	<!-- 합쳐지고 최소화된 최신 CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+	<!-- 부가적인 테마 -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+	<!-- 합쳐지고 최소화된 최신 자바스크립트 -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+
+<!-- ANIMATE CSS --> 
+<? /* ?>
+<link rel="stylesheet" 
+  href="https://cdn.jsdelivr.net/npm/animate.css@3.5.2/animate.min.css" 
+  integrity="sha384-OHBBOqpYHNsIqQy8hL1U+8OXf9hH6QRxi0+EODezv82DfnZoV7qoHAZDwMwEJvSw" 
+  crossorigin="anonymous">
+<? */ ?>
+
+	<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/css/common.css?ver=<?=$wepix_now_time?>" />
+
+<STYLE TYPE="text/css">
+body{ padding-top:0 !important; }
+</STYLE>
+
+<script type="text/javascript" language = "javascript"> 
+window.addEventListener('load', function() {
+setTimeout(scrollTo, 0, 0, 1);
+}, false);
+</script>
+
+<script type='text/javascript'>
+function doLogin(){
+	location.href='/mobile/login/?returnUrl=<?=$check_request_uri_urlencode?>';
+}
+
+function doLogout(){
+	location.href='/mobile/logout/?returnUrl=<?=$check_request_uri_urlencode?>';
+}
+
+
+</script> 
+
+</head>
+<body>

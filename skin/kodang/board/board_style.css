@@ -1,0 +1,68 @@
+#contents table{ border-spacing:0;border-collapse:collapse;padding:0;margin:0;}
+#contents table tr td{ vertical-align:top !important;  }
+
+#board_menu{ width:300px; height:360px; background-color:#fff; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; padding:10px; }
+#board_wrap{
+/*
+	padding:30px 20px;
+	margin: 0 10px;
+*/	
+}
+.board-wrap{ width:790px; background-color:#fff; border:1px solid #ddd; border-radius:4px; box-sizing:border-box; }
+
+.board-title{ font-family: 'Godo', sans-serif; height:30px; line-height:30px; font-size:18px; padding:15px 20px 10px; border-bottom:1px solid #ddd; }
+
+/* 글목록 */
+.board-list-table{ width:100%; }
+.board-list-table tr { background-color:#fff;  }
+.board-list-table tr:hover{ background-color:#f7f7f7; }
+.board-list-table tr td{ text-align:center; height:40px; line-height:40px; border-bottom:1px solid #ddd; vertical-align:middle !important; }
+.board-list-table tr td a{ color:#111; }
+.board-list-table tr td.board-list-number{ width:60px; }
+.board-list-table tr td.board-list-subject{ text-align:left !important; }
+.board-list-table tr td.board-list-date{ width:110px; }
+
+/* 글보기 */
+.board-subject{ font-family: 'Godo', sans-serif; height:30px; line-height:30px; font-size:17px; padding:30px 20px 0; }
+.board-info{ width:100%; height:30px; padding:0 20px 0; box-sizing:border-box; }
+.board-info ul li{ height:30px; line-height:30px; }
+.board-body{ width:100%; line-height:120%; padding:10px 20px 20px; box-sizing:border-box; }
+
+.board-btn{ text-align:right; padding-top:5px;}
+.board-btn button{ width:90px; height:30px; background-color:#fff; border-radius:4px; border:1px solid #ddd; cursor:pointer; }
+
+/* 글보기 좋아요 */
+.board-like{ width:100%; padding:10px 0; box-sizing:border-box;  border-top:1px solid #ddd; text-align:center; }
+.board-like button{ width:90px; height:40px; background-color:#fff; line-height:40px; border:1px solid #ddd; border-radius:4px; cursor:pointer; }
+.good-on{ background-color:#2270ff !important; color:#fff !important; }
+.bad-on{ background-color:#f62569 !important; color:#fff !important; }
+
+/* 댓글 */
+#board_comment{ margin-top:5px; }
+.comment-title-wrap{ width:100%; padding:0 15px; height:40px; line-height:40px; border-bottom:1px solid #ddd;  box-sizing:border-box; }
+.comment-title-wrap b{ font-family: 'Godo', sans-serif; font-size:15px; font-weight:normal; color:#111; }
+.comment-title{ width:50%; float:left; font-size:12px; color:#999999;  }
+.comment-refresh{ width:50%; float:right; text-align:right; }
+.comment-refresh button{ width:90px; height:30px; background-color:#fff; border-radius:4px; border:1px solid #ddd; }
+
+.comment-write-wrap{ background-color:#f7f7f7; padding:10px 0;  box-sizing:border-box;  }
+.comment-write{ width:762px; margin:0 auto; background-color:#fff; border:1px solid #ddd; box-sizing:border-box; }
+.comment-write textarea{ border:none; width:100%; height:60px; padding:5px; box-sizing:border-box; resize: vertical;}
+.comment-write-name{ padding:10px 0 0 10px; font-weight:bold; }
+.comment-write-btn-wrap{ height:40px; border-top:1px solid #ddd; }
+.comment-write-btn{ float:right; }
+.comment-write-btn button{ width:90px; height:40px; border:none; background-color:#f7407c; color:#fff; }
+
+.comment-list-wrap{}
+.comment-list{ border-top:1px solid #ddd; padding:20px 25px; box-sizing:border-box; }
+.comment-list ul{  } 
+.comment-list-info b{ font-size:13px; color:#111; }
+.comment-list-info{ font-size:12px; color:#999999; }
+.comment-list-body{ margin:10px 0 7px 0; line-height:130%; }
+.comment-list-btn{ font-size:12px; color:#999999; }
+
+.comment-list-write{ background-color:#f7f7f7; }
+.comment-write2{ width:100%; margin:10px auto 0; background-color:#fff; border:1px solid #ddd; box-sizing:border-box; }
+.comment-write2 textarea{ border:none; width:100%; height:60px; padding:5px; box-sizing:border-box; }
+
+.comment-list2{ border-top:1px solid #ddd; background-color:#f7f7f7; padding:10px 25px 8px 70px; box-sizing:border-box; background-image:url('/skin/pink/img/reply.png'); background-repeat:no-repeat; background-position:25px 0; }

@@ -1,0 +1,253 @@
+<!-- include summernote css/js -->
+<link href="/plugins/summernote-master/dist/summernote.css" rel="stylesheet">
+<script src="/plugins/summernote-master/dist/summernote.js"></script>
+
+<!-- include summernote-ko-KR -->
+<script src="/plugins/summernote-master/dist/lang/summernote-ko-KR.js"></script>
+
+<link rel="stylesheet" href="/skin/board_skin/magazine_mobile/style.css?v=<?=time()?>">
+
+<div class="bo-title">
+	<?=$_view_bc_name_show?>
+</div>
+
+<? if( $_show_product_active == "ON" ){ ?>
+<div class="bo-pd display-table">
+	<ul class="bo-pd-img display-table-cell"><img src="<?=$_view_product_img_path?>" alt=""></ul>
+	<ul class="display-table-cell">
+		<li><b><?=$_view_product_name?></b></li>
+	</ul>
+</div>
+<? } ?>
+
+<form name="bo_write" id="bo_write" action="<?=_PATH_BOARD_OK?>" method="post" enctype="multipart/form-data" autocomplete="off">
+<?
+//게시물 수정일때
+if( $_b_mode == "modify"){
+?>
+	<input type="hidden" name="a_mode" value="boardModify">
+	<input type="hidden" name="b_key" value="<?=$_show_b_key?>">
+	<input type="hidden" name="modify_board_thumbnail" value="<?=$board_data[BOARD_THUMBNAIL]?>">
+<? }else{ ?>
+	<input type="hidden" name="a_mode" value="newWrite">
+<? } ?>
+	<input type="hidden" name="b_code" value="<?=$_show_b_code?>">
+	<input type="hidden" name="b_token" value="<?=$_show_b_token?>">
+	<input type="hidden" name="temp_folder" value="<?=$_show_temp_folder?>">
+	<input type="hidden" name="pd_key" value="<?=$_pdkey?>">
+	<input type="hidden" name="returnUrl" value="<?=$_return_url?>">
+
+	<input type="hidden" name="mobile_mode" value="mobile">
+
+<div class="bo-write-wrap">
+
+<?
+//평점 기능 사용시
+if( $_show_bc_grade_active == "Y" ){
+?>
+	<ul>
+		<div class="bo-write-grade-wrap">
+			<ul>평점</ul>
+			<ul >
+				<label><input type="radio" name="bo_grade" value="5" checked> <i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i></label>
+				<label><input type="radio" name="bo_grade" value="4"> <i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i></label>
+				<label><input type="radio" name="bo_grade" value="3"> <i class="fas fa-star on"></i><i class="fas fa-star on"></i><i class="fas fa-star on"></i></label>
+				<label><input type="radio" name="bo_grade" value="2"> <i class="fas fa-star on"></i><i class="fas fa-star on"></i></label>
+				<label><input type="radio" name="bo_grade" value="1"> <i class="fas fa-star on"></i></label>
+		</div>
+	</ul>
+<? } ?>
+
+<?
+//카테고리 사용시
+if( $_show_bc_category_active == "Y" ){
+?>
+	<ul class="bo-write-category-wrap">
+		<select name="bo_category" id="bo_category">
+			<option value="">분류선택</option>
+			<? for ($i=1; $i<count($_ary_bc_category); $i++){ ?>
+			<option value="<?=$i?>" <? if( $i == $_view_board_category ) echo "selected"; ?>><?=$_ary_bc_category[$i]?></option>
+			<? } ?>
+		</select>
+	</ul>
+<? } ?>
+
+	<ul>
+		<input type="text" name="bo_subject" id="bo_subject" placeholder="제목" value="<?=$_view_board_subject?>" >
+	</ul>
+
+	<ul>
+		<textarea name="board_body"  id="summernote"><?=$_view_board_body?></textarea>
+	</ul>
+
+<?
+//링크
+if( $_show_bc_link_active == "Y" ){
+?>
+	<ul>
+		<input type="text" name="bo_link_name" id="bo_link_name" placeholder="링크명" value="<?=$_view_board_subject?>" >
+	</ul>
+	<ul>
+		<input type="text" name="bo_link_url" id="bo_link_url" placeholder="링크주소" value="<?=$_view_board_subject?>" >
+	</ul>
+<? } ?>
+
+<?
+//이미지 업로드 기능
+if( $_show_bc_image_active == "Y" ){
+?>
+	<ul>
+		<div class="bo-write-img-upload-wrap">
+			<div class="bo-write-img-upload-input"><input type="file" id="file_thum" name="file_thum" ></div>
+			<i class="far fa-images"></i> 이미지 업로드
+		</div>
+	</ul>
+<? } ?>
+
+<?
+//썸네일 업로드 기능
+if( $_show_bc_thumbnail_active == "Y" ){
+?>
+	<ul>
+		<div class="bo-write-thumbnail-wrap">
+			<ul>썸네일 등록</ul>
+			<ul style="margin-left:15px !important;"><input type="file" id="board_thumbnail" name="board_thumbnail"></ul>
+		</div>
+	</ul>
+<? } ?>
+
+</div>
+
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left"></ul>
+	<ul class="bo-btn-area-right">
+		<button type="button" id="" class="bo-btn bo-btn-cancel" onclick="location.href='<?=$_show_cancel_url?>'" >취 소</button>
+		<button type="button" id="" class="bo-btn bo-btn-pink" onclick="submitContents(this)" >등 록</button>
+	</ul>
+</div>
+
+</form>
+
+<form name='imguploadform'  id='imguploadform'>
+	<input type='hidden' name='a_mode' value='imgUpload'>
+	<input type='hidden' name='b_code' value='<?=$_show_b_code?>'>
+	<input type='hidden' name='b_token' value='<?=$_show_b_token?>'>
+	<input type='hidden' name='temp_folder' value='<?=$_show_temp_folder?>'>
+</form>
+
+<script type="text/javascript"> 
+<!-- 
+$(document).ready(function() {
+	$('#summernote').summernote();
+});
+
+$('#summernote').summernote({
+	lang: 'ko-KR',
+	height: 300,                 // set editor height
+	minHeight: null,             // set minimum height of editor
+	maxHeight: null,             // set maximum height of editor
+	focus: true,                  // set focus to editable area after initializing summernote
+	dialogsInBody: true,
+/*
+	toolbar: [
+		// [groupName, [list of button]]
+		['style', ['bold', 'italic', 'underline', 'clear']],
+		['font', ['strikethrough', 'superscript', 'subscript']],
+		['fontsize', ['fontsize']],
+		['color', ['color']],
+		['para', ['ul', 'ol', 'paragraph']],
+		['height', ['height']]
+	]
+*/
+	toolbar: [
+		['style', ['style']],
+		['font', ['bold', 'underline', 'clear']],
+		['fontname', ['fontname']],
+		['color', ['color']],
+		['para', ['ul', 'ol', 'paragraph']],
+		['table', ['table']],
+		['insert', ['link', 'video']],
+		['view', ['codeview']],
+	]
+});
+
+$(function(){
+	$("#file_thum").on("change" , showImage);
+});
+
+function showImage(e){
+
+    var form = $('#imguploadform')[0];
+    var imgData = new FormData(form);
+
+	imgData.append("fileObj", $("#file_thum")[0].files[0]);
+
+	$.ajax({
+		data : imgData,
+		type : "POST",
+		url: "processing.image.php",
+		contentType : false,
+		processData : false,
+		success: function(getdata){
+			redatawa = getdata.split('|');
+			ckcode = redatawa[1];
+			ckmsg = redatawa[2];
+			ckimg = redatawa[3];
+			ckfilename = redatawa[4];
+			if(ckcode == "Processing_Complete"){
+				$("#bo_write").append("<input type='hidden' name='uploadImageFileName[]' value='"+ckfilename+"'>");
+				$('#summernote').summernote('insertImage', ckimg, function ($image) {
+					$image.css('max-width', '100%');
+					//$image.attr('data-filename', 'retriever');
+				});
+/*
+				var sHTML = "<p><img src=\""+ckimg+"\" class='selProductFile' style='max-width:100%'></p>";
+				oEditors.getById["ir1"].exec("PASTE_HTML", [sHTML]);
+*/
+			}else if(ckcode == "Erorr"){
+				//ajaxLoadingErorrClose();
+				$('#modal_alert_msg').html(ckmsg);
+				$('#modal-alert').modal({show: true,backdrop:'static'});
+			}else{
+				//return false;
+			}
+		}
+	});
+}
+
+
+function submitContents(elClickedObj) {
+
+<?
+//카테고리 사용시
+if( $_show_bc_category_active == "Y" ){
+?>
+	if ( $("#bo_category").val() == "" ) {
+       // alert("분류를 선택해 주세요");
+        $('#modal_alert_msg').html("분류를 선택해 주세요");
+        $('#modal-alert').modal({show: true,backdrop:'static'});
+        $("#bo_name").focus();
+        return false;
+    }
+<? } ?>
+
+	if ( $("#bo_subject").val() == "" ) {
+       // alert("제목을 입력해 주세요.");
+        $('#modal_alert_msg').html("제목을 입력해 주세요.");
+        $('#modal-alert').modal({show: true,backdrop:'static'});
+        $("#bo_name").focus();
+        return false;
+    }
+
+	if ( $("#summernote").val() == "" ) {
+       // alert("내용을 입력해 주세요.");
+        $('#modal_alert_msg').html("내용을 입력해 주세요.");
+        $('#modal-alert').modal({show: true,backdrop:'static'});
+        $("#summernote").focus();
+        return false;
+    }
+
+    $("#bo_write").submit();
+}
+//--> 
+</script> 

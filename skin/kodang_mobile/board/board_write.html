@@ -1,0 +1,315 @@
+<?
+include "../lib/inc_common.php";
+
+	$b_code = $_GET['b_code'];
+include ("board_inc.php");
+
+	$_idx = $_POST['idx'];
+	$a_mode = $_GET['mode'];
+	$_mokey = $_GET['mokey'];
+
+
+
+ if($a_mode == 'new'){
+
+ }elseif($a_mode == 'modify'){
+	 $data = wepix_fetch_array(wepix_query_error("select * from USER_MEMBER  
+																					where USE_KIND = 'U' 
+																					and USE_IDX = '".$_mokey."'"));
+
+	$use_mail_array = explode("@",$data[USE_MAIL]);
+	$use_phone_array = explode("-",$data[USE_PHONE]);
+    $use_birth_array = explode("-",$data[USE_BIRTH]);
+
+	$checkvalue = 'N';
+
+ }
+	include "../layout/header.php";
+?>
+
+<STYLE TYPE="text/css">
+.table-wrap { width:100%; }
+.table-style { width:100%; }
+</STYLE>
+<?
+
+	//$smarteditor = "smarteditor";
+	$smarteditor = "smarteditor2-2.8.2.3";
+
+	//폴더만들기
+	$imgsavefolder_num = time(); #현재시간
+	$imgsavefolder = $_sess_id."_".$imgsavefolder_num;
+
+?>
+<script type="text/javascript"> 
+<!-- 
+var imgSaveFolder = "<?=$imgsavefolder?>";
+//--> 
+</script> 
+
+<script type="text/javascript" src="/<?=$smarteditor?>/js/HuskyEZCreator.js" charset="utf-8"></script>
+<script type="text/javascript" src="https://code.jquery.com/jquery-3.1.0.min.js" charset="utf-8"></script>
+<script type="text/javascript"> 
+<!-- 
+$(function(){
+/* 
+    $("#file_thum").change(function(e){
+		alert(e.target.result);
+    });
+
+	$("#file_thum").on("change" , handleImgFileSelect);
+
+	$("#file_thum").on("change", function(obj){
+		showImage(obj);
+	}
+ */
+	$("#file_thum").on("change" , showImage);
+});
+function showImage(e){
+
+	var files = e.target.files;
+	var filesArr = Array.prototype.slice.call(files);
+
+	filesArr.forEach(function(f) {
+
+		if(!f.type.match("image.*")){
+			alert("이미지 파일만!");
+			return;
+		}
+
+		//sel_files.push(f);
+		sel_files = f;
+		var reader = new FileReader();
+		reader.onload = function(e){
+
+			var sHTML = "<img src=\""+e.target.result+"\" data-file='"+f.name+"' class='selProductFile' title='Click to remove'>";
+			oEditors.getById["ir1"].exec("PASTE_HTML", [sHTML]);
+			//alert(e.target.result);
+
+		}
+		reader.readAsDataURL(f);
+	});
+ }
+//--> 
+</script> 
+
+<STYLE TYPE="text/css">
+.community-head{
+	text-align:center;
+	width:100%; 
+    height:200px;
+	border:1px solid red;
+
+}
+.community-body{
+
+	text-align:center;
+	width:100%; 
+	height:1200px;
+	border:1px solid blue;
+
+}
+.community-left{
+	margin-left:calc(30% - 125px);
+	text-align:center;
+	width:250px; 
+	height:800px;
+	border:1px solid orange;
+	float: left;
+
+}
+.community-context{
+
+	text-align:center;
+	width:800px; 
+	height:900px;
+	border:1px solid green;
+	float: left;
+
+}
+
+</STYLE>
+<div class='community-head'>
+
+
+</div>
+<div class='community-body'>
+	<div class='community-left'>
+		<table>
+			<tr>
+				<td>
+					<input type='button' value='내가쓴글' onclick="location.href='/board/board_write.php?mode=new&b_code=NOTICE'">
+					<input type='button' value='글쓰기' onclick="location.href='/board/board_write.php?mode=new&b_code=NOTICE'">
+				</td>
+			</tr>
+			<tr>
+				<td>홈</td>
+				<td>전체</td>
+			</tr>
+			<tr>
+				<th colspan='2'>OSI LOL정보</th>
+			</tr>
+			<tr>
+				<td colspan='2'>개발일기</td>
+			</tr>
+			<tr>
+				<td colspan='2'>유저 뉴스</td>
+			</tr>
+			<tr>
+				<td colspan='2'>팁과 노하우</td>
+			</tr>
+			<tr>
+				<th colspan='2'>커뮤니티</th>
+			</tr>
+			<tr>
+				<td colspan='2'>자유</td>
+			</tr>
+			<tr>
+				<td colspan='2'>유머</td>
+			</tr>
+			<tr>
+				<td colspan='2'>영상</td>
+			</tr>
+			<tr>
+				<td colspan='2'>팬아트</td>
+			</tr>
+		</table>
+	</div>
+	<div class='community-context'>
+			<form name='form1' action='board_ok.php' method='post'>
+			<input type='hidden' name='action_mode' value='<?= $a_mode ?>'>
+			<input type='hidden' name='b_code' value='<?= $b_code ?>'>
+			<input type='hidden' name='wmode_html' value='Y' >
+			<input type='hidden' name='useMail' >
+			<input type='hidden' name='usePhone'>
+			<input type='hidden' name='imgsavefolder' id='imgsavefolder' value="<?=$imgsavefolder?>" >
+			<table cellspacing="1" cellpadding="0" class="table-style2 basic-form">
+				<tr>
+					<th>제목</th>
+					<td colspan="3"><input type='text' name='board_subject' id='board_subject' size='20' value="<?=$data[USE_ID]?>" > </td>
+				 </tr>
+				<tr>
+					<th>작성자</th>
+					<td><input type='text' name='board_witer_name' id='board_witer_name' style="width:100px;" value="OSI LOL" > </td>
+					<th>작성일</th>
+					<td>
+					    <input type="text" id="endDt" name="board_date_day" value="<?=$gva_nowtime_t1?>" style="width:80px; cursor:pointer;" readonly />
+						<select name="board_date_h" style="width:50px;">
+<?
+	for($i=0; $i<24; $i++){
+		if($i == $gva_nowtime_h){ $selected = "selected"; }else{ $selected = ""; }
+		if($i < 10){ $show_i = "0".$i; }else{ $show_i = $i; }
+		echo "<option value=\"\" ".$selected.">".$show_i."</option>";
+	}
+?>
+						</select>
+						시
+						<input type='text' name='board_date_s' id='popup_subject' style="width:50px;" value="<?=$gva_nowtime_i?>" >분
+					</td>
+				</tr>
+				<tr>
+					<th>분류</th>
+					<td>
+						<select name="board_category">
+<?
+	for($i=0; $i<count($board_cate_array); $i++){
+/*
+		if($i == $gva_nowtime_h){ $selected = "selected"; }else{ $selected = ""; }
+		if($i < 10){ $show_i = "0".$i; }else{ $show_i = $i; }
+*/
+		echo "<option value=\"".$i."\" ".$selected.">".$board_cate_array[$i]."</option>";
+	}
+?>
+						</select>
+					</td>
+					<th>속성</th>
+					<td>
+						<label><input type="checkbox" name="board_notice" value="Y"> 공지</label>&nbsp;
+						<label><input type="checkbox" name="board_secret" value="Y"> 비밀글</label>
+					</td>
+				</tr>
+
+				<tr>
+					<th>내용</th>
+					<td colspan="3">
+						<textarea name='board_body' id="ir1"  rows="10" cols="100" style="width:100%; height:600px; display:none;"></textarea>
+					</td>
+				 </tr>
+
+				<tr>
+					<th>이미지</th>
+					<td colspan="3"><input type="file" name="file_thum" id="file_thum"></td>
+				 </tr>
+
+				<tr>
+					<th>youtube</th>
+					<td colspan="3"><input type='text' name='board_youtube' id='board_subject' size='20' value="<?=$data[USE_ID]?>" > </td>
+				 </tr>
+
+
+			</table>
+			<div class="submitBtnWrap">
+				<input type='button' style='color:black;' value='등록' onclick="submitContents(this);" class="submitBtn">
+				<input type='button' style='color:black;' value='목록' onclick="location.href='board_list.php?b_code=<?=$b_code?>'" class="listBtn">
+			</div>
+			</form>
+	</div>
+</div>			
+
+
+<script type="text/javascript">
+var oEditors = [];
+
+// 추가 글꼴 목록
+//var aAdditionalFontSet = [["MS UI Gothic", "MS UI Gothic"], ["Comic Sans MS", "Comic Sans MS"],["TEST","TEST"]];
+
+nhn.husky.EZCreator.createInIFrame({
+	oAppRef: oEditors,
+	elPlaceHolder: "ir1",
+	sSkinURI: "/<?=$smarteditor?>/SmartEditor2Skin.html?imgsavefolder=<?=$imgsavefolder?>",	
+	htParams : {
+		bUseToolbar : true,				// 툴바 사용 여부 (true:사용/ false:사용하지 않음)
+		bUseVerticalResizer : false,		// 입력창 크기 조절바 사용 여부 (true:사용/ false:사용하지 않음)
+		bUseModeChanger : true,			// 모드 탭(Editor | HTML | TEXT) 사용 여부 (true:사용/ false:사용하지 않음)
+		//aAdditionalFontList : aAdditionalFontSet,		// 추가 글꼴 목록
+		fOnBeforeUnload : function(){
+			//alert("완료!");
+		}
+	}, //boolean
+	fOnAppLoad : function(){
+		//예제 코드
+		//oEditors.getById["ir1"].exec("PASTE_HTML", ["로딩이 완료된 후에 본문에 삽입되는 text입니다."]);
+	},
+	fCreator: "createSEditor2"
+});
+
+function pasteHTML() {
+	var sHTML = "<span style='color:#FF0000;'>이미지도 같은 방식으로 삽입합니다.<\/span>";
+	oEditors.getById["ir1"].exec("PASTE_HTML", [sHTML]);
+}
+
+function showHTML() {
+	var sHTML = oEditors.getById["ir1"].getIR();
+	alert(sHTML);
+}
+	
+function submitContents(elClickedObj) {
+	oEditors.getById["ir1"].exec("UPDATE_CONTENTS_FIELD", []);	// 에디터의 내용이 textarea에 적용됩니다.
+	
+	// 에디터의 내용에 대한 값 검증은 이곳에서 document.getElementById("ir1").value를 이용해서 처리하면 됩니다.
+
+	try {
+
+		elClickedObj.form.submit();
+	} catch(e) {}
+}
+
+function setDefaultFont() {
+	var sDefaultFont = '궁서';
+	var nFontSize = 24;
+	oEditors.getById["ir1"].setDefaultFont(sDefaultFont, nFontSize);
+}
+</script>
+<?
+include "../layout/footer.php";
+?>

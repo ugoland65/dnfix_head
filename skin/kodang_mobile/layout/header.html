@@ -1,0 +1,52 @@
+<!DOCTYPE html>
+<html lang="ko">
+<head>
+
+	<title><?=$meta_title?></title>
+
+	<meta charset="utf-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, minimum-scale=1.0, user-scalable=no, target-densitydpi=medium-dpi" />
+
+	<!-- Chrome, Firefox OS and Opera -->
+	<meta name="theme-color" content="#4cca7e">
+	<!-- Windows Phone -->
+	<meta name="msapplication-navbutton-color" content="#4cca7e">
+	<!-- iOS Safari -->
+	<meta name="apple-mobile-web-app-capable" content="yes">
+	<meta name="apple-mobile-web-app-status-bar-style" content="#4cca7e">
+
+	<meta name="title" content="<?=$meta_title?>"/>
+	<meta name="description" content="<?=$meta_description?>"/>
+	<meta name="keywords" content="<?=$meta_keywords?>">
+
+	<meta property="og:site_name" content="<?=$meta_site_name?>" />
+	<meta property="og:type" content="website" />
+	<meta property="og:title" content="<?=$meta_title?>" />
+	<meta property="og:description" content="<?=$meta_description?>"" />
+	<meta property="og:image" content="<?=$og_image?>" />
+	<meta property="og:url" content="http://koedge.com" />
+
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="<?=$meta_title?>">
+	<meta name="twitter:description" content="<?=$meta_description?>">
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta http-equiv="content-style-type" content="text/css" />
+	<meta http-equiv="content-script-type" content="text/javascript" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+
+	<meta name="format-detection" content="telephone=no" />
+	<meta name="autocomplete" content="off">
+
+	<link rel="stylesheet" type="text/css" href="/dist/onadb_mobile/css/layout.css?v=<?=$check_time?>" />
+</head>
+<body>
+
+<header id="header">
+	<center id="logo"><a  href='/'><img src="/dist/onadb/img/header_logo.png" /></a></center>
+	<a class="header-btn menu" id="btn-menu"  onclick="showSide('left')"><i class="fa fa-bars"></i></a>
+	<a class="header-btn search" id="btn-search"><i class="fas fa-search"></i></a>
+	<a class="header-btn my" id="btn-my"  onclick="showSide('right')"><i class="fas fa-user"></i></a>
+</header>
+
+<div class="container">

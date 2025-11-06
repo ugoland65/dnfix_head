@@ -1,0 +1,459 @@
+<STYLE TYPE="text/css">
+.comparison-filter-box{ width:100%; border:1px solid #000 !important; box-sizing:border-box; }
+.comparison-filter-box table{ width:100%; }
+.comparison-filter-box table tr td{ border-bottom:1px solid #ddd; }
+.comparison-filter-box table tr td.name{ width:105px; height:30px; line-height:130%; box-sizing:border-box; background-color:#435e68; border-bottom:1px solid #334d57 !important; color:#fff; font-weight:bold; padding-left:20px; }
+.comparison-filter-box table tr td.name .count{ color:#28e0b7; font-weight:normal !important; font-size:11px; }
+.comparison-filter-box table tr td.val{ box-sizing:border-box; padding-left:10px;   }
+.comparison-filter-box table tr td.more{ width:50px; background-color:#f5f5f5; box-sizing:border-box; }
+.more-btn{ width:40px; height:40px;  line-height:40px; margin:0 auto; text-align:center; cursor:pointer; }
+.more-btn i{ font-size:15px; }
+.filter-wrap{  width:100%; overflow: hidden; border-right:1px solid #eee; }
+.filter-val{ float:left; width:20%; height:30px; line-height:30px; 
+ overflow: hidden;
+ text-overflow: ellipsis;
+ display: -webkit-box;
+ -webkit-line-clamp: 1; /* 라인수 */
+ -webkit-box-orient: vertical;
+ word-wrap:break-word; 
+}
+.filter-val i{ font-size:14px; color:#999; }
+.filter-val.tag-selected{ color:#2796e2; }
+.filter-val.tag-selected i{ color:#2796e2; }
+
+.comparison-list-topmenu-wrap{ width:100%; border-bottom:1px solid #000 !important; box-sizing:border-box; height:36px; margin-top:15px; }
+.comparison-list-topmenu{ }
+.comparison-list-topmenu ul{ width:180px; height:36px; line-height:36px; color:#eee; padding-left:15px; }
+.comparison-list-topmenu ul span{ color:#0093f2; font-weight:bold; }
+
+.comparison-list-sort-wrap{ width:100%; height:31px; margin-top:10px; }
+.comparison-list-sort{ display:table; height:31px; }
+.comparison-list-sort ul{ display:table-cell; height:31px; line-height:31px; padding-right:20px; color:#888; cursor:pointer; }
+.comparison-list-sort ul.active{ color:#000; font-weight:bold; }
+.comparison-list-sort ul.active i{ color:#0093f2; }
+.comparison-list-output{ display:table; }
+.comparison-list-output ul{ display:table-cell; }
+.comparison-list-output select{ height:31px; box-sizing:border-box; margin-right:5px; }
+
+.comparison-list { width:100%; font-size:0; }
+.comparison-list-ul{ width:25%; display:inline-block; box-sizing:border-box; margin-bottom:40px; }
+.comparison-list-box{ display:table; } 
+.comparison-list-box ul.img{ width:90px; display:table-cell; vertical-align:top; }
+.comparison-list-box ul.info{ display:table-cell; vertical-align:top; padding: 0 20px 0 0; box-sizing:border-box; }
+
+.thum{ width:80px; height:80px;  overflow:hidden; border:4px solid #000; }
+.thum .thum-icon{ width:76px; }
+.thum .thum-no-icon{ width:180px; margin-top:-45px; margin-left:-45px; }
+
+.pd-info{ padding-top:10px; }
+.pd-name{ font-family: 'Noto Sans KR', sans-serif;  font-size:14px; line-height:135%; }
+.pd-name a{ color:#f5f5f5; }
+.pd-brand-info{ padding-top:5px; line-height:120%;  }
+.pd-brand-info a{ color:#798499; }
+
+.pd-shorttext{ padding:5px 0 0 0 !important; line-height:120%; color:#888; }
+.pd-tag{ margin-top:15px; }
+.pd-review-info{  margin-top:15px;  }
+.pd-price{ margin-top:10px; width:100%; color:#1996ec; }
+.pd-price span.price{ font-family: 'Noto Sans KR', sans-serif;  font-size:18px; font-weight:700; }
+.pd-comparison{ width:100px; height:34px; line-height:28px; background-color:#3598dc; border:1px solid #3598dc; border-radius:5px; text-align:center; color:#fff; }
+.pd-comparison span.count{ font-family: 'Noto Sans KR', sans-serif;  font-size:16px; font-weight:700;  }
+.on-star{ color:#fb4700;  }
+.off-star{ color:#999; }
+
+
+#comparison_filter_box_wrap{ width:100%; position:relative; box-sizing:border-box; margin:0 !important; padding:0 !important; }
+#comparison_filter_box_loading{ width:100%; height:100%; position:absolute; box-sizing:border-box; top:0; left:0; text-align:center; padding:60px 0 0 0 !important; margin:0 !important; background-color: rgba( 255, 255, 255, 0.5 ); z-index:99999; display:none; }
+#comparison_filter_box_loading img{ width:50px; } 
+
+#comparison_list_wrap{ width:100%; position:relative; box-sizing:border-box; margin:0 !important; padding:0 !important;  }
+#comparison_loading{ width:100%; height:100%; position:absolute; box-sizing:border-box; top:0; left:0; text-align:center; padding:100px 0 0 0 !important; margin:0 !important; background-color: rgba( 255, 255, 255, 0.5 ); z-index:99999; display:none; }
+#comparison_loading img{ width:100px; } 
+#comparison_list{ z-index:99990; }
+
+#selected_menu_td{ display:none; }
+.selected-ct-wrap{}
+.selected-ct-wrap li{ height:24px; line-height:24px; margin-right:10px; float:left; }
+.selected-ct-wrap li img{ cursor:pointer; }
+
+#brand_list_full{ display:none; }
+
+.comparison-list-pageing{ margin-top:10px; }
+
+.this-page-title{ height:40px; line-height:40px; font-family: 'Noto Sans KR', sans-serif;  font-size:20px;  }
+
+.img-blur{
+<?
+if( $_sess_id ){
+?>
+	border:1px solid #ddd;
+<? }else{ ?>
+
+	-webkit-filter:blur(2px) !important;
+	-moz-filter:blur(2px) !important;
+	-o-filter:blur(2px) !important;
+	-ms-filter:blur(2px) !important;
+	filter:blur(2px)!important;
+
+<? } ?>
+}
+</STYLE>
+
+<div class="this-page-title display-none">
+	<?=$_this_page_title?>
+</div>
+
+
+<div id="comparison_filter_box_wrap" class="display-none">
+	<div id="comparison_filter_box_loading"><img src="/skin/kodang/img/q49521347511.gif" alt=""></div>
+	<div class="comparison-filter-box display-table">
+		<table>
+		<?
+			for($a=0;$a<count($_ary_two_depth_idx);$a++){
+				$_view1_tg_idx = $_ary_two_depth_idx[$a];
+				$_view1_tg_name = $_ary_two_depth_name[$a];
+		?>
+			<tr>
+				<td class="name"><?=$_view1_tg_name?><br><span class="count"><? if(count(${"_ary_three_depth_".$_view1_tg_idx."_idx"}) > 5 ){ ?>( <?=count(${"_ary_three_depth_".$_view1_tg_idx."_idx"})?> )<? } ?></span></td>
+				<td class="val">
+					<div class="filter-wrap">
+						<?
+							for($i=0;$i<count(${"_ary_three_depth_".$_view1_tg_idx."_idx"});$i++){
+								$_view2_tg_idx = ${"_ary_three_depth_".$_view1_tg_idx."_idx"}[$i];
+								$_view2_tg_name = ${"_ary_three_depth_".$_view1_tg_idx."_name"}[$i];
+						?>
+								<div class="filter-val" id="tag_<?=$_view2_tg_idx?>" val="<?=$_view2_tg_idx?>">
+									<label onclick="selectCheck('tag','<?=$_view2_tg_idx?>');"><i class="far fa-square"></i> <span><?=$_view2_tg_name?></span></label>
+								</div>
+						  <? } ?>
+					</div>
+				</td>
+				<td class="more">
+					<!-- <div class="more-btn"><i class="fas fa-plus"></i></div> -->
+				</td>
+			</tr>
+		<? } ?>
+			<tr>
+				<td class="name">브랜드<br><span class="count"><? if( count($_ary_brand_idx) > 5 ){ ?>( <?=count($_ary_brand_idx)?> )<? } ?></span></td>
+				<td class="val brand-val">
+					<div class="filter-wrap" id="brand_list_short">
+					<?
+						for ($i=0; $i<$_show_brand_for_count; $i++){
+					?>
+						<div class="filter-val" id="brand_idx_<?=$_ary_brand_idx[$i]?>" val="<?=$_ary_brand_idx[$i]?>">
+							<label onclick="selectCheck('brand_idx','<?=$_ary_brand_idx[$i]?>');"><i class="far fa-square"></i> <span><?=$_ary_brand_name[$i]?></span></label>
+						</div>
+					<? } ?>
+					</div>
+					<div class="filter-wrap" id="brand_list_full">
+					<?
+						for ($i=10; $i<count($_ary_brand_idx); $i++){
+					?>
+						<div class="filter-val" id="brand_idx_<?=$_ary_brand_idx[$i]?>" val="<?=$_ary_brand_idx[$i]?>">
+							<label onclick="selectCheck('brand_idx','<?=$_ary_brand_idx[$i]?>');"><i class="far fa-square"></i> <span><?=$_ary_brand_name[$i]?></span></label>
+						</div>
+					<? } ?>
+					</div>
+				</td>
+				<td class="more">
+					<? if( count($_ary_brand_idx) > 10 ){ ?><div class="more-btn" onclick="brandMore()"><i id="brand_more_btn" class="fas fa-plus"></i></div><? } ?>
+				</td>
+			</tr>
+<!-- 
+			<tr>
+				<td class="name">시리즈</td>
+				<td class="val">
+				</td>
+				<td class="more">
+				</td>
+			</tr>
+ -->
+			<tr>
+				<td class="name">가격</td>
+				<td class="val">
+					<div class="filter-wrap" id="price_interval">
+<?
+if($_tg_code == "REALDOLL"){
+?>
+						<div class="filter-val" id="price_interval_a"><label onclick="selectPriceCheck('below', 0, 2000000, 'price_interval_a')"><i class="far fa-square"></i> <span>200만원 이하</span></label></div>
+						<div class="filter-val" id="price_interval_b"><label onclick="selectPriceCheck('interval', 2000000, 2350000, 'price_interval_b')"><i class="far fa-square"></i> <span>200만원~235만원</span></label></div>
+						<div class="filter-val" id="price_interval_c"><label onclick="selectPriceCheck('interval', 2350000, 2650000, 'price_interval_c')"><i class="far fa-square"></i> <span>235만원~265만원</span></label></div>
+						<div class="filter-val" id="price_interval_d"><label onclick="selectPriceCheck('interval', 2650000, 3000000, 'price_interval_d')"><i class="far fa-square"></i> <span>265만원~300만원</span></label></div>
+						<div class="filter-val" id="price_interval_e"><label onclick="selectPriceCheck('over',3000000 ,0, 'price_interval_e')"><i class="far fa-square"></i> <span>300만원 이상</span></label></div>
+<? }else{ ?>
+						<div class="filter-val" id="price_interval_a"><label onclick="selectPriceCheck('below', 0, 20000, 'price_interval_a')"><i class="far fa-square"></i> <span>2만원 이하</span></label></div>
+						<div class="filter-val" id="price_interval_b"><label onclick="selectPriceCheck('interval', 20000, 50000, 'price_interval_b')"><i class="far fa-square"></i> <span>2만~5만원</span></label></div>
+						<div class="filter-val" id="price_interval_c"><label onclick="selectPriceCheck('interval', 50000, 100000, 'price_interval_c')"><i class="far fa-square"></i> <span>5만원~10만원</span></label></div>
+						<div class="filter-val" id="price_interval_d"><label onclick="selectPriceCheck('over',100000 ,0, 'price_interval_d')"><i class="far fa-square"></i> <span>10만원 이상</span></label></div>
+<? } ?>
+					</div>
+				</td>
+				<td class="more">
+					<!-- <div class="more-btn"><i class="fas fa-plus"></i></div> -->
+				</td>
+			</tr>
+
+			<tr id="selected_menu_td">
+				<td class="name"><b>선택조건</b></td>
+				<td class="val" colspan="2">
+					<div id="selected_menu">
+					</div>
+				</td>
+			</tr>
+
+		</table>
+
+	</div>
+</div>
+
+
+<div id="comparison_list_wrap">
+	<div id="comparison_loading"><img src="/skin/kodang/img/q49521347511.gif" alt=""></div>
+	<div id="comparison_list"></div>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var tg_code = "<?=$_tg_code?>";
+
+var brand_list_idx = new Array();
+var tag_idx = new Array();
+var selected_idx = new Array();
+
+var price_interval = "";
+var price_interval_s = "";
+var price_interval_e = "";
+
+var brand_list_mode = "short";
+var sort_mode = "launch";
+var view_list_num = "40";
+
+function showList(pn, action){
+
+	$('#comparison_loading').show(); 
+
+	if( pn== "" ) pn ="1";
+
+	var tag_array = "";
+	var brand_array = "";
+
+	var arrayTag = null;
+	var arrayBrand = null;
+	var arraySelected = null;
+
+	if( selected_idx.length > 0 ){
+		for( i=0; i<tag_idx.length; i++ ){
+			arrayTag = tag_idx[i];
+			if(i!=0){ tag_array += ","; }
+			tag_array += arrayTag.idx;
+		}
+		for( i=0; i<brand_list_idx.length; i++ ){
+			arrayBrand = brand_list_idx[i];
+			if(i!=0){ brand_array += ","; }
+			brand_array += arrayBrand.idx;
+		}
+		var selected_ct = "<div class='selected-ct-wrap'>";
+		for( i=0; i<selected_idx.length; i++ ){
+			arraySelected = selected_idx[i];
+			if(arraySelected.mode=="price_interval"){
+				selected_ct += "<li>"+arraySelected.name+" <img src='/skin/kodang/img/del_btn.gif' onclick=\"selectPriceCheck('"+arraySelected.mode+"','"+price_interval_s+"','"+price_interval_e+"','"+arraySelected.idx+"')\"></li>";
+			}else{
+				selected_ct += "<li>"+arraySelected.name+" <img src='/skin/kodang/img/del_btn.gif' onclick=\"selectCheck('"+arraySelected.mode+"','"+arraySelected.idx+"')\"></li>";
+			}
+		}
+/*
+		selected_ct += "<br><br><br>";
+		selected_ct += tag_array;
+		selected_ct += "<br><br><br>";
+		selected_ct += brand_array;
+		selected_ct += "<br><br><br>";
+*/
+		selected_ct += "</div>";
+		$("#selected_menu").html(selected_ct);
+		$("#selected_menu_td").show();
+	}else{
+		tag_array = "";
+		brand_array = "";
+		$("#selected_menu_td").hide();
+	}
+
+	$.ajax({
+		url: "ajax.list.php",
+		data: {
+			"tg_code":tg_code,
+			"tag":tag_array,
+			"brand":brand_array,
+			"price_interval":price_interval,
+			"price_interval_s":price_interval_s,
+			"price_interval_e":price_interval_e,
+			"sort_mode":sort_mode,
+			"view_list_num":view_list_num,
+			"pn":pn
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comparison_list').html(getdata);
+			$('#comparison_filter_box_loading').hide();
+			$('#comparison_loading').hide();
+		},
+		error: function(){
+		}
+	});
+	//alert($('.comparison-list-topmenu-wrap').position().top);
+
+	if( action=="paging"){
+		$('html, body').animate({scrollTop: $('#comparison_list_wrap').position().top}, 680);
+	}
+
+}
+
+showList('');
+
+
+function selectPriceCheck(mode, sp, ep, id){
+	$('#comparison_filter_box_loading').show();
+
+	if( $("#"+id).attr("class") == "filter-val tag-selected" ){
+		price_interval = "";
+		price_interval_s = "";
+		price_interval_e = "";
+
+		$("#"+id).attr("class", "filter-val");
+		$("#"+id+" i").attr("class", "far fa-square");
+	}else{
+		price_interval = mode;
+		price_interval_s = sp;
+		price_interval_e = ep;
+
+		$("#price_interval div.filter-val").each(function(){
+			$(this).attr("class", "filter-val");
+			$("i",this).attr("class", "far fa-square");
+		});
+		$("#"+id).attr("class", "filter-val tag-selected");
+		$("#"+id+" i").attr("class", "fas fa-check-square");
+	}
+
+	arraySelectedCheck('price_interval', id);
+	showList();
+}
+
+
+function selectCheck(mode, id){
+	$('#comparison_filter_box_loading').show();
+	if( $("#"+ mode +"_"+id).attr("class") == "filter-val tag-selected" ){
+		$("#"+ mode +"_"+id).attr("class", "filter-val");
+		$("#"+ mode +"_"+id+" i").attr("class", "far fa-square");
+	}else{
+		$("#"+ mode +"_"+id).attr("class", "filter-val tag-selected");
+		$("#"+ mode +"_"+id+" i").attr("class", "fas fa-check-square");
+	}
+	if( mode == "tag" ){
+		var ck_tag_idx = null;
+		var ck = 0;
+		for( i=0; i<tag_idx.length; i++ ){
+			ck_tag_idx = tag_idx.shift();
+			if( ck_tag_idx.idx == id ){
+				ck = 1;
+			}else{
+				tag_idx.push(ck_tag_idx);
+			}
+		}
+		if( ck == 0 ){
+			ck_tag_idx = new arrayMake( id, $("#tag_"+id+" span").html(), "tag");
+			tag_idx.push(ck_tag_idx);
+		}
+	} else if( mode == "brand_idx" ){
+		var ck_brand_list_idx = null;
+		var ck = 0;
+		for( i=0; i<brand_list_idx.length; i++ ){
+			ck_brand_list_idx = brand_list_idx.shift();
+			if( ck_brand_list_idx.idx == id ){
+				ck = 1;
+			}else{
+				brand_list_idx.push(ck_brand_list_idx);
+			}
+		}
+		if( ck == 0 ){
+			ck_brand_list_idx = new arrayMake( id, $("#brand_idx_"+id+" span").html(), "brand_idx");
+			brand_list_idx.push(ck_brand_list_idx);
+		}
+	}
+	
+	arraySelectedCheck(mode, id);
+	showList();
+}
+
+function arraySelectedCheck(mode, id) {
+
+	if( mode == "price_interval" ){
+		var saveName = $("#"+id+" span").html();
+	}else{
+		var saveName = $("#"+mode+"_"+id+" span").html();
+	}
+
+		var ck_selected_idx = null;
+		var ck = 0;
+		for( i=0; i<selected_idx.length; i++ ){
+			ck_selected_idx = selected_idx.shift();
+
+			if( mode == "price_interval" && ck_selected_idx.mode == "price_interval" ){
+				if( ck_selected_idx.idx == id ){
+					ck = 1;
+				}else{
+				}
+/*
+				ck = 1;
+				ck_selected_idx.idx = id;
+				ck_selected_idx.name = saveName;
+				ck_selected_idx.mode = "price_interval";
+				selected_idx.push(ck_selected_idx);
+*/
+			}else if( ck_selected_idx.idx == id && ck_selected_idx.mode == mode ){
+				ck = 1;
+			}else{
+				selected_idx.push(ck_selected_idx);
+			}
+
+		}
+		if( ck == 0 ){
+			ck_selected_idx = new arrayMake( id, saveName, mode);
+			selected_idx.push(ck_selected_idx);
+		}
+}
+
+function arrayMake( idx, name, mode ) {
+	this.idx =	idx;
+	this.name =	name;
+	this.mode =	mode;
+}
+
+function listSort(mode){
+	sort_mode = mode;
+	showList();
+}
+
+function listNum(num){
+	view_list_num = num;
+	showList();
+}
+
+function brandMore(){
+	if( brand_list_mode == "short" ){
+		//$("#brand_list_short").hide();
+		$("#brand_list_full").show();
+		brand_list_mode ="full";
+		$("#brand_more_btn").attr("class", "fas fa-minus"); 
+		$(".brand-val").css({'background-color':'#f5f5f5' }); 
+		
+	}else{
+		//$("#brand_list_short").show();
+		$("#brand_list_full").hide();
+		brand_list_mode ="short";
+		$("#brand_more_btn").attr("class", "fas fa-plus");
+		$(".brand-val").css({'background-color':'#ffffff' }); 
+	}
+}
+
+//--> 
+</script>

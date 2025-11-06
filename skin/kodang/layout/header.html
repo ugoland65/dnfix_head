@@ -1,0 +1,271 @@
+<!doctype html>
+<html lang="ko">
+<head>
+
+	<title><?=$meta_title?></title>
+
+	<meta name="title" content="<?=$meta_title?>"/>
+	<meta name="subject" content="<?=$meta_title?>"/>
+	<meta name="description" content="<?=$meta_description?>"/>
+	<meta name="keywords" content="<?=$meta_keywords?>">
+
+	<meta property="og:site_name" content="<?=$meta_site_name?>" />
+	<meta property="og:type" content="website">
+	<meta property="og:title" content="<?=$meta_title?>">
+	<meta property="og:image" content="<?=$meta_image?>"/>
+	<meta property="og:description" content="<?=$meta_description?>">
+	<meta property="og:url" content="<?=$meta_url?>">
+
+	<meta name="twitter:card" content="summary">
+	<meta name="twitter:title" content="<?=$meta_title?>">
+	<meta name="twitter:description" content="<?=$meta_description?>">
+
+<!-- 
+	<meta name="twitter:image" content="http://www.mysite.com/article/article1.html">
+	<meta name="twitter:domain" content="사이트 명">
+	<link rel="canonical" href="http://www.mysite.com/article/article1.html">
+ -->
+
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta http-equiv="content-style-type" content="text/css" />
+	<meta http-equiv="content-script-type" content="text/javascript" />
+	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
+	<meta http-equiv="imagetoolbar" content="no" />
+	<meta name="format-detection" content="telephone=no">
+<!-- 
+	<meta name="viewport" content="width=1150" />
+ -->
+
+
+	<link rel="shortcut icon" href="/favicon.ico?v2" />
+	<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/css/common.css?ver=<?=$check_time?>" />
+	<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/css/layout.css?ver=<?=$check_time?>" />
+
+	<script src="/front/js/d3.js"></script>
+	<script src="/front/js/d3.min.js"></script>
+
+	<script src="/plugins/jquery/jquery-1.11.1.min.js"></script>
+
+	<!-- jqueryui -->
+	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
+	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
+
+	<script src="/front/js/common.js?ver=<?=$check_time?>"></script>
+
+	<script src="https://kit.fontawesome.com/1bf24fd3f6.js" crossorigin="anonymous"></script>
+
+	<!-- bootstrap -->
+	<!-- 합쳐지고 최소화된 최신 CSS -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+	<!-- 부가적인 테마 -->
+	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+	<!-- 합쳐지고 최소화된 최신 자바스크립트 -->
+	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+
+<STYLE TYPE="text/css">
+@import url('https://fonts.googleapis.com/css?family=Noto+Sans+KR:100,300,400,500,700,900&display=swap');
+</STYLE>
+
+<!-- Global site tag (gtag.js) - Google Analytics -->
+<script async src="https://www.googletagmanager.com/gtag/js?id=UA-153859920-1"></script>
+<script>
+  window.dataLayer = window.dataLayer || [];
+  function gtag(){dataLayer.push(arguments);}
+  gtag('js', new Date());
+
+  gtag('config', 'UA-153859920-1');
+</script>
+
+<!-- 구글 애드센스 -->
+<script async src="//pagead2.googlesyndication.com/pagead/js/adsbygoogle.js"></script>
+<script>
+  (adsbygoogle = window.adsbygoogle || []).push({
+    google_ad_client: "ca-pub-7649668915592259",
+    enable_page_level_ads: true
+  });
+</script>
+
+<script type="text/javascript"> 
+<!-- 
+var ws_user_id = "<?=$_sess_id?>";
+//--> 
+</script> 
+
+</head>
+<body>
+
+<!-- 
+<div id="ajax_loading_background">
+	<div id="ajax_loading">
+		<ul id="ajax_loading_img"><img src="/bboo/skin/basic_front/img/q49521347511.gif" alt=""></ul>
+		<ul id="ajax_loading_msg">등록중 입니다.<br>잠시만 기다려 주세요.</ul>
+	</div>
+</div>
+ -->
+
+<STYLE TYPE="text/css">
+#popup_background{ width:100%; height:100%; position:fixed; top:0; left:0; background-color: rgba( 0, 0, 0, 0.5 ); display:none; z-index:2147483647; vertical-align: middle;}
+#popup_wrap{ background-color:#fff; box-sizing:border-box; position: absolute; top:50%; left:50%; }
+#popup_header{ width:100%; height:45px; background-color:#575c67; color:#fff; display:table; box-sizing:border-box; padding:5px; }
+#popup_header ul{ margin:0 !important; height:45px;  padding:0 !important; display:table-cell; vertical-align:middle; }
+#popup_header ul h1{ margin:0 0 0 10px !important; padding:0 !important; font-family: 'Noto Sans KR', sans-serif;  font-size:20px; }
+#popup_body{ display:none; height:calc(100% - 45px); overflow-y:scroll; }
+#popup_body_iframe{ display:none; }
+
+/* 바디에 스크롤 막는 방법 */
+.not_scroll{
+    position: fixed;
+    overflow: hidden;
+    width: 100%;
+    height: 100%
+}
+</STYLE>
+
+<div id="popup_background">
+	<div id="popup_wrap">
+		<div id="popup_header">
+			<ul><h1 id="popup_title"></h1></ul>
+			<ul class="text-right"><button type="button" class="btn btn-primary" onclick="closedPopup()">창닫기 </button></ul>
+		</div>
+		<div id="popup_body"></div>
+		<div id="popup_body_iframe"></div>
+		<div id="popup_footer"></div>
+	</div>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+	showPopup=function(w, h, mode){
+/*
+		var spWidth = ($(window).width() - (w*1))/2;
+        var spHeight = ($(window).height() - (h*1))/2;
+*/
+		//스크롤 금지하기
+		$("html, body").addClass("not_scroll");
+
+		var spWidth = (w*1)/2;
+        var spHeight = (h*1)/2;
+        $('#popup_wrap').css({'width':w+'px', 'height':h+'px', 'margin-top':'-'+spHeight+'px', 'margin-left':'-'+spWidth+'px'}).show();
+
+		$("#popup_background").fadeTo("300",1 ,function(){
+
+			if( mode == "ajax" ){
+				$('#popup_body').show().scrollTop(0); 
+			}else{
+				$('#popup_body_iframe').show();
+				$('#popup_body_iframe').css({'width':w+'px', 'height':h+'px', 'top':spHeight+'px', 'left':spWidth+'px'});
+			}
+		});
+	};
+
+	closedPopup=function(){
+
+		//스크롤 허용
+		$("html, body").removeClass("not_scroll");
+
+		$('#popup_body_iframe').hide();
+		$('#popup_body').hide();
+		$('#popup_body').html('');
+		$("#popup_background").hide();
+/*
+		$("#back_mask").fadeTo("300",0 ,function(){
+			$('#popup_iframe').hide();
+			$('#popup_layer').hide();
+			$(this).hide();
+		});
+*/
+	};
+	//showPopup('650','700','ajax');
+//--> 
+</script> 
+
+<script type="text/javascript"> 
+<!-- 
+function headerSearch(){
+
+	var searchText = $("#header_search_text").val();
+
+	if( searchText == "" ||  searchText == null ){
+		$('#modal_alert_msg').html("검색어를 입력해주세요!");
+		$('#modal-alert').modal({show: true,backdrop:'static'});
+		return false;
+	}
+/*
+	$("#a_mode").val("doSearch");
+	$("#header_search_form").attr("action", "/front/comparison/search.php");
+	$("#header_search_form").submit();
+*/
+	location.href="/front/comparison/search.php?search_text="+searchText;
+
+}
+//--> 
+</script> 
+
+<div id="header">
+	<div class="header-top-wrap">
+		<div class="header-top display-table">
+			<ul class="display-table-cell">
+			</ul>
+			<ul class="display-table-cell header-top-right">
+				<li class="float-left">코엣지닷컴 - 국내최초 성인용품 오나홀 DB & 가격비교</li>
+<? if( $_sess_id ){ ?>
+				<li class="float-right"><b><?=$_user_nick?></b>님 접속중 <button type="submit" class="basic-btn basic-btn-gray basic-btn-sm" onclick='doLogout();'><i class="fas fa-sign-out-alt"></i> 로그아웃</button></li>
+<? }else{ ?>
+				<li class="float-right"><a href="<?=_PATH_JOIN?>">회원가입</a></li>
+				<li class="float-right">|</li>
+				<li class="float-right"><a href='#' onclick='doLogin();'>로그인</a></li>
+<? } ?>
+
+			</ul>
+		</div>
+	</div> 
+	<div class="header-logo-wrap">
+		<div class="header-logo"><a href='/'><img src="/skin/<?=$show_skin_name?>/img/logo2.jpg?v=2" alt=""></a></div>
+		<div class="header-search">
+			<ul>
+				<form id="header_search_form" method='POST'>
+				<input type='hidden' name='a_mode' id='a_mode' >
+				<input type="text" id="header_search_text" name="search_text" value="<?=$_search_text?>" onkeypress="if(event.keyCode==13){ headerSearch(); return false; }">
+				</form>
+			</ul>
+			<ul class="header-search-btn"><button onclick="headerSearch()"><i class="fas fa-search"></i></button></ul>
+		</div>
+	</div> 
+
+	<div class="gnb-wrap">
+		<div class="gnb">
+			<ul class="gnb-menu">
+				<!-- <li class=""><a href="/front/comparison/list.php?tg_code=REALDOLL">리얼돌</a></li> -->
+				<li class="point "><a href="/front/comparison/list.php">오나홀 가격비교</a></li>
+				<!-- <li class=""><a href="/front/comparison/list.php?tg_code=WOMAN">여성용품</a></li> -->
+				<li class=""><a href="/front/comparison/comment.php">상품 한줄평</a></li>
+				<li class=""><a href="/front/brand/brand_list.php">브랜드/메이커</a></li>
+				<li class=""><a href="/front/site/site_list.php">판매몰 정보</a></li>
+				<li class=""><a href="/front/board/list.php?b_code=COLUMN">매거진/신작/뉴스</a></li>
+				<!-- <li class=""><a href="/front/board/list.php?b_code=FREE">자유게시판</a></li> -->
+				<li class=""><a href="/front/board/list.php?b_code=free_market">프리마켓</a></li>
+				<li class=""><a href="/front/board/list.php?b_code=notice">공지사항</a></li>
+				<!-- <li class="display-table-cell">FAQ</li> -->
+
+			</ul>
+			<ul class="gnb-all-btn-wrap"><i class="fas fa-bars"></i></ul>
+		</div>
+	</div>
+
+</div><!-- #header  -->
+
+<script type='text/javascript'>
+function doLogin(){
+	location.href='<?=_PATH_LOGIN?>?returnUrl=<?=$check_request_uri_urlencode?>';
+}
+
+function doLogout(){
+	location.href='<?=_PATH_LOGOUT?>?returnUrl=<?=$check_request_uri_urlencode?>';
+}
+</script> 
+
+	<div id="contents_wrap">
+
+<div id="sub_layout">
+
+	<div id="sub_layout_body">

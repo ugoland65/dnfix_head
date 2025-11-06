@@ -1,0 +1,914 @@
+<STYLE TYPE="text/css">
+.comparison-wrap{ padding-bottom:15px; }
+.comparison-info{ margin-top:10px; border-bottom:2px solid #0e2a4f;  }
+.comparison-info ul{ margin:0 !important; padding:0 !important; }
+.pd-name{ height:30px; line-height:30px; font-family: 'Noto Sans KR', sans-serif;  font-size:24px; color:#000; }
+.pd-name-og{ height:26px; line-height:26px; color:#888; }
+
+.pd-info-div{}
+.pd-info-div ul{ height:20px; line-height:20px; }
+
+.comparison-pd{ width:100%; margin-top:10px; }
+.comparison-pd .img{ width:330px; }
+.comparison-pd .img img{  }
+.comparison-pd-wrap{ width:300px; }
+
+.img-box{ width:302px; height:302px; border:1px solid #ddd; overflow:hidden; }
+.img-blur{
+<?
+if( $_sess_id ){
+?>
+	
+<? }else{ ?>
+
+	-webkit-filter:blur(2px) !important;
+	-moz-filter:blur(2px) !important;
+	-o-filter:blur(2px) !important;
+	-ms-filter:blur(2px) !important;
+	filter:blur(2px)!important;
+
+<? } ?>
+}
+
+.min-price-box{ width:100%; }
+.min-price-name{ font-family: 'Noto Sans KR', sans-serif;  font-size:14px; color:#000;  }
+.min-price-wrap{ color:#0097fa; margin-top:9px; }
+.min-price{ font-family: 'Noto Sans KR', sans-serif;  font-size:22px;  font-weight:700; }
+.comparison-site-title{ margin-top:10px; height:24px; line-height:24px; font-family: 'Noto Sans KR', sans-serif;  font-size:14px; font-weight:700; color:#000; }
+.comparison-site{ width:100%; border:1px solid #ddd; box-sizing:border-box; border-radius:5px; margin-top:5px; padding:5px; }
+.comparison-site table{ width:100%; }
+.comparison-site table tr td { height:28px; line-height:120%; text-align:center; border:1px solid #eee !important; box-sizing:border-box; }
+
+.comparison-site .site-price{ width:80px; padding-right:5px; }
+.comparison-site .site-delivery{ width:60px; padding-right:5px; }
+.comparison-site .site-etc{ width:110px; font-size:11px; }
+.comparison-site .comparison-site-link{ width:66px; padding:3px 0 !important; }
+
+.comparison-view-tap-wrap{ width:100%; /* border-bottom:2px solid #0e2a4f; */ box-sizing:border-box; height:38px;  }
+.comparison-view-tap{ display:table;   }
+.comparison-view-tap ul{ cursor:pointer !important; display:table-cell; width:130px; height:37px; border-top:1px solid #e5e6e8 !important;  border-right:1px solid #e5e6e8 !important; text-align:center; }
+
+.comparison-view-tap ul a { overflow:hidden; display:inline-block; width:100%; height:37px; line-height:37px; text-align:center; vertical-align:middle; white-space:nowrap; text-overflow:ellipsis;  box-sizing:border-box; padding:0 !important; background-color:#f1f2f4 !important; color:#333; }
+.comparison-view-tap ul.active a,
+.comparison-view-tap ul.all-active a{ background-color:#0e2a4f !important; color:#ffff;  }
+
+.comparison-view-tap ul.active{ background-color:#0e2a4f !important; color:#ffff;  }
+.comparison-view-site-count{ color:#ff4842; }
+
+.comparison-view-list{ width:100%; }
+.comparison-view-list table{ width:100%; }
+
+.comparison-title{ height:40px; font-family: 'Godo', sans-serif; font-size:18px; box-sizing:border-box;  padding-top:15px; margin:0 !important; border-top:2px solid #0e2a4f; }
+/* .comparison-title.frist{ border-top:none !important; } */
+.comparison-review-point{ width:100%; background-color:#f7fafc; border:1px solid #eaedef; box-sizing:border-box; display:table; padding:20px; }
+.comparison-review-point ul{ box-sizing:border-box; vertical-align:top; }
+.crp-section{ width:100%;}
+.crp-section-name{  font-family: 'Noto Sans KR', sans-serif;  font-size:16px; color:#000; font-weight:500; text-align:center; }
+.crp-section-score-icon{ text-align:center; margin-top:25px;  }
+.crp-section-score-icon i { font-size:22px;  }
+.crp-section-score-icon .on{ color:#f84a44; }
+.crp-section-score-icon .off{ color:#ddd; }
+.crp-section-score{ margin-top:20px; text-align:center; font-family: 'Noto Sans KR', sans-serif;  font-weight:700; font-size:18px; color:#ddd; }
+.crp-section-score span{ color:#000; }
+.crp-section-icon{ text-align:center; margin-top:20px; color:#ccc; font-size:30px; }
+.crp-section-count{ margin-top:15px; text-align:center; font-family: 'Noto Sans KR', sans-serif;  font-weight:700; font-size:18px; color:#000; }
+
+.comparison-review-list{ width:100%; padding:10px 0 10px 6px; border-bottom:1px solid #f1f1f1 !important; box-sizing:border-box;  }
+.comparison-review-list ul{ width:100%; }
+.comparison-review-list .fas.fa-star.on{ color:#f84a44; }
+.comparison-review-list .far.fa-star.off{ color:#ddd; }
+.comparison-review-list .grade-icon{  font-size:18px; }
+.comparison-review-list .grade-text{  font-size:18px; color:#000;  }
+.review-contents{ padding:3px 15px 0 0 ; box-sizing:border-box; }
+.review-contents-subject{ height:24px; line-height:24px; font-family: 'Noto Sans KR', sans-serif;  font-size:16px; color:#000; font-weight:500; margin-bottom:5px; 
+ overflow: hidden;
+ text-overflow: ellipsis;
+ display: -webkit-box;
+ -webkit-line-clamp: 1; /* 라인수 */
+ -webkit-box-orient: vertical;
+ word-wrap:break-word; 
+}
+.review-contents-body{ color:#666; 
+width:670px;
+line-height:140%;
+ overflow: hidden;
+ text-overflow: ellipsis;
+ display: -webkit-box;
+ -webkit-line-clamp: 4; /* 라인수 */
+ -webkit-box-orient: vertical;
+ word-wrap:break-word; 
+}
+
+.review-img { width:100px; }
+.review-img img { width:98px; border:1px solid #ddd; }
+.comparison-review-pageing{ margin-top:10px; }
+.comparison-review-btn{ margin:10px 0 20px 0; text-align:center; }
+
+.comparison-comment-pageing{ margin:10px 0 20px 0; }
+
+.fixed-menu{
+	position:fixed;
+	top:0; left:0;
+	width:100%; height:100px; background-color:#fff; border-bottom:2px solid #0e2a4f; box-sizing:border-box; 
+	display:none;
+	z-index:99;
+}
+
+.fixed-menu-wrap{ width:1100px; margin:0 auto; }
+.fixed-menu-pd-info{ height:60px; box-sizing:border-box; padding:5px 0 0 0; }
+.fixed-menu-pd-img img{ height:50px; }
+.fixed-menu-pd-info-name{ height:26px; line-height:26px; font-family: 'Noto Sans KR', sans-serif; font-weight:700; font-size:15px; color:#000;  }
+.fixed-menu-pd-info-price{ font-family: 'Noto Sans KR', sans-serif; font-weight:700; font-size:13px; color:#ff0000; }
+.sc-m-icon{ width:50px; height:50px; padding:0 !important; margin:0 !important; border:1px solid #ccc !important; border-radius:50%; overflow:hidden; box-sizing:border-box; background-size:100% 100%; }
+
+.comparison-comment{ background-color:#f7fafc; border:1px solid #eaedef; box-sizing:border-box; }
+.comparison-comment-wrap{ width:100%; border-bottom:1px solid #eaedef; display:table; }
+.comparison-comment-wrap ul{ vertical-align:top; }
+.comment-list-m-icon{ width: 60px; padding:10px 8px 10px 15px;  }
+.comment-list-body{ padding:15px 0 10px 5px; }
+.comment-list-btn{ width:150px; text-align:right; vertical-align:middle !important; padding-right:10px; box-sizing:border-box;   }
+
+.clb-wrap-info-name{ font-size:12px; color:#999; margin-right:10px; }
+.micon-i{ margin-right:2px; }
+.clb-wrap-info-date{ font-size:11px; color:#999999; }
+.clb-wrap-body{ margin-top:5px !important; margin-bottom:10px !important; line-height:140%; }
+.clbtn-wrap{ width:100%; height:35px; position:relative; color:#999; margin-top:15px; cursor:pointer;  }
+.clbtn-menu{ width:70px; padding:7px; border:1px solid #dde1e2; top:0; left:-65px; background-color:#fff; position:absolute; display:none; }
+.clbtn-menu ul{ height:20px; line-height:20px; }
+
+.comment-like-btn{ min-width:50px; overflow:hidden; border:1px solid #d5d5d5; border-radius:3px; background-color:#fff; padding:5px !important; }
+.comment-like-btn.good{ color:#3569c7; }
+.comment-like-btn.bad{ color:#ff0000; }
+.comment-like-btn.good.active{ color:#fff; border:1px solid #3569c7; background-color:#3569c7; } 
+.comment-like-btn.bad.active{ color:#fff; border:1px solid #ff0000; background-color:#ff0000; }
+
+.comparison-pd-info-nodata{ width:100%; height:200px; background-color:#f7f7f7; border:1px solid #eee; box-sizing:border-box; padding:20px; }
+.comparison-pd-info-nodata ul{ text-align:center; }
+.nodata-icon{ font-size:50px; color:#ddd; padding-top:30px; }
+
+.related-goods-title{ height:36px; line-height:36px; color:#555; border-bottom:1px solid #ccc; margin: 15px 0 0 0 !important; padding: 0 !important; }
+.related-goods-title h2{ font-family: 'Noto Sans KR', sans-serif; font-weight:400; font-size:18px; color:#555; display:inline-block; margin: 0 10px 0 0 !important; padding: 0 !important; }
+.related-goods{ width:100%; overflow:hidden; box-sizing:border-box; }
+.related-goods-li{ width:25%; height:270px; box-sizing:border-box; float:left; }
+.goods-box{ width:100%; padding:10px; box-sizing:border-box; }
+.goods-box ul{ margin:0 !important; padding:0 !important; }
+.thum img{ width:100%; border:1px solid #e2e2e2; }
+.goods-box ul.name{ padding-top:8px !important; }
+.goods-box ul.price-wrap{ padding-top:10px !important; color:#0073be; }
+.goods-box ul.price-wrap .price{ font-weight:bold; }
+.goods-box ul.score-icon{ padding-top:4px !important; color:#ccc;  }
+.goods-box ul.score-icon .on{ color:#f84a44; }
+.goods-box ul.score-icon .off{ color:#ddd; }
+.goods-box ul.score-icon .score{ font-weight:bold; color:#000; }
+
+#comparison_site{ border-top:1px solid #eeeeee; box-sizing:border-box;  }
+.site-box{ width:100%;  display:table; vertical-align:top; padding:13px 0 !important; margin:0 !important; border-bottom:1px solid #eeeeee; box-sizing:border-box; }
+.site-box li{ display:table-cell; vertical-align:middle; }
+.site-logo{ width:110px; box-sizing:border-box; padding-left:15px; text-align:center; }
+.site-logo img{ width:60px; }
+.site-info{ }
+.site-info p{ vertical-align:middle; }
+.site-name{ font-size:13px; }
+.site-price{ width:110px; }
+.site-price-text{ font-size:13px; }
+.site-delivery-price{ width:90px; color:#999; text-align:center; }
+.site-go{ width:80px; }
+
+.site-kind-qodp{ color:#dc3545; line-height:22px; }
+.sum-price{ font-size:13px; color:#1e8fff; line-height:22px; }
+.delivery-time{ color:#1e8fff; line-height:22px; }
+
+.prd-detail-info{ display:table; margin-top:20px; }
+.prd-detail-info ul{ display:table-row; }
+.prd-detail-info ul li{ display:table-cell; height:24px; vertical-align:middle; box-sizing:border-box; }
+.prd-detail-info ul li.sname{ width:60px; text-align:right; }
+.prd-detail-info ul li.svalue{ padding-left:10px; }
+
+.price-tipoff-modify-btn{ font-size:11px; vertical-align:bottom; cursor:pointer; color:#999; }
+.price-tipoff-modify-btn:hover{ color:#000; }
+.price-tipoff-modify-btn img{ width:12px; height:12px; vertical-align:bottom; margin:0 2px 2px 0; fill:rgb(42,169,224); }
+</STYLE>
+
+<div class="comparison-wrap">
+
+	<div class="comparison-info">
+		<ul class="pd-name"><?=$comparison_data[CD_NAME]?></ul>
+		<? if( $comparison_data[CD_NAME_OG] ){ ?>
+		<ul class="pd-name-og"><?=$comparison_data[CD_NAME_OG]?></ul>
+		<? } ?>
+		<ul class="pd-info">
+			<div class="pd-info-div">
+				<ul>
+					<span>갱신일 : <?=date("y.m.d",$comparison_data[CD_UPDATE_DATE])?></span>
+
+<? if( $comparison_data[CD_KEEP] > 0 ){ ?>
+					<span>|</span>
+					<span>찜하기 : <?=$comparison_data[CD_KEEP]?></span>
+<? } ?>
+<!-- 
+					<span>|</span>
+					<span>정보 수정요청</span>
+ -->
+				</ul>
+
+<? if( $_view_hash_tag ){ ?>
+				<ul>
+					<?=$_view_hash_tag?>
+				</ul>
+<? } ?>
+
+			<div>
+		</ul>
+	</div>
+
+	<div class="comparison-pd display-table">
+		<ul class="img display-table-cell v-align-top">
+			<div class="comparison-pd-wrap">
+				<ul><div class="img-box"><img src="<?=$img_path?>" class="img-blur"></div></ul>
+				<ul style="margin-top:15px; line-height:140%;"><?=$comparison_data[CD_CONT]?></ul>
+			</div>
+		</ul>
+		<ul class="display-table-cell v-align-top">
+
+<?
+if( $comparison_data[CD_PRICE] > 0 ){
+?>
+			<div class="min-price-box display-table">	
+				<ul class="display-table-cell v-align-top">
+					<div>
+						<ul class="min-price-name">최저가</ul>
+						<ul class="min-price-wrap"><span class="min-price"><?=number_format($comparison_data[CD_PRICE])?></span> 원</ul>
+					</div>
+				</ul>
+				<ul class="display-table-cell v-align-top text-right">
+					<? if( $comparison_data[CD_LINK] ){ ?>
+					<a href="<?=$comparison_data[CD_LINK]?>" target="_blank"><button type="button" class="basic-btn basic-btn-blue basic-btn-sm" style="height:40px !important;">최저가 사러가기</button></a>
+					<? } ?>
+				</ul>
+			</div>
+<? } ?>
+
+			<div class="prd-detail-info">
+<? if( $comparison_data[CD_NAME_OG] ){ ?>
+				<ul>
+					<li class="sname">원상품명 :</li>
+					<li class="svalue"><?=$comparison_data[CD_NAME_OG]?></li>
+				</ul>
+<? } ?>
+
+<? if( $comparison_data[CD_NAME_EN] ){ ?>
+				<ul>
+					<li class="sname">해외명 :</li>
+					<li class="svalue"><?=$comparison_data[CD_NAME_EN]?></li>
+				</ul>
+<? } ?>
+
+<?
+if( $comparison_data[CD_RELEASE_DATE] ){
+?>
+				<ul>
+					<li class="sname">출시일 :</li>
+					<li class="svalue"><?=$comparison_data[CD_RELEASE_DATE]?></li>
+				</ul>
+<? } ?>
+
+<?
+if($comparison_data[CD_BRAND_IDX]){
+?>
+				<ul>
+					<li class="sname">브랜드 :</li>
+					<li class="svalue"><a href="/front/product/brand_view.php?idx=<?=$comparison_data[CD_BRAND_IDX]?>" target="_blank"><?=$_view_brand_name?></a></li>
+				</ul>
+<? } ?>
+
+<?
+if($comparison_data[CD_SIZE]){
+?>
+				<ul>
+					<li class="sname">사이즈 :</li>
+					<li class="svalue"><?=$comparison_data[CD_SIZE]?></li>
+				</ul>
+<? } ?>
+
+<?
+if($comparison_data[CD_SIZE2]){
+	if($comparison_data[CD_KIND_CODE] == "GEL" ){
+		$_sname_cd_size2 = "용량";
+		$_sunit_cd_size2 = "ml";
+	}else{
+		$_sname_cd_size2 = "내부길이";
+		$_sunit_cd_size2 = "cm";
+	}
+?>
+				<ul>
+					<li class="sname"><?=$_sname_cd_size2?> :</li>
+					<li class="svalue"><?=$comparison_data[CD_SIZE2]?> ( <?=$_sunit_cd_size2?> )</li>
+				</ul>
+<? } ?>
+
+<?
+if($comparison_data[CD_WEIGHT]){
+
+?>
+				<ul>
+					<li class="sname">제품중량 :</li>
+					<li class="svalue"><?=$comparison_data[CD_WEIGHT]?>  ( g )</li>
+				</ul>
+<? } ?>
+
+<?
+if($comparison_data[CD_WEIGHT2]){
+?>
+				<ul>
+					<li class="sname">전체중량 :</li>
+					<li class="svalue"><?=$comparison_data[CD_WEIGHT2]?> ( g )</li>
+				</ul>
+<? } ?>
+
+			</div>
+
+			<div style="text-align:right;">
+				<a href="/front/board/write.php?b_code=free_market&pdkey=<?=$comparison_data[CD_IDX]?>" target="_blank"><button type="button" class="basic-btn basic-btn-pink basic-btn-sm" style="width:103px; height:30px !important;"> 프리마켓 팔기 </button></a>
+			</div>
+
+		</ul>
+	</div>
+
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+$(document).ready(function(){    
+    var findFixNav = $('.ccFixNav');
+    var propFixNavHeight = $('.ccFixNav').outerHeight();
+	var propFixNavTop = findFixNav.position().top;
+	var propFixNavTop2 = $('.fixed-menu').position().top;
+	//alert(propFixNavTop);
+
+    var lastId,
+        topMenu = $(".comparison-view-tap"),
+        menuItems = topMenu.find("ul a"),
+        scrollItems = menuItems.map(function(){
+            var item = $($(this).attr("target"));
+            if (item.length) { return item; }
+        });
+
+    $(document).scroll(function(){
+		var startTop = propFixNavTop - 62;
+		if( $(window).scrollTop() > startTop){
+			$(".fixed-menu").show();
+		}else{
+			$(".fixed-menu").hide();
+		}
+
+        var fromTop = $(document).scrollTop()+propFixNavTop2+100;
+        var cur = scrollItems.map(function(){
+            if ($(this).offset().top < fromTop)
+                return this;
+        });
+        cur = cur[cur.length-1];
+        var id = cur && cur.length ? cur[0].id : "";
+
+        if (lastId !== id) {
+            lastId = id;
+/*
+			if(menuItems.parent().attr('class') != "active"){
+            menuItems
+                .parent().removeClass("active")
+                .end().filter("[target=#"+id+"]").parent().addClass("active");
+			}
+*/
+            menuItems
+                .parent().removeClass("active")
+                .end().filter("[target=#"+id+"]").parent().addClass("active");
+        }
+
+	});
+
+    $('.comparison-view-tap ul a').click(function(e){
+/*
+		if($(this).parent().attr('class') != "active"){
+			$(this).parent().addClass('active').siblings().removeClass('active');
+		}
+*/
+		$(this).parent().addClass('active').siblings().removeClass('active');
+		var propTargetTop = $($(this).attr('target')).offset().top-98;
+		//alert(propTargetTop);
+        //$('html,body').stop().animate({scrollTop: propTargetTop}, 300);
+		$('html,body').scrollTop(propTargetTop);
+	});
+
+});
+//--> 
+</script> 
+
+
+
+<div class="fixed-menu">
+	<div class="fixed-menu-wrap">
+		<ul>
+			<div class="fixed-menu-pd-info display-table">
+				<ul class="display-table-cell fixed-menu-pd-img"><img src="<?=$img_path?>" alt=""></ul>
+				<ul class="display-table-cell v-align-top">
+					<li class="fixed-menu-pd-info-name"><?=$comparison_data[CD_NAME]?></li>
+					<? if( $comparison_data[CD_PRICE] > 0 ){ ?>
+					<li class="fixed-menu-pd-info-price">최저가 : <?=number_format($comparison_data[CD_PRICE])?> 원</li>
+					<? } ?>
+				</ul>
+				<ul class="display-table-cell" style="padding-left:20px;">
+					<? if( $comparison_data[CD_LINK] ){ ?>
+					<a href="<?=$comparison_data[CD_LINK]?>" target="_blank"><button type="button" class="basic-btn basic-btn-blue basic-btn-sm" style="height:40px !important;">최저가 사러가기</button></a>
+					<? } ?>
+				</ul>
+			</div>
+
+			<div class="comparison-view-tap">
+<?
+if( $comparison_data[CD_LINK_COUNT] > 0 ){
+?>
+				<ul class="active"><a target="#C_detail6">가격비교 <span class="comparison-view-site-count">(<?=$comparison_data[CD_LINK_COUNT]?>)</span></a></ul>
+<? } ?>
+				<ul><a target="#C_detail1">상품리뷰</a></ul>
+				<ul><a target="#C_detail2">상품 한줄평</a></ul>
+				<ul><a target="#C_detail3">제품정보</a></ul>
+				<ul><a target="#C_detail4">연관 컨텐츠</a></ul>
+				<ul><a target="#C_detail5">추천상품</a></ul>
+			</div>
+
+		</ul>
+		<ul></ul>
+	</div>
+</div>
+
+
+<div class="comparison-view-tap-wrap ccFixNav">
+	<div class="comparison-view-tap">
+<?
+//가격비교 있다면
+if( $comparison_data[CD_LINK_COUNT] > 0 ){
+?>
+		<ul class="active all-active"><a target="#C_detail6">가격비교 <span class="comparison-view-site-count">(<?=$comparison_data[CD_LINK_COUNT]?>)</span></a></ul>
+<? } ?>
+		<ul><a target="#C_detail1">상품리뷰</a></ul>
+		<ul><a target="#C_detail2">상품 한줄평</a></ul>
+		<ul><a target="#C_detail3">제품정보</a></ul>
+		<ul><a target="#C_detail4">연관 컨텐츠</a></ul>
+		<ul><a target="#C_detail5">추천상품</a></ul>
+	</div>
+	
+</div>
+
+<?
+//-------------------------------------------| 가격비교 |----------------------------------------------------------------------------------------------------
+//가격비교 있다면
+if( $comparison_data[CD_LINK_COUNT] > 0 ){
+?>
+<div class="comparison-title" id="C_detail6">
+	<!-- 가격비교 -->
+	<? if( $_sess_id ){ ?> 
+	<button type="button" class="basic-btn basic-btn-pink basic-btn-sm" style="width:200px; height:30px !important;" onclick="PriceTipoff('new','nodate')"> 가격 제보 하기 : 베타(Beta) </button>
+	<? }else{ ?>
+	<button type="button" class="basic-btn basic-btn-pink basic-btn-sm" style="width:200px; height:30px !important;" onclick="alert('회원만 제보가 가능합니다.');"> 가격 제보 하기 : 베타(Beta) </button>
+	<? } ?>
+</div>
+
+<div class="comparison-site-title">
+	<ul>쇼핑몰별 최저가 : 가격비교 ( <?=$comparison_data[CD_LINK_COUNT]?>건 )</ul>
+</div>
+
+<div id="comparison_site">
+<?
+$site_count = 0;
+$link_result = wepix_query_error("select * from "._DB_COMPARISON_LINK." where CL_CD_IDX = '".$_idx."' order by 
+	case CL_KIND 
+	when 'odp-jpy' then 9 
+	when 'qodp' then 8 
+	else 1 end,
+	if(CL_PRICE=0,999999999999,CL_PRICE) asc,
+	CL_SORT_NUM asc ");
+
+while($link_list = wepix_fetch_array($link_result)){
+
+	$site_data = wepix_fetch_array(wepix_query_error("select * from "._DB_SITE." where SD_IDX ='".$link_list[CL_SD_IDX]."'"));
+
+	if( $site_data[SD_ACTIVE] == "Y" ){
+/*		
+			if($link_list[CL_SD_IDX]==7){
+				$_view_sd_name = "<b>".$site_data[SD_NAME]."<b>";
+			}else{
+				$_view_sd_name = $site_data[SD_NAME];
+			}
+*/
+		$_view_sd_name = $site_data[SD_NAME];
+
+		$delivery_memo = $link_list[CL_MEMO];
+		if($link_list[CL_MEMO] == ''){
+			$delivery_memo = $site_data[SD_MEMO];
+		}
+		
+		$_view_price_symbol = "원";
+		$_view_kind = "";
+
+		if( $link_list[CL_KIND] == "qodp" ){
+			$_view_kind = "<span class='site-kind-qodp'><i class='fas fa-plane'></i> 해외구매대행</span><br>";
+		}elseif( $link_list[CL_KIND] == "odp-jpy" ){
+			$_view_kind = "<span class='site-kind-qodp'><i class='fas fa-plane'></i> 해외직구</span><br>";
+			$_view_price_symbol = "￥";
+		}elseif( $link_list[CL_KIND] == "nobenefit" ){
+			$_view_kind = "<span class='site-kind-qodp'>무혜택</span><br>";
+		}
+
+		if( $link_list[CL_DELIVERY_PRICE] == 0 ){
+			$delivery_price = number_format($site_data[SD_DELIVERY]).$_view_price_symbol;
+			$_inst_delivery_price = $site_data[SD_DELIVERY];
+		}
+
+		if( $site_data[SD_DELIVERY_FREE] > 0 && $link_list[CL_PRICE]  > $site_data[SD_DELIVERY_FREE] ){
+			$delivery_price = "무료배송";
+			$_inst_delivery_price = 0;
+		}
+
+		if( $link_list[CL_DELIVERY_PRICE] > 0 ){
+			$delivery_price = number_format($link_list[CL_DELIVERY_PRICE]).$_view_price_symbol;
+			$_inst_delivery_price = $link_list[CL_DELIVERY_PRICE];
+		}
+
+		$_sum_price = $link_list[CL_PRICE] + $_inst_delivery_price;
+		$_view_sum_price =  number_format($link_list[CL_PRICE] + $_inst_delivery_price).$_view_price_symbol;
+
+		$_go_bridge = "bridge.php?lcode=".$link_list[CL_IDX]."&pcode=".$_idx;
+
+$site_count ++;
+
+//if( $site_count == 10 ){ $position_class = "position-right"; }else{ $position_class = "position-left"; }
+if( $site_count == 10 ){ echo "</div><div>"; }
+?>
+	<ul class="site-box">
+		<li class="site-logo">
+			<img src="/data/site_logo/<?=$site_data[SD_LOGO]?>" alt="">
+			<? if( $_sess_id ){ ?> 
+				<p class="price-tipoff-modify-btn" onclick="PriceTipoff('Tipoff','<?=$link_list[CL_IDX]?>')"><img src="/skin/kodang/img/siren-siren-svgrepo-com.svg?v=1">신고</p>
+			<? }else{ ?>
+				<p class="price-tipoff-modify-btn" onclick="alert('회원만 신고가 가능합니다.');"><img src="/skin/kodang/img/siren-siren-svgrepo-com.svg?v=1" >신고</p>
+			<? } ?>
+
+		</li>
+		<li class="site-info">
+			<p><b class="site-name"><?=$_view_sd_name?></b></p>
+			<? if( $delivery_memo ){ ?> <span><?=$delivery_memo?></span><? } ?>
+			<? if( $site_data[SD_DELIVERY_TIME] && ( $link_list[CL_KIND] == "" || $link_list[CL_KIND] == "nobenefit" ) ){ ?><br><span class="delivery-time"><?=$site_data[SD_DELIVERY_TIME]?></span><? } ?>
+		</li>
+		<li class="site-price">
+			<?=$_view_kind?><b class="site-price-text"><?=number_format($link_list[CL_PRICE])?><?=$_view_price_symbol?></b>
+		</li>
+		<li class="site-delivery-price">
+			<b class="sum-price"><?=$_view_sum_price?></b><br>
+			(<?=$delivery_price?>)
+		</li>
+		<li class="site-go"><a href="<?=$_go_bridge?>" target="_blank"><button type="button" class="basic-btn-simple basic-btn-gray-light">사러가기</button></a></li>
+	</ul>
+<? } } ?>
+</div>
+<? 
+	} 
+// 가격비교 끝
+?>
+
+
+<div class="comparison-title" id="C_detail1">
+	상품리뷰
+</div>
+<div id="comparison_review">
+</div>
+
+<div class="comparison-review-btn">
+<? if( $_sess_id ){ ?>
+	<button type="button" class="basic-btn basic-btn-blue basic-btn-sm" style="height:40px !important;" onclick="location.href='/front/board/write.php?b_code=CREVIEW&pdkey=<?=$_idx?>&returnUrl=<?=$check_request_uri_urlencode?>'" >상품 리뷰작성</button>
+<? } ?>
+</div>
+
+<div class="comparison-title"  id="C_detail2">
+	상품 한줄평
+</div>
+
+<STYLE TYPE="text/css">
+.comment-write{ border:1px solid #dedede; background-color:#f5f8f9; box-sizing:border-box; padding:10px; margin:0; }
+.comment-write-wrap{ width:100%; display:table; }
+.comment-write-wrap ul{ display:table-cell; vertical-align:top; }
+.comment-write-wrap ul textarea{ width:100%; height:85px; border:1px solid #d0d0d0; box-sizing:border-box; padding:10px; }
+.comment-write-btn{ width:95px; box-sizing:border-box; padding-left:10px; }
+.comment-write-btn button{ width:85px; height:85px; color:#fff; background-color:#444444; border:1px solid #222; box-sizing:border-box;}
+#comm_name, #comm_pw{ width:200px; }
+.comment-write-name-wrap{ margin-bottom:3px; }
+</STYLE>
+
+	<div id="comparison_comment">
+	</div>
+
+	<ul class="comment-write" id="comment_form">
+<? if( $_sess_id ){ ?>
+<? }else{ ?>
+		<div class="comment-write-name-wrap">
+			<input type='text' name='comm_name' id='comm_name' placeholder="익명">
+			<input type='password' name='comm_pw' id='comm_pw' placeholder="비밀번호">
+		</div>
+<? } ?>
+		<div class="comment-write-wrap">
+			<ul><textarea name="comm_body" id="comm_body"></textarea></ul>
+			<ul class="comment-write-btn"><button onclick="commentSubmit();"> <i class="fa fa-pencil m-r-5" ></i> 등록  </button></ul>
+		</div>
+	</ul>
+
+	<div style="height:50px;">
+	</div>
+
+<div class="comparison-title"  id="C_detail3">
+	제품정보
+</div>
+<div class="comparison-pd-info">
+<? if( $comparison_data[CD_PD_INFO] ){ ?>
+<? }else{ ?>
+	<div class="comparison-pd-info-nodata">
+		<ul class="nodata-icon"><i class="far fa-flushed"></i></ul>
+		<ul>제품정보가 아직 등록되지 않았습니다.</ul>
+	</div>
+<? } ?>
+</div>
+
+
+<div class="comparison-title"  id="C_detail4">
+	연관 컨텐츠
+</div>
+<div id="comparison_relation">
+</div>
+
+
+<div class="comparison-title"  id="C_detail5">
+	추천상품
+</div>
+<div class="related-goods-wrap">
+<?
+if( count($_ary_related_goods) > 0 ){
+?>
+	<ul class="related-goods-title">
+		<h2>연관상품</h2>
+		동일 브랜드, 같은 시리즈 상품 입니다.
+	</ul>
+	<div class="related-goods">
+<?
+for ($i=0; $i<count($_ary_related_goods); $i++){
+	$rg_data = wepix_fetch_array(wepix_query_error("select * from "._DB_COMPARISON." where CD_IDX = '".$_ary_related_goods[$i]."' "));
+	if($rg_data[CD_IMG] == ''){
+		$_rg_img_path = '/test_pd_img.jpg';
+	}else{
+		$_rg_img_path = '../../data/comparion/'.$rg_data[CD_IMG];
+	}
+
+	$_view_score_icon_on = "";
+	for ($z=0; $z<$rg_data[CD_SCORE]; $z++){
+		$_view_score_icon_on .= "<i class='fas fa-star on'></i>";
+	}
+	$_view_score_icon_empty = "";
+	for ($z=0; $z<(5-$rg_data[CD_SCORE]); $z++){
+		$_view_score_icon_empty .= "<i class='far fa-star off'></i>";
+	}
+
+	$_view_score_icon = $_view_score_icon_on.$_view_score_icon_empty;
+?>
+		<li class="related-goods-li" onclick="location.href='/front/comparison/view.php?key=<?=$rg_data[CD_IDX]?>'">
+			<div class="goods-box">
+				<ul class="thum"><img src="<?=$_rg_img_path?>" alt=""></ul>
+				<ul class="name"><?=$rg_data[CD_NAME]?></ul>
+				<ul class="price-wrap">최저가 <span class="price"><?=number_format($rg_data[CD_PRICE])?></span> 원</ul>
+				<ul class="score-icon"><?=$_view_score_icon?> &nbsp;<span class="score"><?=$rg_data[CD_SCORE]?></span> / 5</ul>
+			</div>
+		<li>
+<? } ?>
+	</div>
+<? } ?>
+
+<?
+if( count($_ary_recommend_goods) > 0 ){
+?>
+	<ul class="related-goods-title">
+		<h2>추천상품</h2>
+		본 상품과 함께 자주 구매되는 인기 상품입니다.
+	</ul>
+	<div class="related-goods">
+<?
+for ($i=0; $i<count($_ary_recommend_goods); $i++){
+	$rg_data = wepix_fetch_array(wepix_query_error("select * from "._DB_COMPARISON." where CD_IDX = '".$_ary_recommend_goods[$i]."' "));
+	if($rg_data[CD_IMG] == ''){
+		$_rg_img_path = '/test_pd_img.jpg';
+	}else{
+		$_rg_img_path = '../../data/comparion/'.$rg_data[CD_IMG];
+	}
+
+	$_view_score_icon_on = "";
+	for ($z=0; $z<$rg_data[CD_SCORE]; $z++){
+		$_view_score_icon_on .= "<i class='fas fa-star on'></i>";
+	}
+	$_view_score_icon_empty = "";
+	for ($z=0; $z<(5-$rg_data[CD_SCORE]); $z++){
+		$_view_score_icon_empty .= "<i class='far fa-star off'></i>";
+	}
+
+	$_view_score_icon = $_view_score_icon_on.$_view_score_icon_empty;
+?>
+		<li class="related-goods-li" onclick="location.href='/front/comparison/view.php?key=<?=$rg_data[CD_IDX]?>'">
+			<div class="goods-box">
+				<ul class="thum"><img src="<?=$_rg_img_path?>" alt=""></ul>
+				<ul class="name"><?=$rg_data[CD_NAME]?></ul>
+				<ul class="price-wrap">최저가 <span class="price"><?=number_format($rg_data[CD_PRICE])?></span> 원</ul>
+				<ul class="score-icon"><?=$_view_score_icon?> &nbsp;<span class="score"><?=$rg_data[CD_SCORE]?></span> / 5</ul>
+			</div>
+		<li>
+<? } ?>
+	</div>
+<? } ?>
+</div>
+
+
+<script type="text/javascript"> 
+<!-- 
+var kind_code = "<?=$rg_data[CD_KIND_CODE]?>";
+
+function PriceTipoff( mode, linkkey ){
+	if( mode == "new" ){
+		var _pop_title = "가격 제보 하기";
+	}else{
+		var _pop_title = "오류 신고";
+	}
+	$.ajax({
+		url: "ajax.price_tipoff.php",
+		data: {
+			"mode":mode,
+			"key":"<?=$comparison_data[CD_IDX]?>",
+			"link_key":linkkey
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#popup_title').html(_pop_title);
+			$('#popup_body').html(getdata);
+			showPopup('650','700','ajax');
+		},
+		error: function(){
+		}
+	});
+}
+
+function showReviewDetail(key){
+
+	$.ajax({
+		url: "ajax.review_detail.php",
+		data: {
+			"key":key
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#popup_body').html(getdata);
+			showPopup('650','700','ajax');
+		},
+		error: function(){
+		}
+	});
+}
+
+function showReview(pn, action){
+	$.ajax({
+		url: "ajax.review.php",
+		data: {
+			"key":"<?=$_idx?>",
+			"pd_img":"<?=$img_path?>",
+			"pn":pn
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comparison_review').html(getdata);
+		},
+		error: function(){
+		}
+	});
+
+	if( action=="paging"){
+		$('html, body').animate({scrollTop: $('#C_detail1').position().top-99}, 300);
+	}
+}
+
+function showComment(pn){
+	$.ajax({
+		url: "ajax.comment.php",
+		data: {
+			"key":"<?=$_idx?>",
+			"pn":pn
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comparison_comment').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+
+function showRelation(pn, action){
+	$.ajax({
+		url: "ajax.relation.php",
+		data: {
+			"key":"<?=$_idx?>",
+			"pn":pn
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comparison_relation').html(getdata);
+		},
+		error: function(){
+		}
+	});
+/*
+	if( action=="paging"){
+		$('html, body').animate({scrollTop: $('#C_detail1').position().top-99}, 300);
+	}
+*/
+}
+
+showReview();
+showComment();
+showRelation();
+
+function commentSubmit(mode, key){
+	//ajaxLoading();
+
+	if( mode == "modify" ){
+		var comm_body = $("#comm_body_"+ key).val();
+		var a_mode = "commModify";
+		var cKey = key;
+	}else{
+		var comm_body = $("#comm_body").val();
+		var a_mode = "commWrite";
+		var cKey = "";
+	}
+
+	if( ws_user_id == "" ){
+
+		var commName = $("#comm_name").val();
+		var commPw = $("#comm_pw").val();
+
+		if( commName == "" ) commName = "익명";
+
+		if( commPw == "" ){
+			$('#modal_alert_msg').html('비밀번호를 입력해주세요.');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+			$("#comm_pw").focus();
+			return false;
+		}
+
+	}else{
+	}
+
+
+	$.ajax({
+		url: "processing.comment.php",
+		data: {
+			"a_mode":a_mode,
+			"ajax_mode":"on",
+			"pd_key":"<?=$_idx?>",
+			"comm_name":commName,
+			"comm_pw":commPw,
+			"comm_body":comm_body,
+			"comm_kind_code":kind_code
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				if(ckcode == "Processing_Complete"){
+					//ajaxLoadingClose(ckmsg);
+					showComment();
+					$('#comm_body').val("");
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+//--> 
+</script>

@@ -1,0 +1,368 @@
+
+.table-grid-top{ 
+	height:30px; line-height:30px; 
+	display:flex;
+
+	ul{
+		&:last-child {
+			margin-left: auto;
+		}
+
+        button {
+            margin-top: -10px; /* 버튼만 margin-top 적용 */
+        }
+	}
+}
+
+/* 단독으로 있을경우 */
+
+#list_new_wrap{
+	height:calc(100% - 20px);
+}
+.table-top{
+	margin-top:-10px;
+	height:30px; line-height:30px; 
+	display:flex;
+	gap:5px;
+	ul{
+		&.total{
+			font-size:12px;
+		}
+	}
+}
+.table-wrap5{ width:100%; height:100%; /* height:calc(100% - 30px); */ overflow:hidden; display:table; table-layout: fixed; padding:0; }
+
+.scroll-wrap{ width:100%; height:100%; border:1px solid #555555; background:#ffffff;  box-sizing:border-box; padding:0;  overflow:scroll;   }
+.scroll-wrap::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
+.scroll-wrap::-webkit-scrollbar-thumb{  background:#aaa;  }
+
+.table-grid-wrap{
+	height:100%;
+	display:flex;
+
+}
+
+.table-grid-wrap > ul{
+	&:nth-child(1){
+		width:400px;
+	}
+	&:nth-child(2){
+		flex:1;
+	}
+	/*
+	#list_new_wrap{ 
+		height:100%;
+	}
+	*/
+}
+
+/* 상단에 total 값이 있을경우 */
+.table-grid-top + .table-grid-wrap{
+	height:calc(100% - 30px);
+}
+
+.list-top{ 
+	width:100%; height:30px; line-height:30px; 
+	display:flex;
+
+	ul{
+		&:last-child {
+			margin-left: auto;
+		}
+
+        button {
+            margin-top: -10px;
+        }
+	}
+}
+
+.list-top + #list_new_wrap{
+	height:calc(100% - 30px);
+}
+
+
+.category-config-wrap{
+	height:100%;
+	display:flex;
+	border: 1px solid #999;
+    background: #ffffff;
+}
+
+.category-config-wrap > ul{
+	&:nth-child(1){
+		width:200px;
+		padding:7px;
+		display:flex;
+		flex-direction: column;
+		gap:5px;
+
+		button{ 
+			width:100%; 
+			text-align:left;
+		}
+	}
+	&:nth-child(2){
+		width:300px;
+		border-left: 1px solid #999;
+		border-right: 1px solid #999;
+		overflow: auto;
+	}
+	&:nth-child(3){
+		position: relative;
+		flex:1;
+		overflow: auto;
+
+		#info_wrap{
+			padding:10px 20px;
+		}
+	}
+}
+
+.category-config-wrap > ul::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
+.category-config-wrap > ul::-webkit-scrollbar-thumb{  background:#aaa;  }
+
+
+.tree-header{
+	position: sticky;
+	top: 0;
+	height:40px;
+	display:flex;
+	align-items: center;
+	background: #ffffff;
+	border-bottom:1px solid #ddd;
+	padding-left:7px;
+}
+
+.edit-header{
+	position: sticky;
+	top: 0;
+	height:40px;
+	display:flex;
+	align-items: center;
+	background: #ffffff;
+	border-bottom:1px solid #ddd;
+}
+
+.edit-header > ul{
+	&:nth-child(1){
+		h2{
+			display:block;
+			padding-left:20px;
+			font-size:20px;
+			font-weight:600;
+		}
+	}
+	&:nth-child(2){
+		margin-left: auto;
+		padding-right:10px;
+		button{
+			vertical-align:middle;
+		}
+	}
+}
+
+/* 테이블 */
+.table-st1{
+
+	--bs-table-bg: transparent;
+	--bs-table-accent-bg: transparent;
+	--bs-table-striped-bg: rgba(0, 0, 0, 0.05);
+    --dn-table-color1: #bbb;
+    --dn-table-line-color: #e4e4e4; 
+	--dn-table-hover-bg:#ddd;
+
+    width:auto;
+    table-layout:fixed;
+    border-spacing:0; border-collapse:separate;
+
+	& * {
+		font-size:12px;
+	}
+
+    thead tr {
+        position:sticky;
+        top:0;
+        background:#ffff;
+        z-index: 100;
+
+        th{
+			vertical-align: middle;
+			white-space: nowrap; 
+			border-bottom: 1px solid var(--dn-table-color1);
+			border-right: 1px solid var(--dn-table-line-color);
+			text-align:center;
+			height:30px;
+			padding:5px 7px;
+        }
+    }
+
+	tbody{
+		
+		tr{
+
+			transition: background-color 150ms ease-out;
+			
+			td{
+				border-right: 1px solid var(--dn-table-line-color);
+				border-bottom: 1px solid var(--dn-table-line-color);
+				padding:5px 7px;
+				vertical-align: middle;
+				white-space: nowrap; 
+
+				&.list-img{
+					.thumbnail {
+					  width: 80px;
+					  height:60px;
+					  position: relative;
+					  display: flex;
+					  justify-content: center;
+					  align-items: center;
+					  margin-bottom: 0;
+					}
+
+					.thumbnail img {
+					  max-width: 100%;
+					  max-height: 100%;
+					  object-fit: contain;
+					}
+				}
+			}
+			
+			/* 취소 라인 */
+			&.notice{
+				background-color:#ffe5ec;
+			}
+
+			/* 취소 라인 */
+			&.status_clx{
+				background-color:#e2dadc;
+				.status-box{ color:#ff0000; font-weight:bold; }
+			}
+
+			/* block */
+			&.status_bl, &.status_am{
+				background-color:#feffb6;
+				.status-box{ color:#0078e0; font-weight:bold; }
+			}
+
+			/* cf */
+			&.status_cf{
+				background-color:#dfecff;
+			}
+
+			/* end */
+			&.status_end{
+				background-color:#eee;
+			}
+
+		}
+		
+	}
+
+	&.striped{
+		tbody{
+			tr{
+				&:nth-of-type(odd) > * {
+					background-color: var(--bs-table-striped-bg);
+				}
+				&:hover {
+					background-color: var(--dn-table-hover-bg);
+				}
+			}
+		}
+	}
+
+    tfoot > tr{
+        position:sticky;
+        bottom:0;
+        background:#ffc;
+        z-index: 100;
+		th{
+			border-top: 1px solid #b4b4b4;
+			border-right: 1px solid #b4b4b4;
+			color:#000;
+			padding: 5px 7px;
+		}
+    }
+
+}
+
+
+table.table-st2 {
+	width: 100%;
+    table-layout: fixed;
+    border: 0;
+    border-spacing: 0;
+    border-collapse: collapse;
+    background:#fff;
+    border-top: 1px solid #ddd;
+
+    th,td{ padding:8px; border-bottom: 1px solid #ddd; height:51px; }
+    th{ padding-left:15px; color:#111; font-weight:500; background:#f8f9fa; }
+    td{ padding:8px 14px; }
+
+    select,
+    input[type=number],
+    input[type=text]{
+        width: 100%;
+        height: 34px;
+        font-weight: 500;
+        color:#000;
+        padding: 0 8px;
+        border: 1px solid #d6dae1;
+        border-radius: 3px;
+        box-sizing: border-box;
+        line-height: 32px;
+        outline: 0 none;
+        vertical-align: middle;
+    }
+
+    input.price{ width: 150px; }
+    input.headcount{ width:50px; }
+}
+
+
+.pagination{
+    margin: 0;
+	padding:0 0 0;
+}
+
+.pagination ul {
+    width:100%;
+	list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+	align-items: center;
+    justify-content: center;
+    gap: 3px;
+}
+
+.pagination ul li {
+    margin: 0;
+    padding: 0;
+}
+
+.pagination ul li.first-page,
+.pagination ul li.prev-page,
+.pagination ul li.next-page,
+.pagination ul li.last-page{
+
+}
+
+.pagination ul li a {
+    display: inline-block;
+    padding: 5px 10px;
+    text-decoration: none;
+    color: #333;
+	background-color:#fff;
+    border: 1px solid #ddd;
+    border-radius: 5px;
+}
+
+.pagination ul li.active a {
+    background-color: #148eff;
+    color: #fff;
+    border-color: #0071da;
+
+}

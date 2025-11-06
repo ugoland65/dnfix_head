@@ -1,0 +1,109 @@
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+<link rel="stylesheet" href="/skin/board_skin/magazine/style.css?v=<?=time()?>">
+
+<div class="bo-title">
+	<?=$_view_bc_name_show?>
+</div>
+
+<?
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" ){
+?>
+<div class="bo-list-category-menu">
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" class="<? if($_show_b_category=="") echo "active"; ?>">전체</button>
+	<? for ($i=1; $i<count($_ary_bc_category); $i++){ ?>
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>&ct=<?=$i?>'" class="<? if($i == $_show_b_category) echo "active"; ?>"><?=$_ary_bc_category[$i]?></button>
+	<? } ?>
+</div>
+<? } ?>
+<? } ?>
+
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left">
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+        <form name="fsearch" method="get">
+        <input type="hidden" name="b_code" value="<?=$_show_b_code?>">
+        <input type="hidden" name="s_active" value="on">
+		<div class="bo-list-search-wrap">
+			<select name="s_kind">
+				<option value="subject_body" <? if( $_s_kind == "subject_body" ) echo "selected"; ?>>제목+내용</option>
+				<option value="subject" <? if( $_s_kind == "subject" ) echo "selected"; ?>>제목</option>
+				<option value="writer_name" <? if( $_s_kind == "writer_name" ) echo "selected"; ?>>글쓴이</option>
+			</select>
+			<input type="text" name="s_text" value="<?=$_s_text?>">
+			<button type="submit" class="bo-btn bo-btn-pink bo-btn-sm"><i class='fas fa-search'></i> 검색</button>
+		</div>
+        </form>
+<? } ?>
+	</ul>
+	<ul class="bo-btn-area-right">
+		<div class="bo-list-page-info">
+			Total <?=$total_count?>건 / <?=$_c_page?>Page
+		</div>
+	</ul>
+</div>
+
+<table class="bo-list">
+
+<?
+	while($list = wepix_fetch_array($result)){
+
+		if( $list[BOARD_DATE] > $gva_today_mktime_start ){
+			$_view_register_date = date("H:i", $list[BOARD_DATE]);
+		}else{
+			$_view_register_date = date("y.m.d", $list[BOARD_DATE]);
+		}
+		$_view_comment = ( $list[BOARD_COMMENT] > 0 ) ? "<span class='bo-list-comment'>".$list[BOARD_COMMENT]."</span>" : "0";
+		//$_view_upload_img = ( $list[board_thumbnail] ) ? "<span class='bo-list-img'><i class='far fa-image'></i></span>" : "";
+		$_view_category = ( $list[BOARD_CATEGORY] > 0 ) ? "<span class='bo-list-category'>".$_ary_bc_category[$list[BOARD_CATEGORY]]."</span>" : "";
+		$_view_subject = $list[BOARD_SUBJECT];
+		$_view_hit = $list[BOARD_HIT];
+
+		$_view_board_name = $list[BOARD_WITER_NAME];
+
+		if( $_s_active == "on" AND $_s_text != "" AND ( $_s_kind == "subject_body" OR $_s_kind == "subject" ) ){
+			$_view_subject = str_replace($_s_text, "<b class='s_word'>".$_s_text."</b>", $_view_subject);
+		}
+
+		$_view_body = get_body_text($list[BOARD_BODY]);
+?>
+	<tr class="bo-list-tr">
+		<td class="bo-list-thumbnail">
+			<a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" ><div class="bo-list-thumbnail-wrap" style="background-image:url('<?=$list[BOARD_THUMBNAIL]?>')"></div></a>
+		</td>
+		<td class="bo-list-magazine">
+			<div>
+				<ul class="subject"><a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" ><?=$_view_category?> <?=$_view_subject?></a></ul>
+				<ul class="body"><a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" ><?=$_view_body?></a></ul>
+				<ul class="info">
+					<span class="bo-view-info-data-comment"><i class="fa fa-commenting-o" aria-hidden="true"></i> <?=$_view_comment?>건</span>
+					<span class="bo-view-info-data-hit"><i class="fa fa-eye" aria-hidden="true"></i> <?php echo number_format($_view_hit) ?>회</span>
+					<span class="bo-view-info-data-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?php echo date("y-m-d H:i", $list['BOARD_DATE']) ?></span>
+				</ul>
+			</div>
+		</td>
+	</tr>
+<? 
+$_view_no--;
+} ?>
+
+</table>
+
+
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left"><div class="bo-paging"><?=$_view_paging?></div></ul>
+	<ul class="bo-btn-area-right">
+<?
+if($_show_board_write_btn=="on"){
+	if( $_view_foot_list_mode != "on" ){
+?>
+		<button type="button" id="" class="bo-btn bo-btn-pink" onclick="location.href='/front/board/write.php?b_code=<?=$_show_b_code?>'" > 
+			<i class="far fa-check-circle"></i> 글쓰기
+		</button>
+<? } } ?>
+	</ul>
+</div>

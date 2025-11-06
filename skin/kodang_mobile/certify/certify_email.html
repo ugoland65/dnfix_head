@@ -1,0 +1,44 @@
+<link rel="stylesheet" type="text/css" href="/skin/<?=$show_skin_name?>/join/join_style.css?ver=<?=$wepix_now_time?>" />
+
+<div class='login-body'>
+	<div class='login-img'>
+		<a href='/'><img src="/skin/<?=$show_skin_name?>/img/logo.jpg" alt=""></a>
+	</div>
+
+	<div id="join_step_wrap" >
+		<ol >
+			<span class="label">1</span> <strong>1단계</strong>
+			<small>가입 약관</small>
+		</ol>
+		<ol >
+			<span class="label">2</span> <strong>2단계</strong>
+			<small>정보 입력</small>
+		</ol>
+		<ol class="active">
+			<span class="label">3</span> <strong>3단계</strong>
+			<small>가입 인증</small>
+		</ol>
+		<ol>
+			<span class="label">4</span> <strong>4단계</strong>
+			<small>가입 완료</small>
+		</ol>
+	</div>
+
+	<div class="join-form m-t-20" id="join_step2">
+		<ul style="padding-top:20px;"><b id="join_step2_email"><?=$_email?></b></ul>
+		<? if($processing_result=="Complete"){ ?>
+		<ul class="m-t-20" style="height:150px; padding-top:50px; font-size:13px; color:#000; line-height:140%;">
+			회원 인증이 완료되었습니다.<br>
+			이제 마음껏 이용하 실 수 있습니다.
+		</ul>
+		<? }elseif($processing_result=="Failure"){?>
+		<ul class="m-t-20" style="height:150px; padding-top:50px; font-size:13px; color:#000; line-height:140%;">
+			유효한 값이 아닙니다.<br>
+			정확한 경로로 접근해주세요.
+		</ul>
+		<? } ?>
+		<ul class="m-t-20" style="margin-top:10px;"><button type="button" class="login-btn2" id="login_btn" onclick="location.href='/front/login/'"><i class="fa fa-sign-in"></i> 로그인</button></ul>
+		<ul style="margin-top:3px;"><button type="button" class="join-btn2" onclick="location.href='/'"><i class="fa fa-home"></i> 메인으로</button></ul>
+	</div>
+
+</div>

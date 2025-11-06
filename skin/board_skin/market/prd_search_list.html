@@ -1,0 +1,29 @@
+<STYLE TYPE="text/css">
+#prd_search_list{ overflow-y:auto; height:445px; box-sizing:border-box; border-bottom:1px solid #ddd; }
+#prd_search_list table{ width:100%; }
+#prd_search_list table tr td{ border-bottom:1px solid #ddd; box-sizing:border-box; }
+.prd-img-td{ width:70px; text-align:center; }
+.prd-img-td img{ width:60px; }
+.prd-info-td{ line-height:140%; padding-left:10px; }
+.prd-brand{ }
+.prd-name{ }
+.prd-btn-td{ width:95px; }
+</STYLE>
+<div id="prd_search_list">
+	<table>
+<?	
+while($list = wepix_fetch_array($result)){ 
+	$img_path = '../../data/comparion/'.$list[CD_IMG];
+	$brand_data = wepix_fetch_array(wepix_query_error("select BD_NAME from "._DB_BRAND." where BD_IDX = '".$list[CD_BRAND_IDX]."' "));
+?>
+	<tr>
+		<td class="prd-img-td"><img src="<?=$img_path?>" alt=""></td>
+		<td class="prd-info-td">
+			<span class="prd-brand"><?=$brand_data[BD_NAME]?></span><br>
+			<span class="prd-name"><b><?=$list[CD_NAME]?></b></span>
+		</td>
+		<td class="prd-btn-td"><button type="submit" class="basic-btn basic-btn-blue basic-btn-sm" onclick="location.href='/front/board/write.php?b_code=<?=$_b_code?>&pdkey=<?=$list[CD_IDX]?>'">상품선택</button></td>
+	</tr>
+<? } ?>
+	</table>
+</div>

@@ -1,0 +1,208 @@
+<link rel="stylesheet" href="/skin/board_skin/magazine/style.css?v=<?=time()?>">
+
+<div class="bo-title">
+	<?=$_view_bc_name_show?>
+</div>
+
+<div class="bo-view-wrap">
+	<ul class="bo-view-subject"><?=$_view_board_subject?></ul>
+<?
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" && $board_data[BOARD_CATEGORY] ){
+?>
+	<ul class="bo-view-category_wrap"><span class="bo-view-category"><?=$_ary_bc_category[$board_data[BOARD_CATEGORY]]?></span></ul>
+<? } ?>
+
+	<div class="bo-view-col2">
+		<ul class="bo-view-col2-left">
+			<div class="bo-view-info">
+				<ul class="bo-view-info-member-icon no-m-icon">
+					<i class="far fa-user"></i>
+				</ul>
+				<ul class="bo-view-info-data">
+					<li class="bo-view-info-data-name-li"><strong class="bo-view-info-data-name"><?=$_view_board_name?></strong></li>
+					<li>
+						<span class="bo-view-info-data-comment"><i class="fa fa-commenting-o" aria-hidden="true"></i> <?php echo number_format($_view_comment) ?>건</span>
+						<span class="bo-view-info-data-hit"><i class="fa fa-eye" aria-hidden="true"></i> <?php echo number_format($_view_hit) ?>회</span>
+						<span class="bo-view-info-data-date"><i class="fa fa-clock-o" aria-hidden="true"></i> <?php echo date("y-m-d H:i", $board_data['BOARD_DATE']) ?></span>
+					</li>
+				</ul>
+			</div>
+		</ul>
+		<ul class="bo-view-col2-right">
+
+<?
+//답변 쓰기 권한
+if( $_show_my_access_reply == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=reply&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-reply"></i> 답글
+			</button>
+<? } ?>
+<?
+//내가 쓴 글일경우만
+if( $_show_my_board == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='write.php?b_mode=modify&b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-wrench"></i> 수정
+			</button>
+
+			<button type="button" id="" class="nude-btn" onclick="boardDel()" > 
+				<i class="fas fa-trash-alt"></i> 삭제
+			</button>
+<? } ?>			
+			<button type="button" id="" class="nude-btn" onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" > 
+				<i class="fas fa-list"></i> 목록
+			</button>
+
+		</ul>
+	</div>
+
+	<ul class="bo-view-body">
+		<?=$_view_board_body?>
+	</ul>
+
+<?
+//좋아요 기능
+if( $_show_bc_like_active == "Y" ){
+?>
+	<ul class="bo-view-like">
+		<button id="like_btn_good" class="like-good <? if( $_view_like_my == "Y" ) echo "good-on"; ?>" onclick="goLike('Y')">
+			<i class="fa fa-thumbs-up m-r-5 "></i> <span><?=$_view_like_count_y?></span>
+		</button>
+		<button id="like_btn_bad" class="like-bad <? if( $_view_like_my == "N" ) echo "bad-on"; ?>" onclick="goLike('N')">
+			<span><?=$_view_like_count_n?></span> <i class="fa fa-thumbs-down m-l-5 "></i>
+		</button>
+	</ul>
+<? } ?>
+
+<?
+//이글과 연관된 상품이 있을경우
+if( $_show_board_view_product_active == "Y" ){
+?>
+	<ul class="bo-view-product">
+		<div class="title">연관상품</div>
+		<div class="product">
+<?
+for ($i=0; $i<count($_ary_pd); $i++){
+	if( $_ary_pd_score[$i] ){
+		$_view_score_icon_on = "";
+		for ($z=0; $z<$_ary_pd_score[$i]; $z++){
+			$_view_score_icon_on .= "<i class='fas fa-star on'></i>";
+		}
+		$_view_score_icon_empty = "";
+		for ($z=0; $z<(5-$_ary_pd_score[$i]); $z++){
+			$_view_score_icon_empty .= "<i class='far fa-star off'></i>";
+		}
+		$_view_score_icon = $_view_score_icon_on.$_view_score_icon_empty;
+	}
+?>
+			<li class="product-li">
+				<div class="product-box">
+					<ul class="thum"><a href="/front/comparison/view.php?key=<?=$_ary_pd[$i]?>" target="_black"><img src="<?=$_ary_pd_img[$i]?>" alt=""></a></ul>
+					<ul class="name"><a href="/front/comparison/view.php?key=<?=$_ary_pd[$i]?>" target="_black"><?=$_ary_pd_name[$i]?></a></ul>
+					<ul class="price-wrap">최저가 <span class="price"><?=number_format($_ary_pd_price[$i])?></span> 원</ul>
+					<? if( $_ary_pd_score[$i] ){ ?>
+					<ul class="score-icon"><?=$_view_score_icon?> &nbsp;<span class="score"><?=$_ary_pd_score[$i]?></span> / 5</ul>
+					<? } ?>
+				</div>
+			<li>
+<? } ?>
+		</div>
+	</ul>
+<? } ?>
+
+	<ul class="bo-view-comment" id="comment">
+	</ul>
+
+	<div class="bo-view-col2">
+		<ul class="bo-view-col2-left">
+		</ul>
+		<ul class="bo-view-col2-right">
+
+<?
+//답변 쓰기 권한
+if( $_show_my_access_reply == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='/bboo/front/board/reply.php?b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-reply"></i> 답글
+			</button>
+<? } ?>
+<?
+//내가 쓴 글일경우만
+if( $_show_my_board == "yes" ){
+?>
+			<button type="button" id="" class="nude-btn" onclick="location.href='/bboo/front/board/modify.php?b_code=<?=$_show_b_code?>&b_key=<?=$_show_b_key?>'" > 
+				<i class="fas fa-hammer"></i> 수정
+			</button>
+
+			<button type="button" id="" class="nude-btn" onclick="boardDel()" > 
+				<i class="fas fa-trash-alt"></i> 삭제
+			</button>
+<? } ?>			
+			<button type="button" id="" class="nude-btn" onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" > 
+				<i class="fas fa-list"></i> 목록
+			</button>
+
+		</ul>
+	</div>
+
+</div>
+
+<div class="bo-view-list" id="bo_view_list">
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var bCode = "<?=$_show_b_code?>";
+var bKey = "<?=$_show_b_key?>";
+var likeMy = "<?=$_view_like_my?>";
+
+function boardDel(){
+	if(confirm('게시물을 삭제합니다.\n삭제 후 복구가 불가능 합니다.\n정말 삭제하시겠습니까?')){
+		location.href="<?=_PATH_BOARD_OK?>?a_mode=boardDel&b_code="+ bCode +"&b_key="+ bKey;
+	}
+}
+
+function goLike(choice){
+	location.href="/bboo/front/board/board_ok.php?a_mode=goLike&b_code="+ bCode +"&b_key="+ bKey +"&choice="+ choice;
+}
+
+function showComment(b_code, b_key){
+	$.ajax({
+		url: "ajax.comment.php",
+		data: {
+			"b_code":bCode,
+			"b_key":bKey
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comment').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+showComment();
+
+function showViewFootList(){
+	$.ajax({
+		url: "list.php",
+		data: {
+			"b_code":bCode,
+			"view_foot_list_mode":"on"
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#bo_view_list').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+
+showViewFootList();
+//--> 
+</script> 

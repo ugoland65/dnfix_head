@@ -1,0 +1,752 @@
+
+<script type='text/javascript'>
+$(function(){ 
+  $('.ckbox').click(function(){ 
+  if($(".ckbox:checked").length >2){  
+	  alert('항목은 2개이상 선택할수 없습니다.'); 
+	  $(this).attr("checked",false); 
+	 } 
+  }); 
+
+}); 
+
+function dolike(kind,key){
+
+	var mode = "like_"+kind;
+	$.ajax({
+		type : "POST",
+		url : "/front/summoner/evaluation_ok.php",
+		data : {action_mode:mode,key:key},
+		error : function(){
+		},
+		success : function(data){
+			if(data == "code_200"){
+
+			}else if(data == "code_800"){
+				alert('댓글에 하나이상의 추천을 하실수없습니다!');
+			}
+		}
+	});
+}
+
+function doSubmit(){
+
+   	 var form = document.score_form;
+
+	 if($(".ckbox:checked").length <2){  
+		  alert('항목을 2개 선택해주세요!.'); 
+	  $(this).attr("checked",false); 
+
+	  return false;
+	 } 
+	form.submit();
+}
+</script>
+
+<STYLE TYPE="text/css">
+#summoner_info_box{
+	width:300px;
+	height:360px;
+	background-color:#fff;
+	border:1px solid #ddd;
+	border-radius:4px;
+	box-sizing:border-box; 
+	padding:10px;
+}
+
+#info_center{
+	width:390px;
+	height:360px;
+	background-color:#fff;
+	border:1px solid #ddd;
+	border-radius:4px;
+	box-sizing:border-box; 
+}
+#notice{ width:100%; margin:0 auto; padding-top:15px; box-sizing:border-box;  }
+#notice table{ width:100%; }
+#notice table tr td { height:26px; line-height:26px; }
+#notice table tr td.subject { padding-left:15px; }
+#notice table tr td.date { width:70px; }
+.summoner-tier-border{
+	width:120px; height:120px;
+}
+
+.summoner-tier-img{
+	padding-top:10px;
+	margin-left:10px;
+	text-align:center;
+	width:98px; height:98px;
+}
+
+.summoner_name{
+	font-family: 'Godo', sans-serif;
+	color:#222;
+	font-size:20px;
+}
+
+#contents table{ border-spacing:0;border-collapse:collapse;padding:0;margin:0;}
+#contents table tr td{ vertical-align:top !important;  }
+#summoner_info_box_left{ width:135px; }
+#solo_ranked_box_left{ width:100px; }
+
+#graph_wrap{
+	width:390px;
+	height:360px;
+	background-color:#fff;
+	border:1px solid #ddd;
+	border-radius:4px;
+	box-sizing:border-box; 
+	padding:0;
+	margin: 0 10px;
+}
+
+.comming-soon{ width:100%; height:100%; background-color:#f2f2f2;  display:table;  text-align:center; }
+.comming-soon p{ color:#ccc; display:table-cell; vertical-align:middle !important;}
+.pentagon-area{
+
+}
+
+#no-data{ width:296px; height:281px; margin:0 auto; }
+#pentagon{
+      margin-left:30px;
+      margin-top:40px;
+      position: relative;
+      width: 54px;
+      box-sizing: content-box;
+      border-width: 50px 18px 0;
+      border-style: solid;
+      border-color: #F08080 transparent;
+}
+#pentagon:before {
+
+      content: "";
+      position: absolute;
+      height: 0;
+      width: 0;
+      top: -85px;
+      left: -18px;
+      border-width: 0 45px 35px;
+      border-style: solid;
+      border-color: transparent transparent #F08080;
+
+}
+#pentagon2{
+      margin-left:30px;
+      margin-top:40px;
+      position: relative;
+      width: 54px;
+      box-sizing: content-box;
+      border-width: 50px 18px 0;
+      border-style: solid;
+      border-color: #ffda89 transparent;
+}
+#pentagon2:before {
+	  content: "";
+      position: absolute;
+      height: 0;
+      width: 0;
+      top: -85px;
+      left: -18px;
+      border-width: 0 45px 35px;
+      border-style: solid;
+      border-color: transparent transparent #ffda89;
+}
+#pentagon_text{ margin-left:25px; }
+#troll_board_tap_wrap{ width:790px; height:40px; margin-top:20px; }
+#troll_board_tap_wrap ul { width:150px; height:40px; text-align:center; line-height:40px; border-top:1px solid #ccc; border-right:1px solid #ccc; cursor:pointer; font-family: 'Godo', sans-serif; font-size:14px; color:#000;  }
+#troll_board_tap_wrap ul.now { background-color:#fff; color:#ff216a; }
+#troll_board_tap_wrap ul.frist {  border-left:1px solid #ccc; border-top-left-radius:2px !important; }
+
+.troll-reple-area{
+	width:790px;
+	display:block !important;
+	padding:20px;
+	background-color:#fff;
+	box-sizing:border-box; 
+	border:1px solid #ccc;
+/*
+	border-right:1px solid #ccc;
+	border-left:1px solid #ccc; 
+	border-bottom:1px solid #ccc;
+*/
+}
+
+#already_wrap{ width:745px; height:60px; line-height:130%; border:1px solid #bcbcbc; background-color:#ffd3e1 !important; box-sizing:border-box; margin:10px auto 5px; padding:15px 10px 10px 30px; border-radius:3px; vertical-align:middle !important; }
+#already_wrap .far{ float:left; margin-top:-4px; margin-right:10px; }
+#revaluation_btn{ margin-top:4px; }
+#revaluation_btn button{ width:150px; height:28px; line-height:28px; color:#fff; background-color:#ff256d; border:1px solid #d90b4f; border-radius:3px; }
+
+#form_guide_img{ width:745px; height:153px; margin:0 auto; }
+
+#evaluation_form_ok{ width:745px; height:100px; margin:15px auto 0; padding-top:6px; box-sizing:border-box;  background-color:#fff; text-align:center; border:1px solid #f7f7f7;  border-radius:5px; }
+
+#evaluation_form_wrap{ width:745px; margin:0 auto 0; }
+#evaluation_form_item{ height:20px;  }
+#evaluation_form_item ul li{ float:left; margin-right:13px; }
+#evaluation_form_item ul li.ck{ font-weight:bold; color:#ff256d; }
+#evaluation_form_textarea_wrap{ width:745px; height:60px; margin:0 auto; display:table; }
+#evaluation_form_textarea_wrap ul{ display:table-cell; vertical-align:top; height:60px;  padding:0; box-sizing:border-box;  }
+
+#evaluation_form_star{ width:180px; border-top:1px solid #bcbcbc; vertical-align:middle !important; text-align:center; border-left:1px solid #bcbcbc; border-bottom:1px solid #bcbcbc;  background-color:#f7f7f7; }
+#evaluation_form_textarea{  width:600px; height:56px !important;  border-top:1px solid #bcbcbc; border-left:1px solid #bcbcbc; border-bottom:1px solid #bcbcbc; }
+#evaluation_form_textarea textarea{ width:100%; height:100% !important; margin:0; padding:6px; font-size:12px; border:none; resize:none; box-sizing:border-box; } 
+#evaluation_form_button{ width:65px; border-top:1px solid #ec1b5f; border-left:1px solid #ec1b5f; border-right:1px solid #ec1b5f; border-bottom:1px solid #b2003a;  }
+#evaluation_form_button button{ width:100%; height:100%; margin:0 !important; border:none !important; color:#fff; background-color:#f7407c;  }
+
+#evaluation_form_textarea_nolog{ float:left; width:678px; height:60px; border-top:1px solid #bcbcbc; border-left:1px solid #bcbcbc; border-bottom:1px solid #bcbcbc; box-sizing:border-box; background-color:#eee; text-align:center; line-height:60px; }
+#evaluation_form_button_nolog{ float:left; width:67px; height:60px;  }
+#evaluation_form_button_nolog button{ width:65px; height:60px; color:#fff; background-color:#666; border-top:1px solid #333; border-left:1px solid #333; border-right:1px solid #333; border-bottom:1px solid #333; box-sizing:border-box;  border-top-right-radius:5px; border-bottom-right-radius: 5px;  }
+
+#evaluation_form_textarea_check { width:678px; height:22px; margin-top:4px; text-align:right; }
+#now_text_count { font-weight:bold; color:#f7407c; }
+#evaluation_board_count{ margin-top:10px; padding:0 0 0 10px; border-bottom:1px solid #dddddd; font-size:12px; color:#000; height:26px; line-height:26px; }
+#evaluation_board_wrap { width:745px; margin-top:15px; }
+#evaluation_board { width:745px; margin-top:15px; padding-bottom:12px; margin-bottom:12px; border-bottom:1px dashed #dddddd;  }
+#evaluation_board table{ width:100%; }
+#evaluation_board .evaluation { width:90px; vertical-align:middle !important; text-align:center;  }
+.evaluation-star{ text-align:center; }
+.evaluation-star img{ width:14px; margin-bottom:3px; }
+.evaluation-star .fas{ color:#222; }
+.evaluation-star .far{ color:#999; }
+.evaluation-score{ text-align:center; margin-top:5px; /* color:#ff216a; */ color:#222; font-weight:bold; }
+#evaluation_board .evaluation-text { }
+#evaluation_board .like-btn { width:90px;  }
+#evaluation_board .like-btn div { width:90px; height:22px; }
+#evaluation_board .like-btn div button{ width:50px; height:20px; border:1px solid #bbbbbb; border-radius:2px; background-color:#e8e8e8;  }
+#evaluation_board .like-btn div ul.like-btn-count{ width:40px; height:20px; line-height:20px; text-align:right; box-sizing:border-box; padding-right:7px; }
+#evaluation_board .like-btn div ul.like-btn-button{ width:50px; height:20px; }
+.eat-evaluate{ font-size:13px; color:#000; line-height:140%; }
+.eat-info{ margin-top:7px; font-size:12px; color:#999999; }
+
+.evaluation_box{ width:50px; box-sizing:border-box; padding:3px; margin:1px 0 1px 3px; border:1px solid #dddddd; border-radius:2px; text-align:center;  }
+.already-textarea, 
+.already-star{ background-color:#ffd3e1 !important; }
+
+.paging-now{ font-size:11px; color:#999999; }
+
+/* 페이징 */
+.paging { margin:0 auto; text-align:center; }
+.paging * {vertical-align:middle;}
+.paging a.rest {display:inline-block;width:18px;height:18px;margin:0 2px;border:1px solid #b5b5b5;font-family:Tahoma;font-size:11px;line-height:18px;color:#7b7b7b;letter-spacing:-1px;}
+.paging a.rest:hover {display:inline-block;width:18px;height:18px;margin:0 2px;border:none;font-family:Tahoma;font-size:10px;line-height:18px;font-weight:bold;background:#777777; border:1px solid #000000;color:#fff;}
+.paging a.post { margin:0 9px 0 0; }
+.paging a.next { margin:0 0 0 9px; }
+.paging a.now { display:inline-block;width:18px;height:18px;margin:0 2px;border:none;font-family:Tahoma;font-size:10px;line-height:18px;font-weight:bold;background:#444444; border:1px solid #000000;color:#fff;}
+
+#ranked_wrap{ width:300px; height:360px; background-color:#fff; border:1px solid #ddd; border-radius:4px; box-sizing:border-box;  padding:0; margin: 20px 0 0 0; }
+.ranked_box_left{ width:90px; box-sizing:border-box; padding-left:13px; text-align:center; }
+.ranked_box{ border-bottom:1px solid #ddd; }
+.partition{ color:#ccc; }
+.ranked_title{ height:40px; line-height:40px; color:#ff216a; border-bottom:1px dashed #ddd; box-sizing:border-box; padding-left:30px; font-weight:bold; }
+
+#loading{ height:500px;  text-align:center; }
+</STYLE>
+
+<div id="contents">
+	<table style="width:1100px">
+		<tr>
+			<td style="width:300px">
+				<div id="summoner_info_box">
+					<table>
+						<tr>
+							<td id="summoner_info_box_left">
+								<div class="summoner-tier-border" style="background-image:url(/img/border/<?=$tier_img_name?>.png);">
+									<img src="//opgg-static.akamaized.net/images/profile_icons/profileIcon<?=$profile_icon?>.jpg" class="summoner-tier-img">
+								</div>				
+							</td>
+							<td>
+								<div id="summoner_info">
+									<ul class="m-t-20"><span class="summoner_name"><?=$summoner_name?></span></ul>
+									<ul class="m-t-10">Level : <span class="font-color-pink"><b><?=$summoner_level?></b></span></ul>
+									<ul class="m-t-7">조회수 : <span class="font-color-pink"><b><?=$show_summoner_hit?></b></span>  </ul>
+<?
+if( $show_summoner_average_grade > 0 ){
+?>
+									<ul class="m-t-7">OSI 평점 : <span class="font-color-pink" id="summoner_average_grade"><b><?=$show_summoner_average_grade?></b></span></ul>
+<? }else{ ?>
+									<ul class="m-t-7">OSI 평점 : <span id="summoner_average_grade">No Data</span></ul>
+<? } ?>
+
+<? if( $revision_date ) { ?>
+									<ul class="m-t-7">갱신 : <span><?=date('y.m.d H:i', $revision_date);?></span></ul>
+<? } ?>
+
+								<? if( $noaip == "Y" ){ ?>
+									<ul class="m-t-7">Last update</ul>
+									<ul class="m-t-2"><span class="font-color-pink"><?=date('Y.m.d H:i', $update_date);?></span></ul>
+								<? } ?>
+								</div>
+							</td>
+						</tr>
+					</table>
+
+<STYLE TYPE="text/css">
+#total_score{ margin-top:12px; margin-bottom:7px; box-sizing:border-box; padding-left:10px; }
+.score_sum{ color:#175eff; }
+#mpsba{ width: 240px; margin:0 auto; }
+#mpsba table tr td{ height:24px; line-height:24px; }
+.score-box{ height:20px; line-height:20px; box-sizing:border-box; border:1px solid #ccc; padding:0 10px; border-radius:4px; margin-top:2px;  margin-left:6px; background-color:#eee; }
+
+.best_1{ color:#1059ff; font-weight:bold; }
+.best_2{ color:#fff !important; background-color:#175eff !important; border:1px solid #0037b5 !important; font-weight:bold; }
+</STYLE>
+
+<?
+/*
+------------------------------------------------------------------------------------------------------------
+?>
+					<div id="total_score">
+						TOTAL SCORE : <b class="score_sum"><?=$score_sum?></b>
+					</div>
+					<div id="mpsba">
+						<table>
+							<tr>
+								<td align="right" class="<? if( $max_score == $score1 && $score1 > 0 ){ echo 'best_1'; }?>"><!-- Mental -->M : 멘탈약함</td>
+								<td><div class="score-box <? if( $max_score == $score1 && $score1 > 0 ){ echo 'best_2'; }?>"><?=$score1?></div></td>
+							</tr>
+							<tr>
+								<td align="right" class="<? if( $max_score == $score2 && $score2 > 0 ){ echo 'best_1'; }?>"><!-- Personality -->P : 인성부족</td>
+								<td><div class="score-box <? if( $max_score == $score2 && $score2 > 0 ){ echo 'best_2'; }?>"><?=$score2?></div></td>
+							</tr>
+							<tr>
+								<td align="right" class="<? if( $max_score == $score3 && $score3 > 0 ){ echo 'best_1'; }?>"><!-- Swear -->S : 욕설많음</td>
+								<td><div class="score-box <? if( $max_score == $score3 && $score3 > 0 ){ echo 'best_2'; }?>"><?=$score3?></div></td>
+							</tr>
+							<tr>
+								<td align="right" class="<? if( $max_score == $score4 && $score4 > 0 ){ echo 'best_1'; }?>"><!-- Blame -->B : 남탓심함</td>
+								<td><div class="score-box <? if( $max_score == $score4 && $score4 > 0 ){ echo 'best_2'; }?>"><?=$score4?></div></td>
+							</tr>
+							<tr>
+								<td align="right" class="<? if( $max_score == $score5 && $score5 > 0 ){ echo 'best_1'; }?>"><!-- Ability -->A : 실력부족</td>
+								<td><div class="score-box <? if( $max_score == $score5 && $score5 > 0 ){ echo 'best_2'; }?>"><?=$score5?></div></td>
+							</tr>
+						</table>
+<?
+------------------------------------------------------------------------------------------------------------
+*/
+?>
+					</div>
+
+				</div><!-- #summoner_info_box -->
+			</td>
+			<td style="width:400px">
+
+				<div id="graph_wrap">
+					<div class="comming-soon"><p>컨텐츠 준비중</p></div>
+				</div>
+
+<? /* ?>
+				<div id="graph_wrap">
+<? if( $score_sum > 0 ){ ?>
+					<div class='pentagon-area'>
+						<div id="RadarChart"></div>
+					</div>
+<? }else{ ?>
+					<div id="no-data">
+						<img src="/skin/pink/img/nodata.jpg" alt="">
+					</div>
+<? } ?>
+				</div>
+<? */ ?>
+
+			</td>
+			<td style="width:400px">
+				<div id="info_center">
+					<div id="notice">
+						<table>
+					
+						</table>
+					</div>
+				</div>
+			</td>
+		</tr>
+	</table>
+
+	<table>
+		<tr>
+			<td style="width:310px">
+				<div id="ranked_wrap">
+					<div class="ranked_title">Solo Rank</div>
+					<? if($solo_tier != ''){ ?>
+					<div class="ranked_box">
+						<table>
+							<tr>
+								<td class="ranked_box_left"><img src="/front/img/tier/<?=$solo_tier_img?>.png" style='width:75px; height:75px;'></td>
+								<td>
+									<div id="solo_ranked">
+										<ul class="m-t-14"><b><?=$position_text_kr_array[$i]?></b></ul>
+										<ul class="m-t-5"><span class="font-color-pink"><?=$solo_tier?> <?=$solo_rank?><span>&nbsp;&nbsp;<?=$solo_points?>LP </ul>
+										<ul class="m-t-5"><?=$solo_wins?>승  <?=$solo_losses?>패 <span class="partition">I</span>&nbsp; 승률 <b><?=$solo_rate?></b> % </ul>
+										<ul class="m-t-5"><?=$solo_leagueName?></ul>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<?}else{?>
+						<div class="ranked_box">
+					<table>
+							<tr>
+								<td class="ranked_box_left"><img src="/front/img/tier/default.png" style='width:75px; height:75px;'></td>
+								<td>
+									<div id="unranked">
+										<ul class="m-t-14">Solo Rank</ul>
+										<ul class="m-t-5">Unranked</ul>
+										<ul class="m-t-5"> </ul>
+									</div>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<?}?>
+
+					<div class="ranked_title">Free Rank</div>
+					<?if($free_tier != ''){?>
+					<div class="ranked_box">
+					<table>
+							<tr>
+								<td class="ranked_box_left"><img src="/front/img/tier/<?=$free_tier_img?>.png" style='width:75px; height:75px;'></td>
+								<td>
+									<div id="solo_ranked">
+										<ul class="m-t-14"><b><?=$position_text_kr_array[$i]?></b></ul>
+										<ul class="m-t-5"><span class="font-color-pink"><?=$free_tier?> <?=$free_rank?><span>&nbsp;&nbsp;<?=$free_points?>LP </ul>
+										<ul class="m-t-5"><?=$free_wins?>승  <?=$free_losses?>패 <span class="partition">I</span>&nbsp; 승률 <b><?=$free_rate?></b> % </ul>
+										<ul class="m-t-5"><?=$free_leagueName?></ul>
+									</div>
+								</td>
+							</tr>
+						</table>
+
+					</div>
+					<?}else{?>
+						<div class="ranked_box">
+					<table>
+							<tr>
+								<td class="ranked_box_left"><img src="/front/img/tier/default.png" style='width:75px; height:75px;'></td>
+								<td>
+									<div id="unranked">
+										<ul class="m-t-14">Free Rank</ul>
+										<ul class="m-t-5">Unranked</ul>
+										<ul class="m-t-5"> </ul>
+
+									</div>
+								</td>
+							</tr>
+						</table>
+					</div>
+					<?}?>
+
+				</div>
+			</td>
+			<td style="width:790px">
+<?
+if( $test_mode == "on"){
+?>
+			<div id="troll_board_tap_wrap">
+				<ul class="float-left frist now" id="tap-b" onclick="menuTap('B')"> 전적보기</ul>
+			</div>
+<? }else{ ?>
+			<div id="troll_board_tap_wrap">
+				<ul class="float-left frist now" id="tap-a" onclick="menuTap('A')">소환사 평점</ul>
+				<ul class="float-left " id="tap-b" onclick="menuTap('B')"> 전적보기</ul>
+<!-- 
+				<ul class="float-left " id="tap-c" onclick="menuTap('C')"><i class="fa fa-search-plus" aria-hidden="true"></i> 인게임</ul>
+ -->
+			</div>
+<? } ?>
+
+	<div class='troll-reple-area'>
+
+		<div id="tap_c_area" style="display:none">
+		</div>
+
+		<div id="tap_b_area" style="display:none">
+		</div>
+
+<?
+if( $test_mode == "on"){
+?>
+		<div id="tap_a_area" style="display:none">
+<? }else{ ?>
+		<div id="tap_a_area">
+<? } ?>
+
+<!-- 
+			<div id="form_guide_img">
+				<img src="/skin/pink/img/form_guide.png" alt="">
+			</div>
+ -->
+
+<?
+//이미 이소환사를 평가 했을경우
+if( $already_data[EAT_IDX] ){
+?>
+			<div id="already_wrap">
+				<i class="far fa-grin-alt fa-3x"></i>
+				이소환사는 ( <b><?=date("Y.m.d H:i ",$already_data[EAT_REQ_DATE]);?></b> ) 이미 평가한 소환사 입니다. <br>
+				내가 평가한 내용을 다시 수정할 수 있습니다.
+			</div>
+
+			<div id="evaluation_form_wrap">
+				<div id="evaluation_form_textarea_wrap">
+					<ul id="evaluation_form_star" class="already-star">
+						평점 : 
+						<select name="eat_score" id="eat_score">
+							<? for( $i=1; $i<11; $i++ ){ ?>
+								<option value="<?=$i?>" <? if($i==$already_data[EAT_SCORE]) echo "selected";?>><?=$i?></option>
+							<? } ?>
+						</select>
+					</ul>
+					<ul id="evaluation_form_textarea"><textarea name="evaluation_text" id="evaluation_text" rows="" cols="" class="already-textarea"><?=$already_data[EAT_EVALUATE]?></textarea></ul>
+					<ul id="evaluation_form_button"><button onclick="evaluationSubmit('revaluation', '<?=$already_data[EAT_IDX]?>')"><span style="line-height:16px;"><b>재평가</b><br>수정</span></button></ul>
+				</div>
+				<div id="evaluation_form_textarea_check">
+					<span id="now_text_count">13</span> / 150
+				</div>
+			</div>
+<?
+}else{
+
+	//로그인 아이디가 있을경우
+	if( $sess_id ){
+?>
+			<div id="evaluation_form_wrap" >
+				<div id="evaluation_form_textarea_wrap">
+					<ul id="evaluation_form_star">
+						평점 : 
+						<select name="eat_score" id="eat_score">
+							<? for( $i=1; $i<11; $i++ ){ ?>
+								<option value="<?=$i?>" <? if($i==10) echo "selected";?>><?=$i?></option>
+							<? } ?>
+						</select>
+					</ul>
+					<ul id="evaluation_form_textarea"><textarea name="evaluation_text" id="evaluation_text" rows="" cols=""></textarea></ul>
+					<ul id="evaluation_form_button"><button onclick="evaluationSubmit()">등록</button></ul>
+				</div>
+			</div>
+
+<? }else{ ?>
+
+			<div id="evaluation_form_wrap" onclick="doLogin()">
+				<div id="evaluation_form_textarea_wrap">
+					<ul id="evaluation_form_textarea_nolog">로그인후 이용해주세요.</ul>
+					<ul id="evaluation_form_button_nolog"><button onclick="doLogin()">등록</button></ul>
+				</div>
+				<div id="evaluation_form_textarea_check">
+					<span id="now_text_count">0</span> / 150
+				</div>
+			</div>
+
+<? 
+	} 
+}
+?>
+			<div id="evaluation_form_ok" style="display:none;">
+				<img src="/skin/pink/img/submit_ok.gif" alt="" style="margin-bottom:7px;"><br>
+				<span id="evaluation_form_ok_text">등록이 완료되었습니다.</span>
+			</div>
+
+			<div id="evaluation_board_ajax">
+
+			</div>
+
+		</div><!-- #tap_a_area -->
+
+<script type="text/javascript"> 
+<!-- 
+function evaluationSubmit(mode, rkey){
+
+	var evaluation_score = $("#eat_score option:selected").val();
+	var evaluation_text = $("#evaluation_text").val();
+
+
+	if( evaluation_text == "" ){
+		alert('평가 내용을 입력해주세요.'); 
+		return false;
+	}
+
+	var action_mode;
+
+	if( mode == "revaluation" ){
+		action_mode = "revaluation";
+	}else{
+		action_mode = "new_ajax";
+	}
+
+	if( !rkey ) rkey = ""; 
+
+	$.ajax({
+		url: "/front/summoner/evaluation_ok.php",
+		data: {
+			"action_mode":action_mode,
+			"summoner_name":"<?=$summoner_name?>",
+			"summoner_id":"<?=$show_summoner_id?>",
+			"eat_score":evaluation_score,
+			"evaluate":evaluation_text,
+			"revaluation_key":rkey
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckaveragegrade = redatawa[2];
+				if(ckcode == "write_ok"){
+					boardShow('1');
+					if( action_mode == "new_ajax" ){
+						$('#summoner_average_grade').html("<b style='color:#ff0000;'>"+ ckaveragegrade +"</b>");
+						$('#evaluation_form_wrap').hide();
+						$('#evaluation_form_ok').show();
+					}else{
+						$('#summoner_average_grade').html("<b>"+ ckaveragegrade +"</b>");
+						$('#evaluation_form_ok_text').html("수정이 완료되었습니다.");
+						$('#evaluation_form_ok').show();
+					}
+					
+				}else{
+		
+				}
+			}
+		},
+		error: function(){
+			$('#modal_alert_content_zone').html('접근에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+
+var loadinghtml = '<div id="loading"><img src="/skin/pink/img/loading.gif" alt=""><br>DATA LOADING</div>';
+
+function menuTap(mode){
+	if( mode == "A" ){
+		$("#tap-a").attr("class", "float-left frist now");
+		$("#tap-b").attr("class", "float-left");
+		$("#tap-c").attr("class", "float-left");
+		$("#tap_a_area").show();
+		$("#tap_b_area").hide();
+		$("#tap_c_area").hide();
+	}else if( mode == "B" ){
+		$('#tap_b_area').html(loadinghtml);
+		$("#tap-a").attr("class", "float-left frist");
+		$("#tap-b").attr("class", "float-left now");
+		$("#tap-c").attr("class", "float-left");
+		$("#tap_a_area").hide();
+		$("#tap_b_area").show();
+		$("#tap_c_area").hide();
+		recordShow();
+	}else if( mode == "C" ){
+		$('#tap_c_area').html(loadinghtml);
+		$("#tap-a").attr("class", "float-left frist");
+		$("#tap-b").attr("class", "float-left");
+		$("#tap-c").attr("class", "float-left now");
+		$("#tap_a_area").hide();
+		$("#tap_b_area").hide();
+		$("#tap_c_area").show();
+	}
+}
+
+function comingSoon(){
+	alert('서비스 준비중 입니다.');
+	return false;
+}
+
+function recordShow(pn){
+	$.ajax({
+		url: "/front/summoner/record.php",
+		data: {
+			"summoner_name":"<?=$summoner_name?>"	
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#tap_b_area').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+
+function boardShow(pn){
+
+	$.ajax({
+		url: "/front/summoner/evaluation_board.php",
+		data: {
+			"show_summoner_id":"<?=$show_summoner_id?>",
+			"show_summoner_name":"<?=$summoner_name?>",
+			"show_eb_listnum":"<?=$show_eb_listnum?>",
+			"pass_pn":pn
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#evaluation_board_ajax').html(getdata);
+		},
+		error: function(){
+		
+		}
+	});
+}
+
+boardShow();
+
+<?
+if( $score1 == "0" ) { $score1_num = "1"; }else{ $score1_num = $score1; }
+if( $score2 == "0" ) { $score2_num = "1"; }else{ $score2_num = $score1; }
+if( $score3 == "0" ) { $score3_num = "1"; }else{ $score3_num = $score1; }
+if( $score4 == "0" ) { $score4_num = "1"; }else{ $score4_num = $score1; }
+if( $score5 == "0" ) { $score5_num = "1"; }else{ $score5_num = $score1; }
+?>
+// Script
+var chart = bb.generate({
+  data: {
+    x: "x",
+    columns: [
+	["x", "멘탈(<?=$score1?>)", "인성(<?=$score2?>)", "욕설(<?=$score3?>)", "남탓(<?=$score4?>)", "실력(<?=$score5?>)"],
+	["SCORE", <?=$score1_num?>, <?=$score2_num?>, <?=$score3_num?>, <?=$score4_num?>, <?=$score5_num?>]
+    ],
+    type: "radar",
+    labels: true
+  },
+  radar: {
+    axis: {
+      max: <?=$max_score_more?>
+    },
+    level: {
+      depth: 5
+    },
+    direction: {
+      clockwise: true
+    }
+  },
+  bindto: "#RadarChart"
+});
+
+chart.data.colors({
+	SCORE: "#005aff"
+});
+//--> 
+</script> 
+
+
+	</div>
+
+
+			</td>
+		</tr>
+	</table>
+
+
+</div><!-- #contents -->
+
+
+<?
+if( $test_mode == "on"){
+?>
+<script type="text/javascript"> 
+<!-- 
+menuTap('B');
+//--> 
+</script> 
+<? } ?>

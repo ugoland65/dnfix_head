@@ -1,0 +1,261 @@
+<?
+if( $board_data[BOARD_ADMIN] == "Y" ){
+	$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_admin.png\" class='micon'>";
+	$_view_board_name = "<b>".$board_data[BOARD_WITER_NAME]."</b>";
+}elseif( $board_data[BOARD_ADMIN] == "M2" ){
+	//$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_manager.png\" class='micon'>";
+	$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-m2\"></i>";
+	$_view_board_name = "<b>".$board_data[BOARD_WITER_NAME]."</b>";
+}else{
+
+	$_view_micon = "";
+	$_view_board_name = $board_data[BOARD_WITER_NAME];
+	$_view_ip = "<span class='view-ip'>(".$board_data[BOARD_IP_SHOW].")</span>";
+
+	//가상 비회원일경우
+	if( $board_data[BOARD_MODE] != "IG2" && $board_data[BOARD_WITER_ID] ){
+		$_view_micon = "<i class=\"fas fa-user-circle micon-i micon-i-n\"></i>";
+		$_view_board_name = "<b>".$board_data[BOARD_WITER_NAME]."</b>";
+		$_view_ip = "";
+	
+	}
+}
+?>
+
+<link rel="stylesheet" href="/skin/board_skin/market_mobile/style.css?v=<?=time()?>">
+
+<div class="bo-title display-table">
+	<ul class="display-table-cell"><a href="list.php?b_code=<?=$_show_b_code?>"><?=$_view_bc_name_show?></a></ul>
+	<ul class="bo-title-btn display-table-cell v-align-top">
+		<a href="list.php?b_code=<?=$_show_b_code?>">
+		<button type="button" id="" class="bo-btn bo-btn-pink" > 
+			목록
+		</button>
+		</a>
+	</ul>
+</div>
+
+<div class="bo-view-wrap">
+	<ul class="bo-view-subject"><?=$_view_board_subject?></ul>
+<?
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" && $board_data[BOARD_CATEGORY] ){
+?>
+	<ul class="bo-view-category_wrap"><span class="bo-view-category"><?=$_ary_bc_category[$board_data[BOARD_CATEGORY]]?></span></ul>
+<? } ?>
+	<ul class="bo-view-name"><?=$_view_micon?><?=$_view_board_name?><?=$_view_ip?></ul>
+	<ul class="bo-view-info">
+		<span><i class="fa fa-clock-o" aria-hidden="true"></i> <?=date("y-m-d H:i", $board_data['BOARD_DATE'])?></span>
+		<span><i class="fa fa-eye" aria-hidden="true"></i> <?=number_format($_view_hit)?></span>
+		<span><i class="fa fa-commenting-o" aria-hidden="true"></i> <?php echo number_format($_view_comment) ?>건</span>
+<?
+if( $_show_bc_recom_active == "Y" && $board_data[BOARD_LIKE] > 0 ){
+?>
+		<span><i class="far fa-thumbs-up"></i> <?php echo number_format($board_data[BOARD_LIKE]) ?></span>
+<? } ?>
+	</ul>
+
+<?
+if( $board_data[BOARD_MODE] != 'NT' ){
+?>
+	<ul class="bo-view-product">
+
+		<div class="prd-name"><b><?=$_view_prd_name?></b></div>
+		
+		<div class="bo-view-product-box">
+			<ul class="bo-view-product-img">
+				<div class="bo-view-product-img-box"><img src="<?=$_view_prd_img?>" class="img-blur"></div>
+				<? if( $board_data[BOARD_PD_IDX] ){ ?>
+				<div class="bo-view-product-btn">
+					<a href="/mobile/comparison/view.php?key=<?=$_view_prd_idx?>" target="_blank"><button type="submit" class="basic-btn basic-btn-blue basic-btn-sm" >상품정보</button></a>
+				</div>
+				<? } ?>
+			</ul>
+			<ul class="bo-view-product-info">
+
+				<table>
+
+					<? if( $board_data[BOARD_PD_IDX] && $_view_prd_price > 0 ){ ?>
+					<tr>
+						<th>새상품 최저가 :</th>
+						<td><?=number_format($_view_prd_price)?>원</td>
+					</tr>
+					<? } ?>
+
+					<tr>
+						<th>판매 희망가 :</th>
+						<td><b class="sale-price"><?=number_format($market_data[um_price])?><b>원</td>
+					</tr>
+					<tr>
+						<th>상품상태 :</th>
+						<td><?=$_view_market_used?></td>
+					</tr>
+					<tr>
+						<th>판매상태 :</th>
+						<td><?=$_view_market_state?></td>
+					</tr>
+				</table>
+			</ul>
+
+		</div>
+
+	</ul>
+<? } ?>
+
+<?
+if( $board_data[BOARD_LINK_URL] ){
+?>
+	<ul class="bo-view-link">
+		<div class="link-wrap">
+			오픈톡 : 
+			<? if( $market_data[um_state] == "ing" ){ ?>
+				<b><a href="<?=$board_data[BOARD_LINK_URL]?>" target="_blank"><?=$board_data[BOARD_LINK_URL]?></a></b>
+			<? }else{ ?>
+				판매종료 비공개
+			<? } ?>
+		</div>
+	</ul>
+<? } ?>
+
+	<ul class="bo-view-body">
+		<?=$_view_board_body?>
+	</ul>
+
+<?
+//추천 기능
+if( $_show_bc_recom_active == "Y" ){
+?>
+	<ul class="bo-view-like">
+		<span class="count like" id="like_count_good_<?=$_b_key?>"><?=$_view_like_count?></span>
+		<button id="like_btn_good_<?=$_b_key?>" class="like-good <? if( $_view_like_my == "Y" ) echo "active"; ?>" onclick="global_Like('good','<?=$_b_key?>','board','<?=$_b_code?>')">
+			<i class="far fa-thumbs-up"></i>
+		</button>
+		<button id="like_btn_bad_<?=$_b_key?>" class="like-bad <? if( $_view_like_my == "N" ) echo "active"; ?>" onclick="global_Like('bad','<?=$_b_key?>','board','<?=$_b_code?>')">
+			<i class="far fa-thumbs-down fa-flip-horizontal"></i>
+		</button>
+		<span class="count bad" id="like_count_bad_<?=$_b_key?>"><?=$_view_bad_count?></span>
+	</ul>
+<? } ?>
+
+
+	<div class="bo-gap"></div>
+	<ul class="bo-view-comment" id="comment">
+	</ul>
+
+</div>
+
+<div class="bo-view-footer display-table">
+	<ul class="display-table-cell"></ul>
+	<ul class="display-table-cell bo-view-btn">
+		<a href="list.php?b_code=<?=$_show_b_code?>"><button type="button" id="" class="bo-btn bo-btn-pink" > 목록 </button></a>
+	</ul>
+</div>
+
+<div class="bo-gap"></div>
+
+<div class="bo-view-list" id="bo_view_list">
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+var bCode = "<?=$_show_b_code?>";
+var bKey = "<?=$_show_b_key?>";
+var likeMy = "<?=$_view_like_my?>";
+
+function boardDel(){
+	if(confirm('게시물을 삭제합니다.\n삭제 후 복구가 불가능 합니다.\n정말 삭제하시겠습니까?')){
+		location.href="<?=_PATH_BOARD_OK?>?a_mode=boardDel&b_code="+ bCode +"&b_key="+ bKey;
+	}
+}
+
+function global_Like(str, idx, mode, group, count_id){
+
+	var target_btn_this = $('#like_btn_'+ str +'_'+ idx);
+	var target_btn_good = $('#like_btn_good_'+ idx);
+	var target_btn_bad = $('#like_btn_bad_'+ idx);
+
+	var target_count_this = $('#like_count_'+ str +'_'+ idx);
+	var target_count_good = $('#like_count_good_'+ idx);
+	var target_count_bad = $('#like_count_bad_'+ idx);
+
+	var target_count_this_value = target_count_this.text()*1;
+	var target_count_good_value = target_count_good.text()*1;
+	var target_count_bad_value = target_count_bad.text()*1;
+
+	$.ajax({
+		url: "/models/like/processing.like.php",
+		data: {
+			"a_mode":"doLike",
+			"ajax_mode":"on",
+			"c_idx":idx,
+			"c_selected":str,
+			"c_mode":mode,
+			"c_group":group
+		},
+		type: "POST",
+		dataType: "text",
+		success: function(getdata){
+			if (getdata){
+				redatawa = getdata.split('|');
+				ckcode = redatawa[1];
+				ckmsg = redatawa[2];
+				ckval = redatawa[3];
+
+				if(ckcode == "Processing_Complete"){
+					if( ckval == "NEW" ){
+						target_btn_this.addClass('active');
+						target_count_this.html(target_count_this_value + 1);
+					}else if( ckval == "MODIFY" ){
+						if(str=="good"){
+							target_btn_good.addClass('active');
+							target_btn_bad.removeClass('active');
+							target_count_good.html(target_count_good_value + 1);
+							target_count_bad.html(target_count_bad_value - 1);
+						}else{
+							target_btn_good.removeClass('active');
+							target_btn_bad.addClass('active');
+							target_count_good.html(target_count_good_value - 1);
+							target_count_bad.html(target_count_bad_value + 1);
+						}
+					}else if( ckval == "DEL" ){
+						target_btn_this.removeClass('active');
+						target_count_this.html(target_count_this_value - 1);
+					}
+				}else if(ckcode == "Erorr"){
+					//ajaxLoadingErorrClose();
+					$('#modal_alert_msg').html(ckmsg);
+					$('#modal-alert').modal({show: true,backdrop:'static'});
+				}else{
+					//return false;
+				}
+
+			}
+		},
+		error: function(){
+			$('#modal_alert_msg').html('에러');
+			$('#modal-alert').modal({show: true,backdrop:'static'});
+		}
+	});
+
+}
+
+function showComment(b_code, b_key){
+	$.ajax({
+		url: "ajax.comment.php",
+		data: {
+			"b_code":bCode,
+			"b_key":bKey
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#comment').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+showComment();
+
+//--> 
+</script> 

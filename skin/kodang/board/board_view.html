@@ -1,0 +1,192 @@
+<link rel="stylesheet" type="text/css" href="/skin/pink/board/board_style.css?ver=<?=$wepix_now_time?>" />
+
+<script type="text/javascript"> 
+<!-- 
+var b_code = "<?=$_b_code?>";
+var b_key = "<?=$_b_key?>";
+//--> 
+</script>
+
+<div id="contents">
+	<table style="width:1100px">
+		<tr>
+			<td style="width:300px">
+<?
+include ($docRoot."/skin/".$glv_skin_name."/board/board_submenu.html");
+
+	if( $board_data[BOARD_POWER] == "A" ){
+		$board_name = "<img src='/skin/pink/img/admin_icon.png'>";
+	}
+?>
+			</td>
+			<td style="width:800px; padding-left:10px; box-sizing:border-box; ">
+				<div id="board_wrap" class="board-wrap">
+					<div class="board-subject"><?=$board_subject?></div>
+					<div class="board-info">
+						<ul>
+							<li class="float-left m-r-10"><b><?=$board_name?></b></li>
+							<li class="float-left"><?=$board_date?></li>
+							<li class="float-right">댓글 <b><?=$board_coment_count?></b></li>
+							<li class="float-right m-r-10">조회 <b><?=$board_hit?></b></li>
+						</ul>
+					</div>
+					<div class="board-body">
+						<?=$board_body?>
+					</div>
+
+<?
+//좋아요 기능이 활성화였을때
+if( $show_like == "Y" ){
+	//fontc-2270ff
+	//fontc-f62569
+?>
+					<div class="board-like">
+<? if( $sess_id ){ ?>
+						<button id="like_btn_good" class="<? if( $show_count_like_my == "good" ) echo "good-on"; ?>" onclick="goLike('good')"><i class="fa fa-thumbs-up m-r-5 "></i> <span><?=$show_count_like_good?></span></button>
+						<button id="like_btn_bad" class="<? if( $show_count_like_my == "bad" ) echo "bad-on"; ?>" onclick="goLike('bad')"><span><?=$show_count_like_bad?></span> <i class="fa fa-thumbs-down m-l-5 "></i></button>
+<? }else{ ?>
+						<button onclick="goLogin()"><i class="fa fa-thumbs-up m-r-5 "></i> <?=$show_count_like_good?></button>
+						<button onclick="goLogin()"><?=$show_count_like_bad?> <i class="fa fa-thumbs-down m-l-5 "></i></button>
+<? } ?>
+					</div>
+
+<? } ?>
+				</div>
+
+				<div class="board-btn">
+					<button onclick="location.href='/board/?b_mode=list&b_code=<?=$_b_code?>' ">목록</button>
+				</div>
+
+<?
+//댓글 기능이 활성화였을때
+if( $show_comment == "Y" ){
+?>
+				<div id="board_comment" class="board-wrap">
+				</div>
+<script type="text/javascript"> 
+<!-- 
+function showComment(b_code, b_key){
+	$.ajax({
+		url: "board_comment.php",
+		data: {
+			"b_code":b_code,
+			"b_key":b_key
+		},
+		type: "POST",
+		dataType: "html",
+		success: function(getdata){
+			$('#board_comment').html(getdata);
+		},
+		error: function(){
+		}
+	});
+}
+showComment('<?=$_b_code?>', '<?=$_b_key?>');
+//--> 
+</script>
+<? } ?>
+
+			</td>
+		</tr>
+	</table>
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function goLogin(){
+  location.href='/login/?back_url=<?=$back_url?>';
+}
+
+var like_my = "<?=$show_count_like_my?>";
+var like_idx = "<?=$show_like_idx?>";
+var count_like_good = <?=$show_count_like_good?>;
+var count_like_bad = <?=$show_count_like_bad?>;
+
+function goLike(choice){
+
+	var a_mode;
+	if(choice == like_my && like_idx != "" ){
+		a_mode = "del"
+	}else if( choice != like_my && like_idx != "" ){
+		a_mode = "modify"
+	}else if( like_idx == "" ){
+		a_mode = "like"
+	}
+
+	//alert("like_idx=("+like_idx+")"+a_mode);
+	if( a_mode != "" ){
+		//alert(like_idx);
+		$.ajax({
+			url: "board_like_ok.php",
+			data: {
+				"a_mode":a_mode,
+				"b_code":b_code,
+				"b_key":b_key,
+				"like_idx":like_idx,
+				"choice":choice
+			},
+			type: "POST",
+			dataType: "text",
+			success: function(getdata){
+				if (getdata){
+					redatawa = getdata.split('|');
+					ckcode = redatawa[1];
+					ckidx = redatawa[2];
+
+					if( ckcode == "like_ok" ){
+						if( choice == "good" ){
+							$("#like_btn_good").attr("class", "good-on");
+							count_like_good = (count_like_good*1) + 1;
+							$("#like_btn_good span").html(count_like_good);
+							like_my = "good";
+						}else{
+							$("#like_btn_bad").attr("class", "bad-on");
+							count_like_bad = (count_like_bad*1) + 1;
+							$("#like_btn_bad span").html(count_like_bad);
+							like_my = "bad";
+						}
+					}else if(ckcode == "modify_ok"){
+						if( choice == "good" ){
+							$("#like_btn_good").attr("class", "good-on");
+							$("#like_btn_bad").attr("class", "");
+							count_like_good = (count_like_good*1) + 1;
+							count_like_bad = (count_like_bad*1) - 1;
+							like_my = "good";
+						}else{
+							$("#like_btn_good").attr("class", "");
+							$("#like_btn_bad").attr("class", "bad-on");
+							count_like_good = (count_like_good*1) - 1;
+							count_like_bad = (count_like_bad*1) + 1;
+							like_my = "bad";
+						}
+						$("#like_btn_good span").html(count_like_good);
+						$("#like_btn_bad span").html(count_like_bad);
+
+					}else if(ckcode == "del_ok"){
+						if( choice == "good" ){
+							$("#like_btn_good").attr("class", "");
+							count_like_good = (count_like_good*1) - 1;
+							$("#like_btn_good span").html(count_like_good);
+							like_my = "";
+							like_idx = "";
+						}else{
+							$("#like_btn_bad").attr("class", "");
+							count_like_bad = (count_like_bad*1) - 1;
+							$("#like_btn_bad span").html(count_like_bad);
+							like_my = "";
+							like_idx = "";
+						}
+					}
+					if(ckidx !=""){
+						like_idx = ckidx;
+					}
+				}
+			},
+			error: function(){
+			}
+		});
+	}
+
+}
+//--> 
+</script> 

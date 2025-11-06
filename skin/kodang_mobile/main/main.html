@@ -1,0 +1,36 @@
+<STYLE TYPE="text/css">
+/*
+#header{  background-color:#f7407c !important; border-bottom:1px solid #f66092 !important;  }
+*/
+#main_search { width:100%; height:40px; margin:30px 0 10px; padding:0 15px; box-sizing:border-box; }
+#summoner_name{ width:-webkit-calc(100% - 75px); width :-moz-calc(100% - 75px); width:calc(100% - 75px); height:40px; border-radius:5px; border:1px solid #ae2854; box-sizing:border-box;  line-height:40px; padding:0; margin:0;  }
+#summoner_name::placeholder { color: #777; font-family: 'Godo', sans-serif; font-size:14px; padding-left:10px; }
+#main_search button { width:70px; height:40px; border-radius:5px; border:1px solid #79092e; background-color: #ae2854; color:#fff; padding:0; margin:0;  }
+
+#main_illust{ width:100%; text-align:center; }
+#main_illust img{ width:300px; max-width:439px;  }
+</STYLE>
+
+<div id='main_search'>
+	<input type='text' name='summoner_name' id='summoner_name' style='' placeholder="소환사명을 입력해주세요" onKeyPress="EnterCheckEvent();" >
+	<button onclick="summonerFind()"><i class="fa fa-search" ></i> 검색</button>
+</div>
+
+<div id="main_illust">
+	<img src="/skin/pink/img/main_illust.png" alt="">
+</div>
+
+<script type="text/javascript"> 
+<!-- 
+function summonerFind(){
+	var summoner_name = $("#summoner_name").val();
+	if( summoner_name == "" ){
+		alert('소환사명을 입력해 주세요.'); 
+		$("#summoner_name").focus();
+		return false;
+	}
+	summoner_name = summoner_name.replace(/(\s*)/g, "");
+	location.href="/summoner/?name="+summoner_name;
+}
+//--> 
+</script> 

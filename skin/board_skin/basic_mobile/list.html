@@ -1,0 +1,176 @@
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+<link rel="stylesheet" href="/skin/board_skin/basic_mobile/style.css?v=<?=time()?>">
+
+<div class="bo-title display-table">
+	<ul class="display-table-cell"><?=$_view_bc_name_show?></ul>
+<?
+if($_show_board_write_btn=="on"){
+	if( $_view_foot_list_mode != "on" ){
+?>
+	<ul class="bo-title-btn display-table-cell v-align-top">
+		<button type="button" id="" class="bo-btn bo-btn-pink" onclick="location.href='/mobile/board/write.php?b_code=<?=$_show_b_code?>'" > 
+			<i class="far fa-check-circle"></i> 글쓰기
+		</button>
+	</ul>
+<? } } ?>
+</div>
+
+<?
+/*
+//카테고리 기능 사용시
+if( $_show_bc_category_active == "Y" ){
+?>
+<div class="bo-list-category-menu">
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>'" class="<? if($_show_b_category=="") echo "active"; ?>">전체</button>
+	<? for ($i=1; $i<count($_ary_bc_category); $i++){ ?>
+	<button onclick="location.href='list.php?b_code=<?=$_show_b_code?>&ct=<?=$i?>'" class="<? if($i == $_show_b_category) echo "active"; ?>"><?=$_ary_bc_category[$i]?></button>
+	<? } ?>
+</div>
+<? } 
+*/
+?>
+<? } ?>
+
+<? /* ?>
+<div class="bo-btn-area">
+	<ul class="bo-btn-area-left">
+<?
+if( $_view_foot_list_mode != "on" ){
+?>
+        <form name="fsearch" method="get">
+        <input type="hidden" name="b_code" value="<?=$_show_b_code?>">
+        <input type="hidden" name="s_active" value="on">
+		<div class="bo-list-search-wrap">
+			<select name="s_kind">
+				<option value="subject_body" <? if( $_s_kind == "subject_body" ) echo "selected"; ?>>제목+내용</option>
+				<option value="subject" <? if( $_s_kind == "subject" ) echo "selected"; ?>>제목</option>
+				<option value="writer_name" <? if( $_s_kind == "writer_name" ) echo "selected"; ?>>글쓴이</option>
+			</select>
+			<input type="text" name="s_text" value="<?=$_s_text?>">
+			<button type="submit" class="bo-btn bo-btn-pink bo-btn-sm"><i class='fas fa-search'></i> 검색</button>
+		</div>
+        </form>
+<? } ?>
+	</ul>
+	<ul class="bo-btn-area-right">
+		<div class="bo-list-page-info">
+			Total <?=$total_count?>건 / <?=$_c_page?>Page
+		</div>
+	</ul>
+</div>
+<? */ ?>
+
+<div class="bo-list-wrap">
+
+<?
+//공지사항
+while($list = wepix_fetch_array($result_notice)){
+
+	if( $list[BOARD_DATE] > $gva_today_mktime_start ){
+		$_view_register_date = date("H:i", $list[BOARD_DATE]);
+	}else{
+		$_view_register_date = date("y.m.d", $list[BOARD_DATE]);
+	}
+	$_view_comment = ( $list[BOARD_COMMENT] > 0 ) ? "<div class='bo-list-comment'>".$list[BOARD_COMMENT]."</div>" : "";
+	//$_view_upload_img = ( $list[board_thumbnail] ) ? "<span class='bo-list-img'><i class='far fa-image'></i></span>" : "";
+	$_view_category = ( $list[BOARD_CATEGORY] > 0 ) ? "<span class='bo-list-category'>".$_ary_bc_category[$list[BOARD_CATEGORY]]."</span>" : "";
+	$_view_subject = $list[BOARD_SUBJECT];
+	$_view_hit = $list[BOARD_HIT];
+
+	$_view_board_name = $list[BOARD_WITER_NAME];
+
+	if( $_s_active == "on" AND $_s_text != "" AND ( $_s_kind == "subject_body" OR $_s_kind == "subject" ) ){
+		$_view_subject = str_replace($_s_text, "<b class='s_word'>".$_s_text."</b>", $_view_subject);
+	}
+?>
+	<a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" style="display:block">
+	<div class="bo-list">
+		<ul class="display-table-cell v-align-top">
+			<li class="bo-list-subject">
+				<i class="fas fa-bullhorn"></i> <?=$_view_subject?>
+			</li>
+		</ul>
+		<ul class="bo-list-comment-wrap v-align-top"><?=$_view_comment?></ul>
+
+	</div>
+	</a>
+<? 
+} ?>
+
+<?
+while($list = wepix_fetch_array($result)){
+
+	if( $list[BOARD_DATE] > $gva_today_mktime_start ){
+		$_view_register_date = date("H:i", $list[BOARD_DATE]);
+	}else{
+		$_view_register_date = date("y.m.d", $list[BOARD_DATE]);
+	}
+	$_view_comment = ( $list[BOARD_COMMENT] > 0 ) ? "<div class='bo-list-comment'>".$list[BOARD_COMMENT]."</div>" : "";
+	//$_view_upload_img = ( $list[board_thumbnail] ) ? "<span class='bo-list-img'><i class='far fa-image'></i></span>" : "";
+	$_view_category = ( $list[BOARD_CATEGORY] > 0 ) ? "<span class='bo-list-category'>".$_ary_bc_category[$list[BOARD_CATEGORY]]."</span>" : "";
+	$_view_subject = $list[BOARD_SUBJECT];
+	$_view_hit = $list[BOARD_HIT];
+	$_view_recom = $list[BOARD_LIKE];
+
+	if( $list[BOARD_ADMIN] == "Y" ){
+		$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_admin.png\" class='micon'>";
+		$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+	}elseif( $list[BOARD_ADMIN] == "M2" ){
+		$_view_micon = "<img src=\"/skin/".$show_skin_name."/img/icon_manager.png\" class='micon'>";
+		$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+	}else{
+
+		$_view_micon = "";
+		$_view_board_name = $list[BOARD_WITER_NAME];
+		$_view_ip = "<span class='view-ip'>(".$list[BOARD_IP_SHOW].")</span>";
+
+		//가상 비회원일경우
+		if( $list[BOARD_MODE] != "IG2" && $list[BOARD_WITER_ID] ){
+			$_view_ip = "";
+			$_view_board_name = "<b>".$list[BOARD_WITER_NAME]."</b>";
+		}
+	}
+
+	if( $_s_active == "on" AND $_s_text != "" AND ( $_s_kind == "subject_body" OR $_s_kind == "subject" ) ){
+		$_view_subject = str_replace($_s_text, "<b class='s_word'>".$_s_text."</b>", $_view_subject);
+	}
+?>
+	<a href="view.php?b_code=<?=$_show_b_code?>&b_key=<?=$list[UID]?>" style="display:block">
+	<div class="bo-list">
+		<ul class="display-table-cell v-align-top">
+			<li class="bo-list-subject"><?=$_view_subject?></li>
+			<li class="bo-list-info">
+				<span><i class="fas fa-user-circle"></i><?=$_view_board_name?><?=$_view_ip?></span>
+				
+				<span><i class="fa fa-clock-o" aria-hidden="true"></i><?=$_view_register_date?></span>
+				<span><i class="fa fa-eye" aria-hidden="true"></i><?=$_view_hit?></span>
+<?
+if( $_show_bc_recom_active == "Y" && $_view_recom > 0 ){
+?>
+				<span><i class="far fa-thumbs-up"></i><?=$_view_recom?></span>
+<? } ?>
+			</li>
+		</ul>
+		<ul class="bo-list-comment-wrap v-align-top"><?=$_view_comment?></ul>
+
+	</div>
+	</a>
+<? 
+$_view_no--;
+} ?>
+</div>
+
+<div class="bo-paging"><?=$_view_paging?></div>
+
+<?
+if($_show_board_write_btn=="on"){
+	if( $_view_foot_list_mode != "on" ){
+?>
+	<div class="bo-footer-btn">
+		<button type="button" id="" class="bo-btn bo-btn-pink" onclick="location.href='/mobile/board/write.php?b_code=<?=$_show_b_code?>'" > 
+			<i class="far fa-check-circle"></i> 글쓰기
+		</button>
+	</div>
+<? } } ?>
