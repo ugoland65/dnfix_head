@@ -1,6 +1,6 @@
 <?
-
-	$_smonth = date("Y-m");
+	// 변수 초기화
+	$_smonth = $_GET['smonth'] ?? $_POST['smonth'] ?? date("Y-m");
 
 ?>
 <script src="/plugins/jquery-ui/jquery.ui.monthpicker.js"></script>

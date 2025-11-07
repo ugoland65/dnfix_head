@@ -1,5 +1,11 @@
 <?
 
+// 변수 초기화
+$_get_cate = $_get_cate ?? "";
+$_get_call_mode = $_get_call_mode ?? "";
+$_get_check = $_get_check ?? "";
+$_get_state = $_get_state ?? "";
+
 if( $_get1 ){
 	$_work_log_cate_get = $_get1;
 }else{

@@ -1,68 +1,99 @@
 <?
-
+	// 변수 초기화
+	$_oo_idx = $_GET['oo_idx'] ?? $_POST['oo_idx'] ?? "";
+	$_oop_idx = $_GET['oop_idx'] ?? $_POST['oop_idx'] ?? "";
+	$_form_view = $_GET['form_view'] ?? $_POST['form_view'] ?? "";
+	
+	$_select_json = [];
+	$save_qty = [];
+	
 	$oo_data = sql_fetch_array(sql_query_error("select oo_state, oo_json, oo_false, oo_sum_exchange_rate from ona_order where oo_idx = '".$_oo_idx."' "));
 	$oop_data = sql_fetch_array(sql_query_error("select * from ona_order_prd where oop_idx = '".$_oop_idx."' "));
+
+	if (!is_array($oo_data)) {
+		$oo_data = [];
+	}
+	if (!is_array($oop_data)) {
+		$oop_data = [];
+	}
 
 	$form_view = $_form_view;
 	
 
-	$_oop_json_check_data = substr($oop_data['oop_data'], 0,1);
+	$_oop_json_check_data = substr($oop_data['oop_data'] ?? '', 0, 1);
 	if( $_oop_json_check_data == "[" ){
-		$_oop_json = $oop_data['oop_data'];
+		$_oop_json = $oop_data['oop_data'] ?? '[]';
 	}else{
-		$_oop_json = '['.$oop_data['oop_data'].']';
+		$_oop_json = '['.($oop_data['oop_data'] ?? '').']';
 	}
 
-	$_oop_jsondata = json_decode($_oop_json,true);
+	$_oop_jsondata = json_decode($_oop_json, true);
+	if (!is_array($_oop_jsondata)) {
+		$_oop_jsondata = [];
+	}
 
-	$_oop_code = $oop_data['oop_code'];
+	$_oop_code = $oop_data['oop_code'] ?? '';
 
-	$_select_json3 = $oo_data['oo_json'];
-	$_select_json4 = json_decode($_select_json3,true);
+	$_select_json3 = $oo_data['oo_json'] ?? '[]';
+	$_select_json4 = json_decode($_select_json3, true);
+	if (!is_array($_select_json4)) {
+		$_select_json4 = [];
+	}
 
 
-	$_select_order_all = json_decode($oo_data['oo_json'],true);
+	$_select_order_all = json_decode($oo_data['oo_json'] ?? '[]', true);
+	if (!is_array($_select_order_all)) {
+		$_select_order_all = [];
+	}
 
 	for ( $z=0; $z<count($_select_order_all); $z++ ){
-		if( $_select_order_all[$z]['bidx'] == $_oop_idx ){
-			$_select_json = $_select_order_all[$z]['selpd'];
+		if( ($_select_order_all[$z]['bidx'] ?? '') == $_oop_idx ){
+			$_select_json = $_select_order_all[$z]['selpd'] ?? [];
 			break;
 		}
 	}
 
+	if (!is_array($_select_json)) {
+		$_select_json = [];
+	}
 	
 	$_oprice_sum_qty = 0; //상품 총수량
 
-	for ($i=0; $i<count($_select_json); $i++){ 
-		$save_id = $_select_json[$i]['pidx'];
+	for ($i=0; $i<count($_select_json); $i++){
+		
+		$save_id = $_select_json[$i]['pidx'] ?? '';
 		${"_save_data_".$save_id} = "ok";
-		${"_save_data_memo_".$save_id} = $_select_json[$i]['memo'];
+		${"_save_data_memo_".$save_id} = $_select_json[$i]['memo'] ?? '';
 
-		$_oprice_sum_qty = $_oprice_sum_qty + (int)$_select_json[$i]['qty']; //상품 총수량
+		$_oprice_sum_qty = $_oprice_sum_qty + (int)($_select_json[$i]['qty'] ?? 0); //상품 총수량
 
-		if( $_select_json[$i]['false'] == true ){
+		if( ($_select_json[$i]['false'] ?? false) == true ){
 			${"_false_idx_".$save_id} = "ok";
-			${"_false_qty_".$save_id} = $_select_json[$i]['qty'];
-			${"_false_memo_".$save_id} =  $_select_json[$i]['memo'];
+			${"_false_qty_".$save_id} = $_select_json[$i]['qty'] ?? 0;
+			${"_false_memo_".$save_id} =  $_select_json[$i]['memo'] ?? '';
 		}
-		$save_qty[$save_id] = $_select_json[$i]['qty'];
+		$save_qty[$save_id] = $_select_json[$i]['qty'] ?? 0;
 
 	}
 
-	$_false_check_data = substr($oo_data['oo_false'], 0,1);
+	$_false_check_data = substr($oo_data['oo_false'] ?? '', 0, 1);
 	if( $_false_check_data == "[" ){
-		$_false_data = $oo_data['oo_false'];
+		$_false_data = $oo_data['oo_false'] ?? '[]';
 	}else{
-		$_false_data = '['.$oo_data['oo_false'].']';
+		$_false_data = '['.($oo_data['oo_false'] ?? '').']';
 	}
 	//$_false_data = "[".$oo_data['oo_false']."]";
-	$_false_json = json_decode($_false_data,true);
+	$_false_json = json_decode($_false_data, true);
+	if (!is_array($_false_json)) {
+		$_false_json = [];
+	}
 
 	for ($z=0; $z<count($_false_json); $z++){
-		${"_false_idx_".$_false_json[$z]['pidx']} = "ok";
-		${"_false_qty_".$_false_json[$z]['pidx']} = $_false_json[$z]['qty'];
-		${"_false_memo_".$_false_json[$z]['pidx']} = $_false_json[$z]['memo'];
-		$save_qty[$_false_json[$z]['pidx']] = $_false_json[$z]['qty'];
+		$pidx = $_false_json[$z]['pidx'] ?? '';
+		${"_false_idx_".$pidx} = "ok";
+		${"_false_qty_".$pidx} = $_false_json[$z]['qty'] ?? 0;
+		${"_false_memo_".$pidx} = $_false_json[$z]['memo'] ?? '';
+		$save_qty[$pidx] = $_false_json[$z]['qty'] ?? 0;
 	}
 
 ?>
@@ -84,12 +115,12 @@
 		<ul>
 
 			<div>
-				Group : <?=$_oop_idx?> | <b><?=$oop_data['oop_code']?></b> <button type="button" id="" class="btnstyle1 btnstyle1-sm m-r-20" onclick="orderSheetForm.groupView('<?=$_oop_idx?>')" >폼그룹 상품관리</button>
+				Group : <?=$_oop_idx ?? ''?> | <b><?=$oop_data['oop_code'] ?? ''?></b> <button type="button" id="" class="btnstyle1 btnstyle1-sm m-r-20" onclick="orderSheetForm.groupView('<?=$_oop_idx ?? ''?>')" >폼그룹 상품관리</button>
 				
 				<? if( $form_view == "hidden" ){ ?>
-				<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-sm" onclick="orderSheetDetail.prdListShow('<?=$_oo_idx?>','<?=$_oop_idx?>','show');">전체 상품보기</button>
+				<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-sm" onclick="orderSheetDetail.prdListShow('<?=$_oo_idx ?? ''?>','<?=$_oop_idx ?? ''?>','show');">전체 상품보기</button>
 				<? }else{ ?>
-				<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-sm" onclick="orderSheetDetail.prdListShow('<?=$_oo_idx?>','<?=$_oop_idx?>','hidden');">주문 상품만보기</button>
+				<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-sm" onclick="orderSheetDetail.prdListShow('<?=$_oo_idx ?? ''?>','<?=$_oop_idx ?? ''?>','hidden');">주문 상품만보기</button>
 				<? } ?>
 
 				<div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
@@ -104,11 +135,11 @@
 			<div class="m-t-10">
 				
 				<span>
-					총 : <b class="number-point"><?=count($_oop_jsondata)?></b> |
-					선택 : <b id="group_body_sum_goods_<?=$_oop_idx?>" class="number-point"><?=count($_select_json)?></b>
+					총 : <b class="number-point"><?=is_array($_oop_jsondata) ? count($_oop_jsondata) : 0?></b> |
+					선택 : <b id="group_body_sum_goods_<?=$_oop_idx ?? ''?>" class="number-point"><?=is_array($_select_json) ? count($_select_json) : 0?></b>
 					( 
-						총수량 : <b id="group_body_sum_qty_<?=$_oop_idx?>" class="number-point"><?=number_format($_oprice_sum_qty)?></b>,
-						총무게 : <b id="group_body_sum_weight_<?=$_oop_idx?>" class="number-point">0</b>
+						총수량 : <b id="group_body_sum_qty_<?=$_oop_idx ?? ''?>" class="number-point"><?=number_format($_oprice_sum_qty)?></b>,
+						총무게 : <b id="group_body_sum_weight_<?=$_oop_idx ?? ''?>" class="number-point">0</b>
 					)
 				</span>
 
@@ -116,11 +147,11 @@
 				</span>
 				
 				<!-- 
-				oop_idx : <?=$_oop_idx?> | 
-				<? if( !$oog_data[price_colum] ){ ?>
+				oop_idx : <?=$_oop_idx ?? ''?> | 
+				<? if( empty($oog_data['price_colum']) ){ ?>
 					※가격 그룹이 설정되지 않았습니다.
 				<? }else{ ?>
-					가격그룹 : <b><?=$_price_colum_name[$oog_data[price_colum]]?></b> ( <?=$oog_data[price_colum]?> )
+					가격그룹 : <b><?=$_price_colum_name[$oog_data['price_colum']] ?? ''?></b> ( <?=$oog_data['price_colum'] ?? ''?> )
 				<? } ?>
 				-->
 
@@ -133,8 +164,8 @@
 				새로고침
 			</button>
 
-			<? //if( $oo_data['oo_state'] < 5 ){ ?>
-			<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.groupOrder('<?=$_oo_idx?>','<?=$_oop_idx?>','<?=$form_view?>');" > 
+			<? //if( ($oo_data['oo_state'] ?? 0) < 5 ){ ?>
+			<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.groupOrder('<?=$_oo_idx ?? ''?>','<?=$_oop_idx ?? ''?>','<?=$form_view ?? ''?>');" > 
 				그룹상품 저장
 			</button>
 			<? //} ?>
@@ -173,20 +204,28 @@
 		<th>무게</th>
 	</tr>
 <?
-for ($z=0; $z<count($_oop_jsondata); $z++){
+// 배열 검증 후 count
+$_oop_jsondata_count = is_array($_oop_jsondata) ? count($_oop_jsondata) : 0;
 
-	$_idx = $_oop_jsondata[$z]['idx'];
-	$_ps_idx = $_oop_jsondata[$z]['stockidx'];
-	$_pname = $_oop_jsondata[$z]['pname'];
-	$_om = $_oop_jsondata[$z]['om'];
-	$_last = $_oop_jsondata[$z]['last'];
-	$_weight = $_oop_jsondata[$z]['weight'];
-	$_state = $_oop_jsondata[$z]['state'];
+for ($z=0; $z<$_oop_jsondata_count; $z++){
+
+	// 배열 요소 검증
+	if (!isset($_oop_jsondata[$z]) || !is_array($_oop_jsondata[$z])) {
+		continue;
+	}
+
+	$_idx = $_oop_jsondata[$z]['idx'] ?? '';
+	$_ps_idx = $_oop_jsondata[$z]['stockidx'] ?? '';
+	$_pname = $_oop_jsondata[$z]['pname'] ?? '';
+	$_om = $_oop_jsondata[$z]['om'] ?? '';
+	$_last = $_oop_jsondata[$z]['last'] ?? '';
+	$_weight = $_oop_jsondata[$z]['weight'] ?? 0;
+	$_state = $_oop_jsondata[$z]['state'] ?? 'on';
 
 	$_cbm = "";
 
 	$_this_line_show = "show";
-	if( ${"_save_data_".$_idx} != "ok" && ${"_false_idx_".$_idx} != "ok" ){
+	if( (!isset(${"_save_data_".$_idx}) || ${"_save_data_".$_idx} != "ok") && (!isset(${"_false_idx_".$_idx}) || ${"_false_idx_".$_idx} != "ok") ){
 		if( $form_view == "hidden" ) $_this_line_show = "hidden";
 	}
 
@@ -204,45 +243,61 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 
 		$prd_data = sql_fetch_array(sql_query_error($_query));
 
-		if( !$_pname ) $_pname = $prd_data['CD_NAME'];
+		// 배열 검증
+		if (!is_array($prd_data)) {
+			$prd_data = [];
+		}
+
+		if( empty($_pname) ) $_pname = $prd_data['CD_NAME'] ?? '';
 
 
-		$_barcode = $prd_data['CD_CODE'];
-		$_code2 = $prd_data['CD_CODE2'];
-		$_code3 = $prd_data['CD_CODE3'];
+		$_barcode = $prd_data['CD_CODE'] ?? '';
+		$_code2 = $prd_data['CD_CODE2'] ?? '';
+		$_code3 = $prd_data['CD_CODE3'] ?? '';
 
-		if( $prd_data['CD_IMG'] ){
+		$img_path = '';
+		if( !empty($prd_data['CD_IMG']) ){
 			$img_path = '/data/comparion/'.$prd_data['CD_IMG'];
 		}
 
-		$_prd_price_data = json_decode($prd_data['cd_price_fn'], true);
+		$_prd_price_data = json_decode($prd_data['cd_price_fn'] ?? '{}', true);
+		if (!is_array($_prd_price_data)) {
+			$_prd_price_data = [];
+		}
 
 		$_price = 0;
 		$_show_price = 0;
 		$_invoice_price = 0;
 		$_show_iv_price  = 0;
 
-		if( $_prd_price_data[$_oop_code] ){
+		if( isset($_prd_price_data[$_oop_code]) && !empty($_prd_price_data[$_oop_code]) ){
 			$_price = $_prd_price_data[$_oop_code];
 			$_show_price = number_format($_prd_price_data[$_oop_code],2);
 		}
 
-		if( $_prd_price_data['invoice'][$_oop_code] ){
+		if( isset($_prd_price_data['invoice'][$_oop_code]) && !empty($_prd_price_data['invoice'][$_oop_code]) ){
 			$_invoice_price = $_prd_price_data['invoice'][$_oop_code];
 			$_show_iv_price = number_format($_invoice_price,2);
 		}
 
 		
-		$_cd_size_fn_data = json_decode($prd_data['cd_size_fn'], true);
+		$_cd_size_fn_data = json_decode($prd_data['cd_size_fn'] ?? '{}', true);
+		if (!is_array($_cd_size_fn_data)) {
+			$_cd_size_fn_data = [];
+		}
 
-		if( $_cd_size_fn_data['invoice']['cbm'] ){
+		if( isset($_cd_size_fn_data['invoice']['cbm']) && !empty($_cd_size_fn_data['invoice']['cbm']) ){
 			$_cbm = $_cd_size_fn_data['invoice']['cbm'];
 		}
 
-		$_cd_weight_data = json_decode($prd_data['cd_weight_fn'], true);
-		$_cd_weight_1 = $_cd_weight_data['1'];
-		$_cd_weight_2 = $_cd_weight_data['2'];
-		$_cd_weight_3 = $_cd_weight_data['3'];
+		$_cd_weight_data = json_decode($prd_data['cd_weight_fn'] ?? '{}', true);
+		if (!is_array($_cd_weight_data)) {
+			$_cd_weight_data = [];
+		}
+		
+		$_cd_weight_1 = $_cd_weight_data['1'] ?? 0;
+		$_cd_weight_2 = $_cd_weight_data['2'] ?? 0;
+		$_cd_weight_3 = $_cd_weight_data['3'] ?? 0;
 
 		if( $_cd_weight_3 ){
 			$_weight = $_cd_weight_3;
@@ -251,21 +306,26 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 		}
 
 		//주문 실패 상태일경우
-		if( ${"_false_idx_".$_idx} == "ok" ){
+		if( isset(${"_false_idx_".$_idx}) && ${"_false_idx_".$_idx} == "ok" ){
 			$_tr_color= "#adadad";
-			$_memo = ${"_false_memo_".$_idx};
+			$_memo = isset(${"_false_memo_".$_idx}) ? ${"_false_memo_".$_idx} : '';
 		}else{
-			if( $prd_data['ps_stock'] == 0 ){
+			if( ($prd_data['ps_stock'] ?? 0) == 0 ){
 				$_tr_color= "#eee";
 			}else{
 				$_tr_color= "#fff";
 			}
-			$_memo = ${"_save_data_memo_".$_idx};
+			$_memo = isset(${"_save_data_memo_".$_idx}) ? ${"_save_data_memo_".$_idx} : '';
 		}
 
 		if( $_state == "out" ){
 			$_tr_color= "#b9d3c0";
 		}
+
+		// 주문 총 가격 계산
+		$_qty = $save_qty[$_idx] ?? 0;
+		$unit_price_sum = $_price * $_qty;
+		$save_unit_price = number_format($unit_price_sum, 2);
 
 ?>
 
@@ -273,7 +333,7 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 	
 	<!-- 체크 -->
 	<td id="checkbox_td_<?=$_idx?>">
-		<input type="checkbox" name="key_check[]"  id="checkbox_<?=$_idx?>" class="checkSelect" value="<?=$_idx?>" style="<? if( ${"_false_idx_".$_idx} == "ok" ){?>display:none;<?}?>">
+		<input type="checkbox" name="key_check[]"  id="checkbox_<?=$_idx?>" class="checkSelect" value="<?=$_idx?>" style="<? if( isset(${"_false_idx_".$_idx}) && ${"_false_idx_".$_idx} == "ok" ){?>display:none;<?}?>">
 	</td>
 
 	<!-- 상품 고유번호 -->
@@ -285,14 +345,14 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 	<!-- 상품 코드 -->
 	<td>
 		<b><?=$_code2?></b>
-		<? if( $_code3 ){ ?><br><?=$_code3?><? } ?>
+		<? if( !empty($_code3) ){ ?><br><?=$_code3?><? } ?>
 
-		<? if( $oo_data['oo_state'] > 1 && $save_qty[$_idx] > 1){ ?>
+		<? if( ($oo_data['oo_state'] ?? 0) > 1 && ($save_qty[$_idx] ?? 0) > 1){ ?>
 			<div class="m-t-5">
-			<? if( ${"_false_idx_".$_idx} == "ok" ){ ?>
-			<button type="button" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?=$_idx?>', '<?=$_oo_idx?>', '<?=$_oop_idx?>','on','<?=$form_view?>')" >주문실패복원</button>
+			<? if( isset(${"_false_idx_".$_idx}) && ${"_false_idx_".$_idx} == "ok" ){ ?>
+			<button type="button" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?=$_idx?>', '<?=$_oo_idx ?? ''?>', '<?=$_oop_idx ?? ''?>','on','<?=$form_view ?? ''?>')" >주문실패복원</button>
 			<? }else{ ?>
-			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?=$_idx?>', '<?=$_oo_idx?>', '<?=$_oop_idx?>','out','<?=$form_view?>')" >주문실패처리</button>
+			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?=$_idx?>', '<?=$_oo_idx ?? ''?>', '<?=$_oop_idx ?? ''?>','out','<?=$form_view ?? ''?>')" >주문실패처리</button>
 			<? } ?>
 			</div>
 		<? } ?>
@@ -300,15 +360,15 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 	</td>
 
 	<td style="width:70px;">
-		<img src="<?=$img_path?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?=$_idx?>','info');">
+		<img src="<?=$img_path?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?=$_idx ?? ''?>','info');">
 	</td>
 
 	<td class="text-left">
 
 		<div><?=$_barcode?></div>
 		<div class="p-t-5 p-b-5 p-l-3">
-			<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$_idx?>','info');">보기</button> <?=$_pname?>
-			<? if( $_om ){ ?><br><span style="color:#ff0000; display:inline-block; margin-top:3px; font-size:11px;"><?=$_om?></span><? } ?>
+			<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$_idx ?? ''?>','info');">보기</button> <?=$_pname?>
+			<? if( !empty($_om) ){ ?><br><span style="color:#ff0000; display:inline-block; margin-top:3px; font-size:11px;"><?=$_om?></span><? } ?>
 		</div>
 
 		<? if( !empty($prd_data['cd_memo3']) ){ ?>
@@ -317,9 +377,9 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 
 		<div>
 		<? if( $_state == "on" ){ ?>
-			<button type="button" id="aa" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?=$_oop_idx?>', '<?=$z?>','out')">단종처리</button>
+			<button type="button" id="aa" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?=$_oop_idx ?? ''?>', '<?=$z?>','out')">단종처리</button>
 		<? }else{ ?>
-			<button type="button" id="aa" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?=$_oop_idx?>', '<?=$z?>','on')">단종해제</button>
+			<button type="button" id="aa" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?=$_oop_idx ?? ''?>', '<?=$z?>','on')">단종해제</button>
 		<? } ?>
 
 		</div>
@@ -345,22 +405,22 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 	<td class="text-right" id="unit_price_td_<?=$_idx?>" data-price="<?=$_price?>" style="width:100px;" >
 		
 		<? if( $_price == 0 ){ //GC.commaInput( this.value, this ); ?>
-			<input type='text' name='' id="unit_price_<?=$_idx?>" style="width:60px;" value="" onkeyUP=" orderSheetDetail.qtyGogo('<?=$_idx?>', '<?=$_oop_idx?>');"><button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-2" onclick="orderSheetDetailPrd.newPrice('<?=$_idx?>', '<?=$oop_data['oop_code']?>')" ><i class="fas fa-save"></i></button>
+			<input type='text' name='' id="unit_price_<?=$_idx?>" style="width:60px;" value="" onkeyUP=" orderSheetDetail.qtyGogo('<?=$_idx?>', '<?=$_oop_idx ?? ''?>');"><button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-2" onclick="orderSheetDetailPrd.newPrice('<?=$_idx?>', '<?=$oop_data['oop_code'] ?? ''?>')" ><i class="fas fa-save"></i></button>
 		<? }else{ ?>
 			<input type='hidden' name='' id="unit_price_<?=$_idx?>" value="<?=$_price?>">
 			<span>
 				<a href="#" class="editable-cd-price editable-click" 
 					data-pk="<?=$_show_price?>" 
 					data-cdidx="<?=$_idx?>" 
-					data-oopcode="<?=$oop_data['oop_code']?>"
-					data-oopidx="<?=$_oop_idx?>">
+					data-oopcode="<?=$oop_data['oop_code'] ?? ''?>"
+					data-oopidx="<?=$_oop_idx ?? ''?>">
 					<b><?=$_show_price?></b>
 				</a>
 			</span>
 
 			<? 
 				$_this_won_price = "";
-				if( $oo_data['oo_sum_exchange_rate'] > 0 ){ 
+				if( ($oo_data['oo_sum_exchange_rate'] ?? 0) > 0 ){ 
 					$_this_won_price = number_format($_price * $oo_data['oo_sum_exchange_rate'],2);
 					$_this_won_price = str_replace('.00','',$_this_won_price);
 			?>
@@ -375,15 +435,15 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 	<td class="text-right" id="unit_iv_price_td_<?=$_idx?>" data-price="<?=$_invoice_price?>" style="width:70px;" >
 
 		<? if( $_invoice_price == 0 ){ //GC.commaInput( this.value, this ); ?>
-			<input type='text' name='' id="unit_iv_price_<?=$_idx?>" style="width:60px;" value=""><button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-2" onclick="orderSheetDetailPrd.newInvoicePrice('<?=$_idx?>', '<?=$oop_data['oop_code']?>')" ><i class="fas fa-save"></i></button>
+			<input type='text' name='' id="unit_iv_price_<?=$_idx?>" style="width:60px;" value=""><button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-2" onclick="orderSheetDetailPrd.newInvoicePrice('<?=$_idx?>', '<?=$oop_data['oop_code'] ?? ''?>')" ><i class="fas fa-save"></i></button>
 		<? }else{ ?>
 			<input type='hidden' name='' id="unit_iv_price_<?=$_idx?>" value="<?=$_invoice_price?>">
 			<span>
 				<a href="#" class="editable-cd-iv-price editable-click" 
 					data-pk="<?=$_show_iv_price?>" 
 					data-cdidx="<?=$_idx?>" 
-					data-oopcode="<?=$oop_data['oop_code']?>"
-					data-oopidx="<?=$_oop_idx?>">
+					data-oopcode="<?=$oop_data['oop_code'] ?? ''?>"
+					data-oopidx="<?=$_oop_idx ?? ''?>">
 					<b><?=$_show_iv_price?></b>
 				</a>
 			</span>
@@ -393,7 +453,7 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 
 	<!-- 주문수량 -->
 	<td style="width:55px;">
-		<input type='text' name='cd_code2' id="unit_qty_<?=$_idx?>" style="width:100%; font-size:15px; font-weight:bold; color:<? if( ${"_false_idx_".$_idx} == "ok" ){ echo "#999"; }else{ echo "#021aff"; } ?>;" value="<?=$save_qty[$_idx]?>" onkeyUP="orderSheetDetail.qtyGogo('<?=$_idx?>', '<?=$_oop_idx?>');">
+		<input type='text' name='cd_code2' id="unit_qty_<?=$_idx?>" style="width:100%; font-size:15px; font-weight:bold; color:<? if( isset(${"_false_idx_".$_idx}) && ${"_false_idx_".$_idx} == "ok" ){ echo "#999"; }else{ echo "#021aff"; } ?>;" value="<?=$save_qty[$_idx] ?? 0?>" onkeyUP="orderSheetDetail.qtyGogo('<?=$_idx?>', '<?=$_oop_idx ?? ''?>');">
 	</td>
 
 
@@ -410,16 +470,21 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 
 	<!-- 상품재고 -->
 	<td style="width:30px;">
-		<b onclick="onlyAD.prdView('<?=$_idx?>','stock');" style="cursor:pointer; <? if( $prd_data['ps_stock'] == 0 ) echo "color:#aaa;"; ?>"><?=$prd_data['ps_stock']?></b>
+		<b onclick="onlyAD.prdView('<?=$_idx ?? ''?>','stock');" style="cursor:pointer; <? if( ($prd_data['ps_stock'] ?? 0) == 0 ) echo "color:#aaa;"; ?>"><?=$prd_data['ps_stock'] ?? 0?></b>
 	</td>
 
 
 	<!-- 마지막 입고일 -->
 	<td class="text-left" style="width:100px; font-size:11px;">
-		<? if( $_ps_cafe24_sms_data['count'] > 0 ){ ?>
+		<? 
+		$_ps_cafe24_sms_data = json_decode($prd_data['ps_cafe24_sms'] ?? '{}', true);
+		if (!is_array($_ps_cafe24_sms_data)) {
+			$_ps_cafe24_sms_data = [];
+		}
+		if( ($_ps_cafe24_sms_data['count'] ?? 0) > 0 ){ ?>
 		<div style="background-color:#ffb5b5; padding:4px; margin-bottom:3px; border-radius:5px; border:1px solid #cf7979;">
-			<ul>입고알림 : <b><?=$_ps_cafe24_sms_data['count']?></b></ul>
-			<ul class="m-t-2" style="font-size:10px;"><?=date("m.d H:i:s", strtotime($_ps_cafe24_sms_data['date']))?></ul>
+			<ul>입고알림 : <b><?=$_ps_cafe24_sms_data['count'] ?? 0?></b></ul>
+			<ul class="m-t-2" style="font-size:10px;"><?=!empty($_ps_cafe24_sms_data['date']) ? date("m.d H:i:s", strtotime($_ps_cafe24_sms_data['date'])) : ''?></ul>
 		</div>
 		<? } ?>
 		<div style="font-size:12px;"><?=$_last?></div>
@@ -470,13 +535,17 @@ for ($z=0; $z<count($_oop_jsondata); $z++){
 function selectGo(){
 
 <? 
-if( count($_select_json) > 0 ){
-	for ($i=0; $i<count($_select_json); $i++){ 
-		if( ${"_false_idx_".$_select_json[$i]['pidx']} != "ok" ){
+$_select_json_count = is_array($_select_json) ? count($_select_json) : 0;
+if( $_select_json_count > 0 ){
+	for ($i=0; $i<$_select_json_count; $i++){ 
+		if (!isset($_select_json[$i]) || !is_array($_select_json[$i])) continue;
+		$_pidx = $_select_json[$i]['pidx'] ?? '';
+		$_qty = $_select_json[$i]['qty'] ?? 0;
+		if( !isset(${"_false_idx_".$_pidx}) || ${"_false_idx_".$_pidx} != "ok" ){
 ?>
-	$("#checkbox_<?=$_select_json[$i]['pidx']?>").attr("checked", true);
-	$("#unit_qty_<?=$_select_json[$i]['pidx']?>").val(<?=$_select_json[$i]['qty']?>);
-	orderSheetDetail.qtyGogo('<?=$_select_json[$i]['pidx']?>', '<?=$_oop_idx?>');
+	$("#checkbox_<?=$_pidx?>").attr("checked", true);
+	$("#unit_qty_<?=$_pidx?>").val(<?=$_qty?>);
+	orderSheetDetail.qtyGogo('<?=$_pidx?>', '<?=$_oop_idx ?? ''?>');
 
 <? } } } ?>
 
@@ -609,12 +678,12 @@ var orderSheetDetailPrd = function() {
 						$("#group_side_sum_qty_"+ oop_idx).data('value',total_qty);
 						//location.href='/ad/order/order_sheet/'+ oo_idx +'/'+ oop_idx;
 						
-						$("#oprice_allsum").html(GC.comma(res.oo_sum_price));
-						$("#oprice_sum_goods").html(GC.comma(res.oo_sum_goods)); //전체 상품
-						$("#oprice_sum_qty").html(GC.comma(res.oo_sum_qty)); //전체 수량
-						$("#oprice_sum_weight").html(GC.comma(res.oo_sum_weight)+"g"); //전체 무게
+						$("#oprice_allsum").html(GC.comma(res.oo_sum_price ?? 0));
+						$("#oprice_sum_goods").html(GC.comma(res.oo_sum_goods ?? 0)); //전체 상품
+						$("#oprice_sum_qty").html(GC.comma(res.oo_sum_qty ?? 0)); //전체 수량
+						$("#oprice_sum_weight").html(GC.comma(res.oo_sum_weight ?? 0)+"g"); //전체 무게
 
-						$("#oprice_sum_goods_"+ oop_idx).html(GC.comma(res.group_sum_goods)); //그룹 주문 상품
+						$("#oprice_sum_goods_"+ oop_idx).html(GC.comma(res.group_sum_goods ?? 0)); //그룹 주문 상품
 			/*
 			'group_sum_goods' => $_item, 'group_sum_qty' => $_total_qty, 'group_sum_weight' => $_total_weight, 'group_sum_price' => $_total_price,
 			'oo_sum_goods' => $_oo_sum_goods, 'oo_sum_qty' => $_oo_sum_qty, 'oo_sum_weight' => $_oo_sum_weight, 'oo_sum_price' => $_oo_sum_price 
@@ -654,7 +723,7 @@ var orderSheetDetailPrd = function() {
 						}else{
 							toast2("success", "단종해제", "단종 해제 처리 완료되었습니다.");
 						}
-						orderSheetDetail.prdListShow( '<?=$_oo_idx?>', '<?=$_oop_idx?>' );
+						orderSheetDetail.prdListShow( '<?=$_oo_idx ?? ''?>', '<?=$_oop_idx ?? ''?>' );
 					}else{
 						showAlert("Error", res.msg, "alert2" );
 						return false;

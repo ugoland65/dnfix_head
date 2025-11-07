@@ -1,6 +1,7 @@
 <?
 
-if( !$_oo_import ) $_oo_import = "all";
+// 변수 초기화
+$_oo_import = $_oo_import ?? "all";
 
 ?>
 

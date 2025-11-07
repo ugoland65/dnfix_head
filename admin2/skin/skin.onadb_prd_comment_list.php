@@ -1,4 +1,9 @@
 <?
+	// 변수 초기화
+	$_load_page = $_GET['load_page'] ?? $_POST['load_page'] ?? "";
+	$_prd_idx = $_GET['prd_idx'] ?? $_POST['prd_idx'] ?? "";
+	$_pn = $_GET['pn'] ?? $_POST['pn'] ?? $_pn ?? 1;
+	$_where = "";
 
 	if( $_load_page == "prdInfo" ){
 
@@ -6,13 +11,29 @@
 		$_where .= " pc_pd_idx = '".$_prd_idx."' ";
 
 		$data_total = sql_fetch_array(sql_query_error("select * from prd_score where ps_pd_idx = '".$_prd_idx."' AND ps_mode = 'total' "));
+		
+		if (!is_array($data_total)) {
+			$data_total = [];
+		}
 
-		if( !$data_total['ps_idx'] ){
+		if( !($data_total['ps_idx'] ?? '') ){
 			$query = "insert prd_score set
 				ps_pd_idx = '".$_prd_idx."',
-				ps_mode = 'total' ";
+				ps_mode = 'total',
+				ps_score = '',
+				ps_grade = 0,
+				ps_grade_count = 0,
+				ps_grade_total = 0,
+				ps_count = 0,
+				ps_score_total = 0,
+				ps_grade_data = '' ";
 			sql_query_error($query);
+			
 			$data_total = sql_fetch_array(sql_query_error("select * from prd_score where ps_pd_idx = '".$_prd_idx."' AND ps_mode = 'total' "));
+			
+			if (!is_array($data_total)) {
+				$data_total = [];
+			}
 		}
 
 	}
@@ -68,7 +89,7 @@
 		
 		<form id="form1">
 		<input type="hidden" name="a_mode" value="onadb_commWrite" >
-		<input type="hidden" name="pd_idx" value="<?=$_prd_idx?>" >
+		<input type="hidden" name="pd_idx" value="<?=$_prd_idx ?? ''?>" >
 		
 		<div class="">
 			<select name="pc_score_mode" id="pc_score_mode" class="m-r-10">
@@ -76,11 +97,14 @@
 				<option value="after">사용자 한줄평</option>
 			</select>
 			<? 
+				if (!isset($_gva_koedge_onadb_score_option) || !is_array($_gva_koedge_onadb_score_option)) {
+					$_gva_koedge_onadb_score_option = [];
+				}
 				for ($i=0; $i<count($_gva_koedge_onadb_score_option); $i++){ 
 					$_ii = $i + 1;
 			?>
 			<select name="pc_score_<?=$_ii?>" id="pc_score_<?=$_ii?>" disabled>
-				<option value="1"><?=$_gva_koedge_onadb_score_option[$i]?></option>
+				<option value="1"><?=$_gva_koedge_onadb_score_option[$i] ?? ''?></option>
 				<? 
 					for ($z=0; $z<10; $z++){ 
 						$_zz = $z + 1;
@@ -110,10 +134,10 @@
 		</form>
 
 		<div class="m-t-10">
-			개인평점 : <b><?=$data_total['ps_grade']?></b> | 
-			개인평점 카운터 : <b><?=$data_total['ps_grade_count']?></b> |
-			개인평점 총합 : <b><?=$data_total['ps_grade_total']?></b>
-			<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" onclick="prdCommentList.gradeReset('<?=$_prd_idx?>');" >개인평점 갱신</button>
+			개인평점 : <b><?=$data_total['ps_grade'] ?? 0?></b> | 
+			개인평점 카운터 : <b><?=$data_total['ps_grade_count'] ?? 0?></b> |
+			개인평점 총합 : <b><?=$data_total['ps_grade_total'] ?? 0?></b>
+			<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" onclick="prdCommentList.gradeReset('<?=$_prd_idx ?? ''?>');" >개인평점 갱신</button>
 		</div>
 
 		<div class="m-t-10">
@@ -122,14 +146,23 @@
 {"score":{"1":{"name":"자극/기믹","count":2,"score_sum":18,"score_avg":9},"2":{"name":"유지관리","count":2,"score_sum":13,"score_avg":6.5},"3":{"name":"냄새/유분/소재","count":2,"score_sum":17,"score_avg":8.5},"4":{"name":"조임/탄력","count":2,"score_sum":17,"score_avg":8.5},"5":{"name":"마감/내구성","count":2,"score_sum":18,"score_avg":9},"6":{"name":"조형/패키지","count":2,"score_sum":15,"score_avg":7.5},"7":{"name":"진공","count":2,"score_sum":13,"score_avg":6.5}},"total":7.9}
 */
 
-				$_ps_score_data = json_decode($data_total['ps_score'], true);
+				$_ps_score_data = json_decode($data_total['ps_score'] ?? '{}', true);
+				if (!is_array($_ps_score_data)) {
+					$_ps_score_data = [];
+				}
+				
+				$score_data = $_ps_score_data['score'] ?? [];
+				if (!is_array($score_data)) {
+					$score_data = [];
+				}
 
-				for ($i=1; $i<=count($_ps_score_data['score']); $i++){ 
+				for ($i=1; $i<=count($score_data); $i++){ 
+					if (!isset($score_data[$i]) || !is_array($score_data[$i])) continue;
 			?>
-				<span class="score-box"><?=$_ps_score_data['score'][$i]['name']?> : 
-					count <b><?=$_ps_score_data['score'][$i]['count']?></b> | 
-					sum <b><?=$_ps_score_data['score'][$i]['score_sum']?></b> | 
-					avg <b><?=$_ps_score_data['score'][$i]['score_avg']?></b>
+				<span class="score-box"><?=$score_data[$i]['name'] ?? ''?> : 
+					count <b><?=$score_data[$i]['count'] ?? 0?></b> | 
+					sum <b><?=$score_data[$i]['score_sum'] ?? 0?></b> | 
+					avg <b><?=$score_data[$i]['score_avg'] ?? 0?></b>
 				</span>
 			<? } ?>
 		</div>
@@ -140,7 +173,7 @@
 
 
 
-<div class="total">Total : <span><b><?=number_format($total_count)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn?></b></span> / <?=$total_page?> page</div>
+<div class="total">Total : <span><b><?=number_format($total_count ?? 0)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn ?? 1?></b></span> / <?=$total_page ?? 1?> page</div>
 
 <table class="table-style m-t-6">	
 	<tr>
@@ -161,77 +194,93 @@
 	</tr>
 	<?
 	while($list = wepix_fetch_array($result)){
+		
+		if (!is_array($list)) continue;
 
-		if( $list['CD_IMG'] ){
+		$img_path = "";
+		$img_path2 = "";
+		
+		if( $list['CD_IMG'] ?? '' ){
 			$img_path = '/data/comparion/'.$list['CD_IMG'];
 		}
 
-		if( $list['CD_IMG2'] ){
+		if( $list['CD_IMG2'] ?? '' ){
 			$img_path2 = '/data/comparion/'.$list['CD_IMG2'];
 		}
 
-		$_pc_reg_info = json_decode($list['pc_reg_info'], true);	
-
-		if( $list['pc_user_idx'] ){
-			$_user_name = '<i style="font-size:16px; color:#999;" class="fas fa-user-circle"></i> <b>'.$list['user_nick'].'</b> ('.$list['user_id'].')';
-		}else{
-			$_user_name = "비회원 : ".$_pc_reg_info['name'];
+		$_pc_reg_info = json_decode($list['pc_reg_info'] ?? '{}', true);
+		if (!is_array($_pc_reg_info)) {
+			$_pc_reg_info = [];
 		}
 
-		$_pc_score = json_decode($list['pc_score'], true);	
+		if( $list['pc_user_idx'] ?? '' ){
+			$_user_name = '<i style="font-size:16px; color:#999;" class="fas fa-user-circle"></i> <b>'.($list['user_nick'] ?? '').'</b> ('.($list['user_id'] ?? '').')';
+		}else{
+			$_user_name = "비회원 : ".($_pc_reg_info['name'] ?? '');
+		}
+
+		$_pc_score = json_decode($list['pc_score'] ?? '{}', true);
+		if (!is_array($_pc_score)) {
+			$_pc_score = [];
+		}	
 
 	?>
-	<tr align="center" id="trid_<?=$list['pc_idx']?>" bgcolor="<?=$trcolor?>">
-		<td class="tl-check"><input type="checkbox" name="key_check[]" value="<?=$list['pc_idx']?>" ></td>	
-		<td class="tl-idx"><?= $list['pc_idx']?></td>
+	<tr align="center" id="trid_<?=$list['pc_idx'] ?? ''?>" bgcolor="<?=$trcolor ?? ''?>">
+		<td class="tl-check"><input type="checkbox" name="key_check[]" value="<?=$list['pc_idx'] ?? ''?>" ></td>	
+		<td class="tl-idx"><?= $list['pc_idx'] ?? ''?></td>
 		
 		<? if( $_load_page != "prdInfo" ){ ?>
 		<td >
-			<? if( $list['CD_IMG'] ){ ?>
+			<? if( $list['CD_IMG'] ?? '' ){ ?>
 				<img src="<?=$img_path?>" style="height:70px; border:1px solid #eee !important;">
 			<? }else{ ?>
 				<div class="no-image">No image</div>
 			<? } ?>
 		</td>
 		<td >
-			<? if( $list['CD_IMG2'] ){ ?>
+			<? if( $list['CD_IMG2'] ?? '' ){ ?>
 				<img src="<?=$img_path2?>" style="height:70px; border:1px solid #eee !important;">
 			<? }else{ ?>
 				<div class="no-image">No image</div>
 			<? } ?>
 		</td>
 		<td class= "text-left">
-			<b onclick="onlyAD.prdView('<?=$list['CD_IDX']?>','info');" style="cursor:pointer;" ><?=$list['CD_NAME']?></b>
+			<b onclick="onlyAD.prdView('<?=$list['CD_IDX'] ?? ''?>','info');" style="cursor:pointer;" ><?=$list['CD_NAME'] ?? ''?></b>
 		</td>
 		<? } ?>
 
 		<td class= "text-left">
-			<div class="score-mode-box <?=$list['pc_score_mode']?>"><?=$_score_mode[$list['pc_score_mode']]?></div>
-			<div class="m-t-5"><?=$list['pc_body']?></div>
+			<div class="score-mode-box <?=$list['pc_score_mode'] ?? ''?>"><?=$_score_mode[$list['pc_score_mode'] ?? ''] ?? ''?></div>
+			<div class="m-t-5"><?=$list['pc_body'] ?? ''?></div>
 
-			<? if( $list['pc_score'] ){ ?>
+			<? if( $list['pc_score'] ?? '' ){ 
+				$score_array = $_pc_score['score'] ?? [];
+				if (!is_array($score_array)) {
+					$score_array = [];
+				}
+			?>
 			<div class="m-t-7">
 				<ul class="score-box-wrap ">
 				<? 
-				for ($i=1; $i<=count($_pc_score['score']); $i++){ 
-					if( $_pc_score['score'][$i] ){
+				for ($i=1; $i<=count($score_array); $i++){ 
+					if( $score_array[$i] ?? '' ){
 				?>
-					<span class="score-box"><?=$_pc_score['score'][$i]['name']?> : <b><?=$_pc_score['score'][$i]['score']?></b></span>
+					<span class="score-box"><?=$score_array[$i]['name'] ?? ''?> : <b><?=$score_array[$i]['score'] ?? ''?></b></span>
 				<? } } ?>
 				</ul>
 				<ul class="m-t-7">
-					종합평균 : <b><?=round($_pc_score['score_avg'],1)?></b>
+					종합평균 : <b><?=round(($_pc_score['score_avg'] ?? 0),1)?></b>
 				</ul>
 			</div>
 			<? } ?>
 
 		</td>
 		<td>
-			<b><?=$list['pc_grade']?></b>
+			<b><?=$list['pc_grade'] ?? ''?></b>
 		</td>
 		<td>
 			<div>
-				<ul><?=$_reg_mode[$list['pc_reg_mode']]?></ul>
+				<ul><?=$_reg_mode[$list['pc_reg_mode'] ?? ''] ?? ''?></ul>
 				<ul><?=$_user_name?></ul>
 			</div>
 		</td>
@@ -244,22 +293,22 @@
 			*/
 		?>
 			<div>
-				<ul><?=date("y.m.d <b>H:i:s</b>", strtotime($list['pc_reg_date']))?></ul>
-				<ul class="m-t-3 f-s-11">( <?= $_pc_reg_info['ip']?> )</ul>
-				<ul class="m-t-3"><?= $_pc_reg_info['domain']?></ul>
+				<ul><?=!empty($list['pc_reg_date']) ? date("y.m.d <b>H:i:s</b>", strtotime($list['pc_reg_date'])) : ''?></ul>
+				<ul class="m-t-3 f-s-11">( <?= $_pc_reg_info['ip'] ?? ''?> )</ul>
+				<ul class="m-t-3"><?= $_pc_reg_info['domain'] ?? ''?></ul>
 			</div>
 		</td>
 		<td>
 			<div>
-				<ul><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdCommentList.modify('<?= $list['pc_idx']?>')" >수정</button></ul>
-				<ul class="m-t-3"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-sm" onclick="prdCommentList.del(this, '<?= $list['pc_idx']?>', '<?=$_load_page?>')" >삭제</button></ul>
+				<ul><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdCommentList.modify('<?= $list['pc_idx'] ?? ''?>')" >수정</button></ul>
+				<ul class="m-t-3"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-sm" onclick="prdCommentList.del(this, '<?= $list['pc_idx'] ?? ''?>', '<?=$_load_page?>')" >삭제</button></ul>
 			</div>
 		</td>
 	<tr>
 	<? }?>
 </table>
 
-<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page?></div>
+<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page ?? ''?></div>
 <script type="text/javascript"> 
 
 var prdCommentList = function() {

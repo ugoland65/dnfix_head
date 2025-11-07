@@ -1,10 +1,29 @@
 <?php
 	
+	// 변수 초기화
+	$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+	$_sort = $_GET['sort'] ?? $_POST['sort'] ?? "qty";
+	
 	$data = sql_fetch_array(sql_query_error("select * from prd_stock_history where uid = '".$_idx."' "));
 
-	$_json_data = json_decode($data['data'],true);
-	$_error_data = json_decode($data['error'],true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = [];
+	}
 
+	$_json_data = json_decode($data['data'] ?? '[]', true);
+	$_error_data = json_decode($data['error'] ?? '{"result":[]}', true);
+
+	// JSON 디코딩 결과 검증
+	if (!is_array($_json_data)) {
+		$_json_data = [];
+	}
+	if (!is_array($_error_data)) {
+		$_error_data = ['result' => []];
+	}
+	if (!isset($_error_data['result']) || !is_array($_error_data['result'])) {
+		$_error_data['result'] = [];
+	}
 
 	if( $_sort == "brand" ){
 		$_json_data = arr_sort( $_json_data,'brand_idx', 'desc' );
@@ -13,9 +32,18 @@
 	}
 
 
+	// 배열 초기화
+	$_row1 = [];
+	$_row2 = [];
+
 	foreach ( $_json_data as $key => $val ){
 
-		$_ps_idx = $val['ps_idx'];
+		// 배열 요소 검증
+		if (!is_array($val)) {
+			continue;
+		}
+
+		$_ps_idx = $val['ps_idx'] ?? '';
 
 		$prd_data = sql_fetch_array(sql_query_error("select 
 			A.ps_stock, A.ps_stock_object, A.ps_alarm_count,
@@ -26,9 +54,14 @@
 			left join "._DB_BRAND." C  ON (B.CD_BRAND_IDX = C.BD_IDX ) 
 			where ps_idx = '".$_ps_idx."' "));
 
-		$_stock_sum = $prd_data['ps_stock'] - $val['qty'];
+		// 배열 검증
+		if (!is_array($prd_data)) {
+			$prd_data = [];
+		}
 
-		if( $_stock_sum < 1 && $prd_data['ps_stock_object'] == "Y" ){
+		$_stock_sum = ($prd_data['ps_stock'] ?? 0) - ($val['qty'] ?? 0);
+
+		if( $_stock_sum < 1 && ($prd_data['ps_stock_object'] ?? '') == "Y" ){
 
 			$_mode = "";
 			if( $_stock_sum < 0 ){
@@ -40,16 +73,16 @@
 			$_row1[] = array(
 				"mode" => $_mode,
 				"ps_idx" => $_ps_idx,
-				"cd_idx" => $val['cd_idx'],
-				"brand_name" => $prd_data['BD_NAME'],
-				"prd_name" => $prd_data['CD_NAME'],
-				"packageOut" => $val['packageOut'],
-				"one_qty" => $val['one']['qty'],
-				"set_qty" => $val['set']['qty'],
-				"qty" => $val['qty'],
-				"ps_stock" => $prd_data['ps_stock'],
+				"cd_idx" => $val['cd_idx'] ?? '',
+				"brand_name" => $prd_data['BD_NAME'] ?? '',
+				"prd_name" => $prd_data['CD_NAME'] ?? '',
+				"packageOut" => $val['packageOut'] ?? 0,
+				"one_qty" => $val['one']['qty'] ?? 0,
+				"set_qty" => $val['set']['qty'] ?? 0,
+				"qty" => $val['qty'] ?? 0,
+				"ps_stock" => $prd_data['ps_stock'] ?? 0,
 				"stock_sum" => $_stock_sum,
-				"ps_stock_object" => $prd_data['ps_stock_object'],
+				"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
 			);
 
 		}else{
@@ -57,25 +90,26 @@
 			$_row2[] = array(
 				"mode" => "basic",
 				"ps_idx" => $_ps_idx,
-				"cd_idx" => $val['cd_idx'],
-				"brand_name" => $prd_data['BD_NAME'],
-				"prd_name" => $prd_data['CD_NAME'],
-				"packageOut" => $val['packageOut'],
-				"one_qty" => $val['one']['qty'],
-				"set_qty" => $val['set']['qty'],
-				"qty" => $val['qty'],
-				"ps_stock" => $prd_data['ps_stock'],
+				"cd_idx" => $val['cd_idx'] ?? '',
+				"brand_name" => $prd_data['BD_NAME'] ?? '',
+				"prd_name" => $prd_data['CD_NAME'] ?? '',
+				"packageOut" => $val['packageOut'] ?? 0,
+				"one_qty" => $val['one']['qty'] ?? 0,
+				"set_qty" => $val['set']['qty'] ?? 0,
+				"qty" => $val['qty'] ?? 0,
+				"ps_stock" => $prd_data['ps_stock'] ?? 0,
 				"stock_sum" => $_stock_sum,
-				"ps_stock_object" => $prd_data['ps_stock_object'],
+				"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
 			);
 
 		}
 	}
 
-	if( is_array($_row1) ){
+	// 배열 정렬 및 병합
+	if( count($_row1) > 0 ){
 		$_row1 = arr_sort( $_row1,'stock_sum', 'asc' );
 		
-		if( is_array($_row2) ){
+		if( count($_row2) > 0 ){
 			$_row = array_merge($_row1, $_row2);
 		}else{
 			$_row = $_row1;
@@ -102,7 +136,7 @@
 	-->
 
 	<span id="sh_name">
-		[<?=$data['uid']?>] <b><?=$data['file_name']?></b> | 
+		[<?=$data['uid'] ?? ''?>] <b><?=$data['file_name'] ?? ''?></b> | 
 	</span>
 
 	<div class="float-right">
@@ -118,7 +152,7 @@
 
 	<form id="form2">
 	<input type="hidden" name="a_mode" value="day_stock">
-	<input type="hidden" name="stock_history_idx" value="<?=$_idx?>">
+	<input type="hidden" name="stock_history_idx" value="<?=$_idx ?? ''?>">
 
 	<table class="table-style border01" id="">
 		<thead class="sticky">
@@ -136,7 +170,9 @@
 			</tr>
 		</thead>
 
-		<? if( count($_error_data['result']) > 0 ){ ?>
+		<? 
+		$_error_result_count = is_array($_error_data['result']) ? count($_error_data['result']) : 0;
+		if( $_error_result_count > 0 ){ ?>
 		<tbody>
 			<tr>
 				<td colspan="10">
@@ -144,8 +180,8 @@
 						※ 에러항목
 					</div>
 					<div>
-						<? for ($i=0; $i<count($_error_data['result']); $i++){ ?>
-							<ul><?=$_error_data['result'][$i]?></ul>
+						<? for ($i=0; $i<$_error_result_count; $i++){ ?>
+							<ul><?=$_error_data['result'][$i] ?? ''?></ul>
 						<? } ?>
 					</div>
 				</td>
@@ -157,55 +193,65 @@
 		$_notice_count1 = 0;
 		$_notice_count2 = 0;
 
+	// 배열 검증
+	if (!isset($_row) || !is_array($_row)) {
+		$_row = [];
+	}
+
 	foreach ( $_row as $key => $val ){
 		
+		// 배열 요소 검증
+		if (!is_array($val)) {
+			continue;
+		}
+
 		$_tr_class = "";
-		if( $val['mode'] == "stock_over" ){
+		if( ($val['mode'] ?? '') == "stock_over" ){
 			$_tr_class = "red";
 			$_notice_count1++;
-		}elseif( $val['mode'] == "stock_zero" ){
+		}elseif( ($val['mode'] ?? '') == "stock_zero" ){
 			$_tr_class = "green";
 			$_notice_count2++;
 		}
 	?>
-	<input type='hidden' name='stock_key[]' value='<?=$val['ps_idx']?>'>
+	<input type='hidden' name='stock_key[]' value='<?=$val['ps_idx'] ?? ''?>'>
 	<input type='hidden' name='stock_mode[]' class="stock-mode-value" value='minus'>
 	<input type='hidden' name='stock_kind[]' value='판매 (엑셀)'>
 
 		<tr class="<?=$_tr_class?>">
-			<td class="text-center"><?=$val['ps_idx']?></td>
+			<td class="text-center"><?=$val['ps_idx'] ?? ''?></td>
 			<td class="text-left">
 
-				<? if( $val['mode'] == "stock_over" ){ ?>
+				<? if( ($val['mode'] ?? '') == "stock_over" ){ ?>
 					<div style="color:#ff0000;" class="m-b-5">※ 재고 부족</div>
 				<? } ?>
 
-				<? if( $val['mode'] == "stock_zero" ){ ?>
+				<? if( ($val['mode'] ?? '') == "stock_zero" ){ ?>
 					<div class="m-b-5">※ 재고 등록 후 품절</div>
 				<? } ?>
 
 				<p class="prd-name">
-					<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$val['cd_idx']?>','info');"">보기</button>
-					<? if( $val['brand_name'] ) { ?><span class="brand-name">[<?=$val['brand_name']?>] </span><? } ?>
-					<?=$val['prd_name']?>
+					<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$val['cd_idx'] ?? ''?>','info');"">보기</button>
+					<? if( !empty($val['brand_name']) ) { ?><span class="brand-name">[<?=$val['brand_name']?>] </span><? } ?>
+					<?=$val['prd_name'] ?? ''?>
 				</p>
 			</td>
-			<td class="text-center"><? if( $val['packageOut'] > 0 ){ ?><?=$val['packageOut']?><? } ?></td>
-			<td class="text-center"><?=$val['one_qty']?></td>
-			<td class="text-center"><?=$val['set_qty']?></td>
-			<td><input type="text" name="stock_qry[]" style="width:40px; font-size:15px; font-weight:bold; color:#d00000;" placeholder="수량" value="<?=$val['qty']?>" /></td>
+			<td class="text-center"><? if( ($val['packageOut'] ?? 0) > 0 ){ ?><?=$val['packageOut']?><? } ?></td>
+			<td class="text-center"><?=$val['one_qty'] ?? 0?></td>
+			<td class="text-center"><?=$val['set_qty'] ?? 0?></td>
+			<td><input type="text" name="stock_qry[]" style="width:40px; font-size:15px; font-weight:bold; color:#d00000;" placeholder="수량" value="<?=$val['qty'] ?? 0?>" /></td>
 			<td class="text-center">
-				<? if( $val['ps_stock_object'] == "N" ){ ?>
+				<? if( ($val['ps_stock_object'] ?? '') == "N" ){ ?>
 					∞
 				<? }else{ ?>
-					<?=$val['ps_stock']?>
+					<?=$val['ps_stock'] ?? 0?>
 				<? } ?>
 			</td>
 			<td class="text-center">
-				<? if( $val['ps_stock_object'] == "N" ){ ?>
+				<? if( ($val['ps_stock_object'] ?? '') == "N" ){ ?>
 					∞
 				<? }else{ ?>
-					<?=$val['stock_sum']?>
+					<?=$val['stock_sum'] ?? 0?>
 				<? } ?>
 			</td>
 			<td class="stock-mode-text">출고</td>
@@ -220,7 +266,7 @@
 
 <div class="division-bottom text-center">
 
-	<? if( $data['step'] == "2"){ ?>
+	<? if( ($data['step'] ?? '') == "2"){ ?>
 		<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg"  disabled>등록 완료</button>
 	<? }else{ ?>
 		재고 처리 날짜 : 
@@ -246,12 +292,16 @@ var stockExcelView = function() {
 		},
 
 		swindow : function() {
-			window.open("/admin2/product2/prd2_stock_excel_view2.php?idx=<?=$_idx?>&sort=qty", "excelDown", "width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+			window.open(
+				"/admin2/product2/prd2_stock_excel_view2.php?idx=<?=$_idx ?? ''?>&sort=qty", 
+				"excelDown", 
+				"width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no"
+			);
 		},
 
 		del : function(obj) {
 
-			<? if( $data['step'] == "2"){ ?>
+			<? if( ($data['step'] ?? '') == "2"){ ?>
 				showAlert("Error", "완료된건은 삭제 불가합니다.", "alert2" );
 				return false;
 			<? } ?>
@@ -270,12 +320,12 @@ var stockExcelView = function() {
 						btnClass: 'btn-red',
 						action: function(){
 
-							$(obj).attr('disabled', true);
-							$.ajax({
-								url: "/ad/processing/prd_stock",
-								data: { "a_mode":"day_stock_del", "idx":"<?=$_idx?>" },
-								type: "POST",
-								dataType: "json",
+						$(obj).attr('disabled', true);
+						$.ajax({
+							url: "/ad/processing/prd_stock",
+							data: { "a_mode":"day_stock_del", "idx":"<?=$_idx ?? ''?>" },
+							type: "POST",
+							dataType: "json",
 								success: function(res){
 									if (res.success == true ){
 										alert("삭제되었습니다.");
@@ -352,13 +402,13 @@ $(function(){
 		$(".calendar-input input").datepicker(clareCalendar);
 	}
 
-	<? if( $data['step'] == "1" && ( $_notice_count1 > 0 || $_notice_count2 > 0 || count($_error_data['result']) > 0 ) ){ ?>
+	<? if( ($data['step'] ?? '') == "1" && ( $_notice_count1 > 0 || $_notice_count2 > 0 || $_error_result_count > 0 ) ){ ?>
 
 		var content22 = ''
 
 
-		<? if( count($_error_data['result']) > 0 ){ ?>
-			+ '- 에러항목이 ( <b><?=count($_error_data['result'])?></b> )건 있습니다.<br>'
+		<? if( $_error_result_count > 0 ){ ?>
+			+ '- 에러항목이 ( <b><?=$_error_result_count?></b> )건 있습니다.<br>'
 		<? } ?>
 		<? if( $_notice_count1 > 0 ){ ?>
 			+ '- 재고 부족상품이 ( <b><?=$_notice_count1?></b> )개 있습니다.<br>'

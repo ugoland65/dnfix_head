@@ -1,18 +1,29 @@
 <?
+// 변수 초기화
+$_where = "";
+$_staff = [];
+
 if( $_idx ){
 
 	$data = wepix_fetch_array(wepix_query_error("select * from schedule_sttaf WHERE idx = '".$_idx."' "));
 
-	$_data = json_decode($data['data'], true);
-	$_reg_name = $_data['reg']['name'];
-	$_reg_date = date("Y.m.d H:i", strtotime($_data['reg']['date']));
-	$_target_name = $_data['target']['name'];
+	if (!is_array($data)) {
+		$data = [];
+	}
 
-	$_date_s = date("Y-m-d", strtotime($data['date_s']));
-	$_date_e = date("Y-m-d", strtotime($data['date_e']));
+	$_data = json_decode($data['data'] ?? '{}', true);
+	if (!is_array($_data)) {
+		$_data = [];
+	}
+	$_reg_name = $_data['reg']['name'] ?? '';
+	$_reg_date = !empty($_data['reg']['date']) ? date("Y.m.d H:i", strtotime($_data['reg']['date'])) : '';
+	$_target_name = $_data['target']['name'] ?? '';
+
+	$_date_s = !empty($data['date_s']) ? date("Y-m-d", strtotime($data['date_s'])) : date("Y-m-d");
+	$_date_e = !empty($data['date_e']) ? date("Y-m-d", strtotime($data['date_e'])) : date("Y-m-d");
 
 }else{
-	$_target_name = $_ad_name;
+	$_target_name = $_ad_name ?? '';
 
 	$_date_s = date("Y-m-d");
 	$_date_e = date("Y-m-d");
@@ -45,18 +56,18 @@ if( $_idx ){
 			<th style="width:100px;">신청인</th>
 			<td colspan="3">
 				<? 
-				if( $_ad_level > 9 ){
+				if( ($_ad_level ?? 0) > 9 ){
 					$_result = sql_query_error("select * from admin ".$_where." ORDER BY idx DESC");
 					while($_list = wepix_fetch_array($_result)){
 						$_staff[] = array(
-							"idx" => $_list['idx'],
-							"name" => $_list['ad_name']
+							"idx" => $_list['idx'] ?? '',
+							"name" => $_list['ad_name'] ?? ''
 						);
 					}
 				?>
 					<select name="tidx">
 						<? for ($i=0; $i<count($_staff); $i++){ ?>
-						<option value="<?=$_staff[$i]['idx']?>" <? if( $data['tidx'] == $_staff[$i]['idx'] ) echo "selected"; ?> ><?=$_staff[$i]['name']?></option>
+						<option value="<?=$_staff[$i]['idx']?>" <? if( ($data['tidx'] ?? '') == $_staff[$i]['idx'] ) echo "selected"; ?> ><?=$_staff[$i]['name']?></option>
 						<? } ?>
 					</select>
 				<? }else{ ?>
@@ -85,13 +96,13 @@ if( $_idx ){
 		<tr>
 			<th>종류</th>
 			<td colspan="3">
-				<label><input type="radio" name="mode" value="휴가" <? if( !$data['mode'] || $data['mode'] == "휴가" ) echo "checked"; ?> > 휴가</label>
-				<label><input type="radio" name="mode" value="월차" <? if( !$data['mode'] || $data['mode'] == "월차" ) echo "checked"; ?> > 월차</label>
-				<label><input type="radio" name="mode" value="오전반차" <? if( $data['mode'] == "오전반차" ) echo "checked"; ?> > 오전반차</label>
-				<label><input type="radio" name="mode" value="오후반차" <? if( $data['mode'] == "오후반차" ) echo "checked"; ?> > 오후반차</label>
-				<label><input type="radio" name="mode" value="유급휴가" <? if( $data['mode'] == "유급휴가" ) echo "checked"; ?> > 유급휴가</label>
-				<label><input type="radio" name="mode" value="포상휴가" <? if( $data['mode'] == "포상휴가" ) echo "checked"; ?> > 포상휴가</label>
-				<label><input type="radio" name="mode" value="조퇴" <? if( $data['mode'] == "조퇴" ) echo "checked"; ?> > 조퇴</label>
+				<label><input type="radio" name="mode" value="휴가" <? if( empty($data['mode']) || ($data['mode'] ?? '') == "휴가" ) echo "checked"; ?> > 휴가</label>
+				<label><input type="radio" name="mode" value="월차" <? if( empty($data['mode']) || ($data['mode'] ?? '') == "월차" ) echo "checked"; ?> > 월차</label>
+				<label><input type="radio" name="mode" value="오전반차" <? if( ($data['mode'] ?? '') == "오전반차" ) echo "checked"; ?> > 오전반차</label>
+				<label><input type="radio" name="mode" value="오후반차" <? if( ($data['mode'] ?? '') == "오후반차" ) echo "checked"; ?> > 오후반차</label>
+				<label><input type="radio" name="mode" value="유급휴가" <? if( ($data['mode'] ?? '') == "유급휴가" ) echo "checked"; ?> > 유급휴가</label>
+				<label><input type="radio" name="mode" value="포상휴가" <? if( ($data['mode'] ?? '') == "포상휴가" ) echo "checked"; ?> > 포상휴가</label>
+				<label><input type="radio" name="mode" value="조퇴" <? if( ($data['mode'] ?? '') == "조퇴" ) echo "checked"; ?> > 조퇴</label>
 				<div>
 					※유급휴가 : 예비군
 				<div>
@@ -100,24 +111,24 @@ if( $_idx ){
 		<tr>
 			<th>신청사유</th>
 			<td colspan="3">
-				<input type='text' name='memo'  value="<?=$data['memo']?>" autocomplete="off" >
+				<input type='text' name='memo'  value="<?=$data['memo'] ?? ''?>" autocomplete="off" >
 			</td>
 		</tr>
 
-		<? if( $_ad_level == 100 ){ ?>
+		<? if( ($_ad_level ?? 0) == 100 ){ ?>
 		<tr>
 			<th>상태변경</th>
 			<td colspan="3">
 				<select name="state">
-					<option value="1" <? if( $data['state'] == "1" ) echo "selected"; ?> >신청중</option>
-					<option value="2" <? if( $data['state'] == "2" ) echo "selected"; ?> >확인중</option>
-					<option value="3" <? if( $data['state'] == "3" ) echo "selected"; ?> >승인</option>
-					<option value="4" <? if( $data['state'] == "4" ) echo "selected"; ?> >반려</option>
+					<option value="1" <? if( ($data['state'] ?? '') == "1" ) echo "selected"; ?> >신청중</option>
+					<option value="2" <? if( ($data['state'] ?? '') == "2" ) echo "selected"; ?> >확인중</option>
+					<option value="3" <? if( ($data['state'] ?? '') == "3" ) echo "selected"; ?> >승인</option>
+					<option value="4" <? if( ($data['state'] ?? '') == "4" ) echo "selected"; ?> >반려</option>
 				</select>
 			</td>
 		</tr>
 		<? }else{ ?>
-			<input type="hidden" name="state" value="<?= $data['state']?>" >
+			<input type="hidden" name="state" value="<?= $data['state'] ?? ''?>" >
 		<? } ?>
 
 		<? if( $_idx ){ ?>

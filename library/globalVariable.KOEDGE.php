@@ -55,7 +55,14 @@ $hbtiTypes = [
 
 
 //원가산출함수
-function makeKoedgeCost($o_p, $weight="", $ex_yen, $kg_p, $sale_price, $national=""){
+function makeKoedgeCost($o_p=null, $weight=null, $ex_yen=null, $kg_p=null, $sale_price=null, $national=null){
+	// 파라미터 기본값 설정 (null-safe)
+	if($o_p === null) $o_p = 0;
+	if($weight === null) $weight = "";
+	if($ex_yen === null) $ex_yen = 0;
+	if($kg_p === null) $kg_p = 0;
+	if($sale_price === null) $sale_price = 0;
+	if($national === null) $national = "";
 
 	//원가 원전환
 	if( $national == "cn" ){
@@ -67,7 +74,8 @@ function makeKoedgeCost($o_p, $weight="", $ex_yen, $kg_p, $sale_price, $national
 	}
 
 	if( $national == "cn" ){
-		$delivery_p  = $delivery_p_cn; // 배송비
+		global $delivery_p_cn;
+		$delivery_p  = $delivery_p_cn ?? 2800; // 배송비
 	}else{
 		$delivery_p  = $weight * ($kg_p * 0.001); // 배송비
 	}
@@ -179,7 +187,14 @@ if( $national == "cn" ){
 }
 
 //마진률 뱉어내기
-function makeKoedgeMargin($o_p, $weight, $ex_yen, $kg_p, $sale_price){
+function makeKoedgeMargin($o_p=null, $weight=null, $ex_yen=null, $kg_p=null, $sale_price=null){
+	// 파라미터 기본값 설정 (null-safe)
+	if($o_p === null) $o_p = 0;
+	if($weight === null) $weight = 0;
+	if($ex_yen === null) $ex_yen = 0;
+	if($kg_p === null) $kg_p = 0;
+	if($sale_price === null) $sale_price = 0;
+	
 	$op_won = $o_p * ($ex_yen/100); //원가 원전환
 	$delivery_p  = $weight * ($kg_p * 0.001); // 배송비
 	$tariff_p = $op_won*0.08; //관세

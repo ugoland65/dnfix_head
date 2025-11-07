@@ -18,7 +18,7 @@
 </div>
 
 <style type="text/css">
-.division-layout-wrap{ display:table; width:100%; height:100%; overflow:hidden;  }
+.division-layout-wrap{ display:table; width:100%; height:100%; overflow:hidden; }
 .division-layout-wrap > ul{ height:100%; display:table-cell; vertical-align:top; }
 .division-1{ width:650px; height:calc(100% - 30px); }
 .division-2{ padding:0 0 0 15px; }
@@ -29,9 +29,7 @@
 .scroll-wrap{ width:100%; height:100%; border:1px solid #555555; background:#ffffff; box-sizing:border-box; padding:0;  overflow-y:scroll;   }
 .scroll-wrap::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
 .scroll-wrap::-webkit-scrollbar-thumb{  background:#aaa;  }
-
 .division-layout-wrap .table-style{ width:100%; }
-
 </style>
 
 <div id="contents_body">
@@ -59,32 +57,50 @@
 						</tr>
 					</thead>
 					<?
+					// 변수 초기화
+					$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+					$_where = "";
+					
 					$query = "select 
 						uid, file_name, reg_time, step, info, error, end_time, reg_id
 						from prd_stock_history ".$_where." order by uid desc limit 0, 25";
 					$result = wepix_query_error($query);
 					while($list = wepix_fetch_array($result)){
+						
+						// 배열 검증
+						if (!is_array($list)) {
+							continue;
+						}
+
 						$_step_name = "";
-						if( $list['step'] == "1" ){
+						if( ($list['step'] ?? '') == "1" ){
 							$_step_name = "<span style='color:#ff0000'>[임시저장]</span> ";
 						}
 
-						$_info_data = json_decode($list['info'],true);
-						$_error_data = json_decode($list['error'],true);
+						$_info_data = json_decode($list['info'] ?? '{}', true);
+						$_error_data = json_decode($list['error'] ?? '{}', true);
+
+						// JSON 디코딩 결과 검증
+						if (!is_array($_info_data)) {
+							$_info_data = [];
+						}
+						if (!is_array($_error_data)) {
+							$_error_data = [];
+						}
 
 					?>
-						<tr id="tr_<?=$list['uid']?>" onclick="stockExcel.view('<?=$list['uid']?>', 'qty')" style="cursor:pointer;" 
-							data-step="<?=$list['step']?>" data-name="<?=$_step_name?><?=$list['file_name']?> | 주문 : <?=$_info_data['order_count']?> | 상품 : <?=$_info_data['pd_count']?>" >
-							<td class="text-center"><?=$list['uid']?></td>
-							<td class="text-left"><?=$_step_name?><b><?=$list['file_name']?></b></td>
+						<tr id="tr_<?=$list['uid'] ?? ''?>" onclick="stockExcel.view('<?=$list['uid'] ?? ''?>', 'qty')" style="cursor:pointer;" 
+							data-step="<?=$list['step'] ?? ''?>" data-name="<?=$_step_name?><?=$list['file_name'] ?? ''?> | 주문 : <?=$_info_data['order_count'] ?? 0?> | 상품 : <?=$_info_data['pd_count'] ?? 0?>" >
+							<td class="text-center"><?=$list['uid'] ?? ''?></td>
+							<td class="text-left"><?=$_step_name?><b><?=$list['file_name'] ?? ''?></b></td>
 							<td>
-								등록 : <?=$list['reg_time']?>
-								<? if( $list['end_time'] > 0){ ?><br>처리 : <?=$list['end_time']?><? } ?>
+								등록 : <?=$list['reg_time'] ?? ''?>
+								<? if( ($list['end_time'] ?? 0) > 0){ ?><br>처리 : <?=$list['end_time']?><? } ?>
 							</td>
-							<td class="text-center"><?=$_info_data['order_count']?></td>
-							<td class="text-center"><?=$_info_data['pd_count']?></td>
-							<td class="text-center"><?=$_error_data['count']?></td>
-							<td><?=$list['reg_id']?></td>
+							<td class="text-center"><?=$_info_data['order_count'] ?? 0?></td>
+							<td class="text-center"><?=$_info_data['pd_count'] ?? 0?></td>
+							<td class="text-center"><?=$_error_data['count'] ?? 0?></td>
+							<td><?=$list['reg_id'] ?? ''?></td>
 						</tr>
 					<? } ?>
 					</table>
@@ -130,9 +146,18 @@
 
 <script type="text/javascript"> 
 <!-- 
-const stockExcel = (function () {
+// 전역 스코프에 stockExcel 객체 등록
+var stockExcel = (function () {
 
-	function view(idx, sort = 'default') { 
+	function view(idx, sort) { 
+		if (!idx) {
+			console.error('idx is required');
+			return;
+		}
+		if (!sort) {
+			sort = 'qty';
+		}
+		
 		$.ajax({
 			url: "/ad/ajax/stock_excel_view",
 			data: { "idx":idx, "sort":sort },
@@ -155,8 +180,8 @@ const stockExcel = (function () {
 	}
 
 	function excelSubmitCheck(obj) {
-        var fileCheck = document.getElementById("excel_file").value;
-        if (!fileCheck) {
+        var fileCheck = document.getElementById("excel_file");
+        if (!fileCheck || !fileCheck.value) {
             alert("파일을 첨부해 주세요");
             return false;
         }
@@ -171,17 +196,22 @@ const stockExcel = (function () {
 	}
 
 	return {
-		init() {},
-		view,
-		excelSubmitCheck,
-		godoOrderPrint
+		init: function() {},
+		view: view,
+		excelSubmitCheck: excelSubmitCheck,
+		godoOrderPrint: godoOrderPrint
 	};
 
 })();
 
+// 전역 스코프 확인
+if (typeof window !== 'undefined') {
+	window.stockExcel = stockExcel;
+}
+
 $(function(){
 
-	<? if( $_idx ){ ?>
+	<? if( !empty($_idx) ){ ?>
 		stockExcel.view('<?=$_idx?>', 'qty');
 	<? } ?>
 

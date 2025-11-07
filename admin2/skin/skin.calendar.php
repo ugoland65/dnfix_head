@@ -141,12 +141,15 @@ function calendarContents( $dcode ){
 	//월차 반차 정보
 	$shtml .= "<div class='m-t-10'>";
 	
-	for ($z=0; $z<count($_staff_holiday[$dcode]); $z++){
+	// 배열 키 존재 여부 확인
+	$staff_holiday_list = $_staff_holiday[$dcode] ?? [];
+	
+	for ($z=0; $z<count($staff_holiday_list); $z++){
 
 		$shtml .= "
 			<ul class='calendar-unit-ul'>
-				<span style='cursor:pointer;' onclick='onlyAD.staffHolidayView(".$_staff_holiday[$dcode][$z]['idx'].")'>
-					<i class='fas fa-user-alt-slash' style=' font-size:10px !important;'></i> ".$_staff_holiday[$dcode][$z]['mode']." - ".$_staff_holiday[$dcode][$z]['target_name']."
+				<span style='cursor:pointer;' onclick='onlyAD.staffHolidayView(".($staff_holiday_list[$z]['idx'] ?? '').")'>
+					<i class='fas fa-user-alt-slash' style=' font-size:10px !important;'></i> ".($staff_holiday_list[$z]['mode'] ?? '')." - ".($staff_holiday_list[$z]['target_name'] ?? '')."
 				</span>
 			</ul>";
 
@@ -158,7 +161,10 @@ function calendarContents( $dcode ){
 	$shtml .= "<div>";
 
 	/*
-	for ($z=0; $z<count($_calendar[$dcode]); $z++){ 
+	// 배열 키 존재 여부 확인
+	$calendar_list = $_calendar[$dcode] ?? [];
+	
+	for ($z=0; $z<count($calendar_list); $z++){ 
 	
 		if( $_calendar[$dcode][$z]['mode'] == "결제기한" && 
 			( $_calendar[$dcode][$z]['kind'] == "배송비" || $_calendar[$dcode][$z]['kind'] == "관/부가세" )
@@ -220,25 +226,31 @@ function calendarContents( $dcode ){
 	} //for END
 	*/
 
-	foreach ($_calendar[$dcode] as $key => $val) {
+	// 배열 키 존재 여부 확인
+	$calendar_list = $_calendar[$dcode] ?? [];
+	
+	foreach ($calendar_list as $key => $val) {
 
-		if ($val['mode'] == "결제기한" && 
-			($val['kind'] == "배송비" || $val['kind'] == "관/부가세")) {
+		if (($val['mode'] ?? '') == "결제기한" && 
+			(($val['kind'] ?? '') == "배송비" || ($val['kind'] ?? '') == "관/부가세")) {
 
 			$_icon = "";
-			if ($val['kind'] == "배송비") {
+			if (($val['kind'] ?? '') == "배송비") {
 				$_icon = '<i class="fas fa-truck" style="font-size:10px !important;"></i>(배) ';
-			} elseif ($val['kind'] == "관/부가세") {
+			} elseif (($val['kind'] ?? '') == "관/부가세") {
 				$_icon = '<i class="fas fa-receipt"></i>(관) ';
 			}
 
-			$_this_data = json_decode($val['data'], true); 
-			$_this_data_oo_idx = $_this_data['oo_idx'];
-			$_this_data_price = number_format($_this_data['price']);
+			$_this_data = json_decode($val['data'] ?? '{}', true);
+			if (!is_array($_this_data)) {
+				$_this_data = [];
+			}
+			$_this_data_oo_idx = $_this_data['oo_idx'] ?? '';
+			$_this_data_price = number_format((float)($_this_data['price'] ?? 0));
 			$_this_subject = $_icon . " " . $_this_data_price;
 
 			// 일정 완료
-			if ($val['state'] == "E") {
+			if (($val['state'] ?? '') == "E") {
 				$_this_subject = "<s> <font class='calendar-approval-state-end'>".$_icon." ".$_this_data_price."</font> </s>";
 			}
 
@@ -246,7 +258,7 @@ function calendarContents( $dcode ){
 
 		} else {
 			$_icon = "";
-			switch ($val['kind']) {
+			switch ($val['kind'] ?? '') {
 				case "회의":
 					$_icon = '<i class="far fa-comment-dots"></i> ';
 					break;
@@ -272,18 +284,18 @@ function calendarContents( $dcode ){
 			}
 
 			// 일정 상태에 따른 처리
-			if ($val['state'] == "C") {
-				$_this_subject = "<s>[".$val['kind']."] ".$val['subject']."</s>";
-			} elseif ($val['state'] == "E") {
-				$_this_subject = "<font class='calendar-approval-state-end'>".$_icon." ".$val['subject']."</font>";
+			if (($val['state'] ?? '') == "C") {
+				$_this_subject = "<s>[".($val['kind'] ?? '')."] ".($val['subject'] ?? '')."</s>";
+			} elseif (($val['state'] ?? '') == "E") {
+				$_this_subject = "<font class='calendar-approval-state-end'>".$_icon." ".($val['subject'] ?? '')."</font>";
 			} else {
-				$_this_subject = $_icon . " " . $val['subject'];
+				$_this_subject = $_icon . " " . ($val['subject'] ?? '');
 			}
 
-			$_onclick = "calendar.detail(this, '".$val['idx']."');";
+			$_onclick = "calendar.detail(this, '".($val['idx'] ?? '')."');";
 		}
 
-		$shtml .= '<ul class="calendar-unit-ul" title="'.$val['subject'].'"><span style="cursor:pointer;" onclick="'.$_onclick.'" >'.$_this_subject.'</span></ul>';
+		$shtml .= '<ul class="calendar-unit-ul" title="'.($val['subject'] ?? '').'"><span style="cursor:pointer;" onclick="'.$_onclick.'" >'.$_this_subject.'</span></ul>';
 	}
 
 

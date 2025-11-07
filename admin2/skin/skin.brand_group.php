@@ -1,4 +1,8 @@
 <?
+	// 변수 초기화
+	$arr_gp_ko = [];
+	$arr_gp_en = [];
+
 	$_search_query = " WHERE BD_NAME_GROUP != '' AND bd_showdang_active = 'Y' ";
 	$query = "select * from "._DB_BRAND." ".$_search_query." order by BD_NAME asc";
 	$result = wepix_query_error($query);
@@ -45,12 +49,17 @@
 
 	}
 
-foreach ($_chos_ary as $group => &$items) {
-    usort($items, function ($a, $b) {
-        return strcmp($a['name'], $b['name']); // 'name' 기준으로 정렬
-    });
-}
-unset($items); // 참조 해제
+	// 그룹별 정렬
+	foreach ($arr_gp_ko as $group => &$items) {
+	    usort($items, function ($a, $b) {
+	        return strcmp($a['name'], $b['name']); // 'name' 기준으로 정렬
+	    });
+	}
+	unset($items); // 참조 해제
+
+	// 배열 키 추출
+	$arr_ko_1st = array_keys($arr_gp_ko);
+	$arr_en_1st = array_keys($arr_gp_en);
 
 ?>
 <style type="text/css">
@@ -92,7 +101,7 @@ unset($items); // 참조 해제
 	<? 
 	for ($i=0; $i<count($arr_ko_1st); $i++){ 
 		$_chos_code = $arr_ko_1st[$i];
-		$_chos_ary = $arr_gp_ko[$_chos_code];
+		$_chos_ary = $arr_gp_ko[$_chos_code] ?? [];
 
 
 
@@ -120,7 +129,7 @@ unset($items); // 참조 해제
 	<? 
 	for ($i=0; $i<count($arr_en_1st); $i++){ 
 		$_chos_code = $arr_en_1st[$i];
-		$_chos_ary = $arr_gp_en[$_chos_code];
+		$_chos_ary = $arr_gp_en[$_chos_code] ?? [];
 
 		sort($_chos_ary);
 

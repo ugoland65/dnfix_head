@@ -33,7 +33,8 @@ class Basecode extends BaseClass {
 			->table('basecode')
 			->where('cate', '=', 'BASECODE')
 			->orderBy('sort_order', 'ASC')
-			->get();  // 정렬된 결과 반환
+			->get()
+			->toArray();  // 배열로 변환하여 반환
 
     }
 
@@ -47,10 +48,14 @@ class Basecode extends BaseClass {
 			->table('basecode')
 			->where('cate', '=', $cate)
 			->orderBy('sort_order', 'ASC')
-			->get();
+			->get()
+			->toArray();
 
-		// 결과가 없으면 빈 배열 반환
-		return $data ?: [];
+		// 결과 반환
+		return [
+			'data' => $data,
+			'total' => count($data)
+		];
 
     }
 

@@ -1,10 +1,22 @@
 <?
-$_idx = $_get1;
+// 변수 초기화
+$_idx = $_get1 ?? "";
+$data = [];
+$_file_data = [];
+
 if( $_idx ){
 
 	$data = sql_fetch_array(sql_query_error("select * from board WHERE idx = '".$_idx."' "));
 	
-	//$_file_data = json_decode($data['file'], true);
+	if (!is_array($data)) {
+		$data = [];
+	}
+	
+	$_file_data = json_decode($data['file'] ?? '{}', true);
+	
+	if (!is_array($_file_data)) {
+		$_file_data = [];
+	}
 }
 ?>
 <style type="text/css">
@@ -18,36 +30,42 @@ if( $_idx ){
 	<div id="contents_body_wrap">
 
 		<table class="table-reg th-150">
-			<tr>
-				<th>분류</th>
-				<td>
-					<?=$data['category']?>
-				</td>
-			</tr>
-			<tr>
-				<th>제목</th>
-				<td>
-					<?=$data['subject']?>
-				</td>
-			</tr>
-			<tr>
-				<th>첨부파일</th>
-				<td>
-					<div id="file_list_wrap">
-						<? for ( $i=0; $i<count($_file_data['file_name']); $i++ ){ ?>
-						<div class="file-list">
-							<a href="/data/board/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
-							<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" data-filename="<?=$_file_data['file_name'][$i]?>" onclick="workManualView.fileDel(this, '<?=$_idx?>', '<?=$i?>')" ><i class="fas fa-trash-alt"></i> 파일삭제</button>
-						</div>
-						<? } ?>
+		<tr>
+			<th>분류</th>
+			<td>
+				<?=$data['category'] ?? ''?>
+			</td>
+		</tr>
+		<tr>
+			<th>제목</th>
+			<td>
+				<?=$data['subject'] ?? ''?>
+			</td>
+		</tr>
+		<tr>
+			<th>첨부파일</th>
+			<td>
+				<div id="file_list_wrap">
+					<? 
+					$file_name_list = $_file_data['file_name'] ?? [];
+					if (!is_array($file_name_list)) {
+						$file_name_list = [];
+					}
+					for ( $i=0; $i<count($file_name_list); $i++ ){ 
+					?>
+					<div class="file-list">
+						<a href="/data/board/<?=$file_name_list[$i] ?? ''?>"><?=$file_name_list[$i] ?? ''?></a>
+						<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" data-filename="<?=$file_name_list[$i] ?? ''?>" onclick="workManualView.fileDel(this, '<?=$_idx?>', '<?=$i?>')" ><i class="fas fa-trash-alt"></i> 파일삭제</button>
 					</div>
-				</td>
-			</tr>
+					<? } ?>
+				</div>
+			</td>
+		</tr>
 
-			<tr>
-				<th>내용</th>
-				<td>
-					<?=$data['body']?>
+		<tr>
+			<th>내용</th>
+			<td>
+				<?=$data['body'] ?? ''?>
 				</td>
 			</tr>
 

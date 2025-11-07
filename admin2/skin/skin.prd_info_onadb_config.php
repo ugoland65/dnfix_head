@@ -1,4 +1,11 @@
 <?
+	// 변수 초기화
+	$_prd_idx = $_prd_idx ?? "";
+	$prd_data = [];
+	$prd_contents = [];
+	$prd_score = [];
+	$_ps_grade_data = [];
+	
 	if( $_prd_idx ){
 
 		$_colum = "A.*";
@@ -11,11 +18,17 @@
 			where CD_IDX = '".$_prd_idx."' ";
 
 		$prd_data = sql_fetch_array(sql_query_error($_query));
+		if (!is_array($prd_data)) {
+			$prd_data = [];
+		}
 
 		$_query = "select * from prd_contents WHERE cd_idx = '".$_prd_idx."' ";
 		$prd_contents = sql_fetch_array(sql_query_error($_query));
+		if (!is_array($prd_contents)) {
+			$prd_contents = [];
+		}
 
-		if( !$prd_contents['pc_idx'] ){
+		if( !($prd_contents['pc_idx'] ?? '') ){
 
 			$query = "insert into  prd_contents set
 				cd_idx = '".$_prd_idx."',
@@ -27,8 +40,14 @@
 
 		$_query = "select * from prd_score WHERE ps_pd_idx = '".$_prd_idx."' AND ps_mode = 'total' ";
 		$prd_score = sql_fetch_array(sql_query_error($_query));
+		if (!is_array($prd_score)) {
+			$prd_score = [];
+		}
 
-		$_ps_grade_data = json_decode($prd_score['ps_grade_data'], true);
+		$_ps_grade_data = json_decode($prd_score['ps_grade_data'] ?? '{}', true);
+		if (!is_array($_ps_grade_data)) {
+			$_ps_grade_data = [];
+		}
 //{"ad_modify":{"before":"0","after":"9","reg":{"date":"2023-05-26 11:47:20","idx":"14","id":"admin","name":"권윤호","ip":"210.221.8.92","domain":"dgmall.wepix-hosting.co.kr"}}}
 	}
 ?>
@@ -44,8 +63,8 @@
 
 <form name="onadb_prd_form" id="onadb_prd_form" method="post" enctype="multipart/form-data" autocomplete="off">
 <input type="hidden" name="a_mode" value="onadb_prd_modify">
-<input type="hidden" name="idx" value="<?=$_prd_idx?>">
-<input type="hidden" name="ps_idx" value="<?=$prd_score['ps_idx']?>">
+<input type="hidden" name="idx" value="<?=$_prd_idx ?? ''?>">
+<input type="hidden" name="ps_idx" value="<?=$prd_score['ps_idx'] ?? ''?>">
 
 <table class="table-style ">
 	<colgroup>
@@ -65,7 +84,7 @@
 	<tbody>
 		<tr>
 			<th>pc_idx</th>
-			<td><?=$prd_contents['pc_idx']?></td>
+			<td><?=$prd_contents['pc_idx'] ?? ''?></td>
 		</tr>
 		<tr>
 			<th>사이트 옵션</th>
@@ -79,8 +98,8 @@
 					<tr>
 						<th>오나디비 노출</th>
 						<td>
-							<label><input type="radio" name="cd_site_show" value="Y" <? if($prd_data['cd_site_show'] == "Y" || !$prd_data['cd_site_show'] ) echo "checked"; ?>> 노출</label>
-							<label><input type="radio" name="cd_site_show" value="N" <? if($prd_data['cd_site_show'] == "N" ) echo "checked"; ?>> 비노출</label>
+							<label><input type="radio" name="cd_site_show" value="Y" <? if(($prd_data['cd_site_show'] ?? '') == "Y" || !($prd_data['cd_site_show'] ?? '') ) echo "checked"; ?>> 노출</label>
+							<label><input type="radio" name="cd_site_show" value="N" <? if(($prd_data['cd_site_show'] ?? '') == "N" ) echo "checked"; ?>> 비노출</label>
 						</td>
 					</tr>
 				</table>
@@ -100,7 +119,7 @@
 						<td>
 							<select name="cd_tier">
 								<? for ($i=1; $i<6; $i++){ ?>
-								<option value="<?=$i?>" <? if( !$prd_data['cd_tier'] || $prd_data['cd_tier'] == $i ) echo "selected"; ?>><?=$i?> 티어</option>
+								<option value="<?=$i?>" <? if( !($prd_data['cd_tier'] ?? '') || ($prd_data['cd_tier'] ?? 0) == $i ) echo "selected"; ?>><?=$i?> 티어</option>
 								<? } ?>
 							</select>
 						</td>
@@ -111,15 +130,15 @@
 		<tr>
 			<th>19금 상품</th>
 			<td>
-				<label><input type="radio" name="c19" value="Y" <? if( !$prd_contents['c19'] || $prd_contents['c19'] == "Y" ) echo "checked"; ?>> 19금 상품</label>
-				<label><input type="radio" name="c19" value="N" <? if( $prd_contents['c19'] == "N" ) echo "checked"; ?>> 전체 가능 상품</label>
+				<label><input type="radio" name="c19" value="Y" <? if( !($prd_contents['c19'] ?? '') || ($prd_contents['c19'] ?? '') == "Y" ) echo "checked"; ?>> 19금 상품</label>
+				<label><input type="radio" name="c19" value="N" <? if( ($prd_contents['c19'] ?? '') == "N" ) echo "checked"; ?>> 전체 가능 상품</label>
 			</td>
 		</tr>
 		<tr>
 			<th>19금 패키지</th>
 			<td>
-				<label><input type="radio" name="c19_package" value="Y" <? if( !$prd_contents['c19_package'] || $prd_contents['c19_package'] == "Y" ) echo "checked"; ?>> 19금 이미지</label>
-				<label><input type="radio" name="c19_package" value="N" <? if( $prd_contents['c19_package'] == "N" ) echo "checked"; ?>> 노멀 이미지</label>
+				<label><input type="radio" name="c19_package" value="Y" <? if( !($prd_contents['c19_package'] ?? '') || ($prd_contents['c19_package'] ?? '') == "Y" ) echo "checked"; ?>> 19금 이미지</label>
+				<label><input type="radio" name="c19_package" value="N" <? if( ($prd_contents['c19_package'] ?? '') == "N" ) echo "checked"; ?>> 노멀 이미지</label>
 				<div class="admin-guide-text">
 					- 패키지에 19금 이미지가 포함되어 있는 상품인 경우<br>
 					- 오나디비에서는 모자이크 자동처리 ( 단 19금 대체 썸네일일 있을경우 대체 썸네일로 노출됨 )
@@ -130,10 +149,10 @@
 		<tr>
 			<th>개인평점</th>
 			<td>
-				<input type="text" name="ps_grade" value="<?=$prd_score['ps_grade']?>" style="width:80px;">
+				<input type="text" name="ps_grade" value="<?=$prd_score['ps_grade'] ?? ''?>" style="width:80px;">
 
-				<? if( $_ps_grade_data['ad_modify'] ){ ?>
-					관리자 수정 : <?=$_ps_grade_data['ad_modify']['before']?> -> <?=$_ps_grade_data['ad_modify']['after']?> ( <?=$_ps_grade_data['ad_modify']['reg']['date']?> | <?=$_ps_grade_data['ad_modify']['reg']['id']?> )
+				<? if( isset($_ps_grade_data['ad_modify']) && is_array($_ps_grade_data['ad_modify']) ){ ?>
+					관리자 수정 : <?=$_ps_grade_data['ad_modify']['before'] ?? ''?> -> <?=$_ps_grade_data['ad_modify']['after'] ?? ''?> ( <?=$_ps_grade_data['ad_modify']['reg']['date'] ?? ''?> | <?=$_ps_grade_data['ad_modify']['reg']['id'] ?? ''?> )
 				<? } ?>
 
 				<div class="admin-guide-text">

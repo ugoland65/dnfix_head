@@ -1,4 +1,10 @@
 <?
+	// 변수 초기화
+	$_s_text = $_GET['s_text'] ?? $_POST['s_text'] ?? "";
+	$_pn = $_GET['pn'] ?? $_POST['pn'] ?? 1;
+	$_where = "";
+	$_sort_kind = $_GET['sort_kind'] ?? $_POST['sort_kind'] ?? "";
+	$_open_mode = $_GET['open_mode'] ?? $_POST['open_mode'] ?? "";
 
 	if( $_s_text ){
 
@@ -39,6 +45,8 @@
 
 	$view_page = publicAjaxPaging($_pn, $total_page, $list_num, $page_num, "brandLlist.list", "");
 
+	$_sort = " idx DESC ";
+	
 	if( $_sort_kind == "stock" ){
 		$_sort = " D.ps_stock DESC ";
 	}elseif( $_sort_kind == "stock_asc" ){
@@ -49,10 +57,7 @@
 		$_sort = " D.ps_rack_code ASC ";
 	}elseif( $_sort_kind == "soldout" ){
 		$_sort = " ( CASE WHEN D.ps_stock < 1  THEN 0 WHEN D.ps_stock > 0  THEN 1 END ), D.ps_soldout_date DESC ";
-
 	}
-
-	$_sort = " idx DESC ";
 
 	$_limit = " limit ".$from_record.", ".$list_num;
 	if( $_open_mode == "popup" ){
@@ -74,11 +79,11 @@
 
 <? if( $_s_text ){ ?>
 	<div class="search-title">	
-		검색어 ( <b style='color:red;'><?=$_s_text?></b> ) 검색결과 : <b><?=$total_count?></b>건 검색되었습니다.
+		검색어 ( <b style='color:red;'><?=$_s_text ?? ''?></b> ) 검색결과 : <b><?=$total_count ?? 0?></b>건 검색되었습니다.
 		<button type="button" class="search-reset-btn btn btnstyle1 btnstyle1-inverse btnstyle1-sm" id="search_reset">검색 초기화</button>
 	</div>
 <? }else{ ?>
-	<div class="total">Total : <span><b><?=number_format($total_count)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn?></b></span> / <?=$total_page?> page</div>
+	<div class="total">Total : <span><b><?=number_format($total_count ?? 0)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn ?? 1?></b></span> / <?=$total_page ?? 1?> page</div>
 <? } ?>
 
 <table class="table-style m-t-5">	
@@ -99,24 +104,32 @@
 
 	while($list = sql_fetch_array($_result)){
 
-		$_reg = json_decode($list['reg'], true);
+		// 배열 검증
+		if (!is_array($list)) {
+			continue;
+		}
+
+		$_reg = json_decode($list['reg'] ?? '{}', true);
+		if (!is_array($_reg)) {
+			$_reg = [];
+		}
 
 	?>
-	<tr align="center" id="trid_<?=$list['idx']?>" class="<?=$_tr_class?>">
-		<td class="list-idx"><?=$list['idx']?></td>
-		<td class="text-center"><B><?=$list['day_code']?></B></td>
-		<td class="text-center"><?=number_format($list['count1'])?></td>
-		<td class="text-center"><?=number_format($list['count2'])?></td>
-		<td class="text-right"><?=number_format($list['cost_price'])?></td>
-		<td class="text-right"><?=number_format($list['sale_price'])?></td>
-		<td class="text-center"><?=$_reg['name']?></td>
-		<td class="text-center"><?=date('y.m.d H:i',strtotime($_reg['date']))?></td>
+	<tr align="center" id="trid_<?=$list['idx'] ?? ''?>">
+		<td class="list-idx"><?=$list['idx'] ?? ''?></td>
+		<td class="text-center"><B><?=$list['day_code'] ?? ''?></B></td>
+		<td class="text-center"><?=number_format($list['count1'] ?? 0)?></td>
+		<td class="text-center"><?=number_format($list['count2'] ?? 0)?></td>
+		<td class="text-right"><?=number_format($list['cost_price'] ?? 0)?></td>
+		<td class="text-right"><?=number_format($list['sale_price'] ?? 0)?></td>
+		<td class="text-center"><?=$_reg['name'] ?? ''?></td>
+		<td class="text-center"><?=!empty($_reg['date']) ? date('y.m.d H:i',strtotime($_reg['date'])) : ''?></td>
 	<tr>
 	<? } ?>
 
 </table>
 
-<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page?></div>
+<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page ?? ''?></div>
 <script type="text/javascript"> 
 pageingAjaxShow();
 

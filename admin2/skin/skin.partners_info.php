@@ -1,31 +1,66 @@
 <?
+// 변수 초기화
+$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+
 if( $_idx ){
 
 	$data = wepix_fetch_array(wepix_query_error("select * from partners WHERE idx = '".$_idx."' "));
 
-	$_data = json_decode($data['info'], true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = [];
+	}
 
-	$_data_nation = $_data['nation'];
+	$_data = json_decode($data['info'] ?? '{}', true);
+	
+	// JSON 디코딩 결과 검증
+	if (!is_array($_data)) {
+		$_data = [];
+	}
 
-	$_data_hp_url = $_data['hp']['url'];
-	$_data_hp_id = $_data['hp']['id'];
-	$_data_hp_pw = $_data['hp']['pw'];
+	$_data_nation = $_data['nation'] ?? '';
 
-	$_data_info_tel = $_data['info']['tel'];
-	$_data_info_email = $_data['info']['email'];
+	$_data_hp_url = $_data['hp']['url'] ?? '';
+	$_data_hp_id = $_data['hp']['id'] ?? '';
+	$_data_hp_pw = $_data['hp']['pw'] ?? '';
 
-	$_data_keeper_name = $_data['keeper']['name'];
-	$_data_keeper_rank = $_data['keeper']['rank'];
-	$_data_keeper_tel = $_data['keeper']['tel'];
+	$_data_info_tel = $_data['info']['tel'] ?? '';
+	$_data_info_email = $_data['info']['email'] ?? '';
 
-	$_date_s = date("Y-m-d", strtotime($data['date_s']));
-	$_date_e = date("Y-m-d", strtotime($data['date_e']));
+	$_data_keeper_name = $_data['keeper']['name'] ?? '';
+	$_data_keeper_rank = $_data['keeper']['rank'] ?? '';
+	$_data_keeper_tel = $_data['keeper']['tel'] ?? '';
+
+	// 날짜 처리 - 빈 값 체크
+	if (!empty($data['date_s'])) {
+		$_date_s = date("Y-m-d", strtotime($data['date_s']));
+	} else {
+		$_date_s = date("Y-m-d");
+	}
+	
+	if (!empty($data['date_e'])) {
+		$_date_e = date("Y-m-d", strtotime($data['date_e']));
+	} else {
+		$_date_e = date("Y-m-d");
+	}
 
 }else{
-	$_target_name = $_ad_name;
+	$_target_name = $_ad_name ?? '';
 
 	$_date_s = date("Y-m-d");
 	$_date_e = date("Y-m-d");
+
+	// 신규 등록 시 변수 초기화
+	$data = [];
+	$_data_nation = '';
+	$_data_hp_url = '';
+	$_data_hp_id = '';
+	$_data_hp_pw = '';
+	$_data_info_tel = '';
+	$_data_info_email = '';
+	$_data_keeper_name = '';
+	$_data_keeper_rank = '';
+	$_data_keeper_tel = '';
 
 }
 
@@ -40,7 +75,7 @@ if( $_idx ){
 
 <? if( $_idx ){ ?>
 	<input type="hidden" name="a_mode" value="partners_modify" >
-	<input type="hidden" name="idx" value="<?=$_idx?>" >
+	<input type="hidden" name="idx" value="<?=$_idx ?? ''?>" >
 <? }else{ ?>
 	<input type="hidden" name="a_mode" value="partners_reg" >
 <? } ?>
@@ -50,15 +85,19 @@ if( $_idx ){
 		<tr>
 			<th>거래처명</th>
 			<td colspan="3">
-				<input type='text' name='name'  value="<?=$data['name']?>" autocomplete="off" >
+				<input type='text' name='name'  value="<?=$data['name'] ?? ''?>" autocomplete="off" >
 			</td>
 		</tr>
 		<tr>
 			<th>종류</th>
 			<td colspan="3">
 				<select name="category">
-					<? for ($i=0; $i<count($_partners_cate); $i++){ ?>
-					<option value="<?=$_partners_cate[$i]["name"]?>" <? if( $data['category'] ==$_partners_cate[$i]["name"] ) echo "selected"; ?>><?=$_partners_cate[$i]["name"]?></option>
+					<? 
+					$_partners_cate_count = isset($_partners_cate) && is_array($_partners_cate) ? count($_partners_cate) : 0;
+					for ($i=0; $i<$_partners_cate_count; $i++){ 
+						if (!isset($_partners_cate[$i]) || !is_array($_partners_cate[$i])) continue;
+					?>
+					<option value="<?=$_partners_cate[$i]["name"] ?? ''?>" <? if( ($data['category'] ?? '') == ($_partners_cate[$i]["name"] ?? '') ) echo "selected"; ?>><?=$_partners_cate[$i]["name"] ?? ''?></option>
 					<? } ?>
 				</select>
 			</td>
@@ -66,7 +105,7 @@ if( $_idx ){
 		<tr>
 			<th>국가</th>
 			<td colspan="3">
-				<label><input type="radio" name="nation" value="한국" <? if( !$_data_nation || $_data_nation == "한국" ) echo "checked"; ?> > 한국</label>
+				<label><input type="radio" name="nation" value="한국" <? if( empty($_data_nation) || $_data_nation == "한국" ) echo "checked"; ?> > 한국</label>
 				<label><input type="radio" name="nation" value="일본" <? if( $_data_nation == "일본" ) echo "checked"; ?> > 일본</label>
 				<label><input type="radio" name="nation" value="중국" <? if( $_data_nation == "중국" ) echo "checked"; ?> > 중국</label>
 				<label><input type="radio" name="nation" value="달러" <? if( $_data_nation == "달러" ) echo "checked"; ?> > 그외 달러 국가</label>
@@ -79,13 +118,13 @@ if( $_idx ){
 				<table class="table-style border01">
 					<tr>
 						<th>주소</th>
-						<td colspan="3"><input type='text' name='hp_url'  value="<?=$_data_hp_url?>" autocomplete="off" ></td>
+						<td colspan="3"><input type='text' name='hp_url'  value="<?=$_data_hp_url ?? ''?>" autocomplete="off" ></td>
 					</tr>
 					<tr>
 						<th>아이디</th>
-						<td><input type='text' name='hp_id'  value="<?=$_data_hp_id?>" autocomplete="off" ></td>
+						<td><input type='text' name='hp_id'  value="<?=$_data_hp_id ?? ''?>" autocomplete="off" ></td>
 						<th>패스워드</th>
-						<td><input type='text' name='hp_pw'  value="<?=$_data_hp_pw?>" autocomplete="off" ></td>
+						<td><input type='text' name='hp_pw'  value="<?=$_data_hp_pw ?? ''?>" autocomplete="off" ></td>
 					</tr>
 				</table>
 			</td>
@@ -96,9 +135,9 @@ if( $_idx ){
 				<table class="table-style border01">
 					<tr>
 						<th>전화번호</th>
-						<td><input type='text' name='tel'  value="<?=$_data_info_tel?>" autocomplete="off" ></td>
+						<td><input type='text' name='tel'  value="<?=$_data_info_tel ?? ''?>" autocomplete="off" ></td>
 						<th>이메일</th>
-						<td><input type='text' name='email'  value="<?=$_data_info_email?>" autocomplete="off" ></td>
+						<td><input type='text' name='email'  value="<?=$_data_info_email ?? ''?>" autocomplete="off" ></td>
 					</tr>
 				</table>
 			</td>
@@ -109,13 +148,13 @@ if( $_idx ){
 				<table class="table-style border01">
 					<tr>
 						<th>이름</th>
-						<td><input type='text' name='keeper_name'  value="<?=$_data_keeper_name?>" autocomplete="off" ></td>
+						<td><input type='text' name='keeper_name'  value="<?=$_data_keeper_name ?? ''?>" autocomplete="off" ></td>
 						<th>직급</th>
-						<td><input type='text' name='keeper_rank'  value="<?=$_data_keeper_rank?>" autocomplete="off" ></td>
+						<td><input type='text' name='keeper_rank'  value="<?=$_data_keeper_rank ?? ''?>" autocomplete="off" ></td>
 					</tr>
 					<tr>
 						<th>연락처</th>
-						<td><input type='text' name='keeper_tel'  value="<?=$_data_keeper_tel?>" autocomplete="off" ></td>
+						<td><input type='text' name='keeper_tel'  value="<?=$_data_keeper_tel ?? ''?>" autocomplete="off" ></td>
 						<th></th>
 						<td></td>
 					</tr>
@@ -125,7 +164,7 @@ if( $_idx ){
 		<tr>
 			<th>메모</th>
 			<td colspan="3">
-				<textarea name="memo"><?=$data['memo']?></textarea>
+				<textarea name="memo"><?=$data['memo'] ?? ''?></textarea>
 			</td>
 		</tr>
 

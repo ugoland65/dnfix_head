@@ -384,10 +384,16 @@ $gnb_lang = "ko";
 				<div id="wrap_left_body">
 					<?
 					if( $pageGroup ){
-						include "../".$pageGroup."/".$pageGroup."_menu.php";
+						$menu_file = "../".$pageGroup."/".$pageGroup."_menu.php";
+						if( file_exists($menu_file) ){
+							include $menu_file;
+						}
 					}
 					if( $_pageGroup ){
-						include ($_dir."/skin.menu_".$_pageGroup.".php");
+						$menu_file2 = $_dir."/skin.menu_".$_pageGroup.".php";
+						if( file_exists($menu_file2) ){
+							include $menu_file2;
+						}
 					}
 					?>
 				</div><!-- #wrap_left_body -->

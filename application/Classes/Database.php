@@ -16,10 +16,12 @@ class Database {
 		$password = $config['db_pass'];
 
 		try {
-			$this->conn = new \PDO("mysql:host={$host};dbname={$db_name}", $username, $password);
+			$this->conn = new \PDO("mysql:host={$host};dbname={$db_name};charset=utf8", $username, $password);
 			$this->conn->setAttribute(\PDO::ATTR_ERRMODE, \PDO::ERRMODE_EXCEPTION);
 		} catch (\PDOException $e) {
 			echo "Connection error: " . $e->getMessage();
+			$this->conn = null;
+			throw new \Exception("Database connection failed: " . $e->getMessage());
 		}
 
     }

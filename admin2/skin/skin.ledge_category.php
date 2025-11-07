@@ -1,5 +1,9 @@
 <?
 
+	// 변수 초기화
+	$_where = "";
+	$_ledge_category = [];
+	
 	$_query = "select * from ledge_category ".$_where." ORDER BY idx DESC";
 	$_result = sql_query_error($_query);
 	while($list = sql_fetch_array($_result)){
@@ -92,8 +96,8 @@
 	<div id="contents_body_wrap" class="have-head-left-fixed">
 <?
 
-	$_ledge_category_in_1 = $_ledge_category['in'][1];
-	$_ledge_category_out_1 = $_ledge_category['out'][1];
+	$_ledge_category_in_1 = $_ledge_category['in'][1] ?? [];
+	$_ledge_category_out_1 = $_ledge_category['out'][1] ?? [];
 
 ?>
 		<table class="table-style">	
@@ -114,8 +118,8 @@
 					for ($i=0; $i<count($_ledge_category_in_1); $i++){
 					?>
 						<tr class="list">
-							<td class=""><?=$_ledge_category_in_1[$i]['idx']?></td>
-							<td class=""><?=$_ledge_category_in_1[$i]['name']?></td>
+							<td class=""><?=$_ledge_category_in_1[$i]['idx'] ?? ''?></td>
+							<td class=""><?=$_ledge_category_in_1[$i]['name'] ?? ''?></td>
 						</tr>
 					<? } ?>
 					</table>
@@ -133,9 +137,9 @@
 					for ($i=0; $i<count($_ledge_category_out_1); $i++){
 					?>
 						<tr class="list">
-							<td class=""><?=$_ledge_category_out_1[$i]['idx']?></td>
-							<td class=""><?=$_ledge_category_out_1[$i]['name']?></td>
-							<td class=""><?=$_ledge_category_out_1[$i]['approval']?></td>
+							<td class=""><?=$_ledge_category_out_1[$i]['idx'] ?? ''?></td>
+							<td class=""><?=$_ledge_category_out_1[$i]['name'] ?? ''?></td>
+							<td class=""><?=$_ledge_category_out_1[$i]['approval'] ?? ''?></td>
 						</tr>
 					<? } ?>
 					</table>

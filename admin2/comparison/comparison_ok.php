@@ -3,7 +3,7 @@ include "../lib/inc_common.php";
 include('../../class/image.php'); //이미지 처리 클래스
 
 	//넘어온 변수 전체 검열
-	while(list($key,$value)= each($_POST)){
+	foreach($_POST as $key => $value){
 		${"_".$key} = securityVal($value);
 	}
 

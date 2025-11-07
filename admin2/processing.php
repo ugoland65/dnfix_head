@@ -7,7 +7,7 @@ include("lib/inc_common.php");
 
 	$_processing_mode = securityVal($_GET['processing_mode']);
 
-	while(list($key,$value) = each($_POST)){
+	foreach($_POST as $key => $value){
 		${"_".$key} = securityVal($value);
 	}
 

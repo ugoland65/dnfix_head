@@ -1,6 +1,9 @@
 <?
 	$_where = "";
 
+	// 변수 초기화
+	$pn = $_GET['pn'] ?? $_pn ?? 1;
+
 	$total_count = wepix_counter(_DB_ADMIN, $_where);
 	
 	$list_num = 50;

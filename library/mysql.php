@@ -5,13 +5,13 @@ $connect = dbconn();
 $mysqli = mysqli();
 
 function dbconn() {
-    global $config_db;
+    global $config_db, $connect;
     $db_settings = parse_ini_file($config_db);
     @extract($db_settings);
 
 	if( !$connect ){
 		$connect = mysqli_connect($con_db_host,$con_db_id,$con_db_pass,$con_db_name);
-		if (mysqli_connect_errno($connect)) {
+		if (mysqli_connect_errno()) {
 			echo "데이터베이스 연결 실패: " . mysqli_connect_error();
 		}
 	}
@@ -21,7 +21,7 @@ function dbconn() {
 }
 
 function mysqli() {
-    global $config_db;
+    global $config_db, $mysqli;
     $db_settings = parse_ini_file($config_db);
     @extract($db_settings);
 
@@ -80,7 +80,7 @@ function sql_counter($table_name, $where_str="", $field_name="*") {
 
     global $connect;
 
-	$where_str = trim($where_str);
+	$where_str = trim($where_str ?? "");
 	if(strtolower(substr($where_str,0,5)) != "where" and $where_str) $where_str = "where ".$where_str;
 
 	$query = " select count(".$field_name.") from ".$table_name." ".$where_str." ";
@@ -91,8 +91,12 @@ function sql_counter($table_name, $where_str="", $field_name="*") {
 }
 
 
-function sql_counter2($table_name, $where_str="", $group) {
+function sql_counter2($table_name, $where_str=null, $group=null) {
     global $connect;
+
+	// 기본값 설정
+	if($where_str === null) $where_str = "";
+	if($group === null) $group = "";
 
 	$where_str = trim($where_str);
 	$group = trim($group);
@@ -162,7 +166,7 @@ function wepix_counter($table_name, $where_str="", $field_name="*") {
 
     global $connect;
 
-	$where_str = trim($where_str);
+	$where_str = trim($where_str ?? "");
 	if(strtolower(substr($where_str,0,5)) != "where" and $where_str) $where_str = "where ".$where_str;
 
 	$query = " select count(".$field_name.") from ".$table_name." ".$where_str." ";
@@ -173,8 +177,12 @@ function wepix_counter($table_name, $where_str="", $field_name="*") {
 }
 
 
-function wepix_counter2($table_name, $where_str="", $group) {
+function wepix_counter2($table_name, $where_str=null, $group=null) {
     global $connect;
+
+	// 기본값 설정
+	if($where_str === null) $where_str = "";
+	if($group === null) $group = "";
 
 	$where_str = trim($where_str);
 	$group = trim($group);

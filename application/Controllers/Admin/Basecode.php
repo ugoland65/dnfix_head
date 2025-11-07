@@ -19,14 +19,20 @@ class Basecode extends BaseClass {
 		$maincode_result = $BasecodeModel->queryBuilder()
 			->where('cate', '=', 'BASECODE')
 			->orderBy('sort_order', 'ASC')
-			->get();
+			->get()
+			->toArray();
 
-		$cate = $getData['cate'];
+		$cate = $getData['cate'] ?? null;
 
-		$data_result = $BasecodeModel->queryBuilder()
-			->where('cate', '=', $cate)
-			->orderBy('sort_order', 'ASC')
-			->get();
+		if ($cate) {
+			$data_result = $BasecodeModel->queryBuilder()
+				->where('cate', '=', $cate)
+				->orderBy('sort_order', 'ASC')
+				->get()
+				->toArray();
+		} else {
+			$data_result = [];
+		}
 
 		return [
 			"maincode" => $maincode_result,

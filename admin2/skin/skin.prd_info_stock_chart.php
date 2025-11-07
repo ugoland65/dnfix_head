@@ -1,6 +1,9 @@
 <?
-
-	if( !$_show_mode) $_show_mode = "연간통계";
+	// 변수 초기화
+	$_show_mode = $_show_mode ?? "연간통계";
+	$_cur_y = $_cur_y ?? "";
+	$_cur_m = $_cur_m ?? "";
+	$_ps_idx = $_ps_idx ?? "";
 
 	if( $_cur_y ){
 		$cur_y = $_cur_y; 
@@ -22,6 +25,8 @@
 
 function get_find_weeks_in_month( $date )// date format => Y-m-d  특정 month에 week 구하기
 {
+    if( empty($date) ) return [];
+    
     $day = date('w', strtotime($date) );//xxxx년 xx월 1일에 대한 요일구함
     if( $day != 1 )//월요일이 아니면
         $date = date('Y-m-d', strtotime("next monday", strtotime($date)));// xxx년 xx월에 첫번째 월요일 구함.
@@ -52,6 +57,9 @@ function get_week( $week, $year )// week => xxxx년 기준 주차 year => xxxx
 $_ym01 = $_cur_y."-".$cur_m."-01";
 
 $weeks = get_find_weeks_in_month(date($_ym01));
+if (!is_array($weeks)) {
+	$weeks = [];
+}
 
 /*
 if( $_show_mode == "월간통계"){
@@ -69,14 +77,14 @@ if( $_show_mode == "월간통계"){
 
 
 <form id="form_prd_info_stock_chart">
-<input type="hidden" name="ps_idx" value="<?=$_ps_idx?>">
+<input type="hidden" name="ps_idx" value="<?=$_ps_idx ?? ''?>">
 <div>
 	<select name="show_mode">
 		<option value="연간통계" <? if( $_show_mode == "연간통계" ) echo "selected"; ?>>연간통계</option>
 		<option value="월간통계" <? if( $_show_mode == "월간통계" ) echo "selected"; ?>>월간통계</option>
 	</select>
 	&nbsp;
-	<input type='text' name='cur_y' value="<?=$cur_y?>" class="width-50 m-r-3">년
+	<input type='text' name='cur_y' value="<?=$cur_y ?? ''?>" class="width-50 m-r-3">년
 	&nbsp;
 	<select name="cur_m">
 		<? for ($i=1; $i<13; $i++){ ?>
@@ -123,31 +131,35 @@ $_avg_this_m_sum = 0;
 				END ) as sale_stock
 			from prd_stock_unit WHERE psu_date >= '".$_this_frist_timestemp."' AND psu_date <= '".$_this_last_timestemp."' AND psu_stock_idx = '".$_ps_idx."' "));
 		
+		if (!is_array($stock_data)) {
+			$stock_data = [];
+		}
+		
 		$_avg_count++;
-		$_avg_sum += $stock_data['sale_stock'];
+		$_avg_sum += ($stock_data['sale_stock'] ?? 0);
 
 		// 이번달 제외
 		if( $_this_m !=  date('m') ){
 
 			$_avg_this_m_count++;
-			$_avg_this_m_sum += $stock_data['sale_stock'];
+			$_avg_this_m_sum += ($stock_data['sale_stock'] ?? 0);
 
 		}
 
 
 ?>
 	<tr>
-		<td><?=$cur_y?>년 <?=$_this_m?>월</td>
-		<td>( <?=$stock_data['in_stock_count']?> 건) <?=$stock_data['in_stock']?></td>
-		<td><b><?=$stock_data['sale_stock']?></b>건</td>
+		<td><?=$cur_y ?? ''?>년 <?=$_this_m ?? ''?>월</td>
+		<td>( <?=$stock_data['in_stock_count'] ?? 0?> 건) <?=$stock_data['in_stock'] ?? 0?></td>
+		<td><b><?=$stock_data['sale_stock'] ?? 0?></b>건</td>
 	</tr>
 <? } ?>
 	<tr>
 		<th></th>
 		<th></th>
 		<th>
-			월평균 : <b><?=round(($_avg_sum/$_avg_count),1)?></b> 건<br>
-			이번달(<?=date('m')?>월) 제외 월평균 : <b><?=($_avg_this_m_sum/$_avg_this_m_count)?></b> 건
+			월평균 : <b><?=$_avg_count > 0 ? round(($_avg_sum/$_avg_count),1) : 0?></b> 건<br>
+			이번달(<?=date('m')?>월) 제외 월평균 : <b><?=$_avg_this_m_count > 0 ? round(($_avg_this_m_sum/$_avg_this_m_count),1) : 0?></b> 건
 		</th>
 	</tr>
 </table>
@@ -167,10 +179,22 @@ $_avg_this_m_sum = 0;
 
 		foreach ( $weeks as $key => $val ){
 
+			// 배열 검증
+			if (!is_array($val)) {
+				continue;
+			}
+
 			$_week_num++;
 
-			$_this_start = explode("-", $val['start']);
-			$_this_end = explode("-", $val['end']);
+			$_this_start = explode("-", $val['start'] ?? '');
+			$_this_end = explode("-", $val['end'] ?? '');
+			
+			if (!is_array($_this_start) || count($_this_start) < 3) {
+				$_this_start = [date('Y'), date('m'), date('d')];
+			}
+			if (!is_array($_this_end) || count($_this_end) < 3) {
+				$_this_end = [date('Y'), date('m'), date('d')];
+			}
 
 			$_this_frist_timestemp = mktime(0, 0, 0, $_this_start[1], $_this_start[2], $_this_start[0]);
 			$_this_last_timestemp = mktime(23, 59, 59, $_this_end[1], $_this_end[2], $_this_end[0]);
@@ -182,12 +206,16 @@ $_avg_this_m_sum = 0;
 						WHEN psu_mode = 'minus' AND psu_kind = '판매' THEN psu_qry 
 					END ) as sale_stock
 				from prd_stock_unit WHERE psu_date >= '".$_this_frist_timestemp."' AND psu_date <= '".$_this_last_timestemp."' AND psu_stock_idx = '".$_ps_idx."' "));
+			
+			if (!is_array($stock_data)) {
+				$stock_data = [];
+			}
 
 	?>
 	<tr>
 		<td><b><?=$_week_num?></b>주차</td>
-		<td>(월요일) <b><?=$val['start']?></b> ~ <b><?=$val['end']?></b> (일요일)</td>
-		<td><? if( $stock_data['sale_stock'] > 0 ){ ?><b><?=$stock_data['sale_stock']?></b>건<? }else{ ?>-<? } ?></td>
+		<td>(월요일) <b><?=$val['start'] ?? ''?></b> ~ <b><?=$val['end'] ?? ''?></b> (일요일)</td>
+		<td><? if( ($stock_data['sale_stock'] ?? 0) > 0 ){ ?><b><?=$stock_data['sale_stock']?></b>건<? }else{ ?>-<? } ?></td>
 	</tr>
 	<? } ?>
 </table>
@@ -217,15 +245,33 @@ $_avg_this_m_sum = 0;
 	$_result = sql_query_error($_query);
 	while($list = sql_fetch_array($_result)){
 	
+		// 배열 검증
+		if (!is_array($list)) {
+			continue;
+		}
+		
 		if( !$in_e ) $in_e = date("Y-m-d");
 
-		$_show_date = $list['psu_day']." ~ ".$in_e;
-		$from = new DateTime($list['psu_day']);
-		$to = new DateTime($in_e);
-		$_show_date_count = $from -> diff( $to ) -> days;
+		$_show_date = ($list['psu_day'] ?? '')." ~ ".$in_e;
+		
+		$psu_day = $list['psu_day'] ?? date("Y-m-d");
+		if( !empty($psu_day) ){
+			$from = new DateTime($psu_day);
+			$to = new DateTime($in_e);
+			$_show_date_count = $from -> diff( $to ) -> days;
+		}else{
+			$_show_date_count = 0;
+		}
 
-		$_this_frist_day_arr = explode("-", $list['psu_day']);
+		$_this_frist_day_arr = explode("-", $psu_day);
 		$_this_last_day_arr = explode("-", $in_e);
+		
+		if (!is_array($_this_frist_day_arr) || count($_this_frist_day_arr) < 3) {
+			$_this_frist_day_arr = [date('Y'), date('m'), date('d')];
+		}
+		if (!is_array($_this_last_day_arr) || count($_this_last_day_arr) < 3) {
+			$_this_last_day_arr = [date('Y'), date('m'), date('d')];
+		}
 
 		$_this_frist_timestemp = mktime(0, 0, 0, $_this_frist_day_arr[1], $_this_frist_day_arr[2], $_this_frist_day_arr[0]);
 		$_this_last_timestemp = mktime(23, 59, 59, $_this_last_day_arr[1], $_this_last_day_arr[2], $_this_last_day_arr[0]);
@@ -239,17 +285,21 @@ $_avg_this_m_sum = 0;
 					WHEN psu_mode = 'minus' AND psu_kind = '판매' THEN psu_qry 
 				END ) as sale_stock
 			from prd_stock_unit WHERE psu_date >= '".$_this_frist_timestemp."' AND psu_date <= '".$_this_last_timestemp."' AND psu_stock_idx = '".$_ps_idx."' "));
+		
+		if (!is_array($stock_data)) {
+			$stock_data = [];
+		}
 
 ?>
 	<tr>
-		<td class="text-center"><?=$list['psu_day']?></td>
-		<td><?=$list['psu_memo']?></td>
-		<td class="text-right"><?=$list['psu_qry']?></td>
-		<td><?=$_show_date?> (<?=$_show_date_count?>일)</td>
-		<td class="text-right"><b><?=$stock_data['sale_stock']?></b>건</td>
+		<td class="text-center"><?=$list['psu_day'] ?? ''?></td>
+		<td><?=$list['psu_memo'] ?? ''?></td>
+		<td class="text-right"><?=$list['psu_qry'] ?? 0?></td>
+		<td><?=$_show_date ?? ''?> (<?=$_show_date_count ?? 0?>일)</td>
+		<td class="text-right"><b><?=$stock_data['sale_stock'] ?? 0?></b>건</td>
 	</tr>
 <?
-	$in_e = $list['psu_day'];
+	$in_e = $list['psu_day'] ?? date("Y-m-d");
 } ?>
 </table>
 

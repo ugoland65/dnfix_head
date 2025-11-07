@@ -1,39 +1,52 @@
 <?
+	// 변수 초기화
+	$_ym = $_GET['ym'] ?? $_POST['ym'] ?? date("Y-m");
+	$_where = "";
+	$_ledge_category = [];
+	$_ledge_unit = [];
+
 	$_category_out_array = array("운영고정","인건비","운영비","세금","대출","환불","수입매입","국내매입","부자재","매입부대비용");
 
 	$_query = "select * from ledge_category ".$_where." ORDER BY idx DESC";
 	$_result = sql_query_error($_query);
 	while($list = sql_fetch_array($_result)){
 
-		if( $list['lc_mode'] == "수입" ){
-			$_lc_mode = "in";
-		}elseif( $list['lc_mode'] == "지출" ){
-			$_lc_mode = "out";
+		// 배열 검증
+		if (!is_array($list)) {
+			continue;
 		}
 
-		$_ledge_category[$_lc_mode][$list['lc_depth']][] = array(
-			"idx" => $list['idx'],
-			"name" => $list['lc_name'],
-			"approval" => $list['lc_approval']
+		if( ($list['lc_mode'] ?? '') == "수입" ){
+			$_lc_mode = "in";
+		}elseif( ($list['lc_mode'] ?? '') == "지출" ){
+			$_lc_mode = "out";
+		}else{
+			continue;
+		}
+
+		$_ledge_category[$_lc_mode][$list['lc_depth'] ?? 0][] = array(
+			"idx" => $list['idx'] ?? '',
+			"name" => $list['lc_name'] ?? '',
+			"approval" => $list['lc_approval'] ?? ''
 		);
 
-		$_ledge_unit[$_lc_mode][$list['lc_category']][] = array(
-			"idx" => $list['idx'],
-			"name" => $list['lc_name'],
-			"approval" => $list['lc_approval']
+		$_ledge_unit[$_lc_mode][$list['lc_category'] ?? ''][] = array(
+			"idx" => $list['idx'] ?? '',
+			"name" => $list['lc_name'] ?? '',
+			"approval" => $list['lc_approval'] ?? ''
 		);
 
 	}
 
-	$_ledge_category_in_1 = $_ledge_category['in'][1];
-	$_ledge_category_out_1 = $_ledge_category['out'][1];
+	$_ledge_category_in_1 = $_ledge_category['in'][1] ?? [];
+	$_ledge_category_out_1 = $_ledge_category['out'][1] ?? [];
 
-	$_ledge_unit_out = $_ledge_unit['out'];
+	$_ledge_unit_out = $_ledge_unit['out'] ?? [];
 
 	$_ary_smonth = explode("-", $_ym);
 
-	$cur_y = $_ary_smonth[0];
-	$cur_m = $_ary_smonth[1];
+	$cur_y = $_ary_smonth[0] ?? date("Y");
+	$cur_m = $_ary_smonth[1] ?? date("m");
 
 	//해당월의 총날짜수를 구한다.
 	function getTotaldays($y, $m) {
@@ -66,6 +79,11 @@
 					SUM( CASE WHEN ledge_cate_idx > 0 AND state = 'Y' AND bs_mode = 'minus' THEN out_money END ) as out_y_sum_money
 					from bank_statement WHERE date >= '".$_s_date."' AND date <= '".$_e_date."' ";
 				$_sum_all_sum = sql_fetch_array(sql_query_error($_query));
+				
+				// 배열 검증
+				if (!is_array($_sum_all_sum)) {
+					$_sum_all_sum = [];
+				}
 ?>
 
 <table class="table-style">	
@@ -78,8 +96,8 @@
 		<td class="" style="vertical-align:top;">
 			
 			<div class="text-right">
-				<ul>미확인 : (<?=$_sum_all_sum['in_n_count']?>)건 : <b><?=number_format($_sum_all_sum['in_n_sum_money'])?></b> 원</ul>
-				<ul>확인 : (<?=$_sum_all_sum['in_y_count']?>)건 : <b><?=number_format($_sum_all_sum['in_y_sum_money'])?></b> 원</ul>
+				<ul>미확인 : (<?=$_sum_all_sum['in_n_count'] ?? 0?>)건 : <b><?=number_format($_sum_all_sum['in_n_sum_money'] ?? 0)?></b> 원</ul>
+				<ul>확인 : (<?=$_sum_all_sum['in_y_count'] ?? 0?>)건 : <b><?=number_format($_sum_all_sum['in_y_sum_money'] ?? 0)?></b> 원</ul>
 			</div>
 
 			<table class="table-style m-t-10">	
@@ -94,26 +112,39 @@
 			$_sum_count = 0;
 			$_sum_money = 0;
 
-			for ($i=0; $i<count($_ledge_category_in_1); $i++){
+			// 배열 검증 후 count
+			$_ledge_category_in_1_count = is_array($_ledge_category_in_1) ? count($_ledge_category_in_1) : 0;
+
+			for ($i=0; $i<$_ledge_category_in_1_count; $i++){
+
+				// 배열 요소 검증
+				if (!isset($_ledge_category_in_1[$i]) || !is_array($_ledge_category_in_1[$i])) {
+					continue;
+				}
 
 				$_query = "select 
 					COUNT( CASE WHEN state = 'Y' THEN 1 END ) as count,
 					SUM( CASE WHEN state = 'Y' THEN in_money END ) as sum_money
-					from bank_statement WHERE ledge_cate_idx = '".$_ledge_category_in_1[$i]['idx']."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
+					from bank_statement WHERE ledge_cate_idx = '".($_ledge_category_in_1[$i]['idx'] ?? '')."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
 				$_sum_all = sql_fetch_array(sql_query_error($_query));
 
-				if( $_ledge_category_in_1[$i]['approval'] != "비인정" ){
-					$_sum_count += $_sum_all['count'];
-					$_sum_money += $_sum_all['sum_money'];
+				// 배열 검증
+				if (!is_array($_sum_all)) {
+					$_sum_all = ['count' => 0, 'sum_money' => 0];
+				}
+
+				if( ($_ledge_category_in_1[$i]['approval'] ?? '') != "비인정" ){
+					$_sum_count += ($_sum_all['count'] ?? 0);
+					$_sum_money += ($_sum_all['sum_money'] ?? 0);
 				}
 
 			?>
 				<tr class="list">
-					<td class=""><?=$_ledge_category_in_1[$i]['idx']?></td>
-					<td class=""><?=$_ledge_category_in_1[$i]['name']?></td>
-					<td class="text-center"><?=$_ledge_category_in_1[$i]['approval']?></td>
-					<td class="text-right"><?=$_sum_all['count']?></td>
-					<td class="text-right"><?=number_format($_sum_all['sum_money'])?></td>
+					<td class=""><?=$_ledge_category_in_1[$i]['idx'] ?? ''?></td>
+					<td class=""><?=$_ledge_category_in_1[$i]['name'] ?? ''?></td>
+					<td class="text-center"><?=$_ledge_category_in_1[$i]['approval'] ?? ''?></td>
+					<td class="text-right"><?=$_sum_all['count'] ?? 0?></td>
+					<td class="text-right"><?=number_format($_sum_all['sum_money'] ?? 0)?></td>
 				</tr>
 			<? } ?>
 				<tr class="list">
@@ -123,26 +154,30 @@
 				</tr>
 				<tr class="list">
 					<th class="" colspan="3">인정 + 미확인 합계</th>
-					<th class="text-right"><b><?=number_format($_sum_count + $_sum_all_sum['in_n_count'])?></b></th>
-					<th class="text-right"><b><?=number_format($_sum_money + $_sum_all_sum['in_n_sum_money'])?></b></th>
+					<th class="text-right"><b><?=number_format($_sum_count + ($_sum_all_sum['in_n_count'] ?? 0))?></b></th>
+					<th class="text-right"><b><?=number_format($_sum_money + ($_sum_all_sum['in_n_sum_money'] ?? 0))?></b></th>
 				</tr>
 			</table>
 			<?
-				$_in_sum = $_sum_money + $_sum_all_sum['in_n_sum_money'];
+				$_in_sum = $_sum_money + ($_sum_all_sum['in_n_sum_money'] ?? 0);
 			?>
 
 		</td>
 		<td class="" style="vertical-align:top;">
 			
 			<div class="text-right">
-				<ul>미확인 : (<?=$_sum_all_sum['out_n_count']?>)건 : <b><?=number_format($_sum_all_sum['out_n_sum_money'])?></b> 원</ul>
-				<ul>확인 : (<?=$_sum_all_sum['out_y_count']?>)건 : <b><?=number_format($_sum_all_sum['out_y_sum_money'])?></b> 원</ul>
+				<ul>미확인 : (<?=$_sum_all_sum['out_n_count'] ?? 0?>)건 : <b><?=number_format($_sum_all_sum['out_n_sum_money'] ?? 0)?></b> 원</ul>
+				<ul>확인 : (<?=$_sum_all_sum['out_y_count'] ?? 0?>)건 : <b><?=number_format($_sum_all_sum['out_y_sum_money'] ?? 0)?></b> 원</ul>
 			</div>
 
 			<table class="table-style m-t-10">	
-			<? for ($z=0; $z<count($_category_out_array); $z++){ ?>
+			<? 
+			// 배열 검증 후 count
+			$_category_out_array_count = is_array($_category_out_array) ? count($_category_out_array) : 0;
+			
+			for ($z=0; $z<$_category_out_array_count; $z++){ ?>
 				<tr class="list">
-					<th><?=$_category_out_array[$z]?></th>
+					<th><?=$_category_out_array[$z] ?? ''?></th>
 					<td>
 						
 						<table class="table-style">	
@@ -151,28 +186,43 @@
 								$_sum_count = 0;
 								$_sum_money = 0;
 
-								for ($i=0; $i<count($_ledge_unit_out[$_category_out_array[$z]]); $i++){
+								// 배열 검증 후 count
+								$_category_name = $_category_out_array[$z] ?? '';
+								$_ledge_unit_out_category = $_ledge_unit_out[$_category_name] ?? [];
+								$_ledge_unit_out_count = is_array($_ledge_unit_out_category) ? count($_ledge_unit_out_category) : 0;
+
+								for ($i=0; $i<$_ledge_unit_out_count; $i++){
 									
-									$_this_unit = $_ledge_unit_out[$_category_out_array[$z]][$i];
+									// 배열 요소 검증
+									if (!isset($_ledge_unit_out_category[$i]) || !is_array($_ledge_unit_out_category[$i])) {
+										continue;
+									}
+
+									$_this_unit = $_ledge_unit_out_category[$i];
 
 									$_query = "select 
 										COUNT( CASE WHEN state = 'Y' THEN 1 END ) as count,
 										SUM( CASE WHEN state = 'Y' THEN out_money END ) as sum_money
-										from bank_statement WHERE ledge_cate_idx = '".$_this_unit['idx']."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
+										from bank_statement WHERE ledge_cate_idx = '".($_this_unit['idx'] ?? '')."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
 									$_sum_all = sql_fetch_array(sql_query_error($_query));
 
-									if( $_this_unit['approval'] != "비인정" ){
-										$_sum_count += $_sum_all['count'];
-										$_sum_money += $_sum_all['sum_money'];
+									// 배열 검증
+									if (!is_array($_sum_all)) {
+										$_sum_all = ['count' => 0, 'sum_money' => 0];
+									}
+
+									if( ($_this_unit['approval'] ?? '') != "비인정" ){
+										$_sum_count += ($_sum_all['count'] ?? 0);
+										$_sum_money += ($_sum_all['sum_money'] ?? 0);
 									}
 
 							?>
 							<tr class="list">
-								<td class=""><?=$_this_unit['idx']?></td>
-								<td class=""><?=$_this_unit['name']?></td>
-								<td class="text-center"><?=$_this_unit['approval']?></td>
-								<td class="text-center"><?=$_sum_all['count']?></td>
-								<td class="text-right"><?=number_format($_sum_all['sum_money'])?></td>
+								<td class=""><?=$_this_unit['idx'] ?? ''?></td>
+								<td class=""><?=$_this_unit['name'] ?? ''?></td>
+								<td class="text-center"><?=$_this_unit['approval'] ?? ''?></td>
+								<td class="text-center"><?=$_sum_all['count'] ?? 0?></td>
+								<td class="text-right"><?=number_format($_sum_all['sum_money'] ?? 0)?></td>
 							</tr>
 							<? } ?>
 
@@ -201,25 +251,38 @@
 			$_sum_count = 0;
 			$_sum_money = 0;
 
-			for ($i=0; $i<count($_ledge_category_out_1); $i++){
+			// 배열 검증 후 count
+			$_ledge_category_out_1_count = is_array($_ledge_category_out_1) ? count($_ledge_category_out_1) : 0;
+
+			for ($i=0; $i<$_ledge_category_out_1_count; $i++){
+
+				// 배열 요소 검증
+				if (!isset($_ledge_category_out_1[$i]) || !is_array($_ledge_category_out_1[$i])) {
+					continue;
+				}
 
 				$_query = "select 
 					COUNT( CASE WHEN state = 'Y' THEN 1 END ) as count,
 					SUM( CASE WHEN state = 'Y' THEN out_money END ) as sum_money
-					from bank_statement WHERE ledge_cate_idx = '".$_ledge_category_out_1[$i]['idx']."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
+					from bank_statement WHERE ledge_cate_idx = '".($_ledge_category_out_1[$i]['idx'] ?? '')."' AND date >= '".$_s_date."' AND date <= '".$_e_date."' ";
 				$_sum_all = sql_fetch_array(sql_query_error($_query));
 
-				if( $_ledge_category_out_1[$i]['approval'] != "비인정" ){
-					$_sum_count += $_sum_all['count'];
-					$_sum_money += $_sum_all['sum_money'];
+				// 배열 검증
+				if (!is_array($_sum_all)) {
+					$_sum_all = ['count' => 0, 'sum_money' => 0];
+				}
+
+				if( ($_ledge_category_out_1[$i]['approval'] ?? '') != "비인정" ){
+					$_sum_count += ($_sum_all['count'] ?? 0);
+					$_sum_money += ($_sum_all['sum_money'] ?? 0);
 				}
 			?>
 				<tr class="list">
-					<td class=""><?=$_ledge_category_out_1[$i]['idx']?></td>
-					<td class=""><?=$_ledge_category_out_1[$i]['name']?></td>
-					<td class="text-center"><?=$_ledge_category_out_1[$i]['approval']?></td>
-					<td class="text-right"><?=$_sum_all['count']?></td>
-					<td class="text-right"><?=number_format($_sum_all['sum_money'])?></td>
+					<td class=""><?=$_ledge_category_out_1[$i]['idx'] ?? ''?></td>
+					<td class=""><?=$_ledge_category_out_1[$i]['name'] ?? ''?></td>
+					<td class="text-center"><?=$_ledge_category_out_1[$i]['approval'] ?? ''?></td>
+					<td class="text-right"><?=$_sum_all['count'] ?? 0?></td>
+					<td class="text-right"><?=number_format($_sum_all['sum_money'] ?? 0)?></td>
 				</tr>
 			<? } ?>
 				<tr class="list">
@@ -229,16 +292,16 @@
 				</tr>
 				<tr class="list">
 					<th class="" colspan="3">인정 + 미확인 합계</th>
-					<th class="text-right"><b><?=number_format($_sum_count + $_sum_all_sum['out_n_count'])?></b></th>
-					<th class="text-right"><b><?=number_format($_sum_money + $_sum_all_sum['out_n_sum_money'])?></b></th>
+					<th class="text-right"><b><?=number_format($_sum_count + ($_sum_all_sum['out_n_count'] ?? 0))?></b></th>
+					<th class="text-right"><b><?=number_format($_sum_money + ($_sum_all_sum['out_n_sum_money'] ?? 0))?></b></th>
 				</tr>
 			</table>
 			<?
-				$_out_sum = $_sum_money + $_sum_all_sum['out_n_sum_money'];
+				$_out_sum = $_sum_money + ($_sum_all_sum['out_n_sum_money'] ?? 0);
 			?>
 		</td>
 		<td style="vertical-align:top;">
-			<b style="font-size:16px;"><?=number_format($_in_sum - $_out_sum)?></b>
+			<b style="font-size:16px;"><?=number_format(($_in_sum ?? 0) - ($_out_sum ?? 0))?></b>
 		</td>
 	</tr>
 </table>

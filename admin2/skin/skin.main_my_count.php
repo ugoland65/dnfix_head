@@ -1,4 +1,6 @@
 <?
+	// 변수 초기화
+	$_cmode = $_cmode ?? $_GET['cmode'] ?? $_POST['cmode'] ?? "notice";
 
 	if( !$_cmode ) $_cmode = "notice";
 
@@ -160,14 +162,18 @@
 			$_result = sql_query_error($_query);
 			while($_list = sql_fetch_array($_result)){
 
-				$work_view_check_data = sql_fetch_array(sql_query_error("select idx from work_view_check WHERE tidx = '".$_list['idx']."' AND mb_idx = '".$_ad_idx."' "));
-				
-				$_row_class = "";
-				$_check_state = "";
-				if( !$work_view_check_data['idx'] ){
-					$_row_class = "not-check";
-					$_check_state = " | <span class='not-check-text'>미확인</span>";
-				}
+			$work_view_check_data = sql_fetch_array(sql_query_error("select idx from work_view_check WHERE tidx = '".$_list['idx']."' AND mb_idx = '".$_ad_idx."' "));
+			
+			if (!is_array($work_view_check_data)) {
+				$work_view_check_data = [];
+			}
+			
+			$_row_class = "";
+			$_check_state = "";
+			if( empty($work_view_check_data['idx']) ){
+				$_row_class = "not-check";
+				$_check_state = " | <span class='not-check-text'>미확인</span>";
+			}
 
 				$_state_text = "";
 				if( $_cmode == "request" ){ 

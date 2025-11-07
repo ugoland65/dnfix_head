@@ -1,5 +1,7 @@
 <?
-	//$_where = " WHERE mode IN( '휴가','월차','조퇴','반차','유급휴가' ) ";
+	// 변수 초기화
+	$_where = " WHERE mode IN( '휴가','월차','조퇴','반차','유급휴가' ) ";
+	$pn = $_GET['pn'] ?? $_pn ?? 1;
 
 	$total_count = wepix_counter("schedule_sttaf", $_where);
 	

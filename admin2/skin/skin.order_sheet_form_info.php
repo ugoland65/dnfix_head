@@ -1,11 +1,26 @@
 <?
+// 변수 초기화
+$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+$data = [];
+$_oog_idx = "";
+$_oog_group = [];
+
 if( $_idx ){
 
 	$data = wepix_fetch_array(wepix_query_error("select * from ona_order_group WHERE oog_idx = '".$_idx."' "));
-	$_oog_idx = $data['oog_idx'];
-	$_oog_group = json_decode($data['oog_brand'], true);
-
-}else{
+	
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = [];
+	}
+	
+	$_oog_idx = $data['oog_idx'] ?? "";
+	$_oog_group = json_decode($data['oog_brand'] ?? '[]', true);
+	
+	// 배열 검증
+	if (!is_array($_oog_group)) {
+		$_oog_group = [];
+	}
 
 }
 ?>
@@ -33,7 +48,7 @@ if( $_idx ){
 
 		<? if( $_idx ){ ?>
 		<input type="hidden" name="a_mode" value="orderSheetForm_modify" >
-		<input type="hidden" name="idx" value="<?=$_oog_idx?>" >
+		<input type="hidden" name="idx" value="<?=$_oog_idx ?? ''?>" >
 		<? }else{ ?>
 		<input type="hidden" name="a_mode" value="orderSheetForm_reg" >
 		<? } ?>
@@ -42,22 +57,22 @@ if( $_idx ){
 			<tr>
 				<th style="width:100px;">주문서폼 이름</th>
 				<td>
-					<input type='text' name='oog_name'  value="<?=$data['oog_name']?>" autocomplete="off" >
+					<input type='text' name='oog_name'  value="<?=$data['oog_name'] ?? ''?>" autocomplete="off" >
 				</td>
 			</tr>
 			<tr>
 				<th>수입형태</th>
 				<td>
 					<select name="oog_import">
-						<option value="국내" <? if( $data['oog_import'] == "국내" ) echo "selected"; ?>>국내</option>
-						<option value="수입" <? if( $data['oog_import'] == "수입" ) echo "selected"; ?>>수입</option>
+						<option value="국내" <? if( ($data['oog_import'] ?? '') == "국내" ) echo "selected"; ?>>국내</option>
+						<option value="수입" <? if( ($data['oog_import'] ?? '') == "수입" ) echo "selected"; ?>>수입</option>
 					</select>
 				</td>
 			</tr>
 			<tr>
 				<th>가격코드</th>
 				<td>
-					<input type='text' name='oog_code' id='oog_code' value="<?=$data['oog_code']?>" style="width:200px;">
+					<input type='text' name='oog_code' id='oog_code' value="<?=$data['oog_code'] ?? ''?>" style="width:200px;">
 					<div class="admin-guide-text">
 						- 중복불가<br>
 						- 영문, 영문+숫자로된 가격 고유코드 5자리정도
@@ -67,17 +82,17 @@ if( $_idx ){
 			<tr>
 				<th>국가</th>
 				<td>
-					<label><input type="radio" name="oog_group" value="ko" <? if( !$data['oog_group'] || $data['oog_group'] == "ko" ) echo "checked"; ?> > 한국</label>
-					<label><input type="radio" name="oog_group" value="jp" <? if( $data['oog_group'] == "jp" ) echo "checked"; ?> > 일본</label>
-					<label><input type="radio" name="oog_group" value="cn" <? if( $data['oog_group'] == "cn" ) echo "checked"; ?> > 중국</label>
-					<label><input type="radio" name="oog_group" value="dol" <? if( $data['oog_group'] == "dol" ) echo "checked"; ?> > 그외 달러 국가</label>
-					<label><input type="radio" name="oog_group" value="etc" <? if( $data['oog_group'] == "etc" ) echo "checked"; ?> > 기타</label>
+					<label><input type="radio" name="oog_group" value="ko" <? if( empty($data['oog_group']) || ($data['oog_group'] ?? '') == "ko" ) echo "checked"; ?> > 한국</label>
+					<label><input type="radio" name="oog_group" value="jp" <? if( ($data['oog_group'] ?? '') == "jp" ) echo "checked"; ?> > 일본</label>
+					<label><input type="radio" name="oog_group" value="cn" <? if( ($data['oog_group'] ?? '') == "cn" ) echo "checked"; ?> > 중국</label>
+					<label><input type="radio" name="oog_group" value="dol" <? if( ($data['oog_group'] ?? '') == "dol" ) echo "checked"; ?> > 그외 달러 국가</label>
+					<label><input type="radio" name="oog_group" value="etc" <? if( ($data['oog_group'] ?? '') == "etc" ) echo "checked"; ?> > 기타</label>
 				</td>
 			</tr>
 			<tr>
 				<th>메모</th>
 				<td>
-					<textarea name="memo" style="height:70px"><?=$data['memo']?></textarea>
+					<textarea name="memo" style="height:70px"><?=$data['memo'] ?? ''?></textarea>
 				</td>
 			</tr>
 		</table>
@@ -92,7 +107,7 @@ if( $_idx ){
 		
 		<div class="group-title">
 			그룹 리스트 ( <b><?=count($_oog_group)?></b> )
-			<input type='text' name='name[]' id="" value="<?=$_oog_group[$i]['name']?>" class="width-200 m-l-20">
+			<input type='text' name='new_group_name' id="new_group_name" value="" placeholder="새 그룹명 입력" class="width-200 m-l-20">
 			<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetFormReg.groupNew();" >신규 그룹생성</button>
 		</div>
 
@@ -100,30 +115,48 @@ if( $_idx ){
 			
 			<form id="form2">
 			<input type="hidden" name="a_mode" value="orderSheetForm_group" >
-			<input type="hidden" name="idx" value="<?=$_oog_idx?>" >
-			<input type="hidden" name="oop_code" value="<?=$data['oog_code']?>" >
+			<input type="hidden" name="idx" value="<?=$_oog_idx ?? ''?>" >
+			<input type="hidden" name="oop_code" value="<?=$data['oog_code'] ?? ''?>" >
 
 			<div id="group_list_table">
 			<? 
-			for ($i=0; $i<count($_oog_group); $i++){
+			// 배열 검증 후 count
+			$_oog_group_count = is_array($_oog_group) ? count($_oog_group) : 0;
+			
+			for ($i=0; $i<$_oog_group_count; $i++){
 
-				$_oop_idx = $_oog_group[$i]['oop_idx'];
+				// 배열 요소 검증
+				if (!isset($_oog_group[$i]) || !is_array($_oog_group[$i])) {
+					continue;
+				}
+
+				$_oop_idx = $_oog_group[$i]['oop_idx'] ?? '';
 				$oop_data = sql_fetch_array(sql_query_error("select * from ona_order_prd where oop_idx = '".$_oop_idx."' "));
 
-				$_oop_data = json_decode($oop_data['oop_data'], true);
+				// 배열 검증
+				if (!is_array($oop_data)) {
+					$oop_data = [];
+				}
+
+				$_oop_data = json_decode($oop_data['oop_data'] ?? '[]', true);
+				
+				// 배열 검증
+				if (!is_array($_oop_data)) {
+					$_oop_data = [];
+				}
 
 			?>
 				<ul>
 					<p class="position-move-btn"><i class="fas fa-arrows-alt-v"></i></p>
-					<input type="text" name="name[]" value="<?=$_oog_group[$i]['name']?>" class="width-200">
+					<input type="text" name="name[]" value="<?=$_oog_group[$i]['name'] ?? ''?>" class="width-200">
 					<select name="active[]">
-						<option value="Y" <? if( $_oog_group[$i]['active'] == "Y" ) echo "selected";?> >활성</option>
-						<option value="N" <? if( $_oog_group[$i]['active'] == "N" ) echo "selected";?> >비활성</option>
+						<option value="Y" <? if( ($_oog_group[$i]['active'] ?? '') == "Y" ) echo "selected";?> >활성</option>
+						<option value="N" <? if( ($_oog_group[$i]['active'] ?? '') == "N" ) echo "selected";?> >비활성</option>
 					</select>
 					상품수 : <b><?=count($_oop_data)?></b> | 
-					oop_idx : <b><?=$_oog_group[$i]['oop_idx']?></b>
-					<button type="button" id="" class="btnstyle1 btnstyle1-sm m-r-20" onclick="orderSheetForm.groupView('<?=$_oog_group[$i]['oop_idx']?>')" >폼그룹 상품관리</button>
-					<input type="hidden" name="oop_idx[]" value="<?=$_oog_group[$i]['oop_idx']?>" >
+					oop_idx : <b><?=$_oog_group[$i]['oop_idx'] ?? ''?></b>
+					<button type="button" id="" class="btnstyle1 btnstyle1-sm m-r-20" onclick="orderSheetForm.groupView('<?=$_oog_group[$i]['oop_idx'] ?? ''?>')" >폼그룹 상품관리</button>
+					<input type="hidden" name="oop_idx[]" value="<?=$_oog_group[$i]['oop_idx'] ?? ''?>" >
 				</ul>
 			<? } ?>
 			</div>
@@ -132,7 +165,7 @@ if( $_idx ){
 		</div>
 
 		<div class="m-t-5 text-center">
-			<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetFormReg.groupSave(this, '<?=$_idx?>');" >그룹 노출순서 저장</button>
+			<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetFormReg.groupSave(this, '<?=$_idx ?? ''?>');" >그룹 노출순서 저장</button>
 		</div>
 
 	</ul>

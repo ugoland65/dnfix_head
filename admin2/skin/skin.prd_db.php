@@ -26,6 +26,17 @@ $productController = new ProductController();
 
 $viewData = $productController->prdDbIndex();
 
+// 배열 초기화 (inc_common.php에서 정의되지 않은 경우 대비)
+if (!isset($koedge_prd_kind_array)) {
+	$koedge_prd_kind_array = [];
+}
+if (!isset($_arr_national)) {
+	$_arr_national = [];
+}
+if (!isset($koedge_prd_kind_name)) {
+	$koedge_prd_kind_name = [];
+}
+
 /*
 echo "<pre>";
 print_r($viewData);
@@ -61,8 +72,9 @@ echo "</pre>";
 					<option value="">전체 브랜드</option>
 					<?
 					foreach( $viewData['brandForSelect'] as $brand ){
+						if (!is_array($brand)) continue;
 					?>
-					<option value="<?=$brand['BD_IDX']?>" <? if( $brand['BD_IDX'] == ($_s_brand ?? '') ) echo "selected";?> ><?=$brand['BD_NAME']?></option>
+					<option value="<?=$brand['BD_IDX'] ?? ''?>" <? if( ($brand['BD_IDX'] ?? '') == ($_s_brand ?? '') ) echo "selected";?> ><?=$brand['BD_NAME'] ?? ''?></option>
 					<? } ?>
 				</select>
 			</ul>
@@ -72,7 +84,7 @@ echo "</pre>";
 					<?
 					for($t=0; $t<count($koedge_prd_kind_array); $t++){
 					?>
-					<option value="<?=$koedge_prd_kind_array[$t]['code']?>" <? if( ($s_kind_code ?? '') == $koedge_prd_kind_array[$t]['code'] ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name']?></option>
+					<option value="<?=$koedge_prd_kind_array[$t]['code'] ?? ''?>" <? if( ($s_kind_code ?? '') == ($koedge_prd_kind_array[$t]['code'] ?? '') ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 				<select name="s_national" id="s_national" >
@@ -80,7 +92,7 @@ echo "</pre>";
 					<?
 					for ($i=0; $i<count($_arr_national); $i++){
 					?>
-					<option value="<?=$_arr_national[$i]['code']?>" ><?=$_arr_national[$i]['name']?></option>
+					<option value="<?=$_arr_national[$i]['code'] ?? ''?>" ><?=$_arr_national[$i]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 				<select name="s_tier" id="s_tier">
@@ -151,63 +163,69 @@ echo "</pre>";
 		</tr>
 		<?
 		foreach( $viewData['prdList'] as $list ){
+			
+			if (!is_array($list)) continue;
+			
+			$img_path = "";
+			$img_path2 = "";
+			$_tr_class = "";
 
-			if( $list['CD_IMG'] ){
+			if( $list['CD_IMG'] ?? '' ){
 				$img_path = '/data/comparion/'.$list['CD_IMG'];
 			}
 
-			if( $list['CD_IMG2'] ){
+			if( $list['CD_IMG2'] ?? '' ){
 				$img_path2 = '/data/comparion/'.$list['CD_IMG2'];
 			}
 
 		?>
-		<tr align="center" id="trid_<?=$list['CD_IDX']?>" class="<?=$_tr_class?>">
-			<td class="list-checkbox"><input type="checkbox" name="key_check[]" class="checkSelect" value="<?=$list['CD_IDX']?>" ></td>	
+		<tr align="center" id="trid_<?=$list['CD_IDX'] ?? ''?>" class="<?=$_tr_class?>">
+			<td class="list-checkbox"><input type="checkbox" name="key_check[]" class="checkSelect" value="<?=$list['CD_IDX'] ?? ''?>" ></td>	
 			<td class="list-idx">
 				<div>
-					<ul><span style="font-size:12px;"><?=$list['CD_IDX']?></span></ul>
-					<? if( $list['ps_idx'] ){ ?><ul>( <b style='color:#0093e9; font-size:14px;'><?=$list['ps_idx']?></b> )</ul><? } ?>
+					<ul><span style="font-size:12px;"><?=$list['CD_IDX'] ?? ''?></span></ul>
+					<? if( $list['ps_idx'] ?? '' ){ ?><ul>( <b style='color:#0093e9; font-size:14px;'><?=$list['ps_idx']?></b> )</ul><? } ?>
 				</div>
 			</td>
-			<td onclick="onlyAD.prdView('<?=$list['CD_IDX']?>','info');" style="cursor:pointer;" >
-				<? if( $list['CD_IMG'] ){ ?>
+			<td onclick="onlyAD.prdView('<?=$list['CD_IDX'] ?? ''?>','info');" style="cursor:pointer;" >
+				<? if( $list['CD_IMG'] ?? '' ){ ?>
 					<img src="<?=$img_path?>" style="height:70px; border:1px solid #eee !important;">
 				<? }else{ ?>
 					<div class="no-image">No image</div>
 				<? } ?>
 			</td>
 			<td >
-				<? if( $list['CD_IMG2'] ){ ?>
+				<? if( $list['CD_IMG2'] ?? '' ){ ?>
 					<img src="<?=$img_path2?>" style="height:70px; border:1px solid #eee !important;">
 				<? }else{ ?>
 					<div class="no-image">No image</div>
 				<? } ?>
 			</td>
 			<td class="">
-				<?=$koedge_prd_kind_name[$list['CD_KIND_CODE']] ?? "미지정"?>
+				<?=$koedge_prd_kind_name[$list['CD_KIND_CODE'] ?? ''] ?? "미지정"?>
 			</td>
 			<td class="">
-				<?=$list['cd_tier']?>
+				<?=$list['cd_tier'] ?? ''?>
 			</td>
 			<td class="text-left">
 				<div>
-					<? if( $list['CD_RELEASE_DATE'] > 0 ){ ?><ul class="m-b-5 f-s-11" style="color:#777">출시일 : <?=$list['CD_RELEASE_DATE']?></ul><? } ?>
+					<? if( ($list['CD_RELEASE_DATE'] ?? 0) > 0 ){ ?><ul class="m-b-5 f-s-11" style="color:#777">출시일 : <?=$list['CD_RELEASE_DATE']?></ul><? } ?>
 					<ul>
-						<b onclick="onlyAD.prdView('<?=$list['CD_IDX']?>','info');" style="cursor:pointer;" ><?=$list['CD_NAME']?></b>
+						<b onclick="onlyAD.prdView('<?=$list['CD_IDX'] ?? ''?>','info');" style="cursor:pointer;" ><?=$list['CD_NAME'] ?? ''?></b>
 
 						<? 
 						/*
 							if( $_ad_id == "admin" ){ ?>
-						<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="onlyAD.prdViewTest('<?=$list['CD_IDX']?>')" >구 상품정보</button>
+						<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="onlyAD.prdViewTest('<?=$list['CD_IDX'] ?? ''?>')" >구 상품정보</button>
 						<? } 
 						*/
 						?>
 
 					</ul>
-					<? if( $list['CD_NAME_OG'] ){ ?><ul class="m-t-5"><?=$list['CD_NAME_OG']?></ul><? } ?>
-					<? if( $list['cd_memo2'] ){ ?><ul class="m-t-3" style="word-break:break-all"><span class="prd-memo"><i class="fas fa-feather-alt"></i> <?=$list['cd_memo2']?></span></ul><? } ?>
+					<? if( $list['CD_NAME_OG'] ?? '' ){ ?><ul class="m-t-5"><?=$list['CD_NAME_OG']?></ul><? } ?>
+					<? if( $list['cd_memo2'] ?? '' ){ ?><ul class="m-t-3" style="word-break:break-all"><span class="prd-memo"><i class="fas fa-feather-alt"></i> <?=$list['cd_memo2']?></span></ul><? } ?>
 					
-					<? if( $list['inSaleIconHtml'] ){ ?>
+					<? if( $list['inSaleIconHtml'] ?? '' ){ ?>
 						<ul ><?=$list['inSaleIconHtml']?></ul>
 					<? } ?>
 
@@ -215,30 +233,30 @@ echo "</pre>";
 			</td>
 			<td class="">
 				<div>
-					<ul><a href="/ad/prd/prd_db/brand_idx=<?=$list['CD_BRAND_IDX']?>:"><?=$list['brand_name1']?></a></ul>
-					<? if($list['brand_name2']){ ?><ul class="m-t-5"><a href="/ad/prd/prd_db/brand_idx=<?=$list['CD_BRAND2_IDX']?>:"><?=$list['brand_name2']?></a></ul><? } ?>
+					<ul><a href="/ad/prd/prd_db/brand_idx=<?=$list['CD_BRAND_IDX'] ?? ''?>:"><?=$list['brand_name1'] ?? ''?></a></ul>
+					<? if($list['brand_name2'] ?? ''){ ?><ul class="m-t-5"><a href="/ad/prd/prd_db/brand_idx=<?=$list['CD_BRAND2_IDX'] ?? ''?>:"><?=$list['brand_name2']?></a></ul><? } ?>
 				</div>
 			</td>
 			<td class="">
 				<div>
-					<ul><?=$list['hbti_html']?></ul>
+					<ul><?=$list['hbti_html'] ?? ''?></ul>
 				</div>
 			</td>
 			<td class="">
-				<span class="f-s-12"><?=date('y.m.d H:i',strtotime($list['cd_reg_time']))?></span>
+				<span class="f-s-12"><?=!empty($list['cd_reg_time']) ? date('y.m.d H:i',strtotime($list['cd_reg_time'])) : ''?></span>
 			</td>
 			<td class="">
 
-				<? if( !$list['ps_idx'] ){ ?>
-					<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="prdDB.listDel('<?=$list['CD_IDX']?>');"><i class="far fa-trash-alt"></i></button>
+				<? if( !($list['ps_idx'] ?? '') ){ ?>
+					<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="prdDB.listDel('<?=$list['CD_IDX'] ?? ''?>');"><i class="far fa-trash-alt"></i></button>
 				<? } ?>
-					<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" onclick="prdDB.prdCopy('<?=$list['CD_IDX']?>');" >복사</button>
+					<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" onclick="prdDB.prdCopy('<?=$list['CD_IDX'] ?? ''?>');" >복사</button>
 
 			</td>
 			<td class="text-left">
-				<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('prd','<?=$list['CD_IDX']?>')" >
+				<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('prd','<?=$list['CD_IDX'] ?? ''?>')" >
 					댓글
-					<? if( $list['comment_count'] > 0 ) { ?> : <b><?=$list['comment_count']?></b><? } ?>
+					<? if( ($list['comment_count'] ?? 0) > 0 ) { ?> : <b><?=$list['comment_count']?></b><? } ?>
 				</button>
 			</td>
 		<tr>

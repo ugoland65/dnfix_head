@@ -1,3 +1,7 @@
+<?
+	// 변수 초기화
+	$_s_text = $_GET['s_text'] ?? $_POST['s_text'] ?? "";
+?>
 <div id="contents_head">
 	<h1>입출금 장부</h1>
 
@@ -46,10 +50,10 @@
 					<option value="Y">확인</option>
 				</select>
 
-			</ul>
-			<ul class="m-t-5">
-				<input type='text' name='s_text' id='s_text' size='20' value="<?=$_s_text ?>" placeholder="검색어" >
-			</ul>
+		</ul>
+		<ul class="m-t-5">
+			<input type='text' name='s_text' id='s_text' size='20' value="<?=$_s_text ?? '' ?>" placeholder="검색어" >
+		</ul>
 			<!-- 
 			<ul class="m-t-5">
 				SORT : 

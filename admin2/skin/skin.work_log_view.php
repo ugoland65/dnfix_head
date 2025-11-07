@@ -4,15 +4,29 @@ if( $_idx ){
 
 	$data = sql_fetch_array(sql_query_error("select * from work_log WHERE idx = '".$_idx."' "));
 	
-	$data_ad = sql_fetch_array(sql_query_error("select ad_nick, ad_image from admin WHERE idx = '".$data['reg_idx']."' "));
+	if (!is_array($data)) {
+		$data = [];
+	}
+	
+	$data_ad = sql_fetch_array(sql_query_error("select ad_nick, ad_image from admin WHERE idx = '".($data['reg_idx'] ?? '')."' "));
+	
+	if (!is_array($data_ad)) {
+		$data_ad = [];
+	}
 
-	$_file_data = json_decode($data['file'], true);
+	$_file_data = json_decode($data['file'] ?? '{}', true);
+	if (!is_array($_file_data)) {
+		$_file_data = [];
+	}
 
-	$_view_check_data = json_decode($data['view_check'], true);
+	$_view_check_data = json_decode($data['view_check'] ?? '[]', true);
+	if (!is_array($_view_check_data)) {
+		$_view_check_data = [];
+	}
 
 	$_my_view_check = "no";
 	for ($i=0; $i<count($_view_check_data); $i++){
-		if( $_view_check_data[$i]['idx'] == $_ad_idx ){
+		if( ($_view_check_data[$i]['idx'] ?? '') == $_ad_idx ){
 			$_my_view_check = "ok";
 			break;
 		}
@@ -127,24 +141,27 @@ if( $_idx ){
 
 							$_view_check_action_active = "no";
 
-							$_query = "select
-								A.*,
-								B.ad_nick, B.ad_image 
-								from work_view_check A
-									left join admin B ON (B.idx = A.mb_idx  ) 
-								WHERE mode = 'log' AND tidx = '".$_idx."' ";
-							$_result = sql_query_error($_query);
-							while($view_check = sql_fetch_array($_result)){
-							
-								$_view_check_list[] = array(
-									"nick" => $view_check['ad_nick'],
-									"ad_img" => $view_check['ad_image'],
-									"check_time" => $view_check['reg_date']
-								);
+						// 변수 초기화
+						$_view_check_list = [];
+						
+						$_query = "select
+							A.*,
+							B.ad_nick, B.ad_image 
+							from work_view_check A
+								left join admin B ON (B.idx = A.mb_idx  ) 
+							WHERE mode = 'log' AND tidx = '".$_idx."' ";
+						$_result = sql_query_error($_query);
+						while($view_check = sql_fetch_array($_result)){
+						
+							$_view_check_list[] = array(
+								"nick" => $view_check['ad_nick'] ?? '',
+								"ad_img" => $view_check['ad_image'] ?? '',
+								"check_time" => $view_check['reg_date'] ?? ''
+							);
 
-								if( $view_check['mb_idx'] == $_ad_idx ){
-									$_view_check_action_active = "ok";
-								}
+							if( ($view_check['mb_idx'] ?? '') == $_ad_idx ){
+								$_view_check_action_active = "ok";
+							}
 
 							}
 
@@ -173,13 +190,13 @@ if( $_idx ){
 								<div>체크 완료 리스트</div>
 								<div>
 								<?
-									for ($i=0; $i<count($_view_check_list); $i++){
-								?>
-									<ul>
-										<div class="work-log-view-mb-profile" ><img src="/data/uploads/<?=$_view_check_list[$i]['ad_img']?>" alt=""></div> <?=$_view_check_list[$i]['nick']?> | 
-										<?=$_view_check_list[$i]['check_time']?>
-									</ul>
-								<? } ?>
+								for ($i=0; $i<count($_view_check_list); $i++){
+							?>
+								<ul>
+									<div class="work-log-view-mb-profile" ><img src="/data/uploads/<?=$_view_check_list[$i]['ad_img'] ?? ''?>" alt=""></div> <?=$_view_check_list[$i]['nick'] ?? ''?> | 
+									<?=$_view_check_list[$i]['check_time'] ?? ''?>
+								</ul>
+							<? } ?>
 								</div>
 
 							</td>
@@ -196,22 +213,28 @@ if( $_idx ){
 
 							</td>
 						</tr>
-						<? } ?>
+					<? } ?>
 
-						<? if( count($_file_data['file_name']) > 0 ){ ?>
-						<tr>
-							<th>첨부파일</th>
-							<td>
-								<div id="file_list_wrap">
-									<? for ($i=0; $i<count($_file_data['file_name']); $i++){ ?>
-									<div class="file-list">
-										<a href="/data/work_log/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
-									</div>
-									<? } ?>
+					<? 
+					$file_name_list = $_file_data['file_name'] ?? [];
+					if (!is_array($file_name_list)) {
+						$file_name_list = [];
+					}
+					if( count($file_name_list) > 0 ){ 
+					?>
+					<tr>
+						<th>첨부파일</th>
+						<td>
+							<div id="file_list_wrap">
+								<? for ($i=0; $i<count($file_name_list); $i++){ ?>
+								<div class="file-list">
+									<a href="/data/work_log/<?=$file_name_list[$i] ?? ''?>"><?=$file_name_list[$i] ?? ''?></a>
 								</div>
-							</td>
-						</tr>
-						<? } ?>
+								<? } ?>
+							</div>
+						</td>
+					</tr>
+					<? } ?>
 
 
 

@@ -1,6 +1,11 @@
 <?
 include "../lib/inc_common.php";
 
+	// 변수 초기화
+	$idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+	$sort = $_GET['sort'] ?? $_POST['sort'] ?? "";
+	$mode = $_GET['mode'] ?? $_POST['mode'] ?? "";
+
 	$_idx = securityVal($idx);
 	$_sort = securityVal($sort);
 	$_mode = securityVal($mode);
@@ -19,7 +24,10 @@ include "../lib/inc_common.php";
 	}
 
 if( $_mode == "excelDown" ){
+	echo "<script>alert('PHPExcel 기능이 비활성화되었습니다.'); history.back();</script>";
+	exit;
 
+	/* PHPExcel 사용 안함 - 주석처리 시작
 	require_once("../../class/phpexcel/PHPExcel.php");
 
 	$objPHPExcel = new PHPExcel();

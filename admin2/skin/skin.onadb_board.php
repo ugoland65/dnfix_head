@@ -1,3 +1,7 @@
+<?
+// 변수 초기화
+$_get1 = $_GET['get1'] ?? $_get1 ?? "";
+?>
 <div id="contents_head">
 	<h1>게시판</h1>
     <div id="head_write_btn">

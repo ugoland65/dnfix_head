@@ -1,5 +1,8 @@
 <?
-
+	// 변수 초기화
+	$_board_cate = $_GET['board_cate'] ?? $_POST['board_cate'] ?? "";
+	$_pn = $_GET['pn'] ?? $_POST['pn'] ?? $_pn ?? 1;
+	$_where = "";
 
 	if( $_board_cate == "all" ){
 		$_where = "  ";
@@ -40,16 +43,23 @@
 	</tr>
 	<?
 	while($list = sql_fetch_array($_result)){
+		
+		if (!is_array($list)) continue;
 
-		$_reg = json_decode($list['reg'], true);
+		$_reg = json_decode($list['reg'] ?? '{}', true);
+		if (!is_array($_reg)) {
+			$_reg = [];
+		}
+		
+		$_tr_class = "";
 	?>
-	<tr align="center" id="trid_<?=$list['idx']?>" class="<?=$_tr_class?>">
-		<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['idx']?>" ></td>	
-		<td class="list-idx"><?=$list['idx']?></td>
-		<td class=""><?=$_kind_text[$list['kind']]?></td>
-		<td class="text-left" style="font-size:14px;"><a href="/ad/onadb/onadb_board_view/<?=$list['idx']?>"><?=$list['subject']?></a></td>
-		<td class=""><?=$_reg['reg']['name']?></td>
-		<td class=""><?=$list['reg_date']?></td>
+	<tr align="center" id="trid_<?=$list['idx'] ?? ''?>" class="<?=$_tr_class?>">
+		<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['idx'] ?? ''?>" ></td>	
+		<td class="list-idx"><?=$list['idx'] ?? ''?></td>
+		<td class=""><?=$_kind_text[$list['kind'] ?? ''] ?? ''?></td>
+		<td class="text-left" style="font-size:14px;"><a href="/ad/onadb/onadb_board_view/<?=$list['idx'] ?? ''?>"><?=$list['subject'] ?? ''?></a></td>
+		<td class=""><?=$_reg['reg']['name'] ?? ''?></td>
+		<td class=""><?=$list['reg_date'] ?? ''?></td>
 	<tr>
 	<? } ?>
 </table>

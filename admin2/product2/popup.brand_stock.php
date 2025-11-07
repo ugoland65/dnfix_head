@@ -3,12 +3,19 @@ include "../lib/inc_common.php";
 $pageGroup = "product2";
 $pageName = "order_sheet_print_popup";
 
-require_once("../../class/phpexcel/PHPExcel.php");
+// PHPExcel 사용 안함 - 주석처리
+// require_once("../../class/phpexcel/PHPExcel.php");
+
+// 변수 초기화
+$brand = $_GET['brand'] ?? $_POST['brand'] ?? "";
+$excel = $_GET['excel'] ?? $_POST['excel'] ?? "";
+$view = $_GET['view'] ?? $_POST['view'] ?? "";
 
 $_brand = securityVal($brand);
 $_excel = securityVal($excel);
 $_view = securityVal($view);
 
+/* 
 	$objPHPExcel = new PHPExcel();
 
 	$objPHPExcel -> setActiveSheetIndex(0)
@@ -26,7 +33,7 @@ $_view = securityVal($view);
 	-> setCellValue("D2", "상품명")
 	-> setCellValue("D2", "재고")
 	-> setCellValue("F2", "체크");
-
+*/
 
 if( $_view == "all"){
 	$_view_query = "";
@@ -44,21 +51,29 @@ if( $_view == "all"){
 	$num = 1;
 	$count = 1;
 
+// 배열 변수 초기화
+$_ary_stock_idx = [];
+$_ary_cd_img = [];
+$_ary_cd_name = [];
+$_ary_stock = [];
+$_ary_code = [];
+$_ary_weight = [];
+
 if( $_brand ){
 
 	while($list = wepix_fetch_array($result)){
 
 		$num++;
 
-		$_ary_stock_idx[] = $list[ps_prd_idx];
-		//$_ary_cd_img[] = $list[CD_IMG];
-		$_ary_cd_name[] = $list[CD_NAME];
-		$_ary_stock[] = $list[ps_stock];
-		$_ary_code[] = $list[CD_CODE];
+		$_ary_stock_idx[] = $list['ps_prd_idx'] ?? '';
+		//$_ary_cd_img[] = $list['CD_IMG'];
+		$_ary_cd_name[] = $list['CD_NAME'] ?? '';
+		$_ary_stock[] = $list['ps_stock'] ?? 0;
+		$_ary_code[] = $list['CD_CODE'] ?? '';
 
-		$_cd_weight_data = json_decode($list[cd_weight_fn], true);
+		$_cd_weight_data = json_decode($list['cd_weight_fn'] ?? '{}', true);
 		
-		if( $_cd_weight_data['3'] == "" ){
+		if( empty($_cd_weight_data['3']) ){
 			$_weight = "상품 실측 중량 정보 없음";
 			//echo $_weight."<br>";
 		}else{
@@ -69,6 +84,7 @@ if( $_brand ){
 
 		$_ary_weight[] = $_weight;
 
+		/*
 		$objPHPExcel -> setActiveSheetIndex(0)
 		-> setCellValue("A".$num, $list[ps_prd_idx])
 		-> setCellValue("B".$num, "")
@@ -76,18 +92,20 @@ if( $_brand ){
 		-> setCellValue("D".$num, $list[CD_NAME])
 		-> setCellValue("E".$num, $list[ps_stock])
 		-> setCellValue("F".$num, $_weight);
+		*/
 
 		$iCol = "B"; // 컬럼번호
 		$iRow = $num; // 행번호
 
 		$_ary_ck_img_name = "";
-		$_img_path = str_replace('../../data/comparion/','', $list[CD_IMG]);
+		$_img_path = str_replace('../../data/comparion/','', $list['CD_IMG'] ?? '');
 		$_ary_ck_img_name = explode("?", $_img_path);
-		$photo_path = "../../data/comparion/".$_ary_ck_img_name[0]; // 이미지 경로
+		$photo_path = "../../data/comparion/" . ($_ary_ck_img_name[0] ?? ''); // 이미지 경로
 		$_ary_cd_img[] = $photo_path;
 		
 	if (file_exists($photo_path)) {
 
+		/*
 		$objDrawing = new PHPExcel_Worksheet_Drawing();
 		$objDrawing->setName('Photo '.$iRow);
 		$objDrawing->setDescription('Photo '.$iRow);
@@ -99,6 +117,7 @@ if( $_brand ){
 		$objDrawing->setCoordinates($iCol.$iRow);
 		$objDrawing->setWorksheet($objPHPExcel->getActiveSheet());
 		$objPHPExcel->getActiveSheet()->getRowDimension($iRow)->setRowHeight(60); // 행높이 설정
+		*/
 	
 	}
 
@@ -115,6 +134,7 @@ if( $_brand ){
 }
 
 
+/*
 $objPHPExcel -> getActiveSheet() -> getColumnDimension("A") -> setWidth(9);
 $objPHPExcel -> getActiveSheet() -> getColumnDimension("B") -> setWidth(13);
 $objPHPExcel -> getActiveSheet() -> getColumnDimension("C") -> setWidth(60);
@@ -135,6 +155,14 @@ if( $_excel == "ok" ){
 
 	$objWriter = PHPExcel_IOFactory::createWriter($objPHPExcel, "Excel5");
 	$objWriter -> save("php://output");
+}
+
+*/
+
+// 엑셀 다운로드 요청 시 메시지 출력
+if( $_excel == "ok" ){
+	echo "<script>alert('PHPExcel 기능이 비활성화되었습니다.'); history.back();</script>";
+	exit;
 }
 
 include "../layout/header_popup.php";
@@ -167,8 +195,19 @@ include "../layout/header_popup.php";
 
 <?
 	$json_url = "../../config_file/brand_stock_group.json";
-	$json_string = file_get_contents($json_url);
-	$json_data = json_decode($json_string, true);
+	
+	// 파일 존재 여부 확인 및 안전한 처리
+	if (file_exists($json_url)) {
+		$json_string = file_get_contents($json_url);
+		$json_data = json_decode($json_string, true);
+	} else {
+		$json_data = [];
+	}
+	
+	// null 체크
+	if (!is_array($json_data)) {
+		$json_data = [];
+	}
 ?>
 
 
@@ -179,8 +218,8 @@ include "../layout/header_popup.php";
 <? for ($i=0; $i<count($json_data); $i++){ ?>
 	<div>
 		<ul><i class="fas fa-arrows-alt"></i></ul>
-		<ul><input type="text" name="brand_group_name[]" value="<?=$json_data[$i]['name']?>" style="width:100px"></ul>
-		<ul><input type="text" name="brand_idx[]" value="<?=$json_data[$i]['idx']?>" style="width:100px"></ul>
+		<ul><input type="text" name="brand_group_name[]" value="<?=$json_data[$i]['name'] ?? ''?>" style="width:100px"></ul>
+		<ul><input type="text" name="brand_idx[]" value="<?=$json_data[$i]['idx'] ?? ''?>" style="width:100px"></ul>
 		<ul><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="brandStock.addDel(this)" ><i class="fas fa-trash-alt"></i></button></ul>
 	</div>
 <? } ?>
@@ -200,7 +239,7 @@ include "../layout/header_popup.php";
 <div class="p-l-10">
 
 <? for ($i=0; $i<count($json_data); $i++){ ?>
-	<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="location.href='/admin2/product2/popup.brand_stock.php?view=<?=$_view?>&brand=<?=$json_data[$i]['idx']?>'"><?=$json_data[$i]['name']?></button>
+	<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="location.href='/admin2/product2/popup.brand_stock.php?view=<?=$_view?>&brand=<?=$json_data[$i]['idx'] ?? ''?>'"><?=$json_data[$i]['name'] ?? ''?></button>
 <? } ?>
 
 <!-- 
@@ -233,15 +272,15 @@ if( $_view == "all"){
 <table class="exel-table">
 <?
 for ($i=0; $i<count($_ary_stock_idx); $i++){
-	$img_path = 'http://dgmall.wepix-hosting.co.kr/data/comparion/'.$_ary_cd_img[$i];
+	$img_path = '/data/comparion/' . ($_ary_cd_img[$i] ?? '');
 ?>
-	<tr bgcolor="<?=$trcolor?>">
-		<td class="xl65"><?=$_ary_stock_idx[$i]?></td>
+	<tr bgcolor="<?=$trcolor ?? ''?>">
+		<td class="xl65"><?=$_ary_stock_idx[$i] ?? ''?></td>
 		<td class="xl65"><img src="<?=$img_path?>" width="80px" height="80px"></td>
-		<td class="xl65"><?=$_ary_code[$i]?></td>
-		<td class="xl65" <? if( $_ary_stock_idx[$i] ){ ?>onclick="comparisonQuick('<?=$_ary_stock_idx[$i]?>','info');" <? } ?>><?=$_ary_cd_name[$i]?></td>
-		<td class="xl65"><?=$_ary_stock[$i]?></td>
-		<td class="xl65"><?=$_ary_weight[$i]?></td>
+		<td class="xl65"><?=$_ary_code[$i] ?? ''?></td>
+		<td class="xl65" <? if( $_ary_stock_idx[$i] ?? '' ){ ?>onclick="comparisonQuick('<?=$_ary_stock_idx[$i]?>','info');" <? } ?>><?=$_ary_cd_name[$i] ?? ''?></td>
+		<td class="xl65"><?=$_ary_stock[$i] ?? ''?></td>
+		<td class="xl65"><?=$_ary_weight[$i] ?? ''?></td>
 	</tr>
 <? } ?>
 </table>

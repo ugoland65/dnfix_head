@@ -1,67 +1,109 @@
 <?
-//$_openmode
+// 변수 초기화
+$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+$_openpage = $_GET['openpage'] ?? $_POST['openpage'] ?? "";
+$data = [];
+$_oo_price_data = [];
+$_oo_upload_file = [];
+$_oo_express_data = [];
+$_oo_approval_date = [];
+$_oo_tex_data = [];
+$_oo_date_data = [];
+$_oo_reg_data = [];
+$_json_oo_stock = [];
+$_order_sheet_form = [];
+
 if( $_idx ){
 
 	$data = sql_fetch_array(sql_query_error("select * from ona_order WHERE oo_idx = '".$_idx."' "));
 
-	$_oo_price_data = json_decode($data['oo_price_data'], true);
-	$_oo_upload_file = json_decode($data['oo_upload_file'], true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = [];
+	}
 
-	$_oo_price_data_currency = $_oo_price_data['currency']; //주문금액 화폐단위
-	$_oo_price_data_pay_fee = $_oo_price_data['pay_fee']; //최종 송금수수료
-	$_oo_price_data_pay_price = $_oo_price_data['pay_price']; //최종 합계 송금액
+	$_oo_price_data = json_decode($data['oo_price_data'] ?? '{}', true);
+	if (!is_array($_oo_price_data)) {
+		$_oo_price_data = [];
+	}
 
-	$_oo_price_data_exchange_charge = $_oo_price_data['exchange_charge'];
-	$_oo_price_data_pay_date = $_oo_price_data['pay_date'];
-	$_oo_price_data_change_price = $_oo_price_data['change_price'];
+	$_oo_upload_file = json_decode($data['oo_upload_file'] ?? '{}', true);
+	if (!is_array($_oo_upload_file)) {
+		$_oo_upload_file = ['invoice' => [], 'pay_file' => [], 'import_declaration' => []];
+	}
 
+	$_oo_price_data_currency = $_oo_price_data['currency'] ?? ''; //주문금액 화폐단위
+	$_oo_price_data_pay_fee = $_oo_price_data['pay_fee'] ?? 0; //최종 송금수수료
+	$_oo_price_data_pay_price = $_oo_price_data['pay_price'] ?? 0; //최종 합계 송금액
 
-	$_oo_express_data = json_decode($data['oo_express_data'], true);
-	$_oo_approval_date = json_decode($data['oo_approval_date'], true);
-
-	$_oo_express_data_express_mode = $_oo_express_data['mode'];
-	$_oo_express_data_express_name = $_oo_express_data['name'];
-	$_oo_express_data_express_number = $_oo_express_data['number'];
-	$_oo_express_data_express_report_weight = $_oo_express_data['report_weight'];
-	$_oo_express_data_express_weight = $_oo_express_data['weight'];
-	$_oo_express_data_express_cbm = $_oo_express_data['cbm'];
-	$_oo_express_data_express_box = $_oo_express_data['box'];
-	$_oo_express_data_express_price = $_oo_express_data['price'];
-	$_oo_express_data_express_price_add = $_oo_express_data['price_add'];
-
-	$_oo_tex_data = json_decode($data['oo_tex_data'], true);
-
-	$_oo_tex_data_num = $_oo_tex_data['num'];
-	$_oo_tex_data_report_price = $_oo_tex_data['report_price'];
-	$_oo_tex_data_duty_price = $_oo_tex_data['duty_price'];
-	$_oo_tex_data_vat_price = $_oo_tex_data['vat_price'];
-	$_oo_tex_data_commission = $_oo_tex_data['commission'];
-
-	$_oo_date_data = json_decode($data['oo_date_data'], true);
-
-	//$_oo_date_data_order_send_date = $_oo_date_data['order_send_date'];
-	$_oo_date_data_in_date = $_oo_date_data['in_date'];
+	$_oo_price_data_exchange_charge = $_oo_price_data['exchange_charge'] ?? 0;
+	$_oo_price_data_pay_date = $_oo_price_data['pay_date'] ?? '';
+	$_oo_price_data_change_price = $_oo_price_data['change_price'] ?? [];
 
 
-	$_oo_price_date = ( $data['oo_price_date'] > 0 ) ? $data['oo_price_date'] : "" ; 
-	$_oo_in_date = ( $data['oo_in_date'] > 0 ) ? $data['oo_in_date'] : "" ; 
-	$_oo_duty_due_date = ( $data['oo_duty_due_date'] > 0 ) ? $data['oo_duty_due_date'] : "" ; 
-	$_oo_duty_settlement_date = ( $data['oo_duty_settlement_date'] > 0 ) ? $data['oo_duty_settlement_date'] : "" ; 
+	$_oo_express_data = json_decode($data['oo_express_data'] ?? '{}', true);
+	if (!is_array($_oo_express_data)) {
+		$_oo_express_data = [];
+	}
 
-	$_oo_box = $data['oo_box'];
-	$_oo_box_weight = $data['oo_box_weight']*1;
-	$_oo_box_weight_fix = $data['oo_box_weight_fix']*1;
-	$_oo_express = $data['oo_express'];
-	$_oo_express_number = $data['oo_express_number'];
-	$_oo_express_price = ( $data['oo_express_price'] > 0 ) ? number_format($data['oo_express_price']) : "" ; 
-	$_oo_express_price_date = ( $data['oo_express_price_date'] > 0 ) ? $data['oo_express_price_date'] : "" ; 
-	$_oo_express_price_settlement_date = ( $data['oo_express_price_settlement_date'] > 0 ) ? $oo_data['oo_express_price_settlement_date'] : "" ; 
+	$_oo_approval_date = json_decode($data['oo_approval_date'] ?? '{}', true);
+	if (!is_array($_oo_approval_date)) {
+		$_oo_approval_date = [];
+	}
 
-	$_oo_reg_data = json_decode($data['reg'], true);
+	$_oo_express_data_express_mode = $_oo_express_data['mode'] ?? '';
+	$_oo_express_data_express_name = $_oo_express_data['name'] ?? '';
+	$_oo_express_data_express_number = $_oo_express_data['number'] ?? '';
+	$_oo_express_data_express_report_weight = $_oo_express_data['report_weight'] ?? '';
+	$_oo_express_data_express_weight = $_oo_express_data['weight'] ?? '';
+	$_oo_express_data_express_cbm = $_oo_express_data['cbm'] ?? '';
+	$_oo_express_data_express_box = $_oo_express_data['box'] ?? '';
+	$_oo_express_data_express_price = $_oo_express_data['price'] ?? 0;
+	$_oo_express_data_express_price_add = $_oo_express_data['price_add'] ?? 0;
 
-	$_json_oo_stock = json_decode($data['oo_stock'], true);
+	$_oo_tex_data = json_decode($data['oo_tex_data'] ?? '{}', true);
+	if (!is_array($_oo_tex_data)) {
+		$_oo_tex_data = [];
+	}
 
-}else{
+	$_oo_tex_data_num = $_oo_tex_data['num'] ?? '';
+	$_oo_tex_data_report_price = $_oo_tex_data['report_price'] ?? 0;
+	$_oo_tex_data_duty_price = $_oo_tex_data['duty_price'] ?? 0;
+	$_oo_tex_data_vat_price = $_oo_tex_data['vat_price'] ?? 0;
+	$_oo_tex_data_commission = $_oo_tex_data['commission'] ?? 0;
+
+	$_oo_date_data = json_decode($data['oo_date_data'] ?? '{}', true);
+	if (!is_array($_oo_date_data)) {
+		$_oo_date_data = [];
+	}
+
+	//$_oo_date_data_order_send_date = $_oo_date_data['order_send_date'] ?? '';
+	$_oo_date_data_in_date = $_oo_date_data['in_date'] ?? '';
+
+
+	$_oo_price_date = ( ($data['oo_price_date'] ?? 0) > 0 ) ? $data['oo_price_date'] : "" ; 
+	$_oo_in_date = ( ($data['oo_in_date'] ?? 0) > 0 ) ? $data['oo_in_date'] : "" ; 
+	$_oo_duty_due_date = ( ($data['oo_duty_due_date'] ?? 0) > 0 ) ? $data['oo_duty_due_date'] : "" ; 
+	$_oo_duty_settlement_date = ( ($data['oo_duty_settlement_date'] ?? 0) > 0 ) ? $data['oo_duty_settlement_date'] : "" ; 
+
+	$_oo_box = $data['oo_box'] ?? '';
+	$_oo_box_weight = ($data['oo_box_weight'] ?? 0)*1;
+	$_oo_box_weight_fix = ($data['oo_box_weight_fix'] ?? 0)*1;
+	$_oo_express = $data['oo_express'] ?? '';
+	$_oo_express_number = $data['oo_express_number'] ?? '';
+	$_oo_express_price = ( ($data['oo_express_price'] ?? 0) > 0 ) ? number_format($data['oo_express_price']) : "" ; 
+	$_oo_express_price_date = ( ($data['oo_express_price_date'] ?? 0) > 0 ) ? $data['oo_express_price_date'] : "" ; 
+	$_oo_express_price_settlement_date = ( ($data['oo_express_price_settlement_date'] ?? 0) > 0 ) ? $data['oo_express_price_settlement_date'] : "" ; 
+
+	$_oo_reg_data = json_decode($data['reg'] ?? '{}', true);
+	if (!is_array($_oo_reg_data)) {
+		$_oo_reg_data = ['reg' => [], 'mod' => []];
+	}
+
+	$_json_oo_stock = json_decode($data['oo_stock'] ?? '{}', true);
+	if (!is_array($_json_oo_stock)) {
+		$_json_oo_stock = [];
+	}
 
 }
 
@@ -71,9 +113,14 @@ if( $_idx ){
 	$_result = sql_query_error($_query);
 	while($_list = wepix_fetch_array($_result)){
 		
+		// 배열 검증
+		if (!is_array($_list)) {
+			continue;
+		}
+		
 		$_order_sheet_form[] = array(
-			"idx" => $_list['oog_idx'],
-			"name" => $_list['oog_name']
+			"idx" => $_list['oog_idx'] ?? '',
+			"name" => $_list['oog_name'] ?? ''
 		);
 
 	}
@@ -116,7 +163,7 @@ if( $_idx ){
 
 <script type="text/javascript"> 
 <!-- 
- var openPage = "<?=$_openpage?>";
+ var openPage = "<?=$_openpage ?? ''?>";
 //--> 
 </script>
 
@@ -124,7 +171,7 @@ if( $_idx ){
 
 	<? if( $_idx ){ ?>
 		<input type="hidden" name="a_mode" value="orderSheet_modify" >
-		<input type="hidden" name="idx" value="<?=$_idx?>" >
+		<input type="hidden" name="idx" value="<?=$_idx ?? ''?>" >
 	<? }else{ ?>
 		<input type="hidden" name="a_mode" value="orderSheet_reg" >
 	<? } ?>
@@ -136,7 +183,7 @@ if( $_idx ){
 		<tr>
 			<th style="width:140px;">주문서 번호</th>
 			<td >
-				<b><?=$_idx?></b>
+				<b><?=$_idx ?? ''?></b>
 			</td>
 		</tr>
 		<? } ?>
@@ -145,14 +192,14 @@ if( $_idx ){
 		<tr>
 			<th style="width:140px;">주문서 이름</th>
 			<td >
-				<input type='text' name='oo_name'  value="<?=$data['oo_name']?>" autocomplete="off" class="width-500">
+				<input type='text' name='oo_name'  value="<?=$data['oo_name'] ?? ''?>" autocomplete="off" class="width-500">
 			</td>
 		</tr>
 
 		<tr>
 			<th>P/O CODE</th>
 			<td >
-				<input type='text' name='oo_po_name'  value="<?=$data['oo_po_name']?>" autocomplete="off" class="width-200">
+				<input type='text' name='oo_po_name'  value="<?=$data['oo_po_name'] ?? ''?>" autocomplete="off" class="width-200">
 				PURCHASE ORDER Offer No ( 무역 서류 주문서 P/O 발송시 사내 고유넘버 )
 			</td>
 		</tr>
@@ -163,11 +210,20 @@ if( $_idx ){
 			<td >
 				<select name="oo_form_idx">
 					<option value="0">==  주문서 폼 선택 ==</option>
-					<? for ($i=0; $i<count($_order_sheet_form); $i++){ ?>
-					<option value="<?=$_order_sheet_form[$i]["idx"]?>" <? if( $data['oo_form_idx'] == $_order_sheet_form[$i]["idx"] ) echo "selected"; ?>><?=$_order_sheet_form[$i]["name"]?></option>
+					<? 
+					// 배열 검증 후 count
+					$_order_sheet_form_count = is_array($_order_sheet_form) ? count($_order_sheet_form) : 0;
+					
+					for ($i=0; $i<$_order_sheet_form_count; $i++){ 
+						// 배열 요소 검증
+						if (!isset($_order_sheet_form[$i]) || !is_array($_order_sheet_form[$i])) {
+							continue;
+						}
+					?>
+					<option value="<?=$_order_sheet_form[$i]["idx"] ?? ''?>" <? if( ($data['oo_form_idx'] ?? 0) == ($_order_sheet_form[$i]["idx"] ?? '') ) echo "selected"; ?>><?=$_order_sheet_form[$i]["name"] ?? ''?></option>
 					<? } ?>
 				</select>
-				<? if( $_idx && $data['oo_form_idx'] == 0 ){ ?><span style="color:#ff0000;">※ 주문서 폼 미지정!!!</span><? } ?>
+				<? if( $_idx && ($data['oo_form_idx'] ?? 0) == 0 ){ ?><span style="color:#ff0000;">※ 주문서 폼 미지정!!!</span><? } ?>
 			</td>
 		</tr>
 
@@ -175,9 +231,9 @@ if( $_idx ){
 		<tr>
 			<th>수입형태</th>
 			<td >
-				<label><input type="radio" name="oo_import" value="국내" <? if( !$data['oo_import'] || $data['oo_import'] == "국내" ) echo "checked"; ?> > 국내 주문</label>
-				<label><input type="radio" name="oo_import" value="수입" <? if( $data['oo_import'] == "수입" ) echo "checked"; ?> > 수입 주문</label>
-				<label><input type="radio" name="oo_import" value="구매대행" <? if( $data['oo_import'] == "구매대행" ) echo "checked"; ?> > 구매대행</label>
+				<label><input type="radio" name="oo_import" value="국내" <? if( empty($data['oo_import']) || ($data['oo_import'] ?? '') == "국내" ) echo "checked"; ?> > 국내 주문</label>
+				<label><input type="radio" name="oo_import" value="수입" <? if( ($data['oo_import'] ?? '') == "수입" ) echo "checked"; ?> > 수입 주문</label>
+				<label><input type="radio" name="oo_import" value="구매대행" <? if( ($data['oo_import'] ?? '') == "구매대행" ) echo "checked"; ?> > 구매대행</label>
 			</td>
 		</tr>
 
@@ -186,14 +242,14 @@ if( $_idx ){
 			<td >
 				주문서 금액 화폐
 				<select name="sum_currency">
-					<option value="원" <? if( $data['oo_sum_currency'] == "원" ) echo "selected"; ?>>원</option>
-					<option value="엔" <? if( $data['oo_sum_currency'] == "엔" ) echo "selected"; ?>>엔</option>
-					<option value="위안" <? if( $data['oo_sum_currency'] == "위안" ) echo "selected"; ?>>위안</option>
-					<option value="달러" <? if( $data['oo_sum_currency'] == "달러" ) echo "selected"; ?>>달러</option>
+					<option value="원" <? if( ($data['oo_sum_currency'] ?? '') == "원" ) echo "selected"; ?>>원</option>
+					<option value="엔" <? if( ($data['oo_sum_currency'] ?? '') == "엔" ) echo "selected"; ?>>엔</option>
+					<option value="위안" <? if( ($data['oo_sum_currency'] ?? '') == "위안" ) echo "selected"; ?>>위안</option>
+					<option value="달러" <? if( ($data['oo_sum_currency'] ?? '') == "달러" ) echo "selected"; ?>>달러</option>
 				</select>
 				&nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
 				적용환율 : 
-				<input type="text" name='sum_exchange_rate' class="price" value="<?=$data['oo_sum_exchange_rate']?>">
+				<input type="text" name='sum_exchange_rate' class="price" value="<?=$data['oo_sum_exchange_rate'] ?? ''?>">
 				※ 국내주문은 안써도 됨
 			</td>
 		</tr>
@@ -201,7 +257,7 @@ if( $_idx ){
 		<tr>
 			<th>메모</th>
 			<td>
-				<textarea name="oo_memo" style="height:70px"><?=$data['oo_memo']?></textarea>
+				<textarea name="oo_memo" style="height:70px"><?=$data['oo_memo'] ?? ''?></textarea>
 			</td>
 		</tr>
 
@@ -211,11 +267,11 @@ if( $_idx ){
 			<th>주문상태</th>
 			<td>
 				<div class="os-state-btn-wrap">
-					<button type="button" id="" class="btnstyle1 <? if( $data['oo_state'] == "1" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '1', '<?=$_idx?>')" data-name="작성중" >작성중</button>
-					<button type="button" id="" class="btnstyle1 <? if( $data['oo_state'] == "2" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '2', '<?=$_idx?>')" data-name="주문전송" >주문전송</button>
-					<button type="button" id="" class="btnstyle1 <? if( $data['oo_state'] == "4" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '4', '<?=$_idx?>')" data-name="입금완료" >입금완료</button>
-					<button type="button" id="" class="btnstyle1 <? if( $data['oo_state'] == "5" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '5', '<?=$_idx?>')" data-name="입고완료" >입고완료</button>
-					<button type="button" id="" class="btnstyle1 <? if( $data['oo_state'] == "7" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '7', '<?=$_idx?>')" data-name="주문종료" >주문종료</button>
+					<button type="button" id="" class="btnstyle1 <? if( ($data['oo_state'] ?? '') == "1" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '1', '<?=$_idx ?? ''?>')" data-name="작성중" >작성중</button>
+					<button type="button" id="" class="btnstyle1 <? if( ($data['oo_state'] ?? '') == "2" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '2', '<?=$_idx ?? ''?>')" data-name="주문전송" >주문전송</button>
+					<button type="button" id="" class="btnstyle1 <? if( ($data['oo_state'] ?? '') == "4" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '4', '<?=$_idx ?? ''?>')" data-name="입금완료" >입금완료</button>
+					<button type="button" id="" class="btnstyle1 <? if( ($data['oo_state'] ?? '') == "5" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '5', '<?=$_idx ?? ''?>')" data-name="입고완료" >입고완료</button>
+					<button type="button" id="" class="btnstyle1 <? if( ($data['oo_state'] ?? '') == "7" ) echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.stateModify(this, '7', '<?=$_idx ?? ''?>')" data-name="주문종료" >주문종료</button>
 				</div>
 				<? /*
 				<div>현재상태 : <?=$_os_state_text[$data['oo_state']]?></div>
@@ -230,25 +286,38 @@ if( $_idx ){
 				</div>
 				*/ ?>
 				<div class="m-t-5">
-					<? for ($i=0; $i<count($_oo_date_data['state']); $i++){ ?>
+					<? 
+					// 배열 검증 및 초기화
+					$_oo_date_data_state = $_oo_date_data['state'] ?? [];
+					if (!is_array($_oo_date_data_state)) {
+						$_oo_date_data_state = [];
+					}
+					$_oo_date_data_state_count = count($_oo_date_data_state);
+					
+					for ($i=0; $i<$_oo_date_data_state_count; $i++){ 
+						// 배열 요소 검증
+						if (!isset($_oo_date_data_state[$i]) || !is_array($_oo_date_data_state[$i])) {
+							continue;
+						}
+					?>
 					<ul>
-						<?=$_os_state_text[$_oo_date_data['state'][$i]['state_before']]?> -> <?=$_os_state_text[$_oo_date_data['state'][$i]['state_after']]?>
-						:: <?=$_oo_date_data['state'][$i]['id']?> ( <?=$_oo_date_data['state'][$i]['date']?> )
+						<?=$_os_state_text[$_oo_date_data_state[$i]['state_before'] ?? ''] ?? ''?> -> <?=$_os_state_text[$_oo_date_data_state[$i]['state_after'] ?? ''] ?? ''?>
+						:: <?=$_oo_date_data_state[$i]['id'] ?? ''?> ( <?=$_oo_date_data_state[$i]['date'] ?? ''?> )
 					</ul>
 					<? } ?>
 				</div>
 			</td>
 		</tr>
 
-		<? if( $data['oo_state'] > 4 ){ ?>
+		<? if( ($data['oo_state'] ?? 0) > 4 ){ ?>
 		<tr>
 			<th>재고 일괄등록</th>
 			<td>
 				
-				<? if( $_json_oo_stock['state'] == "in" ){ ?>
-					<span style="">재고일괄등록 완료 ( <?=date ("y.m.d <b>H:i</b>", strtotime($_json_oo_stock['reg']['date']))?> ) | <?=$_json_oo_stock['reg']['name']?></span>
+				<? if( ($_json_oo_stock['state'] ?? '') == "in" ){ ?>
+					<span style="">재고일괄등록 완료 ( <?=!empty($_json_oo_stock['reg']['date']) ? date ("y.m.d <b>H:i</b>", strtotime($_json_oo_stock['reg']['date'])) : ''?> ) | <?=$_json_oo_stock['reg']['name'] ?? ''?></span>
 				<? }else{ ?>
-					<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheet.osStock('<?=$_idx?>');">재고 일괄등록</button>
+					<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheet.osStock('<?=$_idx ?? ''?>');">재고 일괄등록</button>
 				<? } ?>
 			</td>
 		</tr>
@@ -259,10 +328,11 @@ if( $_idx ){
 			<th>주문정보</th>
 			<td>
 				<table class="table-style width-full">
+					
 					<tr>
 						<td style="width:120px;">상품 주문가격</td>
 						<td>
-							<input type='text' name='oo_sum_price' class="price" value="<?=number_format($data['oo_sum_price'])?>" >
+							<input type='text' name='oo_sum_price' class="price" value="<?=number_format($data['oo_sum_price'] ?? 0)?>" >
 							<select name="currency">
 								<option value="엔" <? if( $_oo_price_data_currency == "엔" ) echo "selected"; ?>>엔</option>
 								<option value="원" <? if( $_oo_price_data_currency == "원" ) echo "selected"; ?>>원</option>
@@ -271,11 +341,12 @@ if( $_idx ){
 							</select>
 						</td>
 					</tr>
+
 					<!-- 확정 주문 금액 -->
 					<tr>
 						<td>주문서 발송일</td>
 						<td>
-							<div class="calendar-input" style="display:inline-block;"><input type='text' name='order_send_date'  value="<?=$_oo_date_data['order_send_date']?>" ></div>
+							<div class="calendar-input" style="display:inline-block;"><input type='text' name='order_send_date'  value="<?=$_oo_date_data['order_send_date'] ?? ''?>" ></div>
 						</td>
 					</tr>
 
@@ -285,10 +356,21 @@ if( $_idx ){
 						<td>
 							<div id="change_price" class="change-price">
 								<?
-								for ( $i=0; $i<count($_oo_price_data_change_price ); $i++){
-									$_change_price_mode = $_oo_price_data_change_price[$i]['mode'];
-									$_change_price_body = $_oo_price_data_change_price[$i]['body'];
-									$_change_price_price = $_oo_price_data_change_price[$i]['price'];
+								// 배열 검증
+								if (!is_array($_oo_price_data_change_price)) {
+									$_oo_price_data_change_price = [];
+								}
+								$_oo_price_data_change_price_count = count($_oo_price_data_change_price);
+								
+								for ( $i=0; $i<$_oo_price_data_change_price_count; $i++){
+									// 배열 요소 검증
+									if (!isset($_oo_price_data_change_price[$i]) || !is_array($_oo_price_data_change_price[$i])) {
+										continue;
+									}
+									
+									$_change_price_mode = $_oo_price_data_change_price[$i]['mode'] ?? '';
+									$_change_price_body = $_oo_price_data_change_price[$i]['body'] ?? '';
+									$_change_price_price = $_oo_price_data_change_price[$i]['price'] ?? 0;
 								?>
 								<ul>
 									<li>
@@ -311,7 +393,7 @@ if( $_idx ){
 					<tr>
 						<td>확정 주문 금액</td>
 						<td><? /* onkeyUP="GC.commaInput( this.value, this );" */ ?>
-							<input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point" value="<?=number_format($data['oo_fn_price'],2)?>"  >
+							<input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point" value="<?=number_format($data['oo_fn_price'] ?? 0,2)?>"  >
 						</td>
 					</tr>
 
@@ -322,22 +404,30 @@ if( $_idx ){
 							
 							<div id="file_line_wrap_invoice">
 								<? 
-								foreach ( $_oo_upload_file['invoice'] as $key => $val ){
-									if( $val['view_name'] ){
-										$_this_filename = $val['view_name']." ( ".$val['name']." )";
-									}else{
-										$_this_filename = $val['name'];
-									}
+								// 배열 검증
+								$_invoice_files = $_oo_upload_file['invoice'] ?? [];
+								if (is_array($_invoice_files)) {
+									foreach ( $_invoice_files as $key => $val ){
+										if (!is_array($val)) continue;
+										
+										if( !empty($val['view_name']) ){
+											$_this_filename = $val['view_name']." ( ".($val['name'] ?? '')." )";
+										}else{
+											$_this_filename = $val['name'] ?? '';
+										}
 								?>
 								<div class="file-line m-t-5">
 									<i class="far fa-save fa-flip-horizontal"></i> 
-									<a href="/data/uploads/<?=$val['name']?>" target="_blank"><?=$_this_filename?></a>
-									:: <?=$val['id']?> ( <?=$val['date']?> )
-									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'invoice', '<?=$_idx?>' ,'<?=$val['name']?>')" >
+									<a href="/data/uploads/<?=$val['name'] ?? ''?>" target="_blank"><?=$_this_filename?></a>
+									:: <?=$val['id'] ?? ''?> ( <?=$val['date'] ?? ''?> )
+									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'invoice', '<?=$_idx ?? ''?>' ,'<?=$val['name'] ?? ''?>')" >
 										<i class="fas fa-trash-alt"></i>
 									</button>
 								</div>
-								<? } ?>
+								<? 
+									}
+								}
+								?>
 							</div>
 
 							<div class="m-t-5">
@@ -367,23 +457,37 @@ if( $_idx ){
 						<td style="width:120px;">결제처리</td>
 						<td>
 							<?
-								$_pay_list = $_oo_price_data['pay_list'];
+								$_pay_list = $_oo_price_data['pay_list'] ?? [];
+								if (!is_array($_pay_list)) {
+									$_pay_list = [];
+								}
 							?>
 							<div id="add_pay_list" class="m-t-5">
 								<? 
-								for ($i=0; $i<count($_pay_list); $i++){ 
+								$_pay_list_count = count($_pay_list);
+								
+								for ($i=0; $i<$_pay_list_count; $i++){ 
 
-									$_this_pay_mode = $_pay_list[$i]['pay_mode'];
-									$_this_pay_price = $_pay_list[$i]['pay_price'];
-									$_this_pay_date = $_pay_list[$i]['pay_date'];
-									$_this_pay_memo = $_pay_list[$i]['pay_memo'];
+									// 배열 요소 검증
+									if (!isset($_pay_list[$i]) || !is_array($_pay_list[$i])) {
+										continue;
+									}
+
+									$_this_pay_mode = $_pay_list[$i]['pay_mode'] ?? '';
+									$_this_pay_price = $_pay_list[$i]['pay_price'] ?? 0;
+									$_this_pay_date = $_pay_list[$i]['pay_date'] ?? '';
+									$_this_pay_memo = $_pay_list[$i]['pay_memo'] ?? '';
 
 								?>
 								<ul class="m-t-5">
 									<span class="display-inline-block">
 										<select name="pay_mode[]">
-											<? for ( $z=0; $z<count($_os_pay_mode_list); $z++ ){ ?>
-											<option value="<?=$_os_pay_mode_list[$z]?>" <? if( $_this_pay_mode == $_os_pay_mode_list[$z] ) echo "selected"; ?>><?=$_os_pay_mode_list[$z]?></option>
+											<? 
+											$_os_pay_mode_list_count = is_array($_os_pay_mode_list) ? count($_os_pay_mode_list) : 0;
+											for ( $z=0; $z<$_os_pay_mode_list_count; $z++ ){ 
+												if (!isset($_os_pay_mode_list[$z])) continue;
+											?>
+											<option value="<?=$_os_pay_mode_list[$z] ?? ''?>" <? if( $_this_pay_mode == ($_os_pay_mode_list[$z] ?? '') ) echo "selected"; ?>><?=$_os_pay_mode_list[$z] ?? ''?></option>
 											<? } ?>
 										</select>
 									</span>
@@ -414,7 +518,7 @@ if( $_idx ){
 					<tr>
 						<td>최종 합계 결제액</td>
 						<td>
-							<input type='text' name='oo_price_kr' id='oo_price_kr' class="price price_point" value="<?=number_format($data['oo_price_kr'])?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;' > 원
+							<input type='text' name='oo_price_kr' id='oo_price_kr' class="price price_point" value="<?=number_format($data['oo_price_kr'] ?? 0)?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;' > 원
 							( ※ 예치금 결제도 결제액으로 포함 )
 						</td>
 					</tr>
@@ -426,26 +530,30 @@ if( $_idx ){
 
 							<div id="file_line_wrap_pay">
 								<? 
-/*
-								for ( $i=0; $i<count($_oo_upload_file['pay_file']); $i++ ){ 
-									$_this_filename = $_oo_upload_file['pay_file'][$i]['name'];
-*/
-								foreach ( $_oo_upload_file['pay_file'] as $key => $val ){
-									if( $val['view_name'] ){
-										$_this_filename = $val['view_name']." ( ".$val['name']." )";
-									}else{
-										$_this_filename = $val['name'];
-									}
+								// 배열 검증
+								$_pay_files = $_oo_upload_file['pay_file'] ?? [];
+								if (is_array($_pay_files)) {
+									foreach ( $_pay_files as $key => $val ){
+										if (!is_array($val)) continue;
+										
+										if( !empty($val['view_name']) ){
+											$_this_filename = $val['view_name']." ( ".($val['name'] ?? '')." )";
+										}else{
+											$_this_filename = $val['name'] ?? '';
+										}
 								?>
 								<div class="file-line m-t-5">
 									<i class="far fa-save fa-flip-horizontal"></i> 
-									<a href="/data/uploads/<?=$val['name']?>" target="_blank"><?=$_this_filename?></a>
-									:: <?=$val['id']?> ( <?=$val['date']?> )
-									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'pay', '<?=$_idx?>' ,'<?=$val['name']?>')" >
+									<a href="/data/uploads/<?=$val['name'] ?? ''?>" target="_blank"><?=$_this_filename?></a>
+									:: <?=$val['id'] ?? ''?> ( <?=$val['date'] ?? ''?> )
+									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'pay', '<?=$_idx ?? ''?>' ,'<?=$val['name'] ?? ''?>')" >
 										<i class="fas fa-trash-alt"></i>
 									</button>
 								</div>
-								<? } ?>
+								<? 
+									}
+								}
+								?>
 							</div>
 
 							<div class="m-t-5">
@@ -516,30 +624,30 @@ if( $_idx ){
 					<tr>
 						<td>배송비 결제기한</td>
 						<td>
-							<div class="calendar-input" style="display:inline-block;"><input type="text" name="expressApprovalPayment_date"  id="expressApprovalPayment_date" value="<?=$_oo_approval_date['express']['approval']['date']?>" ></div>
+							<div class="calendar-input" style="display:inline-block;"><input type="text" name="expressApprovalPayment_date"  id="expressApprovalPayment_date" value="<?=$_oo_approval_date['express']['approval']['date'] ?? ''?>" ></div>
 							
 							<? 
-							if( $_oo_approval_date['express']['approval']['date'] ){
-								$_this_calendar_idx = $_oo_approval_date['express']['approval']['calendar_idx'];
+							if( !empty($_oo_approval_date['express']['approval']['date']) ){
+								$_this_calendar_idx = $_oo_approval_date['express']['approval']['calendar_idx'] ?? '';
 							?>
-								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx?>', 'express', 'modify', '<?=$_this_calendar_idx?>');" >배송비 결제기한 수정</button>
+								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx ?? ''?>', 'express', 'modify', '<?=$_this_calendar_idx?>');" >배송비 결제기한 수정</button>
 								
-								<? if( $_oo_approval_date['express']['approval']['calendar_idx'] ){ ?>
+								<? if( !empty($_oo_approval_date['express']['approval']['calendar_idx']) ){ ?>
 								<div class="m-t-10">
 									캘린더 노출중 ( <?=$_this_calendar_idx?> )
 									
-									<? if( $_oo_approval_date['express']['approval']['calendar_state'] == "E" ){ ?>
-										처리완료 ( <?=date ("y.m.d <b>H:i</b>", strtotime($_oo_approval_date['express']['approval']['calendar_reg']['date']))?> :: <?=$_oo_approval_date['express']['approval']['calendar_reg']['id']?>)
+									<? if( ($_oo_approval_date['express']['approval']['calendar_state'] ?? '') == "E" ){ ?>
+										처리완료 ( <?=!empty($_oo_approval_date['express']['approval']['calendar_reg']['date']) ? date ("y.m.d <b>H:i</b>", strtotime($_oo_approval_date['express']['approval']['calendar_reg']['date'])) : ''?> :: <?=$_oo_approval_date['express']['approval']['calendar_reg']['id'] ?? ''?>)
 									<? }else{ ?>
-									<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs" onclick="orderSheetReg.calendarOk('<?=$_idx?>', 'express', '<?=$_this_calendar_idx?>')" >완료처리</button>
+									<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs" onclick="orderSheetReg.calendarOk('<?=$_idx ?? ''?>', 'express', '<?=$_this_calendar_idx?>')" >완료처리</button>
 									<? } ?>
 
-									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.calendarDel('<?=$_idx?>', 'express', '<?=$_this_calendar_idx?>')" ><i class="fas fa-trash-alt"></i> 캘린더 삭제</button>
+									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.calendarDel('<?=$_idx ?? ''?>', 'express', '<?=$_this_calendar_idx?>')" ><i class="fas fa-trash-alt"></i> 캘린더 삭제</button>
 								</div>
 								<? } ?>
 
 							<? }else{ ?>
-								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx?>', 'express', 'new');" >배송비 결제기한 등록</button>
+								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx ?? ''?>', 'express', 'new');" >배송비 결제기한 등록</button>
 							<? } ?>
 
 						</td>
@@ -587,30 +695,30 @@ if( $_idx ){
 					<tr>
 						<td>관/부가세 결제기한</td>
 						<td>
-							<div class="calendar-input" style="display:inline-block;"><input type="text" name="texApprovalPayment_date"  id="texApprovalPayment_date" value="<?=$_oo_approval_date['tax']['approval']['date']?>" ></div>
+							<div class="calendar-input" style="display:inline-block;"><input type="text" name="texApprovalPayment_date"  id="texApprovalPayment_date" value="<?=$_oo_approval_date['tax']['approval']['date'] ?? ''?>" ></div>
 							
 							<? 
-							if( $_oo_approval_date['tax']['approval']['date'] ){
-								$_this_calendar_idx = $_oo_approval_date['tax']['approval']['calendar_idx'];
+							if( !empty($_oo_approval_date['tax']['approval']['date']) ){
+								$_this_calendar_idx = $_oo_approval_date['tax']['approval']['calendar_idx'] ?? '';
 							?>
-								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx?>', 'tax', 'modify', '<?=$_this_calendar_idx?>');" >관/부가세 결제기한 수정</button>
+								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx ?? ''?>', 'tax', 'modify', '<?=$_this_calendar_idx?>');" >관/부가세 결제기한 수정</button>
 
-								<? if( $_oo_approval_date['tax']['approval']['calendar_idx'] ){ ?>
+								<? if( !empty($_oo_approval_date['tax']['approval']['calendar_idx']) ){ ?>
 								<div class="m-t-10">
 									캘린더 노출중 ( <?=$_this_calendar_idx?> )
 
-									<? if( $_oo_approval_date['tax']['approval']['calendar_state'] == "E" ){ ?>
-										처리완료 ( <?=date ("y.m.d <b>H:i</b>", strtotime($_oo_approval_date['tax']['approval']['calendar_reg']['date']))?> :: <?=$_oo_approval_date['tax']['approval']['calendar_reg']['id']?>)
+									<? if( ($_oo_approval_date['tax']['approval']['calendar_state'] ?? '') == "E" ){ ?>
+										처리완료 ( <?=!empty($_oo_approval_date['tax']['approval']['calendar_reg']['date']) ? date ("y.m.d <b>H:i</b>", strtotime($_oo_approval_date['tax']['approval']['calendar_reg']['date'])) : ''?> :: <?=$_oo_approval_date['tax']['approval']['calendar_reg']['id'] ?? ''?>)
 									<? }else{ ?>
-									<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs" onclick="orderSheetReg.calendarOk('<?=$_idx?>', 'tax', '<?=$_this_calendar_idx?>')" >완료처리</button>
+									<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs" onclick="orderSheetReg.calendarOk('<?=$_idx ?? ''?>', 'tax', '<?=$_this_calendar_idx?>')" >완료처리</button>
 									<? } ?>
 
-									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.calendarDel('<?=$_idx?>', 'tax', '<?=$_this_calendar_idx?>')" ><i class="fas fa-trash-alt"></i> 캘린더에서 삭제</button>
+									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.calendarDel('<?=$_idx ?? ''?>', 'tax', '<?=$_this_calendar_idx?>')" ><i class="fas fa-trash-alt"></i> 캘린더에서 삭제</button>
 								
 								</div>
 								<? } ?>
 							<? }else{ ?>
-								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx?>', 'tax', 'new');" >관/부가세 결제기한 등록</button>
+								<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.approvalPayment('<?=$_idx ?? ''?>', 'tax', 'new');" >관/부가세 결제기한 등록</button>
 							<? } ?>
 
 						</td>
@@ -630,26 +738,30 @@ if( $_idx ){
 							
 							<div id="file_line_wrap_import_declaration">
 								<? 
-/*
-								for ( $i=0; $i<count($_oo_upload_file['import_declaration']); $i++ ){ 
-									$_this_filename = $_oo_upload_file['import_declaration'][$i]['name'];
-*/
-								foreach ( $_oo_upload_file['import_declaration'] as $key => $val ){
-									if( $val['view_name'] ){
-										$_this_filename = $val['view_name']." ( ".$val['name']." )";
-									}else{
-										$_this_filename = $val['name'];
-									}
+								// 배열 검증
+								$_import_declaration_files = $_oo_upload_file['import_declaration'] ?? [];
+								if (is_array($_import_declaration_files)) {
+									foreach ( $_import_declaration_files as $key => $val ){
+										if (!is_array($val)) continue;
+										
+										if( !empty($val['view_name']) ){
+											$_this_filename = $val['view_name']." ( ".($val['name'] ?? '')." )";
+										}else{
+											$_this_filename = $val['name'] ?? '';
+										}
 								?>
 								<div class="file-line m-t-5">
 									<i class="far fa-save fa-flip-horizontal"></i> 
-									<a href="/data/uploads/<?=$val['name']?>" target="_blank"><?=$_this_filename?></a>
-									:: <?=$val['id']?> ( <?=$val['date']?> )
-									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'import_declaration', '<?=$_idx?>' ,'<?=$val['name']?>')" >
+									<a href="/data/uploads/<?=$val['name'] ?? ''?>" target="_blank"><?=$_this_filename?></a>
+									:: <?=$val['id'] ?? ''?> ( <?=$val['date'] ?? ''?> )
+									<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.fileDel(this, 'import_declaration', '<?=$_idx ?? ''?>' ,'<?=$val['name'] ?? ''?>')" >
 										<i class="fas fa-trash-alt"></i>
 									</button>
 								</div>
-								<? } ?>
+								<? 
+									}
+								}
+								?>
 							</div>
 
 							<div class="m-t-5">
@@ -678,9 +790,21 @@ if( $_idx ){
 			<th>Log</th>
 			<td>
 				<div>
-					<ul>등록 : <?=$_oo_reg_data['reg']['date']?> ( <?=$_oo_reg_data['reg']['id']?> )</ul>
-					<? for ($i=0; $i<count($_oo_reg_data['mod']); $i++){ ?>
-					<ul>수정 : <?=$_oo_reg_data['mod'][$i]['date']?> ( <?=$_oo_reg_data['mod'][$i]['id']?> )</ul>
+					<ul>등록 : <?=$_oo_reg_data['reg']['date'] ?? ''?> ( <?=$_oo_reg_data['reg']['id'] ?? ''?> )</ul>
+					<? 
+					$_oo_reg_data_mod = $_oo_reg_data['mod'] ?? [];
+					if (!is_array($_oo_reg_data_mod)) {
+						$_oo_reg_data_mod = [];
+					}
+					$_oo_reg_data_mod_count = count($_oo_reg_data_mod);
+					
+					for ($i=0; $i<$_oo_reg_data_mod_count; $i++){ 
+						// 배열 요소 검증
+						if (!isset($_oo_reg_data_mod[$i]) || !is_array($_oo_reg_data_mod[$i])) {
+							continue;
+						}
+					?>
+					<ul>수정 : <?=$_oo_reg_data_mod[$i]['date'] ?? ''?> ( <?=$_oo_reg_data_mod[$i]['id'] ?? ''?> )</ul>
 					<? } ?>
 				</div>
 			</td>
@@ -703,22 +827,22 @@ if( $_idx ){
 		<input type="hidden" name="a_mode" value="orderSheetFile">
 		<input type="hidden" name="smode" id="file_upload_mode" >
 		<input type="hidden" name="sname" id="file_upload_name" >
-		<input type="hidden" name="idx" value="<?=$_idx?>">
+		<input type="hidden" name="idx" value="<?=$_idx ?? ''?>">
 	</form>
 
 <script type="text/javascript"> 
 <!-- 
 var orderSheetReg = function() {
 
-	var thisOsState = "<?=$data['oo_state']?>";
-	var osPayModeList = <?=json_encode($_os_pay_mode_list, JSON_UNESCAPED_UNICODE);?>;
+	var thisOsState = "<?=$data['oo_state'] ?? ''?>";
+	var osPayModeList = <?=json_encode($_os_pay_mode_list ?? [], JSON_UNESCAPED_UNICODE);?>;
 
 <? if( $_idx ){ ?>
-	var _oo_fn_price = "<?=$data['oo_fn_price']?>";
-	var _oo_price_kr = "<?=$data['oo_price_kr']?>";
-	var _tex_duty_price = "<?=$_oo_tex_data_duty_price?>";
-	var _tex_vat_price = "<?=$_oo_tex_data_vat_price?>";
-	var _in_date = "<?=$_oo_date_data_in_date?>";
+	var _oo_fn_price = "<?=$data['oo_fn_price'] ?? 0?>";
+	var _oo_price_kr = "<?=$data['oo_price_kr'] ?? 0?>";
+	var _tex_duty_price = "<?=$_oo_tex_data_duty_price ?? 0?>";
+	var _tex_vat_price = "<?=$_oo_tex_data_vat_price ?? 0?>";
+	var _in_date = "<?=$_oo_date_data_in_date ?? ''?>";
 <? } ?>
 
 	var C = function() {

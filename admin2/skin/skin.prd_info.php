@@ -1,7 +1,10 @@
 <?
+// 변수 초기화
+$_prd_idx = $_get1 ?? "";
+$prd_data = [];
+$img_path = "";
 
-	$_prd_idx = $_get1;
-	
+if( $_prd_idx ){
 	$_colum = "A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count";
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code";
 	$_colum .= ", C.BD_NAME";
@@ -12,10 +15,16 @@
 		where CD_IDX = '".$_prd_idx."' ";
 
 	$prd_data = sql_fetch_array(sql_query_error($_query));
+	
+	// 배열 검증
+	if (!is_array($prd_data)) {
+		$prd_data = [];
+	}
 
-	if( $prd_data['CD_IMG'] ){
+	if( $prd_data['CD_IMG'] ?? '' ){
 		$img_path = '/data/comparion/'.$prd_data['CD_IMG'];
 	}
+}
 
 include ($docRoot."/admin2/layout/header_popup.php");
 ?>
@@ -26,14 +35,14 @@ include ($docRoot."/admin2/layout/header_popup.php");
 	</div>
 
 	<div class="prd-quick-info">
-		<ul class="prd-brand-name"><?=$prd_data['BD_NAME']?></ul>
-		<ul class="prd-name"><b><?=$prd_data['CD_NAME']?></b></ul>
-		<!-- <ul class="prd-name-en"><?=prd_data['CD_NAME_OG']?></ul> -->
+		<ul class="prd-brand-name"><?=$prd_data['BD_NAME'] ?? ''?></ul>
+		<ul class="prd-name"><b><?=$prd_data['CD_NAME'] ?? ''?></b></ul>
+		<!-- <ul class="prd-name-en"><?=$prd_data['CD_NAME_OG'] ?? ''?></ul> -->
 
-		<? if( $prd_data['ps_idx'] ){ ?>
+		<? if( $prd_data['ps_idx'] ?? '' ){ ?>
 			<ul class="prd-stock-code">
 				<b><?=$prd_data['ps_idx']?></b>
-				<? if( $prd_data['ps_rack_code'] ){ ?> ( <b><?=$prd_data['ps_rack_code']?></b> )<? } ?>
+				<? if( $prd_data['ps_rack_code'] ?? '' ){ ?> ( <b><?=$prd_data['ps_rack_code']?></b> )<? } ?>
 			</ul>
 		<? }else{ ?>
 			<ul class="prd-stock-code-make"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.makePsIdx()"> <i class="fas fa-plus-circle"></i> 재고 코드 생성</button></ul>
@@ -42,7 +51,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<ul>
 			<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('prd','<?=$_prd_idx?>')" >
 				댓글
-				<? if( $prd_data['comment_count'] > 0 ) { ?> : <b><?=$prd_data['comment_count']?></b><? } ?>
+				<? if( ($prd_data['comment_count'] ?? 0) > 0 ) { ?> : <b><?=$prd_data['comment_count']?></b><? } ?>
 			</button>
 		</ul>
 	</div>
@@ -57,11 +66,11 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 	</div>
 
-	<? if( $prd_data['ps_idx'] ){ ?>
+	<? if( $prd_data['ps_idx'] ?? '' ){ ?>
 	<div class="stock-write-box">
-		<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock']?></b></ul>
+		<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
 
-		<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold']?></b></ul>
+		<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold'] ?? 0?></b></ul>
 
 		<ul class="m-t-7"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.stockModify()" >재고 변경등록</button></ul>
 	</div>
@@ -84,7 +93,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 var prdInfo = function() {
 
 	var prd_idx = "<?=$_prd_idx?>";
-	var ps_idx = "<?=$prd_data['ps_idx']?>";
+	var ps_idx = "<?=$prd_data['ps_idx'] ?? ''?>";
 	var stockModifyWindow;
 
 	var C = function() {

@@ -3,7 +3,15 @@ include "../lib/inc_common.php";
 $pageGroup = "product2";
 $pageName = "order_sheet_print_popup";
 
-require_once("../../class/phpexcel/PHPExcel.php");
+// PHPExcel 사용 안함 - 주석처리
+// require_once("../../class/phpexcel/PHPExcel.php");
+
+// 변수 초기화
+$idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+$code = $_GET['code'] ?? $_POST['code'] ?? "";
+$excel = $_GET['excel'] ?? $_POST['excel'] ?? "";
+$excel_mode = $_GET['excel_mode'] ?? $_POST['excel_mode'] ?? "";
+$mode = $_GET['mode'] ?? $_POST['mode'] ?? "";
 
 $_oo_idx = securityVal($idx);
 $_code = securityVal($code);
@@ -11,6 +19,13 @@ $_excel = securityVal($excel);
 $_excel_mode = securityVal($excel_mode);
 $_mode = securityVal($mode);
 
+// 엑셀 다운로드 요청 시 메시지 출력
+if( $_excel == "ok" ){
+	echo "<script>alert('PHPExcel 기능이 비활성화되었습니다.'); history.back();</script>";
+	exit;
+}
+
+/* PHPExcel 사용 안함 - 주석처리 시작
 $objPHPExcel = new PHPExcel();
 
 if( $_excel == "ok" ){

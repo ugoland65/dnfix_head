@@ -1,4 +1,9 @@
 <?
+	// 변수 초기화
+	$search_kind = $_GET['search_kind'] ?? $_POST['search_kind'] ?? "";
+	$search_text = $_GET['search_text'] ?? $_POST['search_text'] ?? "";
+	$_pn = $_GET['pn'] ?? $_POST['pn'] ?? $_pn ?? 1;
+	
 	$user_where = "";
 
     if( $search_kind && $search_kind !='') { 

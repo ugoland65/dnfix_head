@@ -2,7 +2,7 @@
 include "../lib/inc_common.php";
 
 	//넘어온 변수 전체 검열
-	while(list($key,$val)= each($_POST)){
+	foreach($_POST as $key => $val){
 		${"_".$key} = securityVal($val);
 	}
 

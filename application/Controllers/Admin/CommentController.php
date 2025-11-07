@@ -381,8 +381,8 @@ $params = [
 					}
 				}
 			}
-			$comment['reply_data'] = json_decode($comment['reply_data'], true);
-			$comment['reaction'] = json_decode($comment['reaction'], true);
+			$comment['reply_data'] = json_decode($comment['reply_data'] ?? '[]', true);
+			$comment['reaction'] = json_decode($comment['reaction'] ?? '[]', true);
 		}
 
 		return [
@@ -632,12 +632,12 @@ $params = [
 			$_title_mode = $TitleInfo['title_mode'];
 			$_title_name = $TitleInfo['title_name'];
 
-			// 기존 반응 데이터 디코딩
-			$_old_reaction = json_decode($Comment['reaction'], true);
+		// 기존 반응 데이터 디코딩
+		$_old_reaction = json_decode($Comment['reaction'] ?? '[]', true);
 
-			if (!is_array($_old_reaction)) {
-				$_old_reaction = [];
-			}
+		if (!is_array($_old_reaction)) {
+			$_old_reaction = [];
+		}
 
 			// 새로운 반응 데이터
 			$_new_reaction = [

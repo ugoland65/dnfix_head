@@ -1,4 +1,9 @@
 <?
+	// 변수 초기화
+	$_ps_idx = $_ps_idx ?? "";
+	$_sdate = $_sdate ?? "";
+	$_edate = $_edate ?? "";
+	$_pn = $_pn ?? 1;
 
 	$_where = " WHERE psu_stock_idx = '".$_ps_idx."' ";
 
@@ -34,11 +39,11 @@ table.table-list tbody tr td { background-color:#fff; }
 
 <div class="list-search-date-box">
 	<div class="calendar-input">
-		<input type='text' name='search_date_s' id='search_date_s' value="<?=$_sdate?>" placeholder="시작일" autocomplete="off">
+		<input type='text' name='search_date_s' id='search_date_s' value="<?=$_sdate ?? ''?>" placeholder="시작일" autocomplete="off">
 	</div>
 	~
 	<div class="calendar-input">
-		<input type='text' name='search_date_e' id='search_date_e'  value="<?=$_edate?>" placeholder="끝일" autocomplete="off">
+		<input type='text' name='search_date_e' id='search_date_e'  value="<?=$_edate ?? ''?>" placeholder="끝일" autocomplete="off">
 	</div>
 	<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.mode('1', 'stock')" >기간검색</button>
 	<? if( $_sdate && $_edate ){ ?>
@@ -46,7 +51,7 @@ table.table-list tbody tr td { background-color:#fff; }
 	<? } ?>
 </div>
 
-<div class="total">Total : <span><b><?=$total_count?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn?></b></span> / <?=$total_page?> page</div>
+<div class="total">Total : <span><b><?=$total_count ?? 0?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn ?? 1?></b></span> / <?=$total_page ?? 1?> page</div>
 
 <table class="table-list">
 	<thead>
@@ -67,33 +72,45 @@ table.table-list tbody tr td { background-color:#fff; }
 <?
 while($list = sql_fetch_array($result)){
 	
-	if( $list['psu_mode']=="plus" || $list['psu_mode']=="to_hold" || $list['psu_mode']=="plus_to_stock" || $list['psu_mode']=="plus_hold" ){
+	// 배열 검증
+	if (!is_array($list)) {
+		continue;
+	}
+	
+	// 변수 초기화
+	$_mode_icon = "";
+	$_mode_color = "";
+	$_event_name = "";
+	
+	$psu_mode = $list['psu_mode'] ?? '';
+	
+	if( $psu_mode=="plus" || $psu_mode=="to_hold" || $psu_mode=="plus_to_stock" || $psu_mode=="plus_hold" ){
 		$_mode_icon = "▲";
 		$_mode_color = "#1a02ff";
-	}elseif( $list['psu_mode']=="minus" || $list['psu_mode']=="minus_to_hold" || $list['psu_mode']=="to_stock" || $list['psu_mode']=="minus_hold" ){
+	}elseif( $psu_mode=="minus" || $psu_mode=="minus_to_hold" || $psu_mode=="to_stock" || $psu_mode=="minus_hold" ){
 		$_mode_icon = "▼";
 		$_mode_color = "#ff0202";
 	}
 
-	if( $list['psu_mode']=="plus" || $list['psu_mode']=="minus" || $list['psu_mode']=="minus_to_hold" || $list['psu_mode']=="plus_to_stock" ){
+	if( $psu_mode=="plus" || $psu_mode=="minus" || $psu_mode=="minus_to_hold" || $psu_mode=="plus_to_stock" ){
 		$_event_name = "일반재고";
-	}elseif( $list['psu_mode']=="to_hold" || $list['psu_mode']=="to_stock"  || $list['psu_mode']=="plus_hold" || $list['psu_mode']=="minus_hold" ){
+	}elseif( $psu_mode=="to_hold" || $psu_mode=="to_stock"  || $psu_mode=="plus_hold" || $psu_mode=="minus_hold" ){
 		$_event_name = "<b style='color:#cd46dd;'>보류재고</b>";
 	}
 
 
 ?>
-	<tr <?=$_tr_color?>>
-		<td><?=$list['psu_idx']?></td>
-		<td><?=$list['psu_day']?></td>
-		<td><?=$_event_name?></td>
-		<td style="color:<?=$_mode_color?>;"><?=$_mode_icon?> <b><?=$list['psu_qry']?></b></td>
-		<td style="color:<?=$_mode_color?>;"><b><?=$list['psu_stock']?></b></td>
-		<td><?=$list['psu_kind']?></td>
-		<td><?=$list['psu_memo']?></td>
-		<td><?=$list['psu_id']?></td>
-		<td><?=date("Y-m-d H:i:s", $list['psu_date'])?></td>
-		<td><button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="prdInfo.stockUnitModify('<?=$list['psu_idx']?>', '<?=$_pn?>')" >수정</button></td>
+	<tr>
+		<td><?=$list['psu_idx'] ?? ''?></td>
+		<td><?=$list['psu_day'] ?? ''?></td>
+		<td><?=$_event_name ?? ''?></td>
+		<td style="color:<?=$_mode_color ?? ''?>;"><?=$_mode_icon ?? ''?> <b><?=$list['psu_qry'] ?? 0?></b></td>
+		<td style="color:<?=$_mode_color ?? ''?>;"><b><?=$list['psu_stock'] ?? 0?></b></td>
+		<td><?=$list['psu_kind'] ?? ''?></td>
+		<td><?=$list['psu_memo'] ?? ''?></td>
+		<td><?=$list['psu_id'] ?? ''?></td>
+		<td><?=!empty($list['psu_date']) ? date("Y-m-d H:i:s", $list['psu_date']) : ''?></td>
+		<td><button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="prdInfo.stockUnitModify('<?=$list['psu_idx'] ?? ''?>', '<?=$_pn ?? 1?>')" >수정</button></td>
 	</tr>
 
 <? 

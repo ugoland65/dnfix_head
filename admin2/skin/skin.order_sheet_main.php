@@ -15,7 +15,10 @@ $result = $orderSheet->orderSheetMainIndex();
 	echo "</pre>";
 */
 
-if( !empty($_oo_import) ) $_oo_import = "all";
+// 변수 초기화
+$_oo_import = $_GET['oo_import'] ?? $_POST['oo_import'] ?? "all";
+$_form_idx = $_GET['form_idx'] ?? $_POST['form_idx'] ?? "";
+$_order_sheet_form = [];
 
 	//주문서 폼
 	$_where = "";
@@ -23,9 +26,14 @@ if( !empty($_oo_import) ) $_oo_import = "all";
 	$_result = sql_query_error($_query);
 	while($_list = wepix_fetch_array($_result)){
 		
+		// 배열 검증
+		if (!is_array($_list)) {
+			continue;
+		}
+		
 		$_order_sheet_form[] = array(
-			"idx" => $_list['oog_idx'],
-			"name" => $_list['oog_name']
+			"idx" => $_list['oog_idx'] ?? '',
+			"name" => $_list['oog_name'] ?? ''
 		);
 
 	}
@@ -57,8 +65,17 @@ if( !empty($_oo_import) ) $_oo_import = "all";
 			<li>
 				<select name="oo_form_idx" id="oo_form_idx">
 					<option value="">==  주문서 폼 선택 ==</option>
-					<? for ($i=0; $i<count($_order_sheet_form); $i++){ ?>
-					<option value="<?=$_order_sheet_form[$i]["idx"]?>" <? if( $_form_idx == $_order_sheet_form[$i]["idx"] ) echo "selected"; ?>><?=$_order_sheet_form[$i]["name"]?></option>
+					<? 
+					// 배열 검증 후 count
+					$_order_sheet_form_count = is_array($_order_sheet_form) ? count($_order_sheet_form) : 0;
+					
+					for ($i=0; $i<$_order_sheet_form_count; $i++){ 
+						// 배열 요소 검증
+						if (!isset($_order_sheet_form[$i]) || !is_array($_order_sheet_form[$i])) {
+							continue;
+						}
+					?>
+					<option value="<?=$_order_sheet_form[$i]["idx"] ?? ''?>" <? if( $_form_idx == ($_order_sheet_form[$i]["idx"] ?? '') ) echo "selected"; ?>><?=$_order_sheet_form[$i]["name"] ?? ''?></option>
 					<? } ?>
 				</select>
 			</li>

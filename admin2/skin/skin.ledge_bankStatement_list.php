@@ -1,4 +1,13 @@
 <?
+	// 변수 초기화
+	$_s_text = $_GET['s_text'] ?? $_POST['s_text'] ?? "";
+	$_s_kind = $_GET['s_kind'] ?? $_POST['s_kind'] ?? "";
+	$_s_bank = $_GET['s_bank'] ?? $_POST['s_bank'] ?? "";
+	$_s_s_date = $_GET['s_s_date'] ?? $_POST['s_s_date'] ?? "";
+	$_s_e_date = $_GET['s_e_date'] ?? $_POST['s_e_date'] ?? "";
+	$_s_state = $_GET['s_state'] ?? $_POST['s_state'] ?? "";
+	$_pn = $_GET['pn'] ?? $_POST['pn'] ?? 1;
+	$_where = "";
 
 	if( $_s_text ){
 		if( $_where ){ $_where .= "AND"; }else{ $_where .= "WHERE"; }
@@ -61,11 +70,11 @@
 
 <? if( $_s_text ){ ?>
 	<div class="search-title">	
-		검색어 ( <b style='color:red;'><?=$_s_text?></b> ) 검색결과 : <b><?=$total_count?></b>건 검색되었습니다.
+		검색어 ( <b style='color:red;'><?=$_s_text ?? ''?></b> ) 검색결과 : <b><?=$total_count ?? 0?></b>건 검색되었습니다.
 		<button type="button" class="search-reset-btn btn btnstyle1 btnstyle1-inverse btnstyle1-sm" id="search_reset">검색 초기화</button>
 	</div>
 <? }else{ ?>
-	<div class="total">Total : <span><b><?=number_format($total_count)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn?></b></span> / <?=$total_page?> page</div>
+	<div class="total">Total : <span><b><?=number_format($total_count ?? 0)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn ?? 1?></b></span> / <?=$total_page ?? 1?> page</div>
 <? } ?>
 
 <table class="table-style">	
@@ -89,32 +98,40 @@
 
 	while($list = sql_fetch_array($_result)){
 
-		if( $list['state'] == "N" ){
+		// 배열 검증
+		if (!is_array($list)) {
+			continue;
+		}
+
+		if( ($list['state'] ?? '') == "N" ){
 			$_tr_class = "tr-n";
 		}else{
 			$_tr_class = "tr-y";
 		}
 
-		$_bank = json_decode($list['bank'], true);
+		$_bank = json_decode($list['bank'] ?? '{}', true);
+		if (!is_array($_bank)) {
+			$_bank = [];
+		}
 
 	?>
-	<tr align="center" id="trid_<?=$list['idx']?>" class="<?=$_tr_class?>">
-		<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['idx']?>" class="checkSelect"></td>	
-		<td class="list-idx"><?=$list['idx']?></td>
-		<td class=""><?=$_state_text[$list['state']]?></td>
-		<td class=""><?=$_bank['bank']?></td>
-		<td class=""><?=date ("Y-m-d", strtotime($list['date']))?></td>
-		<td class=""><?=$list['name']?></td>
-		<td class="text-right"><? if( $list['in_money'] > 0 ){ ?><span style="color:#167aff;"><?=number_format($list['in_money'])?></span><? } ?></td>
-		<td class="text-right"><? if( $list['out_money'] > 0 ){ ?><span style="color:#ff1212;"><?=number_format($list['out_money'])?></span><? } ?></td>
-		<td class=""><?=$list['lc_name']?></td>
-		<td class=""><?=$list['memo']?></td>
-		<td class=""><button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="ledge.bankStatementInfo('<?=$list['idx']?>');" />관리</td>
+	<tr align="center" id="trid_<?=$list['idx'] ?? ''?>" class="<?=$_tr_class ?? ''?>">
+		<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['idx'] ?? ''?>" class="checkSelect"></td>	
+		<td class="list-idx"><?=$list['idx'] ?? ''?></td>
+		<td class=""><?=$_state_text[$list['state'] ?? ''] ?? ''?></td>
+		<td class=""><?=$_bank['bank'] ?? ''?></td>
+		<td class=""><?=!empty($list['date']) ? date ("Y-m-d", strtotime($list['date'])) : ''?></td>
+		<td class=""><?=$list['name'] ?? ''?></td>
+		<td class="text-right"><? if( ($list['in_money'] ?? 0) > 0 ){ ?><span style="color:#167aff;"><?=number_format($list['in_money'] ?? 0)?></span><? } ?></td>
+		<td class="text-right"><? if( ($list['out_money'] ?? 0) > 0 ){ ?><span style="color:#ff1212;"><?=number_format($list['out_money'] ?? 0)?></span><? } ?></td>
+		<td class=""><?=$list['lc_name'] ?? ''?></td>
+		<td class=""><?=$list['memo'] ?? ''?></td>
+		<td class=""><button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="ledge.bankStatementInfo('<?=$list['idx'] ?? ''?>');" />관리</td>
 	<tr>
 	<? } ?>
 </table>
 
-<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page?></div>
+<div id="hidden_pageing_ajax_data" style="display:none;"><?=$view_page ?? ''?></div>
 <script type="text/javascript"> 
 pageingAjaxShow();
 

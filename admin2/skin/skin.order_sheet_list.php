@@ -1,4 +1,7 @@
 <?
+	// 변수 초기화
+	$pn = $_GET['pn'] ?? $_pn ?? 1;
+
 	if( $_mode == "연관" ){
 		$_where = " WHERE oo_form_idx = '".$_code."' ";
 	}elseif( $_mode == "수입" ){

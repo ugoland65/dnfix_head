@@ -1,25 +1,59 @@
 <?
+	// 변수 초기화
+	$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+	$_selpd = [];
+	
 	$oo_data = sql_fetch_array(sql_query_error("select oo_name, oo_json, oo_stock from ona_order where oo_idx = '".$_idx."' "));
 
-	$_json_oo_stock = json_decode($oo_data['oo_stock'], true);
+	// 배열 검증
+	if (!is_array($oo_data)) {
+		$oo_data = [];
+	}
 
-	$_order_sec_json2 = $oo_data['oo_json'];
+	$_json_oo_stock = json_decode($oo_data['oo_stock'] ?? '{}', true);
+	if (!is_array($_json_oo_stock)) {
+		$_json_oo_stock = [];
+	}
+
+	$_order_sec_json2 = $oo_data['oo_json'] ?? '[]';
 	$_select_order = json_decode($_order_sec_json2, true);
+	if (!is_array($_select_order)) {
+		$_select_order = [];
+	}
 
+	// 배열 검증 후 count
+	$_select_order_count = is_array($_select_order) ? count($_select_order) : 0;
 
-	for ( $z=0; $z<count($_select_order); $z++ ){
-		$_ary_selpd = $_select_order[$z]['selpd'];
-		for ($i=0; $i<count($_ary_selpd); $i++){ 
+	for ( $z=0; $z<$_select_order_count; $z++ ){
+		
+		// 배열 요소 검증
+		if (!isset($_select_order[$z]) || !is_array($_select_order[$z])) {
+			continue;
+		}
+
+		$_ary_selpd = $_select_order[$z]['selpd'] ?? [];
+		if (!is_array($_ary_selpd)) {
+			continue;
+		}
+
+		$_ary_selpd_count = count($_ary_selpd);
+		
+		for ($i=0; $i<$_ary_selpd_count; $i++){ 
 			
-			if( !$_ary_selpd[$i]['false'] ){
+			// 배열 요소 검증
+			if (!isset($_ary_selpd[$i]) || !is_array($_ary_selpd[$i])) {
+				continue;
+			}
+
+			if( empty($_ary_selpd[$i]['false']) ){
 				$_false = false;
 			}else{
 				$_false = $_ary_selpd[$i]['false'];
 			}
 
 			$_selpd[] = array(
-				"pidx" => $_ary_selpd[$i]['pidx'],
-				"qty" => $_ary_selpd[$i]['qty'],
+				"pidx" => $_ary_selpd[$i]['pidx'] ?? '',
+				"qty" => $_ary_selpd[$i]['qty'] ?? 0,
 				"false" => $_false
 			);
 
@@ -45,16 +79,16 @@
 
 <form id="form_os_stock">
 <input type="hidden" name="a_mode" value="os_allStock" >
-<input type="hidden" name="os_idx" value="<?=$_idx?>" >
+<input type="hidden" name="os_idx" value="<?=$_idx ?? ''?>" >
 
-<? if( $_json_oo_stock['state'] == "in" ){ ?>
+<? if( ($_json_oo_stock['state'] ?? '') == "in" ){ ?>
 	<div>
-		재고 일괄 등록이 완료된 상태입니다. ( <?=date ("y.m.d H:i:s", strtotime($_json_oo_stock['reg']['date']))?> | <?=$_json_oo_stock['reg']['id']?> )
+		재고 일괄 등록이 완료된 상태입니다. ( <?=!empty($_json_oo_stock['reg']['date']) ? date ("y.m.d H:i:s", strtotime($_json_oo_stock['reg']['date'])) : ''?> | <?=$_json_oo_stock['reg']['id'] ?? ''?> )
 	</div>
 <? } ?>
 	<div>
 		재고 등록일 : <div class="calendar-input" style="display:inline-block;"><input type='text' name='stock_day'  value="<?=date("Y-m-d")?>" ></div>
-		<input type='text' name='stock_all_memo' id='stock_all_memo' style="width:200px" value="<?=$oo_data['oo_name']?> 입고"  >
+		<input type='text' name='stock_all_memo' id='stock_all_memo' style="width:200px" value="<?=($oo_data['oo_name'] ?? '') . ' 입고'?>"  >
 		<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm " onclick="osStock.allStock()">재고등록</button>
 	</div>
 
@@ -71,11 +105,19 @@
 		<th>메모</th>
 	</tr>
 <?
-for ( $i=0; $i<count($_selpd); $i++ ){
+// 배열 검증 후 count
+$_selpd_count = is_array($_selpd) ? count($_selpd) : 0;
+
+for ( $i=0; $i<$_selpd_count; $i++ ){
+	
+	// 배열 요소 검증
+	if (!isset($_selpd[$i]) || !is_array($_selpd[$i])) {
+		continue;
+	}
 			
-	$_pidx = $_selpd[$i]['pidx'];
-	$_qty = $_selpd[$i]['qty'];
-	$_false = $_selpd[$i]['false'];
+	$_pidx = $_selpd[$i]['pidx'] ?? '';
+	$_qty = $_selpd[$i]['qty'] ?? 0;
+	$_false = $_selpd[$i]['false'] ?? false;
 
 	$prd_data = sql_fetch_array(sql_query_error("select 
 		A.CD_NAME, A.CD_IMG, A.CD_CODE, A.CD_CODE2, A.cd_code_fn, A.CD_INV_NAME1, A.CD_INV_NAME2, A.CD_INV_MATERIAL, A.CD_NAME_OG, A.CD_COO,
@@ -86,11 +128,17 @@ for ( $i=0; $i<count($_selpd); $i++ ){
 		left join "._DB_BRAND." C  ON (A.CD_BRAND_IDX = C.BD_IDX ) 
 		where CD_IDX = '".$_pidx."' "));
 
-	if( $prd_data['CD_IMG'] ){
+	// 배열 검증
+	if (!is_array($prd_data)) {
+		$prd_data = [];
+	}
+
+	$img_path = '';
+	if( !empty($prd_data['CD_IMG']) ){
 		$img_path = '/data/comparion/'.$prd_data['CD_IMG'];
 	}
 
-	$_pname = $prd_data['CD_NAME'];
+	$_pname = $prd_data['CD_NAME'] ?? '';
 
 	$_tr_color= "#fff";
 	if( $_false == true ){
@@ -98,17 +146,17 @@ for ( $i=0; $i<count($_selpd); $i++ ){
 	}
 ?>
 	<tr bgcolor = "<?=$_tr_color?>">
-		<td><?=$_pidx?><br><b><?=$prd_data['ps_idx']?></b></td>
+		<td><?=$_pidx ?? ''?><br><b><?=$prd_data['ps_idx'] ?? ''?></b></td>
 		<td style="width:70px;">
 			<img src="<?=$img_path?>" style="height:60px; border:1px solid #eee !important;">
 		</td>
 		<td class="text-left">
-			<div><?=$prd_data['BD_NAME']?></div>
-			<div><button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$_pidx?>','info');"">보기</button> <?=$_pname?></div>
+			<div><?=$prd_data['BD_NAME'] ?? ''?></div>
+			<div><button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?=$_pidx ?? ''?>','info');"">보기</button> <?=$_pname?></div>
 		</td>
-		<td><?=$prd_data['CD_CODE']?></td>
+		<td><?=$prd_data['CD_CODE'] ?? ''?></td>
 		<td style="width:70px;">
-			<?=number_format($prd_data['ps_stock'])?>
+			<?=number_format($prd_data['ps_stock'] ?? 0)?>
 		</td>
 		<td style="width:70px;">
 			<?=number_format($_qty)?>
@@ -117,7 +165,7 @@ for ( $i=0; $i<count($_selpd); $i++ ){
 			<? if( $_false == true ){ ?>
 				주문실패
 			<? }else{ ?>
-				<input type="hidden" name="ps_idx[]" value="<?=$prd_data['ps_idx']?>">
+				<input type="hidden" name="ps_idx[]" value="<?=$prd_data['ps_idx'] ?? ''?>">
 				<input type="text" name="s_qty[]" style="width:100%; font-size:14px; font-weight:bold;" value="<?=$_qty?>" >
 			<? } ?>
 		</td>

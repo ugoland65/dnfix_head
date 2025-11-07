@@ -1,4 +1,6 @@
 <?
+	// 변수 초기화
+	$pn = $_GET['pn'] ?? $_pn ?? 1;
 	$_where = " ";
 
 	$total_count = sql_counter("money_plan", $_where);

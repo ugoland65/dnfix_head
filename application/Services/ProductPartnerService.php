@@ -117,10 +117,10 @@ class ProductPartnerService extends BaseClass {
 
         try {
 
-            $sale_price = preg_replace('/[,\s]/', '', $postData['sale_price'] ?? 0); // 판매가
-            $cost_price = preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
-            $order_price = preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
-            $delivery_fee = preg_replace('/[,\s]/', '', $postData['delivery_fee'] ?? 0); // 배송비
+            $sale_price = (int)preg_replace('/[,\s]/', '', $postData['sale_price'] ?? 0); // 판매가
+            $cost_price = (int)preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
+            $order_price = (int)preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
+            $delivery_fee = (int)preg_replace('/[,\s]/', '', $postData['delivery_fee'] ?? 0); // 배송비
             $is_vat = $postData['is_vat'] ?? 'Y'; // 부가세
             //$vat = preg_replace('/[,\s]/', '', $postData['vat'] ?? 10); // 부가세
 

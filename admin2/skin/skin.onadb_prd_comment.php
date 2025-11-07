@@ -1,3 +1,18 @@
+<?
+// 변수 초기화
+$_s_text = $_GET['s_text'] ?? $_POST['s_text'] ?? "";
+$_get_brand_idx = $_GET['brand_idx'] ?? $_POST['brand_idx'] ?? "";
+$s_kind_code = $_GET['s_kind_code'] ?? $_POST['s_kind_code'] ?? "";
+$_sort_kind = $_GET['sort_kind'] ?? $_POST['sort_kind'] ?? "stock";
+
+// 배열 초기화 (inc_common.php에서 정의되지 않은 경우 대비)
+if (!isset($koedge_prd_kind_array)) {
+    $koedge_prd_kind_array = [];
+}
+if (!isset($_arr_national)) {
+    $_arr_national = [];
+}
+?>
 <div id="contents_head">
 	<h1>onaDB 상품 코멘트</h1>
 
@@ -25,8 +40,9 @@
 					<?
 					$brand_result = sql_query_error("select BD_IDX,BD_NAME from "._DB_BRAND." WHERE BD_LIST_ACTIVE = 'Y' order by BD_NAME asc ");
 					while($brand_list = sql_fetch_array($brand_result)){
+						if (!is_array($brand_list)) continue;
 					?>
-					<option value="<?=$brand_list['BD_IDX']?>" <? if( $brand_list['BD_IDX'] == $_get_brand_idx ) echo "selected";?> ><?=$brand_list['BD_NAME']?></option>
+					<option value="<?=$brand_list['BD_IDX'] ?? ''?>" <? if( ($brand_list['BD_IDX'] ?? '') == $_get_brand_idx ) echo "selected";?> ><?=$brand_list['BD_NAME'] ?? ''?></option>
 					<? } ?>
 				</select>
 			</ul>
@@ -36,7 +52,7 @@
 					<?
 					for($t=0; $t<count($koedge_prd_kind_array); $t++){
 					?>
-					<option value="<?=$koedge_prd_kind_array[$t]['code']?>" <? if( $s_kind_code == $koedge_prd_kind_array[$t]['code'] ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name']?></option>
+					<option value="<?=$koedge_prd_kind_array[$t]['code'] ?? ''?>" <? if( $s_kind_code == ($koedge_prd_kind_array[$t]['code'] ?? '') ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 				<select name="s_national" id="s_national" >
@@ -44,7 +60,7 @@
 					<?
 					for ($i=0; $i<count($_arr_national); $i++){
 					?>
-					<option value="<?=$_arr_national[$i]['code']?>" ><?=$_arr_national[$i]['name']?></option>
+					<option value="<?=$_arr_national[$i]['code'] ?? ''?>" ><?=$_arr_national[$i]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 			</ul>

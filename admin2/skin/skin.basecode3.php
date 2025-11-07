@@ -2,6 +2,10 @@
 
 use App\Controllers\Basecode; // 네임스페이스 포함
 
+// 변수 초기화
+$_group_code = $_GET['group_code'] ?? $_group_code ?? "";
+$page_title_name = [];
+
 $basecode = new Basecode(); 
 $basecodeData = $basecode->getBasecode('TreeNode');
 
@@ -10,6 +14,7 @@ $basecodeData = $basecode->getBasecode('TreeNode');
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/themes/default/style.min.css" />
 <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/themes/default-dark/style.min.css" />
 <script src="https://cdnjs.cloudflare.com/ajax/libs/jstree/3.3.17/jstree.min.js" ></script>
+
 <div id="contents_head">
     <h1>BAES CODE3</h1>
 </div>
@@ -40,7 +45,7 @@ foreach ($basecodeData['data'] as $row ) {
 
 				<div class="edit-header">
 					<ul>
-						<h2><?=$page_title_name[$_group_code]?></h2>
+						<h2><?=$page_title_name[$_group_code] ?? ""?></h2>
 					</ul>
 					<ul>
 						<button type="button" id="" class="btnstyle1 btnstyle1-danger" onclick="categoryCode.cateSave()" >저장</button>

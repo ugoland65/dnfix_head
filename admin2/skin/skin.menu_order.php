@@ -1,5 +1,5 @@
 <?
-if( $_POST['quickmode'] == "on" ){
+if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 //	include "../lib/inc_common.php";
 }
 ?>

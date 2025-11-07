@@ -1,6 +1,12 @@
 <?
 header("Content-type: text/html; charset=utf-8");
 
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
+/*
+@deprecated
 if( !$_session_save_path ) $_session_save_path = "../session";
 
 ini_set("session.use_trans_sid", 0);
@@ -10,9 +16,33 @@ ini_set("url_rewriter.tags","");
 //ini_set("session.cookie_domain", ".");
 session_save_path($_session_save_path);
 session_start();
+*/
 
 $docRoot = $_SERVER['DOCUMENT_ROOT'];
-$_sess_id = $_SESSION["sess_id"];
+
+if (session_status() === PHP_SESSION_NONE) {
+
+	// 세션 저장 경로 설정
+	// DOCUMENT_ROOT가 /계정/www 이면
+	// 한 단계 위인 /계정/session 으로 설정
+	$docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
+	$parentDir = dirname($docRoot);
+	$sessionPath = $parentDir . '/session';
+	
+	// 디렉토리가 없으면 생성
+	/*
+	if (!is_dir($sessionPath)) {
+		mkdir($sessionPath, 0755, true);
+	}
+	*/
+	
+	session_save_path($sessionPath);
+	session_start();
+}
+
+
+
+$_sess_id = $_SESSION["sess_id"] ?? null;
 
 include $docRoot."/library/globalConfig.php";
 include $docRoot."/library/mysql.php";
@@ -21,29 +51,46 @@ include $docRoot."/library/mysql.php";
 //################################################################################
 // 파일변수 - 어드민 전역
 //################################################################################
+// 변수 초기화
+$cf_ad_glob_sitename = "";
+$cf_ad_glob_logofile = "";
+$cf_ad_glob_logofile_login = "";
+$cf_ad_glob_copyright = "";
+$cf_ad_glob_browser_title = "";
+$cf_ad_glob_gnb_active_booking = "";
+$cf_ad_glob_gnb_active_member_guide = "";
+$cf_ad_glob_gnb_active_partner = "";
+$cf_ad_glob_gnb_active_comparison = "";
+$cf_ad_glob_gnb_active_product2 = "";
+$cf_ad_glob_gnb_active_product = "";
+$cf_ad_glob_gnb_dir_config = "";
+$cf_ad_glob_gnb_active_osi = "";
+$cf_ad_glob_d_capacity_total = "";
+$cf_ad_glob_d_capacity_text = "";
+
 $cff_ad_glob_file_src = $docRoot."/config_file/cff_ad_glob.php";
 if( is_file($cff_ad_glob_file_src) == true ){
 
 	$cff_ad_glob_setting = parse_ini_file($cff_ad_glob_file_src);
 	extract($cff_ad_glob_setting);
 
-	$cf_ad_glob_sitename = filevalue_settings($cf_salt_ad_glob_sitename);
-	$cf_ad_glob_logofile = filevalue_settings($cf_salt_ad_glob_logofile);
-	$cf_ad_glob_logofile_login = filevalue_settings($cf_salt_ad_glob_logofile_login);
-	$cf_ad_glob_copyright = filevalue_settings($cf_salt_ad_glob_copyright);
-	$cf_ad_glob_browser_title = filevalue_settings($cf_salt_ad_glob_browser_title);
+	$cf_ad_glob_sitename = filevalue_settings($cf_salt_ad_glob_sitename ?? "");
+	$cf_ad_glob_logofile = filevalue_settings($cf_salt_ad_glob_logofile ?? "");
+	$cf_ad_glob_logofile_login = filevalue_settings($cf_salt_ad_glob_logofile_login ?? "");
+	$cf_ad_glob_copyright = filevalue_settings($cf_salt_ad_glob_copyright ?? "");
+	$cf_ad_glob_browser_title = filevalue_settings($cf_salt_ad_glob_browser_title ?? "");
 
-	$cf_ad_glob_gnb_active_booking = filevalue_settings($cf_salt_ad_glob_gnb_active_booking);
-	$cf_ad_glob_gnb_active_member_guide = filevalue_settings($cf_salt_ad_glob_gnb_active_member_guide);
-	$cf_ad_glob_gnb_active_partner = filevalue_settings($cf_salt_ad_glob_gnb_active_partner);
-	$cf_ad_glob_gnb_active_comparison = filevalue_settings($cf_salt_ad_glob_gnb_active_comparison);
-	$cf_ad_glob_gnb_active_product2 = filevalue_settings($cf_salt_ad_glob_gnb_active_product2);
-	$cf_ad_glob_gnb_active_product = filevalue_settings($cf_salt_ad_glob_gnb_active_product);
-	$cf_ad_glob_gnb_dir_config = filevalue_settings($cf_salt_ad_glob_gnb_dir_config);
-	$cf_ad_glob_gnb_active_osi = filevalue_settings($cf_salt_ad_glob_gnb_active_osi);
+	$cf_ad_glob_gnb_active_booking = filevalue_settings($cf_salt_ad_glob_gnb_active_booking ?? "");
+	$cf_ad_glob_gnb_active_member_guide = filevalue_settings($cf_salt_ad_glob_gnb_active_member_guide ?? "");
+	$cf_ad_glob_gnb_active_partner = filevalue_settings($cf_salt_ad_glob_gnb_active_partner ?? "");
+	$cf_ad_glob_gnb_active_comparison = filevalue_settings($cf_salt_ad_glob_gnb_active_comparison ?? "");
+	$cf_ad_glob_gnb_active_product2 = filevalue_settings($cf_salt_ad_glob_gnb_active_product2 ?? "");
+	$cf_ad_glob_gnb_active_product = filevalue_settings($cf_salt_ad_glob_gnb_active_product ?? "");
+	$cf_ad_glob_gnb_dir_config = filevalue_settings($cf_salt_ad_glob_gnb_dir_config ?? "");
+	$cf_ad_glob_gnb_active_osi = filevalue_settings($cf_salt_ad_glob_gnb_active_osi ?? "");
 
-	$cf_ad_glob_d_capacity_total = filevalue_settings($cf_salt_ad_glob_d_capacity_total);
-	$cf_ad_glob_d_capacity_text = filevalue_settings($cf_salt_ad_glob_d_capacity_text);
+	$cf_ad_glob_d_capacity_total = filevalue_settings($cf_salt_ad_glob_d_capacity_total ?? "");
+	$cf_ad_glob_d_capacity_text = filevalue_settings($cf_salt_ad_glob_d_capacity_text ?? "");
 
 }
 
@@ -73,13 +120,19 @@ if( is_file($cff_ad_glob_file_src) == true ){
 
 include $docRoot."/admin2/lib/admin_path.php";
 
+// 변수 초기화
+$pageGroup = $pageGroup ?? $pgroup ?? "";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 // 로그인 체크
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////
 if( $pageGroup != "login" ){
 
-	$_sess_admin_data = sql_fetch_array(sql_query_error("select * from admin where ad_id = '".$_sess_id."' "));
+	if( !empty($_sess_id) ){
+		$_sess_admin_data = sql_fetch_array(sql_query_error("select * from admin where ad_id = '".$_sess_id."' "));
+	}else{
+		$_sess_admin_data = [];
+	}
 	
 	if( !$_sess_admin_data['idx'] ){
 		msg("로그인 해주세요.", _A_PATH_LOGIN);
@@ -92,7 +145,10 @@ if( $pageGroup != "login" ){
 	$_ad_name = $_sess_admin_data['ad_name'];
 	$_ad_level = $_sess_admin_data['ad_level'];
 	$_ad_image = $_sess_admin_data['ad_image'];
+	$_ad_lang = $_sess_admin_data['ad_lang'] ?? "";
   
+}else{
+	$_ad_lang = "";
 }
 
 ////////////////////////////////////////////////////////////////////////////////////////////////////////////////////////

@@ -1,8 +1,21 @@
-<?
+<?php
 
+	// 변수 초기화
+	$_pn = $_GET['pn'] ?? $_pn ?? 1;
+	$_sort_kind = $_GET['sort_kind'] ?? $_sort_kind ?? "";
+	$_open_mode = $_GET['open_mode'] ?? $_open_mode ?? "";
+	$_s_text = $_GET['s_text'] ?? $_POST['s_text'] ?? "";
+	$s_kind_code = $_GET['s_kind_code'] ?? $_POST['s_kind_code'] ?? "";
+	
+	// 배열 초기화 (inc_common.php에서 정의되지 않은 경우 대비)
+	if (!isset($koedge_prd_kind_array)) {
+		$koedge_prd_kind_array = [];
+	}
+	if (!isset($_arr_national)) {
+		$_arr_national = [];
+	}
+	
 	$_where = " WHERE bd_onadb_active = 'Y' ";
-
-
 
 	if( $_pn == "" ) $_pn = 1;
 
@@ -53,7 +66,7 @@
 	-->
 
     <div id="head_write_btn">
-		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="brandLlist.reg()" > 
+		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="onadbBrandLlist.reg()" > 
 			<i class="fas fa-plus-circle"></i>
 			신규 브랜드 생성
 		</button>
@@ -75,7 +88,7 @@
 					<?
 					for($t=0; $t<count($koedge_prd_kind_array); $t++){
 					?>
-					<option value="<?=$koedge_prd_kind_array[$t]['code']?>" <? if( $s_kind_code == $koedge_prd_kind_array[$t]['code'] ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name']?></option>
+					<option value="<?=$koedge_prd_kind_array[$t]['code'] ?? ''?>" <? if( $s_kind_code == ($koedge_prd_kind_array[$t]['code'] ?? '') ) echo "selected";?>><?=$koedge_prd_kind_array[$t]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 				<select name="s_national" id="s_national" >
@@ -83,7 +96,7 @@
 					<?
 					for ($i=0; $i<count($_arr_national); $i++){
 					?>
-					<option value="<?=$_arr_national[$i]['code']?>" ><?=$_arr_national[$i]['name']?></option>
+					<option value="<?=$_arr_national[$i]['code'] ?? ''?>" ><?=$_arr_national[$i]['name'] ?? ''?></option>
 					<? } ?>
 				</select>
 			</ul>
@@ -98,7 +111,7 @@
 				</select>
 			</ul>
 			<ul class="m-t-15">
-				<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm btnstyle1-search-full" onclick="brandLlist.list();" > 
+				<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm btnstyle1-search-full" onclick="onadbBrandLlist.list();" > 
 					<i class="fas fa-search"></i> 검색
 				</button>
 			</ul>
@@ -155,100 +168,108 @@
 				<th class="">삭제</th>
 			</tr>
 			<tbody>
-			<?
+		<?
 
-			$_total_sum1 = 0;
-			$_total_sum2 = 0;
+		$_total_sum1 = 0;
+		$_total_sum2 = 0;
 
-			while($list = sql_fetch_array($_result)){
-
-				if( $list['BD_LOGO'] ){
-					$img_path = '/data/brand_logo/'.$list['BD_LOGO'];
-				}
-
-				$_showdang_active_text = "";
-				if( $list['bd_showdang_active'] == "N" ){
-					$_tr_class = "tr-no-stock";
-				}elseif( $list['bd_showdang_active'] == "Y" ){
-					$_tr_class = "tr-normal";
-					$_showdang_active_text = "쑈당몰 노출";
-				}
-
-				$_list_active_text = "";
-				if( $list['BD_LIST_ACTIVE'] == "N" ){
-					$_list_active_text = "검색 제외";
-				}
-
+		while($list = sql_fetch_array($_result)){
 			
-				$query_count = " select 
-					count( A.CD_IDX ) AS prdcount,
-					COUNT( D.ps_idx ) as stock_count,
-					COUNT( CASE WHEN D.ps_stock > 0  THEN 0 END ) as have_stock_count
-					from "._DB_COMPARISON." A
-					left join prd_stock D ON (D.ps_prd_idx = A.CD_IDX  ) where CD_BRAND_IDX = '".$list['BD_IDX']."' ";
+			if (!is_array($list)) continue;
 
-				$result_count = mysqli_query($connect, $query_count);
-				$_prd_brand_count = sql_fetch_array($result_count);
+			$img_path = "";
+			if( $list['BD_LOGO'] ?? '' ){
+				$img_path = '/data/brand_logo/'.$list['BD_LOGO'];
+			}
+
+			$_showdang_active_text = "";
+			$_tr_class = "";
+			if( ($list['bd_showdang_active'] ?? '') == "N" ){
+				$_tr_class = "tr-no-stock";
+			}elseif( ($list['bd_showdang_active'] ?? '') == "Y" ){
+				$_tr_class = "tr-normal";
+				$_showdang_active_text = "쑈당몰 노출";
+			}
+
+			$_list_active_text = "";
+			if( ($list['BD_LIST_ACTIVE'] ?? '') == "N" ){
+				$_list_active_text = "검색 제외";
+			}
+
+		
+			$query_count = " select 
+				count( A.CD_IDX ) AS prdcount,
+				COUNT( D.ps_idx ) as stock_count,
+				COUNT( CASE WHEN D.ps_stock > 0  THEN 0 END ) as have_stock_count
+				from "._DB_COMPARISON." A
+				left join prd_stock D ON (D.ps_prd_idx = A.CD_IDX  ) where CD_BRAND_IDX = '".($list['BD_IDX'] ?? '')."' ";
+
+			$result_count = mysqli_query($connect, $query_count);
+			$_prd_brand_count = sql_fetch_array($result_count);
+			
+			if (!is_array($_prd_brand_count)) {
+				$_prd_brand_count = ['prdcount' => 0, 'stock_count' => 0, 'have_stock_count' => 0];
+			}
 
 
-			?>
-			<tr align="center" id="trid_<?=$list['BD_IDX']?>" class="<?=$_tr_class?>">
-				<td ><p class="position-move-btn"><i class="fas fa-arrows-alt-v"></i></p></td>
-				<? if( $_open_mode != "popup" ){ ?>
-				<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['CD_IDX']?>" ></td>
+		?>
+		<tr align="center" id="trid_<?=$list['BD_IDX'] ?? ''?>" class="<?=$_tr_class?>">
+			<td ><p class="position-move-btn"><i class="fas fa-arrows-alt-v"></i></p></td>
+			<? if( $_open_mode != "popup" ){ ?>
+			<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['CD_IDX'] ?? ''?>" ></td>
+			<? } ?>
+
+			<td class="list-idx"><?=$list['BD_IDX'] ?? ''?></td>
+			<td >
+				<? if( $list['BD_LOGO'] ?? '' ){ ?>
+					<img src="<?=$img_path?>" style="height:50px; border:1px solid #eee !important;">
+				<? }else{ ?>
+					<div class="no-image 50">No<br>image</div>
+				<? } ?>
+			</td>
+			<td class="">
+				<?=$list['bd_onadb_sort_num'] ?? ''?>
+				<input type="hidden" name="brand_idx[]" value="<?=$list['BD_IDX'] ?? ''?>">
+			</td>
+			<td class="text-left"><B><?=$list['BD_NAME'] ?? ''?></B></td>
+			<td class="text-left"><?=$list['BD_NAME_EN'] ?? ''?></td>
+			<td class="">
+				<div>
+
+				<? if( ($list['bd_showdang_active'] ?? '') == "Y" ){ ?>
+					<ul><?=$_showdang_active_text?></ul>
+				<? } ?>
+				<? if( ($list['bd_onadb_active'] ?? '') == "Y" ){ ?>
+					<ul>오나DB 노출</ul>
+				<? } ?>
+				<? if( ($list['BD_LIST_ACTIVE'] ?? '') == "N" ){ ?>
+					<ul>검색 제외</ul>
 				<? } ?>
 
-				<td class="list-idx"><?=$list['BD_IDX']?></td>
-				<td >
-					<? if( $list['BD_LOGO'] ){ ?>
-						<img src="<?=$img_path?>" style="height:50px; border:1px solid #eee !important;">
-					<? }else{ ?>
-						<div class="no-image 50">No<br>image</div>
-					<? } ?>
-				</td>
-				<td class="">
-					<?=$list['bd_onadb_sort_num']?>
-					<input type="hidden" name="brand_idx[]" value="<?=$list['BD_IDX']?>">
-				</td>
-				<td class="text-left"><B><?=$list['BD_NAME']?></B></td>
-				<td class="text-left"><?=$list['BD_NAME_EN']?></td>
-				<td class="">
-					<div>
 
-					<? if( $list['bd_showdang_active'] == "Y" ){ ?>
-						<ul><?=$_showdang_active_text?></ul>
-					<? } ?>
-					<? if( $list['bd_onadb_active'] == "Y" ){ ?>
-						<ul>오나DB 노출</ul>
-					<? } ?>
-					<? if( $list['BD_LIST_ACTIVE'] == "N" ){ ?>
-						<ul>검색 제외</ul>
-					<? } ?>
-
-
-					</div>
-				</td>
-				<td class="">
-					<a href="/ad/prd/prd_db/brand_idx=<?=$list['BD_IDX']?>:"><? if( $_prd_brand_count['prdcount'] > 0 )  echo $_prd_brand_count['prdcount']; ?></a>
-				</td>
-				<td class="">
-					<? if( $_prd_brand_count['stock_count'] > 0 ){ ?>
-						<a href="/ad/prd/prd_main/brand_idx=<?=$list['BD_IDX']?>:">
-						<?=$_prd_brand_count['stock_count']?> / 
-						<b><?=$_prd_brand_count['have_stock_count']?></b>
-						</a>
-					<? } ?>
-				</td>
-				<td>
-					<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="brandLlist.view('<?=$list['BD_IDX']?>')" > 상세내용 </button>
-				</td>
-				<td>
-					<? if( $list['bd_showdang_active'] == "N" && $_prd_brand_count['prdcount'] == 0 ){ ?>
-					<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="brandLlist.del('<?=$list['BD_IDX']?>')" ><i class="fas fa-trash-alt"></i></button>
-					<? } ?>
-				</td>
-			<tr>
-			<? } ?>
+				</div>
+			</td>
+			<td class="">
+				<a href="/ad/prd/prd_db/brand_idx=<?=$list['BD_IDX'] ?? ''?>:"><? if( ($_prd_brand_count['prdcount'] ?? 0) > 0 )  echo $_prd_brand_count['prdcount']; ?></a>
+			</td>
+			<td class="">
+				<? if( ($_prd_brand_count['stock_count'] ?? 0) > 0 ){ ?>
+					<a href="/ad/prd/prd_main/brand_idx=<?=$list['BD_IDX'] ?? ''?>:">
+					<?=$_prd_brand_count['stock_count'] ?? 0?> / 
+					<b><?=$_prd_brand_count['have_stock_count'] ?? 0?></b>
+					</a>
+				<? } ?>
+			</td>
+			<td>
+				<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="onadbBrandLlist.view('<?=$list['BD_IDX'] ?? ''?>')" > 상세내용 </button>
+			</td>
+			<td>
+				<? if( ($list['bd_showdang_active'] ?? '') == "N" && ($_prd_brand_count['prdcount'] ?? 0) == 0 ){ ?>
+				<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="onadbBrandLlist.del('<?=$list['BD_IDX'] ?? ''?>')" ><i class="fas fa-trash-alt"></i></button>
+				<? } ?>
+			</td>
+		<tr>
+		<? } ?>
 			</tbody>
 
 		</table>
@@ -458,7 +479,7 @@ var onadbBrandLlist = function() {
 
 }();
 
-//brandLlist.list();
+//onadbBrandLlist.list();
 
 $(function(){
 

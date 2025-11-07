@@ -1,4 +1,6 @@
 <?
+	// 변수 초기화
+	$_pn = $_pn ?? 1;
 
 	if( $_oo_import == "all" ){
 		$_where = "";
@@ -121,6 +123,9 @@
 				}
 
 				$_oo_price_data = json_decode($list['oo_price_data'], true);
+				if (!is_array($_oo_price_data)) {
+					$_oo_price_data = [];
+				}
 			?>
 			<tr align="center" id="trid_<?=$list['oo_idx']?>" class="<?=$_tr_class?>">
 				<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$list['oo_idx']?>" ></td>	
@@ -129,9 +134,9 @@
 				<td class=""><?=$list['oo_r_mode']?></td>
 				-->
 				<td class=""><?=$list['oo_import']?></td>
-				<td class=""><?=$_order_sheet_state_text[$list['oo_state']]?></td>
+				<td class=""><?=$_order_sheet_state_text[$list['oo_state']] ?? ''?></td>
 				<td class="text-left"><a href="/ad/order/order_sheet/?idx=<?=$list['oo_idx']?>"><b><?=$list['oo_name']?></b></a></td>
-				<td class="text-right"><?=number_format($list['oo_sum_price'])?> <?=$_oo_price_data['currency']?></td>
+				<td class="text-right"><?=number_format($list['oo_sum_price'])?> <?=$_oo_price_data['currency'] ?? ''?></td>
 				<td class="text-right"><?=number_format($list['oo_price_kr'])?> 원</td>
 				<td class=""><a href="/ad/order/order_sheet_main?form_idx=<?=$list['oo_form_idx']?>"><?=$list['oog_name']?></a></td>
 				<td>

@@ -1,5 +1,8 @@
 <?
 
+	// 변수 초기화
+	$_pn = $_GET['pn'] ?? $_pn ?? 1;
+
 	$_target_mb_text = "@".$_ad_idx;
 
 	if( $_work_log_cate == "all" ){

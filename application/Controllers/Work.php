@@ -1568,19 +1568,19 @@ I lead you to the Paradise (나는 당신을 파라다이스로 인도한다)라
 	foreach ( $phpArray as $key => $brand ){
 
 		// 2차 배열 값을 변수로 할당
-		$nameKo = $brand['name_ko'];
-		$nameEn = $brand['name_en'];
-		$code = $brand['code'];
-		$img = $brand['img'];
-		$bg = $brand['bg'];
-		$bg_color = $brand['bg_color'];
-		$info_class = $brand['info_class'];
-		$mobile_bg = $brand['mobile_bg'];
-		$mobileBg = $brand['mobile_bg'];
-		$wLogo = $brand['w_logo'];
-		$size = $brand['size'];
-		$cateNo = $brand['cate_no'];
-		$introduce = $brand['introduce'];
+		$nameKo = $brand['name_ko'] ?? "";
+		$nameEn = $brand['name_en'] ?? "";
+		$code = $brand['code'] ?? "";
+		$img = $brand['img'] ?? "";
+		$bg = $brand['bg'] ?? "";
+		$bg_color = $brand['bg_color'] ?? "";
+		$info_class = $brand['info_class'] ?? "";
+		$mobile_bg = $brand['mobile_bg'] ?? "";
+		$mobileBg = $brand['mobile_bg'] ?? "";
+		$wLogo = $brand['w_logo'] ?? "";
+		$size = $brand['size'] ?? "";
+		$cateNo = $brand['cate_no'] ?? "";
+		$introduce = $brand['introduce'] ?? "";
 
 		$_bd_api_info_ary = [
 			'active' => 'Y',
@@ -1622,13 +1622,14 @@ I lead you to the Paradise (나는 당신을 파라다이스로 인도한다)라
 
 		$results = $this->queryBuilder
 			->table('category')
-			->where('group_code', '=', 'TaskGroup')
-			->where('node_path', 'LIKE', $parentPath)
-			->orderBy('node_path')
-			->orderBy('sort_order')
-			->get();
+		->where('group_code', '=', 'TaskGroup')
+		->where('node_path', 'LIKE', $parentPath)
+		->orderBy('node_path')
+		->orderBy('sort_order')
+		->get()
+		->toArray();
 
-		$tree =  $this->buildTree($results['data'], $parentId);
+	$tree =  $this->buildTree($results, $parentId);
 
 		$data = $tree;
 

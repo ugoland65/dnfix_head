@@ -1,4 +1,6 @@
 <?
+	// 변수 초기화
+	$pn = $_GET['pn'] ?? $_POST['pn'] ?? 1;
 	$_where = "";
 
 	$total_count = wepix_counter("ona_order_group", $_where);
@@ -39,27 +41,32 @@
 				<th class="">가격코드</th>
 				<th width="60px">관리</th>
 			</tr>
-		<?
+	<?
 
-		$_oog_nation_text['jp'] = "일본";
-		$_oog_nation_text['ko'] = "한국";
-		$_oog_nation_text['cn'] = "중국";
-		$_oog_nation_text['dol'] = "달러국가";
-		$_oog_nation_text['etc'] = "기타";
+	$_oog_nation_text['jp'] = "일본";
+	$_oog_nation_text['ko'] = "한국";
+	$_oog_nation_text['cn'] = "중국";
+	$_oog_nation_text['dol'] = "달러국가";
+	$_oog_nation_text['etc'] = "기타";
 
-		while($_list = wepix_fetch_array($_result)){
+	while($_list = wepix_fetch_array($_result)){
 
-		?>
-		<tr align="center" id="trid_<?=$_list['oog_idx']?>" bgcolor="<?=$trcolor?>">
-			<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$_list['oog_idx']?>" ></td>	
-			<td class="list-idx"><?=$_list['oog_idx']?></td>
-			<td class=""><b><?=$_list['oog_name']?></b></td>
-			<td class=""><?=$_list['oog_import']?></td>
-			<td class=""><?=$_oog_nation_text[$_list['oog_group']]?></td>
-			<td class=""><?=$_list['oog_code']?></td>
-			<td><button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetForm.view('<?=$_list['oog_idx']?>')"> 수정 </button></td>
-		<tr>
-		<? }?>
+		// 배열 검증
+		if (!is_array($_list)) {
+			continue;
+		}
+
+	?>
+	<tr align="center" id="trid_<?=$_list['oog_idx'] ?? ''?>">
+		<td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$_list['oog_idx'] ?? ''?>" ></td>	
+		<td class="list-idx"><?=$_list['oog_idx'] ?? ''?></td>
+		<td class=""><b><?=$_list['oog_name'] ?? ''?></b></td>
+		<td class=""><?=$_list['oog_import'] ?? ''?></td>
+		<td class=""><?=$_oog_nation_text[$_list['oog_group'] ?? ''] ?? ''?></td>
+		<td class=""><?=$_list['oog_code'] ?? ''?></td>
+		<td><button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetForm.view('<?=$_list['oog_idx'] ?? ''?>')"> 수정 </button></td>
+	<tr>
+	<? } ?>
 
 	</table>
 

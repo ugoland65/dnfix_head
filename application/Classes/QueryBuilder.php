@@ -870,21 +870,37 @@ class QueryBuilder
 
 	// 단일 행 삽입
 	private function insertSingle($data) {
+		// 숫자 필드로 예상되는 컬럼들의 빈 문자열을 0으로 변환
+		$numericFields = ['order_price', 'cost_price', 'sale_price', 'delivery_fee', 'price', 'stock', 'qty', 'amount'];
+		foreach ($data as $key => &$value) {
+			if (in_array($key, $numericFields) && ($value === '' || $value === null)) {
+				$value = 0;
+			}
+		}
+		
 		$columns = implode(', ', array_keys($data));
 		$placeholders = ':' . implode(', :', array_keys($data));
 
 		$query = "INSERT INTO {$this->table} ({$columns}) VALUES ({$placeholders})";
-		$stmt = $this->db->prepare($query);
+		
+		try {
+			$stmt = $this->db->prepare($query);
 
-		foreach ($data as $key => &$value) {
-			$stmt->bindParam(":$key", $value);
+			foreach ($data as $key => &$value) {
+				$stmt->bindParam(":$key", $value);
+			}
+
+			// 실행
+			$stmt->execute();
+
+			// 마지막 삽입된 ID 반환
+			return $this->db->lastInsertId();
+		} catch (\PDOException $e) {
+			echo "DB Error: " . $e->getMessage() . "\n";
+			echo "Query: " . $query . "\n";
+			echo "Data: " . print_r($data, true) . "\n";
+			throw $e;
 		}
-
-		// 실행
-		$stmt->execute();
-
-		// 마지막 삽입된 ID 반환
-		return $this->db->lastInsertId();
 	}
 
 
@@ -1329,21 +1345,21 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
     /**
      * ArrayAccess 인터페이스 구현 - 배열처럼 접근 가능하게 함
      */
-    public function offsetExists($offset) {
+    public function offsetExists($offset): bool {
         return isset($this->attributes[$offset]);
     }
 
     /**
      * ArrayAccess 인터페이스 구현 - 배열처럼 값 가져오기
      */
-    public function offsetGet($offset) {
+    public function offsetGet($offset): mixed {
         return $this->attributes[$offset] ?? null;
     }
 
     /**
      * ArrayAccess 인터페이스 구현 - 배열처럼 값 설정하기
      */
-    public function offsetSet($offset, $value) {
+    public function offsetSet($offset, $value): void {
         if (is_null($offset)) {
             $this->attributes[] = $value;
         } else {
@@ -1354,23 +1370,23 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
     /**
      * ArrayAccess 인터페이스 구현 - 배열처럼 값 제거하기
      */
-    public function offsetUnset($offset) {
+    public function offsetUnset($offset): void {
         unset($this->attributes[$offset]);
     }
 
     /**
      * JsonSerializable 인터페이스 구현 - JSON 직렬화 지원
      */
-    public function jsonSerialize() {
+    public function jsonSerialize(): mixed {
         return $this->attributes;
     }
 
     /**
      * 모델 객체 업데이트
-     * @param array $data 업데이트할 데이터
+     * @param array|null $data 업데이트할 데이터
      * @return bool 성공 여부
      */
-    public function update(array $data = null) {
+    public function update(?array $data = null) {
         // 데이터가 없으면 변경된 속성 사용
         if ($data === null) {
             $data = [];
@@ -1410,7 +1426,7 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
      * @param array|null $data 저장할 데이터 (null이면 변경된 속성만 저장)
      * @return bool
      */
-    public function save(array $data = null) {
+    public function save(?array $data = null) {
         return $this->update($data);
     }
 

@@ -9,7 +9,7 @@ header("Content-type: text/html; charset=utf-8");
 @extract($_SERVER);
 
 //IP확인
-$_SERVER['REMOTE_ADDR'] = ( $_SERVER['HTTP_CF_CONNECTING_IP'] != NULL) ? $_SERVER['HTTP_CF_CONNECTING_IP'] : $_SERVER['REMOTE_ADDR'];
+$_SERVER['REMOTE_ADDR'] = ( isset($_SERVER['HTTP_CF_CONNECTING_IP']) && $_SERVER['HTTP_CF_CONNECTING_IP'] != NULL) ? $_SERVER['HTTP_CF_CONNECTING_IP'] : $_SERVER['REMOTE_ADDR'];
 $check_ip = $_SERVER['REMOTE_ADDR'];
 
 //도메인 확인
@@ -57,26 +57,41 @@ function filevalue_settings($str) {
     return $str;
 }
 
+// 변수 초기화
+$cf_all_glob_ws_mode = "";
+$cf_all_glob_ws_code = "";
+$cf_all_glob_index_path = "";
+$cf_all_glob_index_path_mobile = "";
+$cf_all_glob_skin_name = "";
+$cf_all_glob_skin_name_mobile = "";
+$cf_all_glob_sys_user_email_id = "";
+$cf_all_glob_sys_real_name = "";
+$cf_all_glob_sys_individual_function = "";
+$cf_all_glob_sys_individual_variable = "";
+$cf_all_glob_sys_folder_dir_admin = "";
+$cf_all_glob_sys_folder_dir_pc = "";
+$cf_all_glob_sys_folder_dir_mobile = "";
+
 $cff_all_glob_file_src = $docRoot."/config_file/cff_all_glob.php";
 if( is_file($cff_all_glob_file_src) == true ){
 
 	$cff_all_glob_setting = parse_ini_file($cff_all_glob_file_src);
 	extract($cff_all_glob_setting);
 
-	$cf_all_glob_ws_mode = filevalue_settings($cf_salt_all_glob_ws_mode);
-	$cf_all_glob_ws_code = filevalue_settings($cf_salt_all_glob_ws_code);
-	$cf_all_glob_index_path = filevalue_settings($cf_salt_all_glob_index_path);
-	$cf_all_glob_index_path_mobile = filevalue_settings($cf_salt_all_glob_index_path_mobile);
-	$cf_all_glob_skin_name = filevalue_settings($cf_salt_all_glob_skin_name);
-	$cf_all_glob_skin_name_mobile = filevalue_settings($cf_salt_all_glob_skin_name_mobile);
-	$cf_all_glob_sys_user_email_id = filevalue_settings($cf_salt_all_glob_sys_user_email_id);
-	$cf_all_glob_sys_real_name = filevalue_settings($cf_salt_all_glob_sys_real_name);
-	$cf_all_glob_sys_individual_function = filevalue_settings($cf_salt_all_glob_sys_individual_function);
-	$cf_all_glob_sys_individual_variable = filevalue_settings($cf_salt_all_glob_sys_individual_variable);
+	$cf_all_glob_ws_mode = filevalue_settings($cf_salt_all_glob_ws_mode ?? "");
+	$cf_all_glob_ws_code = filevalue_settings($cf_salt_all_glob_ws_code ?? "");
+	$cf_all_glob_index_path = filevalue_settings($cf_salt_all_glob_index_path ?? "");
+	$cf_all_glob_index_path_mobile = filevalue_settings($cf_salt_all_glob_index_path_mobile ?? "");
+	$cf_all_glob_skin_name = filevalue_settings($cf_salt_all_glob_skin_name ?? "");
+	$cf_all_glob_skin_name_mobile = filevalue_settings($cf_salt_all_glob_skin_name_mobile ?? "");
+	$cf_all_glob_sys_user_email_id = filevalue_settings($cf_salt_all_glob_sys_user_email_id ?? "");
+	$cf_all_glob_sys_real_name = filevalue_settings($cf_salt_all_glob_sys_real_name ?? "");
+	$cf_all_glob_sys_individual_function = filevalue_settings($cf_salt_all_glob_sys_individual_function ?? "");
+	$cf_all_glob_sys_individual_variable = filevalue_settings($cf_salt_all_glob_sys_individual_variable ?? "");
 
-	$cf_all_glob_sys_folder_dir_admin = filevalue_settings($cf_salt_all_glob_sys_folder_dir_admin);
-	$cf_all_glob_sys_folder_dir_pc = filevalue_settings($cf_salt_all_glob_sys_folder_dir_pc);
-	$cf_all_glob_sys_folder_dir_mobile = filevalue_settings($cf_salt_all_glob_sys_folder_dir_mobile);
+	$cf_all_glob_sys_folder_dir_admin = filevalue_settings($cf_salt_all_glob_sys_folder_dir_admin ?? "");
+	$cf_all_glob_sys_folder_dir_pc = filevalue_settings($cf_salt_all_glob_sys_folder_dir_pc ?? "");
+	$cf_all_glob_sys_folder_dir_mobile = filevalue_settings($cf_salt_all_glob_sys_folder_dir_mobile ?? "");
 
 	if(!$cf_all_glob_ws_mode) $cf_all_glob_ws_mode = "travel";
 }
@@ -106,8 +121,6 @@ if( is_file($cff_all_glob_file_src) == true ){
 	define('_GLOB_SYS_INDIVIDUAL_VARIABLE', $cf_all_glob_sys_individual_variable); //개별변수
 	define('_GLOB_SYS_FOLDER_DIR_ADMIN', $cf_all_glob_sys_folder_dir_admin);
 	define('_GLOB_SYS_FOLDER_DIR_PC', $cf_all_glob_sys_folder_dir_pc);
-	define('_GLOB_SYS_FOLDER_DIR_MOBILE', $cf_all_glob_sys_folder_dir_mobile);
-
 	define('_GLOB_SYS_FOLDER_DIR_MOBILE', $cf_all_glob_sys_folder_dir_mobile);
 
 //################################################################################
@@ -301,19 +314,22 @@ $gb_path_guide_profile ="/uploads/guide/member";
 function securityVal($str){
     global $connect;
 
+	// null 체크
+	if($str === null) return "";
+
 	//$str = htmlspecialchars($str);
 
 	//배열일경우 배열원소마다 체크한다
     if (is_array($str)) {
 		for ($i=0; $i<count($str); ++$i) {
-			$str[$i] = mysqli_real_escape_string($connect, $str[$i]);
+			$str[$i] = mysqli_real_escape_string($connect, $str[$i] ?? "");
 			$str[$i] = trim(strip_tags($str[$i]));
 		}
 		$result = $str;
 
 	//배열이 아닐경우
     }else{
-		$result = mysqli_real_escape_string($connect,$str);
+		$result = mysqli_real_escape_string($connect, $str);
 		$result = trim(strip_tags(htmlspecialchars($result)));
 	}
 
@@ -348,7 +364,7 @@ function wepix_pw($val) {
 	global $wp_salt;
 	$value = $val.$wp_salt;
 	$row = wepix_fetch_array(wepix_query_error(" select password('".$value."') as pass "));
-    return $row[pass];
+    return $row['pass'];
 }
 //------------------------------------------------------------------------------------
 //패스워드 생성
@@ -362,7 +378,7 @@ function sql_password($value, $mode= "") {
 
 	}else{
 		$row = sql_fetch_array(sql_query_error(" select password('$value') as pass "));
-		$_return = $row[pass];
+		$_return = $row['pass'];
 	}
 
     return $_return;
@@ -426,8 +442,16 @@ function arr_sort( $array, $key, $sort ){
 
 //------------------------------------------------------------------------------------
 // 공용 페이징
-function publicPaging($current_page="1", $total_page="0", $list_num="15", $page_num="10", $url){
+function publicPaging($current_page=null, $total_page=null, $list_num=null, $page_num=null, $url=null){
 
+	// 기본값 설정
+	if($current_page === null) $current_page = "1";
+	if($total_page === null) $total_page = "0";
+	if($list_num === null) $list_num = "15";
+	if($page_num === null) $page_num = "10";
+
+	// 변수 초기화
+	$link_str = "";
 	$link_str .= "<div class='paging'>";
 
 	if( $total_page < 2 ){
@@ -479,8 +503,16 @@ function publicPaging($current_page="1", $total_page="0", $list_num="15", $page_
 
 //------------------------------------------------------------------------------------------------------------------
 // 공용 AJAX 페이징
-function publicAjaxPaging($current_page="1", $total_page="0", $list_num="15", $page_num="10", $function_name, $function_value){
+function publicAjaxPaging($current_page=null, $total_page=null, $list_num=null, $page_num=null, $function_name=null, $function_value=null){
 
+	// 기본값 설정
+	if($current_page === null) $current_page = "1";
+	if($total_page === null) $total_page = "0";
+	if($list_num === null) $list_num = "15";
+	if($page_num === null) $page_num = "10";
+
+	// 변수 초기화
+	$link_str = "";
 	$link_str .= "<div class='paging'>";
 
 	if( $total_page < 1 ){
@@ -501,7 +533,7 @@ function publicAjaxPaging($current_page="1", $total_page="0", $list_num="15", $p
 
 		if ($current_page > 1) {
 			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('1'".$function_value.")\"><i class='fas fa-angle-double-left'></i></a>";
-			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('".$url.($current_page-1)."'".$function_value.")\"><i class='fas fa-angle-left'></i></a>";
+			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('".($current_page-1)."'".$function_value.")\"><i class='fas fa-angle-left'></i></a>";
 		}else{
 			$link_str .= "<a class='side'><i class='fas fa-angle-double-left'></i></a>";
 			$link_str .= "<a class='side'><i class='fas fa-angle-left'></i></a>";
@@ -516,7 +548,7 @@ function publicAjaxPaging($current_page="1", $total_page="0", $list_num="15", $p
         }
 
 		if ($current_page < $total_page) {
-			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('".$url.($current_page+1)."'".$function_value.")\"><i class='fas fa-angle-right'></i></a>";
+			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('".($current_page+1)."'".$function_value.")\"><i class='fas fa-angle-right'></i></a>";
 			$link_str .= "<a class='side-on' href=\"javascript:".$function_name."('".$total_page."'".$function_value.")\"><i class='fas fa-angle-double-right'></i></a>";
 		}else{
 			$link_str .= "<a class='side'><i class='fas fa-angle-right'></i></a>";
@@ -904,18 +936,18 @@ function userVisit(){
 
 	$today_visit_sum = wepix_fetch_array(wepix_query_error("SELECT * FROM visit_sum WHERE vs_date = '".$vi_date."' AND vs_domain = '".$check_domain."' "));
 
-	if( !$today_visit_sum[vs_idx] ){
+	if( !$today_visit_sum['vs_idx'] ){
 		wepix_query_error("INSERT INTO visit_sum SET vs_date ='".$vi_date."', vs_domain = '".$check_domain."' ");
 		$today_visit_sum = wepix_fetch_array(wepix_query_error("SELECT * FROM visit_sum WHERE vs_date = '".$vi_date."' AND vs_domain = '".$check_domain."' "));
 	}
 
-	$vs_count = $today_visit_sum[vs_count];
-	$vs_pc = $today_visit_sum[vs_pc]; 
-	$vs_mobile = $today_visit_sum[vs_mobile]; 
+	$vs_count = $today_visit_sum['vs_count'];
+	$vs_pc = $today_visit_sum['vs_pc']; 
+	$vs_mobile = $today_visit_sum['vs_mobile']; 
 
 	$today_visit = wepix_fetch_array(wepix_query_error("SELECT vi_id FROM visit WHERE vi_domain = '".$check_domain."' AND vi_date = '".$vi_date."' AND vi_ip = '".$check_ip."' "));
 
-	if( !$today_visit[vi_id] ){
+	if( !$today_visit['vi_id'] ){
 		$visit_query = "INSERT INTO visit SET
 			vi_domain = '".$check_domain."',
 			vi_ip = '".$check_ip."',
@@ -946,7 +978,7 @@ function userVisit(){
 			vs_count = ".$vs_count.",
 			vs_pc = ".$vs_pc.",
 			vs_mobile = ".$vs_mobile."
-			WHERE vs_idx ='".$today_visit_sum[vs_idx]."' ";
+			WHERE vs_idx ='".$today_visit_sum['vs_idx']."' ";
 		wepix_query_error($visit_sum_query);
 
 	}
@@ -1196,11 +1228,11 @@ function contensLike( $mode, $idx, $selected, $id, $group ,$ip ){
 
 	$like_data = wepix_fetch_array(wepix_query_error("select LIKE_KEY, LIKE_SELECTED from ".$_db_like." ".$_where." "));
 
-	if( $like_data[LIKE_KEY] ){
+	if( $like_data['LIKE_KEY'] ){
 
 		//삭제일 경우
-		if( $selected == $like_data[LIKE_SELECTED] ){
-			wepix_query_error(" delete from ".$_db_like." where LIKE_KEY = '".$like_data[LIKE_KEY]."' ");
+		if( $selected == $like_data['LIKE_SELECTED'] ){
+			wepix_query_error(" delete from ".$_db_like." where LIKE_KEY = '".$like_data['LIKE_KEY']."' ");
 
 			if( $selected == "good"){
 				wepix_query_error("update ".$_table." set ".$_culom_good." = ".$_culom_good." - 1 where ".$_culom_idx." = '".$idx."' " );
@@ -1212,7 +1244,7 @@ function contensLike( $mode, $idx, $selected, $id, $group ,$ip ){
 			return $result;
 		//수정일 경우
 		}else{
-			wepix_query_error(" update ".$_db_like." set LIKE_SELECTED = '".$selected."' where LIKE_KEY = '".$like_data[LIKE_KEY]."' ");
+			wepix_query_error(" update ".$_db_like." set LIKE_SELECTED = '".$selected."' where LIKE_KEY = '".$like_data['LIKE_KEY']."' ");
 
 			if( $selected == "good"){
 				wepix_query_error("update ".$_table." set ".$_culom_good." = ".$_culom_good." + 1, ".$_culom_bad." = ".$_culom_bad." - 1 where ".$_culom_idx." = '".$idx."' " );
@@ -1272,7 +1304,7 @@ function category_level_name($str,$level){
 
    	      $query = "select PDC_ID from ".$db_t_PRODUCT_CATAGORY." where PDC_ID = '".$value."' ";
 		  $result = wepix_fetch_array(wepix_query_error($query));
-		  return $result[PDC_ID];
+		  return $result['PDC_ID'];
 }
 //################################################################################
 // 텔레그램 함수

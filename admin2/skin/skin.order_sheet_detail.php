@@ -1,21 +1,34 @@
 <?
+	// 변수 초기화
+	$form_view = $_GET['form_view'] ?? $form_view ?? "show";
+	$_order_sec_data = [];
 
 	$oo_data = sql_fetch_array(sql_query_error("select * from ona_order A 
 		left join ona_order_group B ON ( B.oog_idx = A.oo_form_idx )  WHERE A.oo_idx = '".$_idx."' "));
 
+	if (!is_array($oo_data)) {
+		$oo_data = [];
+	}
+
 	if( !$form_view ) $form_view = "show";
-	if( $oo_data['oo_state'] == 4 || $oo_data['oo_state'] == 5 || $oo_data['oo_state'] == 7 ){ 
+	if( ($oo_data['oo_state'] ?? 0) == 4 || ($oo_data['oo_state'] ?? 0) == 5 || ($oo_data['oo_state'] ?? 0) == 7 ){ 
 		$form_view = "hidden";
 	}
 
-	$_price_colum = $oo_data['price_colum'];
+	$_price_colum = $oo_data['price_colum'] ?? '';
 
 	//폼 그룹 리스트
 	//$_oog_brand1 = '['.$oo_data['oog_brand'].']';
-	$_oog_brand = json_decode($oo_data['oog_brand'], true);
+	$_oog_brand = json_decode($oo_data['oog_brand'] ?? '[]', true);
+	if (!is_array($_oog_brand)) {
+		$_oog_brand = [];
+	}
 	
-	$_order_sec_json2 = $oo_data['oo_json'];
-	$_order_sec_json = json_decode($_order_sec_json2,true);
+	$_order_sec_json2 = $oo_data['oo_json'] ?? '[]';
+	$_order_sec_json = json_decode($_order_sec_json2, true);
+	if (!is_array($_order_sec_json)) {
+		$_order_sec_json = [];
+	}
 
 	$_oo_sum_price2 = 0;
 	$_oo_sum_goods2 = 0;
@@ -24,25 +37,25 @@
 
 	for ($i=0; $i<count($_order_sec_json); $i++){
 		
-		$_os_data_idx = $_order_sec_json[$i]['bidx'];
-		$_order_sec_data[$_os_data_idx]['item'] = $_order_sec_json[$i]['item'];
-		$_order_sec_data[$_os_data_idx]['qty'] = $_order_sec_json[$i]['qty'];
-		$_order_sec_data[$_os_data_idx]['price'] = $_order_sec_json[$i]['price'];
-		$_order_sec_data[$_os_data_idx]['weight'] = $_order_sec_json[$i]['weight'];
+		$_os_data_idx = $_order_sec_json[$i]['bidx'] ?? '';
+		$_order_sec_data[$_os_data_idx]['item'] = $_order_sec_json[$i]['item'] ?? 0;
+		$_order_sec_data[$_os_data_idx]['qty'] = $_order_sec_json[$i]['qty'] ?? 0;
+		$_order_sec_data[$_os_data_idx]['price'] = $_order_sec_json[$i]['price'] ?? 0;
+		$_order_sec_data[$_os_data_idx]['weight'] = $_order_sec_json[$i]['weight'] ?? 0;
 		
-		if( $_order_sec_json[$i]['false'] > 0 ){
-			$_order_sec_data[$_os_data_idx]['item'] = (int)$_order_sec_json[$i]['item'] - (int)$_order_sec_json[$i]['false'];
-			$_order_sec_data[$_os_data_idx]['qty'] = (int)$_order_sec_json[$i]['qty'] - (int)$_order_sec_json[$i]['false_sum_qty'];
-			$_order_sec_data[$_os_data_idx]['price'] = (int)$_order_sec_json[$i]['price'] - (int)$_order_sec_json[$i]['false_sum_price'];
-			$_order_sec_data[$_os_data_idx]['weight'] = (int)$_order_sec_json[$i]['weight'] - (int)$_order_sec_json[$i]['false_sum_weight'];
-			$_order_sec_data[$_os_data_idx]['false'] = $_order_sec_json[$i]['false'];
-			$_order_sec_data[$_os_data_idx]['false_sum'] = $_order_sec_json[$i]['false_sum'];
+		if( ($_order_sec_json[$i]['false'] ?? 0) > 0 ){
+			$_order_sec_data[$_os_data_idx]['item'] = (int)($_order_sec_json[$i]['item'] ?? 0) - (int)($_order_sec_json[$i]['false'] ?? 0);
+			$_order_sec_data[$_os_data_idx]['qty'] = (int)($_order_sec_json[$i]['qty'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_qty'] ?? 0);
+			$_order_sec_data[$_os_data_idx]['price'] = (int)($_order_sec_json[$i]['price'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_price'] ?? 0);
+			$_order_sec_data[$_os_data_idx]['weight'] = (int)($_order_sec_json[$i]['weight'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_weight'] ?? 0);
+			$_order_sec_data[$_os_data_idx]['false'] = $_order_sec_json[$i]['false'] ?? 0;
+			$_order_sec_data[$_os_data_idx]['false_sum'] = $_order_sec_json[$i]['false_sum'] ?? 0;
 		}
 
-		$_oo_sum_price2 += $_order_sec_data[$_os_data_idx]['price'];
-		$_oo_sum_goods2 += $_order_sec_data[$_os_data_idx]['item'];
-		$_oo_sum_qty2 += $_order_sec_data[$_os_data_idx]['qty'];
-		$_oo_sum_weight2 += (int)str_replace(',','', $_order_sec_data[$_os_data_idx]['weight']);
+		$_oo_sum_price2 += $_order_sec_data[$_os_data_idx]['price'] ?? 0;
+		$_oo_sum_goods2 += $_order_sec_data[$_os_data_idx]['item'] ?? 0;
+		$_oo_sum_qty2 += $_order_sec_data[$_os_data_idx]['qty'] ?? 0;
+		$_oo_sum_weight2 += (int)str_replace(',','', $_order_sec_data[$_os_data_idx]['weight'] ?? 0);
 		
 	}
 
@@ -75,7 +88,7 @@
 
 <script type="text/javascript"> 
 <!-- 
-var oogBrand = <?=$oo_data['oog_brand']?>;
+var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
 //--> 
 </script>
 
@@ -94,55 +107,62 @@ var oogBrand = <?=$oo_data['oog_brand']?>;
 		<? 
 		for ($i=0; $i<count($_oog_brand); $i++){
 			
-			$_brand = $_oog_brand[$i]['brand'];
-			$_name = $_oog_brand[$i]['name'];
-			$_oop_idx = $_oog_brand[$i]['oop_idx'];
+			$_brand = $_oog_brand[$i]['brand'] ?? '';
+			$_name = $_oog_brand[$i]['name'] ?? '';
+			$_oop_idx = $_oog_brand[$i]['oop_idx'] ?? '';
 
 
 			$oop_data = wepix_fetch_array(wepix_query_error("select oop_data from ona_order_prd where oop_idx = '".$_oop_idx."' "));
 
-			$_oop_json_check_data = substr($oop_data['oop_data'], 0,1);
+			if (!is_array($oop_data)) {
+				$oop_data = [];
+			}
+
+			$_oop_json_check_data = substr($oop_data['oop_data'] ?? '', 0, 1);
 			if( $_oop_json_check_data == "[" ){
-				$_oop_json = $oop_data['oop_data'];
+				$_oop_json = $oop_data['oop_data'] ?? '[]';
 			}else{
-				$_oop_json = '['.$oop_data['oop_data'].']';
+				$_oop_json = '['.($oop_data['oop_data'] ?? '').']';
 			}
 
-			$_oop_jsondata = json_decode($_oop_json,true);
-
-			$_item = 0;
-			$_qty = 0;
-			$_price = "";
-			$_weight = "";
-			$_show_weight = "";
-
-			if( $_order_sec_data[$_oop_idx]['item'] ) $_item = $_order_sec_data[$_oop_idx]['item'];
-			if( $_order_sec_data[$_oop_idx]['qty'] ) $_qty = $_order_sec_data[$_oop_idx]['qty'];
-			if( $_order_sec_data[$_oop_idx]['price'] ) $_price = $_order_sec_data[$_oop_idx]['price'];
-			if( $_order_sec_data[$_oop_idx]['weight'] ) $_weight = $_order_sec_data[$_oop_idx]['weight'];
-
-			if( $_weight ){
-				if( $_weight > 1000 ){
-					$_show_weight = number_format(($_weight*0.001),2)."kg";
-				}else{
-					$_show_weight = number_format($_weight)."g";
-				}
+			$_oop_jsondata = json_decode($_oop_json, true);
+			if (!is_array($_oop_jsondata)) {
+				$_oop_jsondata = [];
 			}
+
+		$_item = 0;
+		$_qty = 0;
+		$_price = 0;
+		$_weight = 0;
+		$_show_weight = "";
+
+		if( isset($_order_sec_data[$_oop_idx]['item']) && $_order_sec_data[$_oop_idx]['item'] ) $_item = $_order_sec_data[$_oop_idx]['item'];
+		if( isset($_order_sec_data[$_oop_idx]['qty']) && $_order_sec_data[$_oop_idx]['qty'] ) $_qty = $_order_sec_data[$_oop_idx]['qty'];
+		if( isset($_order_sec_data[$_oop_idx]['price']) && $_order_sec_data[$_oop_idx]['price'] ) $_price = $_order_sec_data[$_oop_idx]['price'];
+		if( isset($_order_sec_data[$_oop_idx]['weight']) && $_order_sec_data[$_oop_idx]['weight'] ) $_weight = $_order_sec_data[$_oop_idx]['weight'];
+
+		if( $_weight ){
+			if( (float)$_weight > 1000 ){
+				$_show_weight = number_format(((float)$_weight*0.001),2)."kg";
+			}else{
+				$_show_weight = number_format((float)$_weight)."g";
+			}
+		}
 		?>
 		<div class="ost-big <? if($_qty > 0) echo 'inorder';?>" id="group_side_<?=$_oop_idx?>" onclick="orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_oop_idx?>')">
 			<ul><b><?=$_name?></b></ul>
 			<ul class="m-t-3">
-				<b><?=count($_oop_jsondata)?></b> / 
-				<span class="oprice-sum-goods-cate" id="oprice_sum_goods_<?=$_oop_idx?>"><?=$_item?></span>
-				<? if( $_order_sec_data[$_oop_idx]['false'] > 0 ){ ?>
-				<span class="" id="">실패 : <?=$_order_sec_data[$_oop_idx]['false']?></span>
-				<? } ?>
+			<b><?=count($_oop_jsondata)?></b> / 
+			<span class="oprice-sum-goods-cate" id="oprice_sum_goods_<?=$_oop_idx?>"><?=$_item?></span>
+			<? if( isset($_order_sec_data[$_oop_idx]['false']) && $_order_sec_data[$_oop_idx]['false'] > 0 ){ ?>
+			<span class="" id="">실패 : <?=$_order_sec_data[$_oop_idx]['false']?></span>
+			<? } ?>
 			</ul>
-			<ul>
-				<span class="oprice-sum-qty" id="group_side_sum_qty_<?=$_oop_idx?>" data-value="<?=number_format($_qty)?>" ><?=number_format($_qty)?></span> /
-				<span class="oprice-sum-weight" id="oprice_sum_weight_<?=$_oop_idx?>"><?=$_show_weight?></span>
-			</ul>
-			<ul><span class="group-side-allsum-price" id="oprice_allsum_<?=$_oop_idx?>"><?=number_format($_price)?></span></ul>
+		<ul>
+			<span class="oprice-sum-qty" id="group_side_sum_qty_<?=$_oop_idx?>" data-value="<?=number_format((float)$_qty)?>" ><?=number_format((float)$_qty)?></span> /
+			<span class="oprice-sum-weight" id="oprice_sum_weight_<?=$_oop_idx?>"><?=$_show_weight?></span>
+		</ul>
+		<ul><span class="group-side-allsum-price" id="oprice_allsum_<?=$_oop_idx?>"><?=number_format((float)$_price, 2)?></span></ul>
 		</div>
 		<? } ?>
 
@@ -437,7 +457,7 @@ var orderSheetDetail = function() {
 	orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_open_oop_idx?>')
 <? } ?>
 
-<? if( $oo_data['oo_form_idx'] == 0 ){ ?>
+<? if( ($oo_data['oo_form_idx'] ?? 0) == 0 ){ ?>
 	showAlert("Error", "이 주문서에 [주문서 폼]이 지정되어있지 않습니다.<br>(주문서 상세정보)에서 주문서 폼을 지정해주세요.", "alert2" );
 <? } ?>
 //--> 
