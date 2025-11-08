@@ -1,5 +1,8 @@
 <?
 
+	// 변수 초기화
+	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
+
 	$_reg_d = array( "date" => $action_time, "idx" => $_ad_idx, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
@@ -7,13 +10,46 @@
 ////////////////////////////////////////////////////////////////////////////////////////////////
 if( $_a_mode == "prd_reg" ){
 
+	$_cd_kind_code = $_POST['cd_kind_code'] ?? "";
+	$_cd_brand_idx = $_POST['cd_brand_idx'] ?? "";
+	$_cd_brand2_idx = $_POST['cd_brand2_idx'] ?? "";
+	$_cd_name = $_POST['cd_name'] ?? "";
+	$_cd_name_og = $_POST['cd_name_og'] ?? "";
+	$_cd_name_en = $_POST['cd_name_en'] ?? "";
+	$_cd_cont = $_POST['cd_cont'] ?? "";
+	$_cd_memo = $_POST['cd_memo'] ?? "";
+	$_cd_memo2 = $_POST['cd_memo2'] ?? "";
+	$_cd_memo3 = $_POST['cd_memo3'] ?? "";
+	$_cd_search_term = $_POST['cd_search_term'] ?? "";
+	$_cd_release_date = $_POST['cd_release_date'] ?? "";
+	$_cd_size_w = $_POST['cd_size_w'] ?? "";
+	$_cd_size_h = $_POST['cd_size_h'] ?? "";
+	$_cd_size_d = $_POST['cd_size_d'] ?? "";
+	$_cd_size2 = $_POST['cd_size2'] ?? "";
+	$_cd_weight_1 = $_POST['cd_weight_1'] ?? "";
+	$_cd_weight_2 = $_POST['cd_weight_2'] ?? "";
+	$_cd_weight_3 = $_POST['cd_weight_3'] ?? "";
+	$_cd_code = $_POST['cd_code'] ?? "";
+	$_cd_code2 = $_POST['cd_code2'] ?? "";
+	$_cd_godo_code = $_POST['cd_godo_code'] ?? "";
+	$_hbti_1 = $_POST['hbti_1'] ?? null;
+	$_hbti_2 = $_POST['hbti_2'] ?? null;
+	$_hbti_3 = $_POST['hbti_3'] ?? null;
+	$_hbti_4 = $_POST['hbti_4'] ?? null;
+	$_hbti_target = $_POST['hbti_target'] ?? "N";
+	$_cd_site_show = $_POST['cd_site_show'] ?? "N";
+	$_out_img = $_POST['out_img'] ?? "";
+
 	include($docRoot.'/class/image.php'); //이미지 처리 클래스
 
 	$_uploads_dir = "../data/comparion";
 	$_save_file_name = "prd_".$_ad_idx."_".time();
 
+	$_img_name = "";
+	$_img_name2 = "";
+
 	// 파일이 있을경우 ---------------------
-	if ( $_FILES['cd_img']['name'] ) {
+	if ( !empty($_FILES['cd_img']['name'] ?? '') ) {
 		$_img_name = imgUpload($_FILES['cd_img'], $_uploads_dir, $_save_file_name, "302", "302");
 
 	// 외부 이미지 일경우 ---------------------
@@ -23,21 +59,21 @@ if( $_a_mode == "prd_reg" ){
 
 
 	// 파일이 있을경우
-	if ( $_FILES['cd_img2']['name'] ) {
+	if ( !empty($_FILES['cd_img2']['name'] ?? '') ) {
 		$_save_file_name = "prd_icon_".$_ad_idx."_".time();
 		$_img_name2 = imgUpload($_FILES['cd_img2'], $_uploads_dir, $_save_file_name, "100", "100");
 	}
 	
 	// 인보이스 이미지
 	$_img_add1 = "";
-	if ( $_FILES['cd_add1']['name'] ) {
+	if ( !empty($_FILES['cd_add1']['name'] ?? '') ) {
 		$_save_file_name = "prd_invoice_".$_ad_idx."_".time();
 		$_img_add1 = imgUpload($_FILES['cd_add1'], $_uploads_dir, $_save_file_name, "", "");
 	}
 
 	// 19금 대체 이미지
 	$_img_add2 = "";
-	if ( $_FILES['cd_add2']['name'] ) {
+	if ( !empty($_FILES['cd_add2']['name'] ?? '') ) {
 		$_save_file_name = "prd_c19_".$_ad_idx."_".time();
 		$_img_add2 = imgUpload($_FILES['cd_add2'], $_uploads_dir, $_save_file_name, "302", "302");
 	}
@@ -148,6 +184,55 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "prd_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_cd_kind_code = $_POST['cd_kind_code'] ?? "";
+	$_cd_brand_idx = $_POST['cd_brand_idx'] ?? "";
+	$_cd_brand2_idx = $_POST['cd_brand2_idx'] ?? "";
+	$_cd_name = $_POST['cd_name'] ?? "";
+	$_cd_name_og = $_POST['cd_name_og'] ?? "";
+	$_cd_name_en = $_POST['cd_name_en'] ?? "";
+	$_cd_cont = $_POST['cd_cont'] ?? "";
+	$_cd_memo = $_POST['cd_memo'] ?? "";
+	$_cd_memo2 = $_POST['cd_memo2'] ?? "";
+	$_cd_memo3 = $_POST['cd_memo3'] ?? "";
+	$_cd_search_term = $_POST['cd_search_term'] ?? "";
+	$_cd_release_date = $_POST['cd_release_date'] ?? "";
+	$_cd_size_w = $_POST['cd_size_w'] ?? "";
+	$_cd_size_h = $_POST['cd_size_h'] ?? "";
+	$_cd_size_d = $_POST['cd_size_d'] ?? "";
+	$_cd_size2 = $_POST['cd_size2'] ?? "";
+	$_cd_weight_1 = $_POST['cd_weight_1'] ?? "";
+	$_cd_weight_2 = $_POST['cd_weight_2'] ?? "";
+	$_cd_weight_3 = $_POST['cd_weight_3'] ?? "";
+	$_cd_code = $_POST['cd_code'] ?? "";
+	$_cd_code2 = $_POST['cd_code2'] ?? "";
+	$_cd_national = $_POST['cd_national'] ?? "";
+	$_cd_inv_name1 = $_POST['cd_inv_name1'] ?? "";
+	$_cd_inv_name2 = $_POST['cd_inv_name2'] ?? "";
+	$_cd_inv_material = $_POST['cd_inv_material'] ?? "";
+	$_cd_coo = $_POST['cd_coo'] ?? "";
+	$_cd_godo_code = $_POST['cd_godo_code'] ?? "";
+	$_hbti_1 = $_POST['hbti_1'] ?? null;
+	$_hbti_2 = $_POST['hbti_2'] ?? null;
+	$_hbti_3 = $_POST['hbti_3'] ?? null;
+	$_hbti_4 = $_POST['hbti_4'] ?? null;
+	$_hbti_target = $_POST['hbti_target'] ?? "N";
+	$_cd_site_show = $_POST['cd_site_show'] ?? "N";
+	$_ps_idx = $_POST['ps_idx'] ?? "";
+	$_ps_rack_code = $_POST['ps_rack_code'] ?? "";
+	$_ps_stock_object = $_POST['ps_stock_object'] ?? "";
+	$_ps_alarm_count = $_POST['ps_alarm_count'] ?? "";
+	$_out_img = $_POST['out_img'] ?? "";
+	$_invoice_size_w = $_POST['invoice_size_w'] ?? "";
+	$_invoice_size_h = $_POST['invoice_size_h'] ?? "";
+	$_invoice_size_d = $_POST['invoice_size_d'] ?? "";
+	$_invoice_size_cbm = $_POST['invoice_size_cbm'] ?? "";
+	$_invoice_size_cbm_mode = $_POST['invoice_size_cbm_mode'] ?? "";
+	$_import_plastic = $_POST['import_plastic'] ?? "";
+	$_import_hscode = $_POST['import_hscode'] ?? "";
+	$_import_hscode1 = $_POST['import_hscode1'] ?? "";
+	$_import_hscode2 = $_POST['import_hscode2'] ?? "";
+
 	include($docRoot.'/class/image.php'); //이미지 처리 클래스
 
 	$_uploads_dir = "../data/comparion";
@@ -155,18 +240,35 @@ if( $_a_mode == "prd_reg" ){
 
 	$data = sql_fetch_array(sql_query_error("select cd_reg, CD_IMG, CD_IMG2, cd_add_img  from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
 
-	$_cd_add_img_data = json_decode($data['cd_add_img'], true);
-	$_cd_code_data = json_decode($data['cd_code_fn'], true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['cd_reg' => '{}', 'CD_IMG' => '', 'CD_IMG2' => '', 'cd_add_img' => '{}'];
+	}
+
+	$_cd_add_img_data = json_decode($data['cd_add_img'] ?? '{}', true);
+	$_cd_code_data = json_decode($data['cd_code_fn'] ?? '{}', true);
+
+	// 배열 검증
+	if (!is_array($_cd_add_img_data)) {
+		$_cd_add_img_data = ['add1' => ['filename' => ''], 'add2' => ['filename' => '']];
+	}
+	if (!is_array($_cd_code_data)) {
+		$_cd_code_data = ['jan' => '', 'pcode' => ''];
+	}
 
 	$_cd_code_data['jan'] = $_cd_code;
     $_cd_code_data['pcode'] = $_cd_code2;
 
-	
+	$_img_name = "";
+	$_img_name2 = "";
+	$_img_add1 = "";
+	$_img_add2 = "";
+
 	// 파일이 있을경우 ---------------------
-	if ( $_FILES['cd_img']['name'] ) {
+	if ( !empty($_FILES['cd_img']['name'] ?? '') ) {
 		$_img_name = imgUpload($_FILES['cd_img'], $_uploads_dir, $_save_file_name, "302", "302");
 
-		$is_file_dir = $_uploads_dir."/".$data['CD_IMG'];
+		$is_file_dir = $_uploads_dir."/".($data['CD_IMG'] ?? "");
 		$is_file_exist = file_exists($is_file_dir);
 		//파일이 있을경우 파일삭제
 		if ($is_file_exist) {
@@ -177,7 +279,7 @@ if( $_a_mode == "prd_reg" ){
 	}elseif( $_out_img ){
 		$_img_name = outImgUpload($_out_img, $_uploads_dir, $_save_file_name, "302", "302");
 
-		$is_file_dir = $_uploads_dir."/".$data['CD_IMG'];
+		$is_file_dir = $_uploads_dir."/".($data['CD_IMG'] ?? "");
 		$is_file_exist = file_exists($is_file_dir);
 		//파일이 있을경우 파일삭제
 		if ($is_file_exist) {
@@ -188,11 +290,11 @@ if( $_a_mode == "prd_reg" ){
 
 
 	// 파일이 있을경우
-	if ( $_FILES['cd_img2']['name'] ) {
+	if ( !empty($_FILES['cd_img2']['name'] ?? '') ) {
 		$_save_file_name = "prd_icon_".$_ad_idx."_".time();
 		$_img_name2 = imgUpload($_FILES['cd_img2'], $_uploads_dir, $_save_file_name, "100", "100");
 
-		$is_file_dir = $_uploads_dir."/".$data['CD_IMG2'];
+		$is_file_dir = $_uploads_dir."/".($data['CD_IMG2'] ?? "");
 		$is_file_exist = file_exists($is_file_dir);
 		//파일이 있을경우 파일삭제
 		if ($is_file_exist) {
@@ -202,9 +304,9 @@ if( $_a_mode == "prd_reg" ){
 	}
 	
 	// 인보이스 이미지
-	if ( $_FILES['cd_add1']['name'] ) {
+	if ( !empty($_FILES['cd_add1']['name'] ?? '') ) {
 		
-		$_old_img = $_cd_add_img_data['add1']['filename'];
+		$_old_img = isset($_cd_add_img_data['add1']['filename']) ? $_cd_add_img_data['add1']['filename'] : "";
 		
 		$_save_file_name = "prd_invoice_".$_ad_idx."_".time();
 		$_img_add1 = imgUpload($_FILES['cd_add1'], $_uploads_dir, $_save_file_name, "", "");
@@ -219,9 +321,9 @@ if( $_a_mode == "prd_reg" ){
 	}
 
 	// 19금 대체 이미지
-	if ( $_FILES['cd_add2']['name'] ) {
+	if ( !empty($_FILES['cd_add2']['name'] ?? '') ) {
 		
-		$_old_img = $_cd_add_img_data['add2']['filename'];
+		$_old_img = isset($_cd_add_img_data['add2']['filename']) ? $_cd_add_img_data['add2']['filename'] : "";
 		
 		$_save_file_name = "prd_c19_".$_ad_idx."_".time();
 		$_img_add2 = imgUpload($_FILES['cd_add2'], $_uploads_dir, $_save_file_name, "302", "302");
@@ -299,9 +401,14 @@ if( $_a_mode == "prd_reg" ){
 	);
 	$_cd_weight_fn = json_encode($_cd_weight_data);
 
-	$_cd_reg_data = json_decode($data['cd_reg'], true);
+	$_cd_reg_data = json_decode($data['cd_reg'] ?? '{}', true);
 
-	if( !$_cd_reg_data['modify'] ){
+	// 배열 검증
+	if (!is_array($_cd_reg_data)) {
+		$_cd_reg_data = [];
+	}
+
+	if( empty($_cd_reg_data['modify'] ?? '') ){
 		$_cd_reg_data['modify'] = array( $_reg_d );
 	}else{
 		array_unshift($_cd_reg_data['modify'], $_reg_d);
@@ -390,7 +497,17 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "prd_copy" ){
 
+	$_idx = $_POST['idx'] ?? "";
+
 	$data = sql_fetch_array(sql_query_error("select * from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
+
+	// 배열 검증
+	if (!is_array($data)) {
+		$response = array('success' => false, 'msg' => '상품을 찾을 수 없습니다.' );
+		header('Content-Type: application/json');
+		echo json_encode($response); 
+		exit;
+	}
 
 	$_cd_kind_code = $data['CD_KIND_CODE'];
 	$_cd_brand_idx = $data['CD_BRAND_IDX'];
@@ -457,9 +574,48 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "costCalculationSave" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_invoice_size_w = $_POST['invoice_size_w'] ?? "";
+	$_invoice_size_h = $_POST['invoice_size_h'] ?? "";
+	$_invoice_size_d = $_POST['invoice_size_d'] ?? "";
+	$_invoice_size_cbm = $_POST['invoice_size_cbm'] ?? "";
+	$_invoice_size_cbm_mode = $_POST['invoice_size_cbm_mode'] ?? "";
+	$_cd_weight_1 = $_POST['cd_weight_1'] ?? "";
+	$_cd_weight_2 = $_POST['cd_weight_2'] ?? "";
+	$_cd_weight_3 = $_POST['cd_weight_3'] ?? "";
+	$_cd_sale_price = $_POST['cd_sale_price'] ?? "0";
+	$_cost_cal_kind = $_POST['cost_cal_kind'] ?? "";
+	$_cd_national = $_POST['cd_national'] ?? "";
+	$_cost_cal_price = $_POST['cost_cal_price'] ?? "";
+	$_cost_cal_exchange_rate = $_POST['cost_cal_exchange_rate'] ?? "";
+	$_cost_cal_delivery = $_POST['cost_cal_delivery'] ?? "";
+	$_cost_cal_tariff = $_POST['cost_cal_tariff'] ?? "";
+	$_cost_cal_incidental_cost = $_POST['cost_cal_incidental_cost'] ?? "";
+	$_ex_rate = $_POST['ex_rate'] ?? "";
+	$_oprice = $_POST['oprice'] ?? "";
+	$_oprice_key = $_POST['oprice_key'] ?? "";
+	$_kg_p = $_POST['kg_p'] ?? "";
+	$_weight_mode = $_POST['weight_mode'] ?? "";
+	$_weight = $_POST['weight'] ?? "";
+	$_tax = $_POST['tax'] ?? "";
+	$_vat = $_POST['vat'] ?? "";
+	$_delivery = $_POST['delivery'] ?? "";
+	$_op_won = $_POST['op_won'] ?? "";
+	$_cost_p = $_POST['cost_p'] ?? "";
+
 	$prd_data = sql_fetch_array(sql_query_error("select cd_size_fn  from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
 
-	$_cd_size_fn_data = json_decode($prd_data['cd_size_fn'], true);
+	// 배열 검증
+	if (!is_array($prd_data)) {
+		$prd_data = ['cd_size_fn' => '{}'];
+	}
+
+	$_cd_size_fn_data = json_decode($prd_data['cd_size_fn'] ?? '{}', true);
+
+	// 배열 검증
+	if (!is_array($_cd_size_fn_data)) {
+		$_cd_size_fn_data = [];
+	}
 
 	// 팩킹 사이즈
 	if( $_invoice_size_cbm_mode != "hand" ) $_invoice_size_cbm_mode = "auto";
@@ -659,17 +815,29 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "prdDel" ){
 
+	$_idx = $_POST['idx'] ?? "";
+
 	$data = sql_fetch_array(sql_query_error("select CD_IMG from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
 	$stock_data = sql_fetch_array(sql_query_error("select ps_idx from prd_stock where ps_prd_idx = '".$_idx."' "));
 
-	if( $stock_data['ps_idx'] ){
+	// 배열 검증
+	if (!is_array($stock_data)) {
+		$stock_data = ['ps_idx' => ''];
+	}
+
+	if( !empty($stock_data['ps_idx'] ?? '') ){
 		$response = array('success' => false, 'msg' => '재고코드가 생성되어 있어 삭제가 불가능 합니다.' );
 		header('Content-Type: application/json');
 		echo json_encode($response); 
 		exit;
 	}
 
-	$img_path = '/data/comparion/'.$data['CD_IMG'];
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['CD_IMG' => ''];
+	}
+
+	$img_path = '/data/comparion/'.($data['CD_IMG'] ?? '');
 
 	$is_file_exist = file_exists($docRoot.$img_path);
 
@@ -686,9 +854,24 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "prd3SetStock" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_psu_mode = $_POST['psu_mode'] ?? "";
+	$_psu_stock = $_POST['psu_stock'] ?? 0;
+	$_psu_memo = $_POST['psu_memo'] ?? "";
+
 	$data = sql_fetch_array(sql_query_error("select * from prd_set WHERE pset_idx = '".$_idx."' "));
 
-	$_pset_goods = json_decode($data['pset_goods'], true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['pset_goods' => '[]', 'pset_name' => '', 'pset_stock' => 0];
+	}
+
+	$_pset_goods = json_decode($data['pset_goods'] ?? '[]', true);
+
+	// 배열 검증
+	if (!is_array($_pset_goods)) {
+		$_pset_goods = [];
+	}
 
 	/*
 				<label><input type="radio" name="psu_mode" value="ibgo_plus"> 입고증가</label>
@@ -814,6 +997,13 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "stock_info_reg" ){
 
+	$_ps_idx = $_POST['ps_idx'] ?? "";
+	$_stock_mode = $_POST['stock_mode'] ?? "";
+	$_stock_qty = $_POST['stock_qty'] ?? 0;
+	$_stock_day = $_POST['stock_day'] ?? "";
+	$_stock_kind = $_POST['stock_kind'] ?? "";
+	$_stock_memo = $_POST['stock_memo'] ?? "";
+
 	if( $_stock_qty < 0 ){
 
 		$response = array('success' => false, 'msg' => '수량을 입력해 주세요.' );
@@ -825,8 +1015,13 @@ if( $_a_mode == "prd_reg" ){
 	
 	$stock_data = sql_fetch_array(sql_query_error("select * from prd_stock where ps_idx = '".$_ps_idx."' "));
 
-	$_prd_stock_count = $stock_data['ps_stock'];
-	$_prd_stock_hold_count = $stock_data['ps_stock_hold'];
+	// 배열 검증
+	if (!is_array($stock_data)) {
+		$stock_data = ['ps_stock' => 0, 'ps_stock_hold' => 0];
+	}
+
+	$_prd_stock_count = $stock_data['ps_stock'] ?? 0;
+	$_prd_stock_hold_count = $stock_data['ps_stock_hold'] ?? 0;
 
 	$_reg_data = array(
 		"reg" => array(
@@ -1031,6 +1226,10 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "stock_info_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_stock_kind = $_POST['stock_kind'] ?? "";
+	$_stock_memo = $_POST['stock_memo'] ?? "";
+
 	$query = "UPDATE prd_stock_unit SET 
 		psu_kind = '".$_stock_kind."',
 		psu_memo = '".$_stock_memo."'
@@ -1044,10 +1243,17 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "new_stock_psidx" ){
 
+	$_prd_idx = $_POST['prd_idx'] ?? "";
+
 	//재고테이블에 해당상품 있는지 확인
 	$stock_data = sql_fetch_array(sql_query_error("select ps_idx from prd_stock WHERE ps_prd_idx = '".$_prd_idx."' "));
 
-	if( $stock_data['ps_idx'] ){
+	// 배열 검증
+	if (!is_array($stock_data)) {
+		$stock_data = ['ps_idx' => ''];
+	}
+
+	if( !empty($stock_data['ps_idx'] ?? '') ){
 
 		$response = array('success' => false, 'msg' => '이미 재고코드가 있습니다.' );
 		header('Content-Type: application/json');
@@ -1070,6 +1276,14 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "onadb_prd_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_cd_site_show = $_POST['cd_site_show'] ?? "";
+	$_cd_tier = $_POST['cd_tier'] ?? "";
+	$_c19 = $_POST['c19'] ?? "";
+	$_c19_package = $_POST['c19_package'] ?? "";
+	$_ps_idx = $_POST['ps_idx'] ?? "";
+	$_ps_grade = $_POST['ps_grade'] ?? "";
+
 	$query = "update "._DB_COMPARISON." set
 		cd_site_show = '".$_cd_site_show."',
 		cd_tier = '".$_cd_tier."'
@@ -1084,14 +1298,24 @@ if( $_a_mode == "prd_reg" ){
 
 	$prd_score = sql_fetch_array(sql_query_error("select * from prd_score WHERE ps_idx = '".$_ps_idx."'  "));
 
+	// 배열 검증
+	if (!is_array($prd_score)) {
+		$prd_score = ['ps_grade' => '', 'ps_grade_data' => '{}'];
+	}
+
 	//일단 기존 평점과 변경평점이 다를경우 실행하자
-	if( $prd_score['ps_grade'] != $_ps_grade ){
+	if( ($prd_score['ps_grade'] ?? '') != $_ps_grade ){
 	
-		$_ps_grade_data_arr = json_decode($prd_score['ps_grade_data'], true);
+		$_ps_grade_data_arr = json_decode($prd_score['ps_grade_data'] ?? '{}', true);
 		
+		// 배열 검증
+		if (!is_array($_ps_grade_data_arr)) {
+			$_ps_grade_data_arr = [];
+		}
+
 		$_ps_grade_data_arr['last_modify_mode'] = "ad_modify";
 		$_ps_grade_data_arr['ad_modify'] = array(
-			"before" => $prd_score['ps_grade'],
+			"before" => $prd_score['ps_grade'] ?? "",
 			"after" => $_ps_grade,
 			"reg" => $_reg_d
 		);
@@ -1114,6 +1338,8 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "onadb_gradeReset" ){
 
+	$_prd_idx = $_POST['prd_idx'] ?? "";
+
 	$query = "select 
 		COUNT( * ) as grade_count,
 		AVG( pc_grade ) as grade_avg,
@@ -1121,7 +1347,17 @@ if( $_a_mode == "prd_reg" ){
 		from prd_comment WHERE pc_pd_idx = '".$_prd_idx."' ";
 	$sum = sql_fetch_array(sql_query_error($query));
 
+	// 배열 검증
+	if (!is_array($sum)) {
+		$sum = ['grade_count' => 0, 'grade_avg' => 0, 'grade_sum' => 0];
+	}
+
 	$prd_score = sql_fetch_array(sql_query_error("select * from prd_score WHERE ps_pd_idx = '".$_prd_idx."' AND ps_mode = 'total'  "));
+
+	// 배열 검증
+	if (!is_array($prd_score)) {
+		$prd_score = ['ps_idx' => '', 'ps_grade' => 0, 'ps_grade_data' => '{}'];
+	}
 
 	if( !$prd_score['ps_idx'] ){
 		$query = "insert prd_score set
@@ -1172,6 +1408,10 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "onadb_commModify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_pc_score_mode = $_POST['pc_score_mode'] ?? "";
+	$_pc_grade = $_POST['pc_grade'] ?? "";
+
 	$query = "UPDATE prd_comment SET 
 		pc_score_mode = '".$_pc_score_mode."',
 		pc_grade = '".$_pc_grade."'
@@ -1185,10 +1425,26 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "onadb_commWrite" ){
 
+	$_pd_idx = $_POST['pd_idx'] ?? "";
+	$_pc_grade = $_POST['pc_grade'] ?? 0;
+	$_pc_score_mode = $_POST['pc_score_mode'] ?? "";
+	$_ps_grade = $_POST['ps_grade'] ?? 0;
+	$body = $_POST['body'] ?? "";
+	$_name = $_POST['name'] ?? "";
+	$_pw = $_POST['pw'] ?? "";
+
 	$_ps_ym = date("Y-m");
 
 	$data_total = sql_fetch_array(sql_query_error("select * from prd_score where ps_pd_idx = '".$_pd_idx."' AND ps_mode = 'total' "));
 	$data_month = sql_fetch_array(sql_query_error("select * from prd_score where ps_pd_idx = '".$_pd_idx."' AND ps_mode = 'month' AND ps_ym = '".$_ps_ym."'  "));
+
+	// 배열 검증
+	if (!is_array($data_total)) {
+		$data_total = ['ps_idx' => '', 'ps_grade_count' => 0, 'ps_grade_total' => 0, 'ps_score' => '{}', 'ps_grade' => 0];
+	}
+	if (!is_array($data_month)) {
+		$data_month = ['ps_idx' => '', 'ps_grade_count' => 0, 'ps_grade_total' => 0, 'ps_score' => '{}', 'ps_grade' => 0];
+	}
 
 	//전체평점
 	if( !$data_total['ps_idx'] ){
@@ -1433,6 +1689,8 @@ if( $_a_mode == "prd_reg" ){
 // 오나DB 코멘트 삭제
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "onadb_commentDel" ){
+
+	$_idx = $_POST['idx'] ?? "";
 
 	sql_query_error("delete from prd_comment where pc_idx = '".$_idx."'");
 	$response = array('success' => true, 'msg' => '완료' );

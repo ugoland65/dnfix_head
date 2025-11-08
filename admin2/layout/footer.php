@@ -3,7 +3,7 @@
 </div><!-- #wrap -->
 
 <div id="footer">
-	Copyright ⓒ <b style="color:#247eff;"><?=_A_GLOB_SITENAME?></b> Corp. All Rights Reserved. <?=_A_GLOB_COPYRIGHT?> (<?=WS_VERSION_NUM?>)
+	Copyright ⓒ <b style="color:#247eff;"><?=defined('_A_GLOB_SITENAME') ? _A_GLOB_SITENAME : ''?></b> Corp. All Rights Reserved. <?=defined('_A_GLOB_COPYRIGHT') ? _A_GLOB_COPYRIGHT : ''?> (<?=defined('WS_VERSION_NUM') ? WS_VERSION_NUM : ''?>)
 </div><!-- #footer  -->
 
 

@@ -1,8 +1,23 @@
 <?
 
+// 변수 초기화
+$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 직원 등록
 if( $_a_mode == "ad_reg" ){
+
+	$_ad_id = $_POST['ad_id'] ?? "";
+	$_ad_name = $_POST['ad_name'] ?? "";
+	$_ad_nick = $_POST['ad_nick'] ?? "";
+	$_ad_pw = $_POST['ad_pw'] ?? "";
+	$_ad_birth = $_POST['ad_birth'] ?? "";
+	$_ad_joining = $_POST['ad_joining'] ?? "";
+	$_ad_address = $_POST['ad_address'] ?? "";
+	$_ad_tel = $_POST['ad_tel'] ?? "";
+	$_ad_contact_name = $_POST['ad_contact_name'] ?? "";
+	$_ad_contact_relationship = $_POST['ad_contact_relationship'] ?? "";
+	$_ad_contact_tel = $_POST['ad_contact_tel'] ?? "";
 
 	$_ad_pw = wepix_pw($_ad_pw);
 
@@ -43,9 +58,29 @@ if( $_a_mode == "ad_reg" ){
 // 직원 수정
 }elseif( $_a_mode == "ad_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_ad_nick = $_POST['ad_nick'] ?? "";
+	$_ad_name = $_POST['ad_name'] ?? "";
+	$_ad_birth = $_POST['ad_birth'] ?? "";
+	$_ad_joining = $_POST['ad_joining'] ?? "";
+	$_ad_address = $_POST['ad_address'] ?? "";
+	$_ad_tel = $_POST['ad_tel'] ?? "";
+	$_ad_contact_name = $_POST['ad_contact_name'] ?? "";
+	$_ad_contact_relationship = $_POST['ad_contact_relationship'] ?? "";
+	$_ad_contact_tel = $_POST['ad_contact_tel'] ?? "";
+	$_ad_telegram_token = $_POST['ad_telegram_token'] ?? "";
+	$_ad_line_token = $_POST['ad_line_token'] ?? "";
+	$_new_pw_change = $_POST['new_pw_change'] ?? "";
+	$_new_ad_pw = $_POST['new_ad_pw'] ?? "";
+
 	$data = wepix_fetch_array(wepix_query_error("select * from admin WHERE idx = '".$_idx."' "));
 
-	$_ad_pw = $data['ad_pw'];
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['ad_pw' => ''];
+	}
+
+	$_ad_pw = $data['ad_pw'] ?? "";
 
 	if( $_new_pw_change == "ok" ){
 		$_ad_pw = wepix_pw($_new_ad_pw);
@@ -89,6 +124,8 @@ $_test_check_pw = wepix_pw("1q2w3e4r!");
 // 직원 프로필 수정
 }elseif( $_a_mode == "adProfileFile" ){
 
+	$_idx = $_POST['idx'] ?? "";
+
 	include($docRoot.'/class/image.php'); //이미지 처리 클래스
 
 	$_uploads_dir = "../data/uploads";
@@ -96,11 +133,11 @@ $_test_check_pw = wepix_pw("1q2w3e4r!");
 	//$_save_file_name = "ad_profile_file_".$_idx."_".time();
 	$_save_file_name = "ad_profile_file_".$_idx;
 
-	$_imgfile = $_FILES['fileObj']['name'];
-	$_tmpfile = $_FILES['fileObj']['tmp_name'];
+	$_imgfile = $_FILES['fileObj']['name'] ?? "";
+	$_tmpfile = $_FILES['fileObj']['tmp_name'] ?? "";
 
 	if ( $_imgfile ) {
-		if (!$_FILES['fileObj']['error']) {
+		if (!($_FILES['fileObj']['error'] ?? 1)) {
 
 			//확장자
 			$extension = pathinfo($_imgfile, PATHINFO_EXTENSION);
@@ -128,13 +165,24 @@ $_test_check_pw = wepix_pw("1q2w3e4r!");
 // 월차,반차 신청
 }elseif( $_a_mode == "staff_holiday_reg" ){
 
+	$_tidx = $_POST['tidx'] ?? "";
+	$_mode = $_POST['mode'] ?? "";
+	$_date_s = $_POST['date_s'] ?? "";
+	$_date_e = $_POST['date_e'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
+
 	$_target = wepix_fetch_array(wepix_query_error("select * from admin where idx = '".$_tidx."' "));
+
+	// 배열 검증
+	if (!is_array($_target)) {
+		$_target = ['ad_id' => '', 'ad_name' => ''];
+	}
 
 	$_ary_data = array(
 		"reg" => array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain ),
 		"target" => array(
-			"id" => $_target['ad_id'],
-			"name" => $_target['ad_name']
+			"id" => $_target['ad_id'] ?? "",
+			"name" => $_target['ad_name'] ?? ""
 		)
 	);
 
@@ -157,18 +205,41 @@ $_test_check_pw = wepix_pw("1q2w3e4r!");
 // 월차,반차 수정
 }elseif( $_a_mode == "staff_holiday_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_tidx = $_POST['tidx'] ?? "";
+	$_mode = $_POST['mode'] ?? "";
+	$_date_s = $_POST['date_s'] ?? "";
+	$_date_e = $_POST['date_e'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
+	$_state = $_POST['state'] ?? "";
+
 	$data = sql_fetch_array(sql_query_error("select tidx, data from schedule_sttaf WHERE idx = '".$_idx."' "));
 
-	$_data_json = json_decode($data['data'], true);
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['tidx' => '', 'data' => '{}'];
+	}
+
+	$_data_json = json_decode($data['data'] ?? '{}', true);
+
+	// 배열 검증
+	if (!is_array($_data_json)) {
+		$_data_json = [];
+	}
 
 	//신청인이 변경되었을경우
-	if( $data['tidx'] != $_tidx ){
+	if( ($data['tidx'] ?? '') != $_tidx ){
 
 		$_target = wepix_fetch_array(wepix_query_error("select * from admin where idx = '".$_tidx."' "));
 
+		// 배열 검증
+		if (!is_array($_target)) {
+			$_target = ['ad_id' => '', 'ad_name' => ''];
+		}
+
 		$_data_json['target'] = array(
-			"id" => $_target['ad_id'],
-			"name" => $_target['ad_name']
+			"id" => $_target['ad_id'] ?? "",
+			"name" => $_target['ad_name'] ?? ""
 		);
 
 	}

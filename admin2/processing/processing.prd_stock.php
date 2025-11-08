@@ -1,9 +1,27 @@
 <?php
 
+// 변수 초기화
+$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
+
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 일일 재고관리 (엑셀)
 ////////////////////////////////////////////////////////////////////////////////////////////////
 if( $_a_mode == "day_stock" ){
+
+	$_stock_key = $_POST['stock_key'] ?? [];
+	$_stock_mode = $_POST['stock_mode'] ?? [];
+	$_stock_qry = $_POST['stock_qry'] ?? [];
+	$_stock_kind = $_POST['stock_kind'] ?? [];
+	$_stock_memo = $_POST['stock_memo'] ?? [];
+	$_stock_day = $_POST['stock_day'] ?? "";
+	$_stock_history_idx = $_POST['stock_history_idx'] ?? "";
+
+	// 배열 검증
+	if (!is_array($_stock_key)) $_stock_key = [];
+	if (!is_array($_stock_mode)) $_stock_mode = [];
+	if (!is_array($_stock_qry)) $_stock_qry = [];
+	if (!is_array($_stock_kind)) $_stock_kind = [];
+	if (!is_array($_stock_memo)) $_stock_memo = [];
 
 	$_reg_data = array(
 		"reg" => array(
@@ -13,14 +31,18 @@ if( $_a_mode == "day_stock" ){
 	);
 	$_reg = json_encode($_reg_data, JSON_UNESCAPED_UNICODE);
 
+	$_shortage = [];
+	$_soldout = [];
+	$_stock_alarm = [];
+
 	for ($i=0; $i<count($_stock_key); $i++){
 	
 		//$_psu_stock_idx = $_stock_key[$i];
-		$_ps_idx = $_stock_key[$i];
-		$_psu_mode = $_stock_mode[$i];
-		$_psu_qry = $_stock_qry[$i];
-		$_psu_kind = $_stock_kind[$i];
-		$_psu_memo = $_stock_memo[$i];
+		$_ps_idx = $_stock_key[$i] ?? "";
+		$_psu_mode = $_stock_mode[$i] ?? "";
+		$_psu_qry = $_stock_qry[$i] ?? 0;
+		$_psu_kind = $_stock_kind[$i] ?? "";
+		$_psu_memo = $_stock_memo[$i] ?? "";
 
 		//수량이 있을경우
 		if( $_psu_qry > 0 ){
@@ -34,23 +56,30 @@ if( $_a_mode == "day_stock" ){
 				left join "._DB_BRAND." C  ON (B.CD_BRAND_IDX = C.BD_IDX ) 
 				where ps_idx = '".$_ps_idx."' "));
 		
+			// 배열 검증
+			if (!is_array($prd_data)) {
+				$prd_data = ['ps_stock' => 0, 'ps_stock_object' => 'N', 'ps_alarm_count' => 0, 'CD_NAME' => '', 'cd_national' => ''];
+			}
+
+			$_prd_stock_count = 0;
+
 			if( $_psu_mode == "plus" ){
-				$_prd_stock_count = $prd_data['ps_stock'] + $_psu_qry;
+				$_prd_stock_count = ($prd_data['ps_stock'] ?? 0) + $_psu_qry;
 			
 			}elseif($_psu_mode == "minus"){
-				$_prd_stock_count = $prd_data['ps_stock'] - $_psu_qry;
+				$_prd_stock_count = ($prd_data['ps_stock'] ?? 0) - $_psu_qry;
 
 				//재고부족
-				if( $_prd_stock_count < 0 && $prd_data['ps_stock_object'] == "Y" ){
+				if( $_prd_stock_count < 0 && ($prd_data['ps_stock_object'] ?? 'N') == "Y" ){
 				
-					if( $prd_data['cd_national'] == "kr" ){
+					if( ($prd_data['cd_national'] ?? '') == "kr" ){
 						$_shortage['domestic'][] = array(
-							"name" => $prd_data['CD_NAME'],
+							"name" => $prd_data['CD_NAME'] ?? "",
 							"count" => $_prd_stock_count
 						);
 					}else{
 						$_shortage['import'][] = array(
-							"name" => $prd_data['CD_NAME'],
+							"name" => $prd_data['CD_NAME'] ?? "",
 							"count" => $_prd_stock_count
 						);
 					}
@@ -58,14 +87,14 @@ if( $_a_mode == "day_stock" ){
 				//품절상황
 				}elseif( $_prd_stock_count == 0 ){
 				
-					if( $prd_data['cd_national'] == "kr" ){
+					if( ($prd_data['cd_national'] ?? '') == "kr" ){
 						$_soldout['domestic'][] = array(
-							"name" => $prd_data['CD_NAME'],
+							"name" => $prd_data['CD_NAME'] ?? "",
 							"count" => $_prd_stock_count
 						);
 					}else{
 						$_soldout['import'][] = array(
-							"name" => $prd_data['CD_NAME'],
+							"name" => $prd_data['CD_NAME'] ?? "",
 							"count" => $_prd_stock_count
 						);
 					}
@@ -73,9 +102,9 @@ if( $_a_mode == "day_stock" ){
 				}
 
 				//재고관리 대상
-				if( $prd_data['ps_alarm_count'] > 0 && $_prd_stock_count < $prd_data['ps_alarm_count'] && $prd_data['ps_stock_object'] == "Y" ){
+				if( ($prd_data['ps_alarm_count'] ?? 0) > 0 && $_prd_stock_count < ($prd_data['ps_alarm_count'] ?? 0) && ($prd_data['ps_stock_object'] ?? 'N') == "Y" ){
 					$_stock_alarm[] = array(
-						"name" => $prd_data['CD_NAME'],
+						"name" => $prd_data['CD_NAME'] ?? "",
 						"count" => $_prd_stock_count
 					);
 				}
@@ -249,7 +278,10 @@ if( $_a_mode == "day_stock" ){
 }elseif( $_a_mode=="stock_excel" ){
 
 	setlocale(LC_CTYPE, 'ko_KR.eucKR'); 
-	extract($_FILES['userfile']); 
+	
+	// extract($_FILES['userfile']); 대신 안전하게 접근
+	$name = $_FILES['userfile']['name'] ?? "";
+	$tmp_name = $_FILES['userfile']['tmp_name'] ?? "";
 
 	$_file_name = $name;
 
@@ -266,9 +298,21 @@ if( $_a_mode == "day_stock" ){
 	echo count($fp2)."<br>";
 	*/
 
+	if (!$tmp_name || !file_exists($tmp_name)) {
+		$response = array('success' => false, 'msg' => '파일을 찾을 수 없습니다.');
+		header('Content-Type: application/json');
+		echo json_encode($response); 
+		exit;
+	}
+
 	$fp = fopen($tmp_name, 'r'); 
 	$count = 0;
 	$count2 = 0;
+	$_error = [];
+	$order_num = [];
+	$stock_code = [];
+	$stock_set_code = [];
+	$_ary_st_show = [];
 
 
 	//while ($row = fgetcsv($fp, 2000, ',')) { 
@@ -453,10 +497,11 @@ if( $_a_mode == "day_stock" ){
 
 	} //while END
 
-	if ( $stock_code && $stock_set_code ){
+	$stock_all_code = [];
+	if ( count($stock_code) > 0 && count($stock_set_code) > 0 ){
 		$stock_all_code = array_merge($stock_code, $stock_set_code);
 		$stock_all_code = array_values(array_unique($stock_all_code));
-	}elseif ( !$stock_code && $stock_set_code ){
+	}elseif ( count($stock_code) == 0 && count($stock_set_code) > 0 ){
 		$stock_all_code = $stock_set_code;
 	}else{
 		$stock_all_code = $stock_code;
@@ -464,9 +509,10 @@ if( $_a_mode == "day_stock" ){
 
 	$order_num = array_values(array_unique($order_num));
 
+	$_ary_st = [];
 	for ($i=0; $i<count($stock_all_code); $i++){
 
-		$_ps_idx = $stock_all_code[$i];
+		$_ps_idx = $stock_all_code[$i] ?? "";
 		$prd_data = sql_fetch_array(sql_query_error("select 
 			A.ps_idx, 
 			B.CD_IDX, B.CD_NAME, B.CD_BRAND_IDX,
@@ -476,28 +522,41 @@ if( $_a_mode == "day_stock" ){
 			left join "._DB_BRAND." C  ON (B.CD_BRAND_IDX = C.BD_IDX ) 
 			where ps_idx = '".$_ps_idx."' "));
 
+		// 배열 검증
+		if (!is_array($prd_data)) {
+			$prd_data = ['CD_NAME' => '', 'BD_NAME' => '', 'CD_BRAND_IDX' => '', 'CD_IDX' => '', 'ps_idx' => ''];
+		}
+
+		// 동적 변수 안전 접근
+		$_stock_qty = isset(${'stock_'.$_ps_idx}) ? ${'stock_'.$_ps_idx} : 0;
+		$_stock_set_qty = isset(${'stock_set_'.$_ps_idx}) ? ${'stock_set_'.$_ps_idx} : 0;
+		$_order_num = isset(${'order_num_'.$_ps_idx}) ? ${'order_num_'.$_ps_idx} : [];
+		$_order_set_num = isset(${'order_set_num_'.$_ps_idx}) ? ${'order_set_num_'.$_ps_idx} : [];
+		$_packageOut = isset(${'packageOut_'.$_ps_idx}) ? ${'packageOut_'.$_ps_idx} : 0;
+		$_packageOut_set = isset(${'packageOut_set_'.$_ps_idx}) ? ${'packageOut_set_'.$_ps_idx} : 0;
+
 		$_kind_one = array(
 			'name'=>'단일',
-			'qty' => ${'stock_'.$_ps_idx},
-			'order_num' => ${'order_num_'.$_ps_idx}
+			'qty' => $_stock_qty,
+			'order_num' => $_order_num
 		);
 
 		$_kind_set = array(
 			'name'=>'세트',
-			'qty' => ${'stock_set_'.$_ps_idx},
-			'order_num' => ${'order_set_num_'.$_ps_idx}
+			'qty' => $_stock_set_qty,
+			'order_num' => $_order_set_num
 		);
 		
-		$_sum_qty = ${'stock_'.$_ps_idx} + ${'stock_set_'.$_ps_idx};
-		$_package_out = ${'packageOut_'.$_ps_idx} + ${'packageOut_set_'.$_ps_idx};
+		$_sum_qty = $_stock_qty + $_stock_set_qty;
+		$_package_out = $_packageOut + $_packageOut_set;
 
 		$_ary_st_show[] = array(
 			'o_ps_idx' => $_ps_idx,
-			'name' => $prd_data['CD_NAME'],
-			'brand_name' => $prd_data['BD_NAME'],
-			'brand_idx' => $prd_data['CD_BRAND_IDX'],
-			'cd_idx' => $prd_data['CD_IDX'],
-			'ps_idx' => $prd_data['ps_idx'],
+			'name' => $prd_data['CD_NAME'] ?? "",
+			'brand_name' => $prd_data['BD_NAME'] ?? "",
+			'brand_idx' => $prd_data['CD_BRAND_IDX'] ?? "",
+			'cd_idx' => $prd_data['CD_IDX'] ?? "",
+			'ps_idx' => $prd_data['ps_idx'] ?? "",
 			'qty' => $_sum_qty,
 			'one' => $_kind_one,
 			'set' => $_kind_set,
@@ -505,9 +564,9 @@ if( $_a_mode == "day_stock" ){
 		);
 
 		$_ary_st[] = array(
-			'brand_idx' => $prd_data['CD_BRAND_IDX'],
-			'cd_idx' => $prd_data['CD_IDX'],
-			'ps_idx' => $prd_data['ps_idx'],
+			'brand_idx' => $prd_data['CD_BRAND_IDX'] ?? "",
+			'cd_idx' => $prd_data['CD_IDX'] ?? "",
+			'ps_idx' => $prd_data['ps_idx'] ?? "",
 			'qty' => $_sum_qty,
 			'one' => $_kind_one,
 			'set' => $_kind_set,
@@ -550,6 +609,8 @@ if( $_a_mode == "day_stock" ){
 // 일일재고 삭제
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode=="day_stock_del" ){
+
+	$_idx = $_POST['idx'] ?? "";
 
 	sql_query_error("delete from prd_stock_history where uid = '".$_idx."' ");
 

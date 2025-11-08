@@ -9,15 +9,18 @@ header('Content-Type: application/json');
 use App\Classes\RequestHandler;
 use App\Controllers\Basecode;
 
+// 변수 초기화
+$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
+
 $requestHandler = new RequestHandler();
 
 $postData = $requestHandler->getAllPost();
 
-	echo "<pre>";
-	print_r($postData);
-	echo "</pre>";
+	// echo "<pre>";
+	// print_r($postData);
+	// echo "</pre>";
 
-exit;
+// exit;
 
 $basecode = new Basecode(); 
 

@@ -46,6 +46,7 @@ $_sess_id = $_SESSION["sess_id"] ?? null;
 
 include $docRoot."/library/globalConfig.php";
 include $docRoot."/library/mysql.php";
+include $docRoot."/library/version.php";
 
 
 //################################################################################

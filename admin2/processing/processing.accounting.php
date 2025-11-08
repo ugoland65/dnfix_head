@@ -1,10 +1,15 @@
 <?
 
-
+// 변수 초기화
+$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 운영자금 계획 등록
 if( $_a_mode == "moneyPlan_reg" ){
+
+	$_category = $_POST['category'] ?? "";
+	$_name = $_POST['name'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
 
 	$query = "insert money_plan set
 		category = '".$_category."',
@@ -17,6 +22,11 @@ if( $_a_mode == "moneyPlan_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 운영자금 계획 수정
 }elseif( $_a_mode == "moneyPlan_modify" ){
+
+	$_idx = $_POST['idx'] ?? "";
+	$_category = $_POST['category'] ?? "";
+	$_name = $_POST['name'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
 
 	$query = "UPDATE money_plan SET 
 		category = '".$_category."',
@@ -31,14 +41,25 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 운영자금 금액변동 입력
 }elseif( $_a_mode == "moneyPlan_history" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_mode = $_POST['mode'] ?? "";
+	$_price = $_POST['price'] ?? "0";
+	$_date = $_POST['date'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
+
 	$data = sql_fetch_array(sql_query_error("select * from money_plan WHERE idx = '".$_idx."' "));
+
+	// 배열 검증
+	if (!is_array($data)) {
+		$data = ['balance' => 0];
+	}
 
 	$_price = (int)str_replace(',','', $_price);
 
 	if( $_mode == "plus" ){
-		$_total = $data['balance'] + $_price;
+		$_total = ($data['balance'] ?? 0) + $_price;
 	}elseif( $_mode == "minus"){
-		$_total = $data['balance'] - $_price;
+		$_total = ($data['balance'] ?? 0) - $_price;
 	}
 
 	$_ary_reg = array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
@@ -66,11 +87,11 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 입출금 엑셀등록
 }elseif( $_a_mode == "bankStatementExcelUpload" ){
 
-	$_imgfile = $_FILES['fileObj']['name'];
-	$_tmpfile = $_FILES['fileObj']['tmp_name'];
+	$_imgfile = $_FILES['fileObj']['name'] ?? "";
+	$_tmpfile = $_FILES['fileObj']['tmp_name'] ?? "";
 
 	if ( $_imgfile ) {
-		if (!$_FILES['fileObj']['error']) {
+		if (!($_FILES['fileObj']['error'] ?? 1)) {
 
 			//확장자
 			$extension = pathinfo($_imgfile, PATHINFO_EXTENSION);
@@ -211,6 +232,11 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 입출금 상세처리
 }elseif( $_a_mode == "bankStatement_modify" ){
 
+	$_idx = $_POST['idx'] ?? "";
+	$_ledge_cate = $_POST['ledge_cate'] ?? "";
+	$_state = $_POST['state'] ?? "";
+	$_memo = $_POST['memo'] ?? "";
+
 	$query = "UPDATE bank_statement SET 
 		ledge_cate_idx = '".$_ledge_cate."',
 		state = '".$_state."',
@@ -224,6 +250,15 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 입출금 일괄 상세처리
 }elseif( $_a_mode == "bankStatement_batch_process" ){
 
+	$_chk_idx = $_POST['chk_idx'] ?? [];
+	$_batch_process_cate = $_POST['batch_process_cate'] ?? "";
+	$_batch_process_memo = $_POST['batch_process_memo'] ?? "";
+
+	// 배열 검증
+	if (!is_array($_chk_idx)) {
+		$_chk_idx = [];
+	}
+
 	$_log_data = array(
 		"log_mode" => "batch_process",
 		"d" => $_reg_d
@@ -232,7 +267,7 @@ if( $_a_mode == "moneyPlan_reg" ){
 
 	for ($i=0; $i<count($_chk_idx); $i++){
 		
-		$_idx = $_chk_idx[$i];
+		$_idx = $_chk_idx[$i] ?? "";
 		
 		$query = "UPDATE bank_statement SET 
 			ledge_cate_idx = '".$_batch_process_cate."',
@@ -250,6 +285,9 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 입출금 항목등록
 }elseif( $_a_mode == "ledgeCategoryReg" ){
 
+	$_lc_mode = $_POST['lc_mode'] ?? "";
+	$_lc_name = $_POST['lc_name'] ?? "";
+	$_lc_approval = $_POST['lc_approval'] ?? "";
 	$_lc_depth = "1";
 	$_lc_ancestor = "";
 
@@ -267,14 +305,19 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 입출금 항목 불러오기
 }elseif( $_a_mode == "ledgeCateLoad" ){
 
+	$_kind = $_POST['kind'] ?? "";
+	$_ledge_category = [];
+
 	$_where = "WHERE lc_mode = '".$_kind."' ";
 	$_query = "select * from ledge_category ".$_where." ORDER BY idx DESC";
 	$_result = sql_query_error($_query);
 	while($list = sql_fetch_array($_result)){
 
+		if (!is_array($list)) continue;
+
 		$_ledge_category[] = array(
-			"idx" => $list['idx'],
-			"name" => $list['lc_name']
+			"idx" => $list['idx'] ?? "",
+			"name" => $list['lc_name'] ?? ""
 		);
 
 	}
@@ -285,9 +328,30 @@ if( $_a_mode == "moneyPlan_reg" ){
 // 일일마감
 }elseif( $_a_mode == "day_work_end" ){
 
+	$_day_code = $_POST['day_code'] ?? "";
+	$_brand_idx = $_POST['brand_idx'] ?? [];
+	$_brand_name = $_POST['brand_name'] ?? [];
+	$_cost_count1 = $_POST['cost_count1'] ?? [];
+	$_cost_count2 = $_POST['cost_count2'] ?? [];
+	$_cost_price_sum = $_POST['cost_price_sum'] ?? [];
+	$_sale_price_sum = $_POST['sale_price_sum'] ?? [];
+	$_total_count_sum1 = $_POST['total_count_sum1'] ?? 0;
+	$_total_count_sum2 = $_POST['total_count_sum2'] ?? 0;
+	$_total_cost_price_sum = $_POST['total_cost_price_sum'] ?? 0;
+	$_total_sale_price_sum = $_POST['total_sale_price_sum'] ?? 0;
+	$_memo = $_POST['memo'] ?? "";
+
+	// 배열 검증
+	if (!is_array($_brand_idx)) $_brand_idx = [];
+	if (!is_array($_brand_name)) $_brand_name = [];
+	if (!is_array($_cost_count1)) $_cost_count1 = [];
+	if (!is_array($_cost_count2)) $_cost_count2 = [];
+	if (!is_array($_cost_price_sum)) $_cost_price_sum = [];
+	if (!is_array($_sale_price_sum)) $_sale_price_sum = [];
+
 	$data = sql_fetch_array(sql_query_error("select * from day_end WHERE day_code = '".$_day_code."' "));
 
-	if( $data['idx'] ){
+	if (!empty($data['idx'] ?? '')) {
 
 		$response = array('success' => false, 'msg' => '해당일에 이미 등록되어 있습니다.' );
 		header('Content-Type: application/json');
@@ -296,15 +360,16 @@ if( $_a_mode == "moneyPlan_reg" ){
 
 	}
 
+	$_brand = [];
 	for ($i=0; $i<count($_brand_name); $i++){
 
 		$_brand[] = array(
-			"idx" => $_brand_idx[$i],
-			"brand_name" => $_brand_name[$i],
-			"cost_count1" => $_cost_count1[$i],
-			"cost_count2" => $_cost_count2[$i],
-			"cost_price_sum" => $_cost_price_sum[$i],
-			"sale_price_sum" => $_sale_price_sum[$i]
+			"idx" => $_brand_idx[$i] ?? "",
+			"brand_name" => $_brand_name[$i] ?? "",
+			"cost_count1" => $_cost_count1[$i] ?? 0,
+			"cost_count2" => $_cost_count2[$i] ?? 0,
+			"cost_price_sum" => $_cost_price_sum[$i] ?? 0,
+			"sale_price_sum" => $_sale_price_sum[$i] ?? 0
 		);
 
 	}
