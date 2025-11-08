@@ -33,18 +33,4 @@ class BaseClass {
         }
     }
 
-    // 필요에 따라 공통 메서드 추가 가능
-	/*
-    protected function fetchAll($query, $params = []) {
-        return Database::getInstance()->fetchAll($query, $params);
-    }
-
-    protected function fetchOne($query, $params = []) {
-        return Database::getInstance()->fetchOne($query, $params);
-    }
-
-    protected function execute($query, $params = []) {
-        return Database::getInstance()->execute($query, $params);
-    }
-	*/
 }

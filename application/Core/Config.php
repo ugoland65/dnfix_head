@@ -22,18 +22,17 @@ class Config
      */
     public static function get(string $key, $default = null)
     {
-        $keys = explode('.', $key);
-        $value = self::$items;
+        $segments = explode('.', $key);
 
-        foreach ($keys as $segment) {
-            if (is_array($value) && array_key_exists($segment, $value)) {
-                $value = $value[$segment];
-            } else {
-                return $default;
-            }
+        // 파일 경로는 모든 세그먼트를 사용 (config 폴더 기준)
+        $filePath = __DIR__ . '/../../config/' . implode('/', $segments) . '.php';
+
+        if (file_exists($filePath)) {
+            $config = include $filePath;
+            return $config;
         }
 
-        return $value;
+        return $default;
     }
 
     public static function set(string $key, $value): void
