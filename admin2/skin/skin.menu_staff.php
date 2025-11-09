@@ -2,6 +2,10 @@
 if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 //	include "../lib/inc_common.php";
 }
+
+// 변수 초기화
+$_page = $_page ?? '';
+$_get1 = $_get1 ?? '';
 ?>
 <div class="left-menu-title">
 	<ul>인사/업무</ul>
@@ -19,7 +23,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>업무관리</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( $_page == "work_manual" || $_page == "work_manual_reg"|| $_page == "work_manual_view" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_manual'"><li>업무 매뉴얼</li></ul>
+	<ul <? if( $_page == "work_manual" || $_page == "work_manual_reg" || $_page == "work_manual_view" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_manual'"><li>업무 매뉴얼</li></ul>
 </div>
 
 <div class="left-menu-mid-title">

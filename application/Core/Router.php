@@ -332,6 +332,9 @@ class Router
      */
     private function send404()
     {
+        echo "404";
+        exit;
+        
         http_response_code(404);
         echo json_encode([
             'error' => 'Route not found',

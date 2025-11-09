@@ -14,6 +14,9 @@ class View
 
     private $layout = null;
     private $layoutData = [];
+    
+    // View Composer 저장소
+    private static $composers = [];
 
     public function __construct(string $template, array $data = [])
     {
@@ -64,6 +67,9 @@ class View
     {
         // 세션 시작 (플래시 메시지 읽기 위해)
         $this->ensureSessionStarted();
+        
+        // View Composer 실행
+        $this->callComposers();
         
         $templatePath = $this->getTemplatePath();
 
@@ -241,6 +247,139 @@ class View
             
             session_start();
         }
+    }
+
+    /* ==========================================
+     * View Composer 기능
+     * ========================================== */
+    
+    /**
+     * View Composer 등록 (Laravel 스타일)
+     * 
+     * 사용 예:
+     * View::composer('sitename.*', function($view) {
+     *     $view->with('user', Auth::user());
+     * });
+     * 
+     * View::composer(['admin.dashboard', 'admin.users'], 'App\ViewComposers\AdminComposer');
+     * 
+     * @param string|array $views 뷰 이름 또는 배열 (와일드카드 지원: 'sitename.*')
+     * @param callable|string $callback 콜백 함수 또는 클래스명
+     */
+    public static function composer($views, $callback): void
+    {
+        $views = is_array($views) ? $views : [$views];
+        
+        foreach ($views as $view) {
+            if (!isset(self::$composers[$view])) {
+                self::$composers[$view] = [];
+            }
+            self::$composers[$view][] = $callback;
+        }
+    }
+    
+    /**
+     * 여러 뷰에 동일한 Composer 등록 (별칭)
+     * 
+     * @param array $views 뷰 이름 배열
+     * @param callable|string $callback 콜백 함수 또는 클래스명
+     */
+    public static function composers(array $views, $callback): void
+    {
+        self::composer($views, $callback);
+    }
+    
+    /**
+     * View Creator 등록 (뷰가 인스턴스화될 때 실행)
+     * 
+     * @param string|array $views 뷰 이름 또는 배열
+     * @param callable|string $callback 콜백 함수 또는 클래스명
+     */
+    public static function creator($views, $callback): void
+    {
+        // Creator는 생성자에서 실행되어야 하지만, 
+        // 현재는 composer와 동일하게 처리 (간단한 구현)
+        self::composer($views, $callback);
+    }
+    
+    /**
+     * 등록된 Composer 실행
+     */
+    private function callComposers(): void
+    {
+        foreach (self::$composers as $pattern => $callbacks) {
+            // 와일드카드 매칭
+            if ($this->matchesPattern($pattern, $this->template)) {
+                foreach ($callbacks as $callback) {
+                    $this->executeComposer($callback);
+                }
+            }
+        }
+    }
+    
+    /**
+     * Composer 실행
+     * 
+     * @param callable|string $callback
+     */
+    private function executeComposer($callback): void
+    {
+        if (is_callable($callback)) {
+            // 클로저 또는 callable 실행
+            call_user_func($callback, $this);
+        } elseif (is_string($callback) && class_exists($callback)) {
+            // 클래스 기반 Composer
+            $composerInstance = new $callback();
+            
+            if (method_exists($composerInstance, 'compose')) {
+                $composerInstance->compose($this);
+            }
+        }
+    }
+    
+    /**
+     * 뷰 이름이 패턴과 일치하는지 확인 (와일드카드 지원)
+     * 
+     * @param string $pattern 패턴 (예: 'sitename.*', 'admin.users')
+     * @param string $viewName 뷰 이름
+     * @return bool
+     */
+    private function matchesPattern(string $pattern, string $viewName): bool
+    {
+        // 정확히 일치
+        if ($pattern === $viewName) {
+            return true;
+        }
+        
+        // 모든 뷰에 적용
+        if ($pattern === '*') {
+            return true;
+        }
+        
+        // 와일드카드 패턴 변환
+        $regex = str_replace(
+            ['\\*', '\\?'],
+            ['.*', '.'],
+            preg_quote($pattern, '/')
+        );
+        
+        return (bool) preg_match('/^' . $regex . '$/', $viewName);
+    }
+    
+    /**
+     * 모든 Composer 초기화 (테스트용)
+     */
+    public static function clearComposers(): void
+    {
+        self::$composers = [];
+    }
+    
+    /**
+     * 등록된 Composer 목록 반환 (디버그용)
+     */
+    public static function getComposers(): array
+    {
+        return self::$composers;
     }
 
 }

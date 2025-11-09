@@ -323,7 +323,7 @@ class RedirectFactory {
  * @return RedirectResponse|RedirectFactory
  */
 if (!function_exists('redirect')) {
-    function redirect(string $url = null, int $status = 302, array $headers = []) {
+    function redirect(?string $url = null, int $status = 302, array $headers = []) {
         if ($url === null) {
             return new RedirectFactory();
         }

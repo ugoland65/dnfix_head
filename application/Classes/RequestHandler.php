@@ -19,7 +19,7 @@ class RequestHandler
     }
 
     // 모든 입력값(GET, POST)에서 특정 키 값 가져오기 및 필터링
-    public function input($key = null, $filter = FILTER_SANITIZE_STRING, $options = [])
+    public function input($key = null, $filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS, $options = [])
     {
         if ($key === null) {
             return $this->filterArrayRecursive($this->inputData, $filter);
@@ -29,13 +29,13 @@ class RequestHandler
     }
 
     // 모든 입력값 반환 (GET, POST)
-    public function allInput($filter = FILTER_SANITIZE_STRING)
+    public function allInput($filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         return $this->filterArrayRecursive($this->inputData, $filter);
     }
 
     // 모든 입력값 반환 (GET, POST)
-    public function all($filter = FILTER_SANITIZE_STRING)
+    public function all($filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         return $this->filterArrayRecursive($this->inputData, $filter);
     }
@@ -47,25 +47,25 @@ class RequestHandler
     }
 
     // GET 요청에서 특정 키 값 가져오기
-    public function getValue($key, $filter = FILTER_SANITIZE_STRING, $options = [])
+    public function getValue($key, $filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS, $options = [])
     {
         return filter_input(INPUT_GET, $key, $filter, $options) ?? null;
     }
 
     // POST 요청에서 특정 키 값 가져오기
-    public function getPostValue($key, $filter = FILTER_SANITIZE_STRING, $options = [])
+    public function getPostValue($key, $filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS, $options = [])
     {
         return filter_input(INPUT_POST, $key, $filter, $options) ?? null;
     }
 
     // 모든 GET 값 반환
-    public function getAll($filter = FILTER_SANITIZE_STRING)
+    public function getAll($filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         return $this->filterArrayRecursive($_GET, $filter);
     }
 
     // 모든 POST 값 반환
-    public function getAllPost($filter = FILTER_SANITIZE_STRING)
+    public function getAllPost($filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         return $this->filterArrayRecursive($_POST, $filter);
     }

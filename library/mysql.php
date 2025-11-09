@@ -1,11 +1,13 @@
 <?
-$config_db = $docRoot."/library/db.php";
-
-$connect = dbconn();
-$mysqli = mysqli();
-
+// 함수 정의
 function dbconn() {
     global $config_db, $connect;
+    
+    if (empty($config_db)) {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'];
+        $config_db = $docRoot."/library/db.php";
+    }
+    
     $db_settings = parse_ini_file($config_db);
     @extract($db_settings);
 
@@ -22,6 +24,12 @@ function dbconn() {
 
 function mysqli() {
     global $config_db, $mysqli;
+    
+    if (empty($config_db)) {
+        $docRoot = $_SERVER['DOCUMENT_ROOT'];
+        $config_db = $docRoot."/library/db.php";
+    }
+    
     $db_settings = parse_ini_file($config_db);
     @extract($db_settings);
 
@@ -193,4 +201,13 @@ function wepix_counter2($table_name, $where_str=null, $group=null) {
 
     return $fetch_row[0];
 }
+
+// 변수 초기화 및 연결 설정
+if (!isset($docRoot) || empty($docRoot)) {
+    $docRoot = $_SERVER['DOCUMENT_ROOT'];
+}
+
+$config_db = $docRoot."/library/db.php";
+$connect = dbconn();
+$mysqli = mysqli();
 ?>

@@ -7,12 +7,12 @@ if( $_idx ){
 
 
 	$_ad_data_arr = array(
-		"address" => $_ad_address,
-		"tel" => $_ad_tel,
+		"address" => $_ad_data['address'] ?? '',
+		"tel" => $_ad_data['tel'] ?? '',
 		"contact" => array(
-			"name" => $_ad_contact_name,
-			"relationship" => $_ad_contact_relationship,
-			"tel" => $_ad_contact_tel
+			"name" => $_ad_data['contact']['name'] ?? '',
+			"relationship" => $_ad_data['contact']['relationship'] ?? '',
+			"tel" => $_ad_data['contact']['tel'] ?? ''
 		)
 	);
 

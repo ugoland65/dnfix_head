@@ -2,6 +2,13 @@
 RewriteEngine On
 RewriteBase /
 
+# dnfixhead.mycafe24.com 도메인 전용 처리 - 모든 요청을 onadb 라우터로
+RewriteCond %{HTTP_HOST} ^dnfixhead\.mycafe24\.com$ [NC]
+RewriteCond %{REQUEST_URI} !^/onadb/
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^(.*)$ /onadb/router_index.php [QSA,L]
+
 # router 폴더 요청은 상위 규칙을 타지 않고 그대로 전달
 RewriteRule ^router/ - [L]
 

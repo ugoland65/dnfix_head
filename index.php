@@ -1,4 +1,8 @@
 <?
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
+
 $docRoot = $_SERVER['DOCUMENT_ROOT'];
 /*
 include $docRoot."/library/globalConfig.php";
@@ -13,101 +17,11 @@ if( $check_domain == "jcyh.co.kr" ){
 	exit;
 
 //-----------------------------------------------------------------------------------------------------------------------
-}elseif( $check_domain == "onadb.net" || $check_domain == "onadbs.com" ){
+//}elseif( $check_domain == "onadb.net" || $check_domain == "onadbs.com" ){
+}elseif ( $check_domain == "dnfixhead.mycafe24.com" ) {
 	
-	include $docRoot."/f/inc_common.php";
-
-	while(list($key,$value) = each($_POST)){
-		${"_".$key} = securityVal($value);
-	}
-
-	$_page = securityVal($get1);
-	
-	if( !$_page ) $_page = "index";
-	$_skin_code = $_page;
-
-
-	/*
-	if( IS_MOBILE ){
-		$_dir = $docRoot."/f/skin/onadb_mobile/";
-	}else{
-		$_dir = $docRoot."/f/skin/onadb/";
-	}
-	*/
-	$_dir = $docRoot."/f/skin/onadb/";
-
-	//로그인 전용페이지
-	if( !$_sess_key ){
-
-		if( $_page == "mypage" || $_page == "reports" ){
-
-			session_unset(); // 모든 세션변수를 언레지스터 시켜줌
-			session_destroy(); // 세션해제함
-			echo '<meta http-equiv="refresh" content="0; url=/login" >';
-			exit;
-
-		}
-
-	}
-
-	if( $_page == "logout" ){
-
-		session_unset(); // 모든 세션변수를 언레지스터 시켜줌
-		session_destroy(); // 세션해제함
-		echo '<meta http-equiv="refresh" content="0; url=/" >';
-		exit;
-	
-	}elseif( $_page == "index" ){
-		//$_skin_code = "main";
-		$_skin_code = "prd_list";
-
-	/*
-	}elseif( $_page == "mypage" ){
-		$_skin_code = "mypage";
-	*/
-
-	}elseif( $_page == "u" ){
-		$_nick = securityVal($get2);
-		$_skin_code = "user_view";
-
-	}elseif( $_page == "pl" ){
-		$_category = securityVal($get2);
-		$_pn = securityVal($get3);
-		$_skin_code = "prd_list";
-
-	}elseif( $_page == "pv" ){
-		$_idx = securityVal($get2);
-		$_skin_code = "prd_view";
-
-	}elseif( $_page == "search" ){
-		$_keyword = securityVal($get2);
-		$_skin_code = "search";
-
-	//게시판
-	}elseif( $_page == "b" ){
-		$_b_code = securityVal($get2);
-		$_pn = securityVal($get3);
-		$_skin_code = "board";
-
-	}elseif( $_page == "bv" ){
-		$_b_code = securityVal($get2);
-		$_idx = securityVal($get3);
-		$_skin_code = "board_view";
-
-	}elseif( $_page == "login" ){
-		$_layout = "no";
-		$_skin_code = "login";
-		//include ($docRoot."/f/login.php");
-	}elseif( $_page == "join" ){
-		$_layout = "no";
-		$_skin_code = "join";
-		//include ($docRoot."/f/join.php");
-
-
-	}
-
-	include ($docRoot."/f/skin.php");
-
+	// onadb 라우터로 처리
+	require_once $docRoot."/onadb/router_index.php";
 	exit;
 
 }

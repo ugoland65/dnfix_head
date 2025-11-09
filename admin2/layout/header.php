@@ -214,18 +214,18 @@ $(function () {
 <?
 	$_target_mb_text = "@".$_ad_idx;
 
-$_query = "
-    SELECT COUNT(1) AS my_total
-    FROM work_comment AS A
-    WHERE A.mention_mb LIKE CONCAT('%', '".$_target_mb_text."', '%')
-      AND NOT EXISTS (
-          SELECT 1
-          FROM work_view_check AS B
-          WHERE B.mode = A.mode
-            AND B.tidx = A.idx
-			AND B.mb_idx = '".$_ad_idx."'
-      )
-";
+	$_query = "
+		SELECT COUNT(1) AS my_total
+		FROM work_comment AS A
+		WHERE A.mention_mb LIKE CONCAT('%', '".$_target_mb_text."', '%')
+		AND NOT EXISTS (
+			SELECT 1
+			FROM work_view_check AS B
+			WHERE B.mode = A.mode
+				AND B.tidx = A.idx
+				AND B.mb_idx = '".$_ad_idx."'
+		)
+	";
 
 	$header_my_count = sql_fetch_array(sql_query_error($_query));
 
@@ -235,24 +235,24 @@ $_query = "
 /* 기본 모달 스타일 */
 .work-count-modal {
 	display:none;
-  position: fixed;
-  z-index:999999;
-  top: 60px;
-  transform: translateY(-25px);
-  opacity: 0;
-  transition: transform 0.2s ease, opacity 0.2s ease;
-  right: 40px;
-  width: 500px;
-  height: calc(100% - 100px);
-  overflow-y:scroll;
-  padding:20px 30px;
-  background-color:#fff;
-  border:1px solid #ddd;
-  border-radius: 10px;
-  box-shadow: 
-    0 4px 6px rgba(0, 0, 0, 0.1), 
-    0 8px 16px rgba(0, 0, 0, 0.2), 
-    0 12px 24px rgba(0, 0, 0, 0.1); /* 여러 단계 그림자 */
+	position: fixed;
+	z-index:999999;
+	top: 60px;
+	transform: translateY(-25px);
+	opacity: 0;
+	transition: transform 0.2s ease, opacity 0.2s ease;
+	right: 40px;
+	width: 500px;
+	height: calc(100% - 100px);
+	overflow-y:scroll;
+	padding:20px 30px;
+	background-color:#fff;
+	border:1px solid #ddd;
+	border-radius: 10px;
+	box-shadow: 
+		0 4px 6px rgba(0, 0, 0, 0.1), 
+		0 8px 16px rgba(0, 0, 0, 0.2), 
+		0 12px 24px rgba(0, 0, 0, 0.1); /* 여러 단계 그림자 */
 }
 
 .work-count-modal::-webkit-scrollbar{ width:6px; height:6px; border-left:solid 1px rgba(255,255,255,.1)}
@@ -296,7 +296,7 @@ $gnb_lang = "ko";
 
 <div id="header">
 	
-	<div id="logo"><a href="<?=_A_PATH_MAIN?>"><img src="<?=_A_FOLDER?>/img/<?=_A_GLOB_LOGOFILE?>?t=2" alt=""></a></div>
+	<div id="logo"><a href="<?=_A_PATH_MAIN?>"><img src="/admin2/img/logo.png?v=1234" alt=""></a></div>
 	
 	<div id="gnb">
 		<ul>
@@ -394,6 +394,9 @@ $gnb_lang = "ko";
 						if( file_exists($menu_file2) ){
 							include $menu_file2;
 						}
+					}
+					if ($pageGroup2) {
+						include($docRoot . "/admin2/skin/skin.menu_" . $pageGroup2 . ".php");
 					}
 					?>
 				</div><!-- #wrap_left_body -->

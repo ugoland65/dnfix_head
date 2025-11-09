@@ -1,47 +1,51 @@
-<?
-header("Content-type: text/html; charset=utf-8");
+<?php
+// 모든 출력 버퍼 정리 후 새로 시작
+while (ob_get_level()) {
+    ob_end_clean();
+}
+ob_start();
 
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+// 세션 설정 및 시작을 최우선으로
+//if (!$_session_save_path) $_session_save_path = "../session";
 
-/*
-@deprecated
-if( !$_session_save_path ) $_session_save_path = "../session";
+// 세션 저장 경로를 항상 /admin2/session 으로 고정
+$_session_save_path = __DIR__ . "/../session";
+$_session_save_path = realpath($_session_save_path);
 
+// 세션 설정을 session_start() 전에
 ini_set("session.use_trans_sid", 0);
-ini_set("url_rewriter.tags","");
+ini_set("url_rewriter.tags", "");
+ini_set("session.cookie_httponly", 1);
+ini_set("session.use_only_cookies", 1);
+ini_set("session.save_handler", "files");
 //ini_set("session.cache_expire", "3600");
 //ini_set("session.gc_maxlifetime", "3600");
 //ini_set("session.cookie_domain", ".");
-session_save_path($_session_save_path);
-session_start();
-*/
 
-$docRoot = $_SERVER['DOCUMENT_ROOT'];
-
-if (session_status() === PHP_SESSION_NONE) {
-
-	// 세션 저장 경로 설정
-	// DOCUMENT_ROOT가 /계정/www 이면
-	// 한 단계 위인 /계정/session 으로 설정
-	$docRoot = rtrim($_SERVER['DOCUMENT_ROOT'], '/\\');
-	$parentDir = dirname($docRoot);
-	$sessionPath = $parentDir . '/session';
-	
-	// 디렉토리가 없으면 생성
-	/*
-	if (!is_dir($sessionPath)) {
-		mkdir($sessionPath, 0755, true);
-	}
-	*/
-	
-	session_save_path($sessionPath);
-	session_start();
+// 세션 저장 경로 강제 설정
+if ($_session_save_path && is_dir($_session_save_path) && is_writable($_session_save_path)) {
+    session_save_path($_session_save_path);
+} else {
+    // 기본 시스템 임시 디렉토리 사용
+    session_save_path(sys_get_temp_dir());
 }
 
+// 세션 강제 시작
+if (session_status() === PHP_SESSION_NONE) {
+    if (!session_start()) {
+        // 세션 시작 실패 시 강제 시도
+        ini_set('session.use_cookies', 1);
+        ini_set('session.use_only_cookies', 1);
+        session_start();
+    }
+}
 
+// 세션 시작 후 헤더 설정
+if (!headers_sent()) {
+    header("Content-type: text/html; charset=utf-8");
+}
 
+$docRoot = $_SERVER['DOCUMENT_ROOT'];
 $_sess_id = $_SESSION["sess_id"] ?? null;
 
 include $docRoot."/library/globalConfig.php";

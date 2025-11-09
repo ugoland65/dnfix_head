@@ -679,7 +679,7 @@ class QueryBuilder
 	 * @param callable|null $default 조건이 false일 때 실행할 콜백 (선택사항)
 	 * @return $this
 	 */
-	public function when($condition, callable $callback, callable $default = null)
+	public function when($condition, callable $callback, ?callable $default = null)
 	{
 		if ($condition) {
 			$callback($this, $condition);
@@ -2167,15 +2167,15 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
     /* ==========================================
      * ArrayAccess 구현 (배열처럼 접근 가능)
      * ========================================== */
-    public function offsetExists($offset) {
+    public function offsetExists(mixed $offset): bool {
         return isset($this->attributes[$offset]);
     }
 
-    public function offsetGet($offset) {
+    public function offsetGet(mixed $offset): mixed {
         return $this->attributes[$offset] ?? null;
     }
 
-    public function offsetSet($offset, $value) {
+    public function offsetSet(mixed $offset, mixed $value): void {
         if (is_null($offset)) {
             $this->attributes[] = $value;
         } else {
@@ -2185,14 +2185,14 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
 
     
 
-    public function offsetUnset($offset) {
+    public function offsetUnset(mixed $offset): void {
         unset($this->attributes[$offset]);
     }
 
     /* ==========================================
      * JsonSerializable 구현
      * ========================================== */
-    public function jsonSerialize() {
+    public function jsonSerialize(): mixed {
         return $this->attributes;
     }
 
@@ -2236,7 +2236,7 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
      * @param array|null $data 업데이트할 데이터 (없으면 변경된 속성만 반영)
      * @return bool 성공 여부
      */
-    public function update(array $data = null)
+    public function update(?array $data = null)
     {
         // 변경된 속성만 추출
         if ($data === null) {
