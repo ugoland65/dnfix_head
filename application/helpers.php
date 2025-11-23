@@ -3,6 +3,7 @@
 use App\Core\Application;
 use App\Core\View;
 use App\Core\RedirectResponse;
+use App\Core\JsonResponse;
 use App\Core\Config;
 
 /**
@@ -342,5 +343,28 @@ if (!function_exists('redirect')) {
 if (!function_exists('config')) {
     function config(string $key, $default = null) {
         return Config::get($key, $default);
+    }
+}
+
+/**
+ * 응답 팩토리 클래스
+ */
+class ResponseFactory {
+    public function json($data = [], int $statusCode = 200, array $headers = []): JsonResponse
+    {
+        $response = new JsonResponse($data, $statusCode, $headers);
+        $response->send();
+        return $response;
+    }
+}
+
+/**
+ * 응답 헬퍼 함수
+ * 
+ * @return ResponseFactory
+ */
+if (!function_exists('response')) {
+    function response(): ResponseFactory {
+        return new ResponseFactory();
     }
 }

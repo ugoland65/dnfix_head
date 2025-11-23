@@ -25,7 +25,7 @@
 	<meta name="description" content="<?=$meta_description ?? '오나디비 국내 유일 최대 오나홀 데이터를 활용한 평점과 순위, 사용자의 디테일한 세부 평점을 보실 수 있습니다.'?>"/>
 	<meta name="keywords" content="<?=$meta_keywords ?? '오나홀, 추천, 평점, 순위, 리뷰, 아키바팜, 프리바디, 쑈당몰, 오나미몰, 리얼맥스, 바나나몰, 프리바디, 오나왕, 딩동몰, 엠즈, 누딩이, 누딩이2, av, 성인용품, 미국오나홀, 마녀의 유혹, 님패트, 성처리, 핸디 후기, 대마왕, 배드드래곤, ㅍㄼㄷ, ㅆㄷ, ㅇㄴㅁ, ㄹㅇㅁㅅ, ㅇㅋㅂㅍ, ㅂㄴㄴ, 좃나나'?>">
 
-	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
+	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8" >
 	<meta http-equiv="content-style-type" content="text/css" />
 	<meta http-equiv="content-script-type" content="text/javascript" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
@@ -41,7 +41,7 @@
 
 	<link href="https://fonts.googleapis.com/css2?family=Noto+Sans+KR:wght@100;300;400;500;700;900&display=swap" rel="stylesheet">
 
-	<script src="/plugins/jquery/jquery-3.6.0.min.js"></script>
+	<script src="https://code.jquery.com/jquery-3.7.1.js"></script>
 
 	<link rel="stylesheet" href="/plugins/jquery-confirm-v3.3.4/jquery-confirm.min.css">
 	<script src="/plugins/jquery-confirm-v3.3.4/jquery-confirm.min.js"></script>
@@ -51,13 +51,22 @@
     <script src="/plugins/toastr/toastr.min.js"></script>
 
 	<!-- bootstrap -->
+	 <?php 
+	 /*
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+	*/
+	?>
+	<link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/css/bootstrap.min.css">
+	<script src="https://cdn.jsdelivr.net/npm/bootstrap@5/dist/js/bootstrap.bundle.min.js"></script>
 
 	<!-- FontAwesome -->
-	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
+	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" 
+		integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" 
+		crossorigin="anonymous">
 
+	<script src="/assets/js/global.js?ver=<?=time()?>"></script>
 	<script src="/assets/js/common.js?ver=<?=time()?>"></script>
 
 	<link rel="stylesheet" type="text/css" href="/assets/css/common.css?v=<?=time()?>" />
@@ -76,8 +85,7 @@ var UC_APP_GLOBAL_USER = { account : "<?=$_sess_id?>" };
 <? } ?>
 //--> 
 </script>
-*/
-?>
+
 
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R04W3DHFC2"></script>
@@ -88,15 +96,17 @@ var UC_APP_GLOBAL_USER = { account : "<?=$_sess_id?>" };
 
   gtag('config', 'G-R04W3DHFC2');
 </script>
+*/
+?>
 </head>
 <body>
 <?php
-// 변수 초기화
-$_sess_id = $_sess_id ?? null;
-$_keyword = $_keyword ?? '';
-$_user_nick = $_user_nick ?? '';
-$_user_point = $_user_point ?? 0;
-$_side_layout_show = $_side_layout_show ?? '';
+	// 변수 초기화
+	$_sess_id = $_sess_id ?? null;
+	$_keyword = $_keyword ?? '';
+	$_user_nick = $_user_nick ?? '';
+	$_user_point = $_user_point ?? 0;
+	$side_layout_show = $side_layout_show ?? '';
 ?>
 <div id="header">
 	<div class="header-logo-wrap">
@@ -105,7 +115,7 @@ $_side_layout_show = $_side_layout_show ?? '';
 		<div class="header-logo"><a href='/'><img src="/public/onadb/img/header_logo.png" alt="오나디비" /></a></div>
 		<a class="header-btn search" ><i class="fas fa-search"></i></a>
 
-		<? if( $_sess_id ){ ?>
+		<? if( $auth['is_logged_in'] == true ){ ?>
 			<a class="header-btn my" href="/mypage" ><i class="fas fa-user"></i></a>
 		<? }else{ ?>
 			<a class="header-btn my" href="/login" ><i class="fas fa-user"></i></a>
@@ -113,9 +123,9 @@ $_side_layout_show = $_side_layout_show ?? '';
 
 		<div class="header-search">
 			<ul>
-				<input type="text" id="header_search_text" name="search_text" value="<?=$_keyword ?? ''?>" >
+				<input type="text" id="header_search_text" name="search_text" value="<?=$search_value ?? ''?>" >
 			</ul>
-			<ul class="header-search-btn"><button id="header_search"><i class="fas fa-search"></i></button></ul>
+			<ul class="header-search-btn"><button id="header_search_btn"><i class="fas fa-search"></i></button></ul>
 		</div>
 
 	</div> 
@@ -123,7 +133,6 @@ $_side_layout_show = $_side_layout_show ?? '';
 <!-- #header  -->
 
 <div class="gnb-wrap">
-	
 	<div class="gnb">
 
 		<div class="mobile menu-close"><i class="fas fa-times"></i></div>
@@ -136,19 +145,18 @@ $_side_layout_show = $_side_layout_show ?? '';
 		<ul><a href="/brandlist">브랜드</a></ul>
 		<!-- <ul><a href="/freemarket">프리마켓 <span class="beta">Beta</span></a></ul> -->
 
-		<div class="pc gnb-menu-right">
-			<? if( $_sess_id ){ ?>
+		<div class="pc gnb-menu-right right">
+			<?php if( $auth['is_logged_in'] == true ){ ?>
 				<span class="m-r-5"><a href="/logout">로그아웃</a></span> |
-				<span class="m-l-5"><i class="fas fa-user"></i> <a href="/mypage"><?=$_user_nick?></a></span>
-				<span class="m-l-5"><i class="fab fa-product-hunt"></i> <a href="/mypage"><?=number_format($_user_point)?></a></span>
-			<? }else{ ?>
+				<span class="m-l-5"><i class="fas fa-user"></i> <a href="/mypage"><?=$auth['nick'] ?? '닉네임 등록하지 않음'?></a></span>
+				<span class="m-l-5"><i class="fab fa-product-hunt"></i> <a href="/mypage"><?=number_format($auth['point'] ?? 0)?></a></span>
+			<?php }else{ ?>
 				<span class="m-r-5"><a href="/login">로그인</a></span> |
 				<span class="m-l-5"><a href="/join">회원가입</a></span>
-			<? } ?>
+			<?php } ?>
 		</div>
 
 	</div>
-
 </div>
 
 <script type="text/javascript"> 
@@ -166,19 +174,18 @@ $(function(){
 		$('html, body').removeClass('sc-hidden');
 		$(".info-box-bg").hide();
 	});
-
 });
 //--> 
-</script> 
+</script>
 
-<div id="contents_wrap" class="contents-wrap <? if( $_side_layout_show == "on" ){ ?>side<? } ?>" >
+<div id="contents_wrap" class="contents-wrap <? if( $side_layout_show == "on" ){ ?>side<? } ?>" >
 	<ul>
 
         <?= $content ?? '' ?>
 
         </ul>
 
-<? if( $_side_layout_show == "on" ){ ?>
+<? if( $side_layout_show == "on" ){ ?>
 <ul class="left-ul">
     
     <div class="new-comment">
@@ -196,7 +203,7 @@ $(function(){
                 <div>
                     <ul class="side-comment-prd-name">
                         <a href="/pv/<?= htmlspecialchars($comment['pc_pd_idx'] ?? '') ?>">
-                            <?= htmlspecialchars($comment['pc_title'] ?? '제품명') ?>
+                            <?= htmlspecialchars($comment['prd_name'] ?? '제품명') ?>
                         </a>
                     </ul>
                     <ul class="side-comment-body">
@@ -252,6 +259,6 @@ $(function(){
 <input type="hidden" name="return_url" id="login_return" >
 </form>
 
-<script src="/public/onadb/common.js?ver=<?=time()?>"></script>
+<script src="/public/onadb/js/common.js?ver=<?=time()?>"></script>
 </body>
 </html>

@@ -1,0 +1,11 @@
+{
+    "require": {
+        "jenssegers/agent": "^2.6"
+    },
+    "config": {
+        "platform": {
+            "php": "8.4.0"
+        }
+    }
+}
+  

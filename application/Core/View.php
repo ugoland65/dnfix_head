@@ -61,6 +61,15 @@ class View
     }
 
     /**
+     * 현재 뷰 데이터 반환
+     * View Composer에서 기존 데이터를 확인할 때 사용
+     */
+    public function getData(): array
+    {
+        return $this->data;
+    }
+
+    /**
      * 뷰 렌더링
      */
     public function render(): string

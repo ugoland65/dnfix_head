@@ -5,10 +5,12 @@ namespace App\Services;
 use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
 
-class ProductPartnerService extends BaseClass {
+class ProductPartnerService extends BaseClass
+{
 
     /**
      * 상품 공급사 목록 조회
+     * 
      * @param array $getData 파라미터
      * @param array|null $extraData 추가 파라미터
      * @return array
@@ -80,6 +82,7 @@ class ProductPartnerService extends BaseClass {
 
     /**
      * 상품 공급사 상세 조회
+     * 
      * @param array $getData 파라미터
      * @param int $prdIdx 상품 인덱스
      * @return array
@@ -109,6 +112,7 @@ class ProductPartnerService extends BaseClass {
 
     /**
      * 상품 공급사 저장
+     * 
      * @param array $postData 파라미터
      * @return array
      */
@@ -192,6 +196,7 @@ class ProductPartnerService extends BaseClass {
 
     /**
      * 상품 공급사 Where In 조회
+     * 
      * @param array $idxs
      * @return array
      */

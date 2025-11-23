@@ -1013,25 +1013,27 @@ class QueryBuilder
 	}
 
     /**
-     * 조건에 맞는 첫 번째 행을 반환
-	 * 
-	 * @TODO: 객체로 반환했어야 했는데 배열로 반환하고 있음
-	 * 적용된곳이 많아서 일단 배열로 사용하고 나중에 점진적으로 변경
-	 * @param string $casts 'casts' 인 경우 캐스트 적용
+     * 조건에 맞는 첫 번째 행을 ModelObject로 반환
+	 * @return ModelObject|null
      */
-    public function first($casts = null)
+    public function first()
     {
-        $this->limit(1); // 첫 번째 행만 가져오도록 제한
-        $result = $this->get()->toArray(); // get()의 결과를 배열로 변환
-		$row = $result[0] ?? null;
+        $this->limit(1);
+        $result = $this->get();
+        $data = $result->toArray();
+        $row = $data[0] ?? null;
 
-        if ($casts === 'casts') {
-			$model = \App\Core\BaseModel::forTable($this->table);
-			if ($model) {
-				$row = $model->applyCastsForGet($row);
-			}
-		}
-		return $row;
+        if ($row === null) {
+            return null;
+        }
+
+        // 캐스트 적용
+        $model = \App\Core\BaseModel::forTable($this->table);
+        if ($model) {
+            $row = $model->applyCastsForGet($row);
+        }
+
+        return new ModelObject($this->db, $this->table, $row, 'idx');
     }
 
     /**
@@ -1042,11 +1044,7 @@ class QueryBuilder
      */
     public function find($id, $primaryKey = 'idx')
     {
-        $result = $this->where($primaryKey, '=', $id)->first();
-        if ($result) {
-            return new ModelObject($this->db, $this->table, $result, $primaryKey);
-        }
-        return null;
+        return $this->where($primaryKey, '=', $id)->first();
     }
 
 	/**
@@ -2219,12 +2217,8 @@ class ModelObject implements \ArrayAccess, \JsonSerializable {
         $insertId = $queryBuilder->table($this->table)->insert($data);
 
         if ($insertId) {
-            // 방금 삽입된 레코드 다시 조회
-            $row = $queryBuilder->table($this->table)->where($this->primaryKey, $insertId)->first();
-            if ($model) {
-                $row = $model->applyCastsForGet($row);
-            }
-            return new static($this->db, $this->table, $row, $this->primaryKey);
+            // 방금 삽입된 레코드 다시 조회 (first()가 이미 ModelObject와 캐스트 적용하여 반환)
+            return $queryBuilder->table($this->table)->where($this->primaryKey, $insertId)->first();
         }
 
         return null;

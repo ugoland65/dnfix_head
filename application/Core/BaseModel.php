@@ -238,7 +238,7 @@ class BaseModel {
      * 특정 컬럼으로 단건 조회
      * @param string $field
      * @param mixed $value
-     * @return mixed
+     * @return ModelObject|null
      */
     public static function findBy($field, $value)
     {
@@ -351,7 +351,7 @@ class BaseModel {
                 foreach ($attributes as $key => $value) {
                     $query->where($key, $value);
                 }
-                return $query->first('casts');
+                return $query->first();
             }
             throw new Exception('Failed to update record');
         } else {
@@ -810,12 +810,25 @@ class HasOneRelation
     }
 
     /**
-     * 단건 조회
-     * @return mixed
+     * 단건 조회 (배열로 반환 - relation 용도)
+     * @return array|null
      */
     public function first()
     {
-        return $this->builder()->first();
+        $qb = $this->builder();
+        $result = $qb->get();
+        $data = $result->toArray();
+        $row = $data[0] ?? null;
+
+        // 캐스트 적용
+        if ($row) {
+            $model = \App\Core\BaseModel::forTable($qb->getTable());
+            if ($model) {
+                $row = $model->applyCastsForGet($row);
+            }
+        }
+
+        return $row;
     }
 
     /**
@@ -906,12 +919,25 @@ class BelongsToRelation
     }
 
     /**
-     * 부모 단건 조회
-     * @return mixed
+     * 부모 단건 조회 (배열로 반환 - relation 용도)
+     * @return array|null
      */
     public function first()
     {
-        return $this->builder()->first();
+        $qb = $this->builder();
+        $result = $qb->get();
+        $data = $result->toArray();
+        $row = $data[0] ?? null;
+
+        // 캐스트 적용
+        if ($row) {
+            $model = \App\Core\BaseModel::forTable($qb->getTable());
+            if ($model) {
+                $row = $model->applyCastsForGet($row);
+            }
+        }
+
+        return $row;
     }
 
     /**

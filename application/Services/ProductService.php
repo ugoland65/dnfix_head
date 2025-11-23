@@ -4,17 +4,140 @@ namespace App\Services;
 
 use App\Core\BaseClass;
 use App\Models\ProductModel;
+use App\Models\BrandModel;
 
-class ProductService extends BaseClass {
+class ProductService extends BaseClass 
+{
 
     /**
      * 상품 목록 조회
+     * 
+     * @param array $criteria 검색 조건
+     * @return array 상품 목록 데이터
+     */
+    public function getProductList($criteria)
+    {
+
+        $kind_code = $criteria['kind_code'] ?? null;
+        $site_show = $criteria['site_show'] ?? null;
+        $paging = $criteria['paging'] ?? true;
+        $perPage = $criteria['per_page'] ?? 100;
+        $page = $criteria['page'] ?? 1;
+        $show_mode = $criteria['show_mode'] ?? null;
+        $search_value = $criteria['search_value'] ?? '';
+
+        $query = ProductModel::query()
+            ->when($kind_code, function($query) use ($kind_code) {
+                $query->where('CD_KIND_CODE', $kind_code);
+            })
+            ->when($site_show, function($query) use ($site_show) {
+                $query->where('cd_site_show', $site_show);
+            })
+            ->orderBy('CD_IDX', 'desc');
+
+        // 검색어 처리 (빈 문자열 체크)
+        if (!empty($search_value)) {
+            // 검색어 이스케이프 (SQL Injection 방지)
+            $searchEscaped = addslashes($search_value);
+            
+            // 영문 검색 여부 확인
+            if (preg_match("/[a-zA-Z]/", $searchEscaped)) {
+                // 영문 포함 - 대소문자 구분 없이 검색
+                $query->where(function($q) use ($searchEscaped) {
+                    $q->whereRaw("LOWER(CD_NAME) LIKE '%".strtolower($searchEscaped)."%'")
+                      ->orWhereRaw("LOWER(REPLACE(CD_NAME, ' ', '')) LIKE '%".strtolower($searchEscaped)."%'")
+                      ->orWhereRaw("LOWER(CD_SEARCH_TERM) LIKE '%".strtolower($searchEscaped)."%'")
+                      ->orWhereRaw("LOWER(CD_NAME_OG) LIKE '%".strtolower($searchEscaped)."%'");
+                });
+            } else {
+                // 한글 등 - 그대로 검색
+                $query->where(function($q) use ($searchEscaped) {
+                    $q->whereRaw("CD_NAME LIKE '%".$searchEscaped."%'")
+                      ->orWhereRaw("REPLACE(CD_NAME, ' ', '') LIKE '%".$searchEscaped."%'")
+                      ->orWhereRaw("CD_SEARCH_TERM LIKE '%".$searchEscaped."%'")
+                      ->orWhereRaw("CD_NAME_OG LIKE '%".$searchEscaped."%'");
+                });
+            }
+        }
+
+        if( $show_mode == 'onadb_main' ){
+            $query->select('CD_IDX', 'CD_NAME', 'CD_NAME_OG', 'CD_BRAND_IDX', 'CD_IMG', 'CD_IMG2', 'cd_tier');
+        }
+
+        $result = $paging ? $query->paginate($perPage, $page)
+            : $query->get()->toArray();
+
+        // 브랜드명 추가
+        $result = $this->attachBrandNames($result, $paging);
+
+        return $result;
+
+    }
+    
+
+    /**
+     * 상품 목록에 브랜드명 추가
+     * 
+     * @param array|object $result 상품 목록 (페이지네이션 또는 배열)
+     * @param bool $paging 페이지네이션 여부
+     * @return array
+     */
+    private function attachBrandNames($result, $paging = true)
+    {
+        // 페이지네이션인 경우 data 키에서 가져옴
+        $products = $paging ? ($result['data'] ?? []) : $result;
+        
+        if (empty($products)) {
+            return $result;
+        }
+        
+        // 1. CD_BRAND_IDX 추출
+        $brandIds = array_column($products, 'CD_BRAND_IDX');
+        $brandIds = array_filter($brandIds); // null 제거
+        $brandIds = array_unique($brandIds); // 중복 제거
+        
+        if (empty($brandIds)) {
+            return $result;
+        }
+        
+        // 2. 브랜드명 조회 (whereIn 사용, 필요한 컬럼만 select)
+        $brands = BrandModel::query()
+            ->select(['BD_IDX', 'BD_NAME'])
+            ->whereIn('BD_IDX', $brandIds)
+            ->get()
+            ->toArray();
+        
+        // 3. BD_IDX를 키로 하는 배열로 변환
+        $brandMap = [];
+        foreach ($brands as $brand) {
+            $brandMap[$brand['BD_IDX']] = $brand['BD_NAME'] ?? '';
+        }
+        
+        // 4. 상품에 브랜드명 추가
+        foreach ($products as &$product) {
+            $product['brand_name'] = $brandMap[$product['CD_BRAND_IDX']] ?? '';
+        }
+        
+        // 5. 결과 반환
+        if ($paging) {
+            $result['data'] = $products;
+        } else {
+            $result = $products;
+        }
+        
+        return $result;
+    }
+
+
+    /**
+     * 상품 목록 조회 (구버전)
+     * 
      * @param array $getData 파라미터
      * @param array|null $extraData 추가 파라미터
      * └ $extraData['showMode'] : 표시 모드 (hbti, normal) hbti - hbti가 있는 상품만 표시, normal - 모든 상품 표시
      * @return array 상품 목록 데이터
      */
-    public function getProductList($getData, $extraData=null) 
+    public function getProductListOld($getData, $extraData=null) 
     {
 
         $s_text = $getData['s_text'] ?? '';
@@ -45,12 +168,12 @@ class ProductService extends BaseClass {
             $query->where('COMPARISON_DB.cd_hbti_data', '=', $json_string);
         }
         */
-        if ($s_hbti_type) {
+        if ( $s_hbti_type ) {
             $query->where('COMPARISON_DB.cd_hbti', $s_hbti_type);
         }
 
         // 검색어 처리
-        if($s_text) {
+        if( $s_text ) {
             if (preg_match("/[a-zA-Z]/", $s_text)){
                 $query->where(function($query) use ($s_text) {
                     $query->whereRaw("INSTR(LOWER(COMPARISON_DB.CD_NAME), LOWER(?))", [$s_text])
@@ -71,7 +194,7 @@ class ProductService extends BaseClass {
         }
 
         // 브랜드 검색
-        if ($s_brand) {
+        if ( $s_brand ) {
             $query->where(function($query) use ($s_brand) {
                 $query->where('COMPARISON_DB.CD_BRAND_IDX', $s_brand)
                     ->orWhere('COMPARISON_DB.CD_BRAND2_IDX', $s_brand);
@@ -79,17 +202,17 @@ class ProductService extends BaseClass {
         }
 
         // 상품 종류 검색
-        if ($s_kind_code) {
+        if ( $s_kind_code ) {
             $query->where('COMPARISON_DB.CD_KIND_CODE', $s_kind_code);
         }
 
         // 수입국가 검색
-        if ($s_national) {
+        if ( $s_national ) {
             $query->where('COMPARISON_DB.cd_national', $s_national);
         }
         
         // 티어 검색
-        if ($s_tier) {
+        if ( $s_tier ) {
             $query->where('COMPARISON_DB.cd_tier', $s_tier);
         }
 
@@ -105,6 +228,7 @@ class ProductService extends BaseClass {
             
         // 각 상품에 할인 아이콘 정보 추가
         if(isset($result['data']) && is_array($result['data'])) {
+
             foreach($result['data'] as &$item) {
                 
                 // HBTI 데이터 추가
@@ -133,20 +257,24 @@ class ProductService extends BaseClass {
                 }
 
             }
+
         }
 
         return  $result;
 
     }
 
+
     /**
      * 상품 할인 아이콘 생성 헬퍼
+     * 
      * @param int $ps_in_sale_s 할인 시작 시간
      * @param int $ps_in_sale_e 할인 종료 시간
      * @param string $ps_in_sale_data 할인 데이터
      * @return string 할인 아이콘 HTML
      */
-    public function inSaleIcon($ps_in_sale_s, $ps_in_sale_e, $ps_in_sale_data) {
+    public function inSaleIcon($ps_in_sale_s, $ps_in_sale_e, $ps_in_sale_data) 
+    {
         
         // 현재 시간 가져오기
         $current_time = time();
@@ -185,11 +313,45 @@ class ProductService extends BaseClass {
     
 
     /**
-     * 상품 데이터 조회
+     * 사이트노출용 - 상품 데이터 조회
+     * 
      * @param int $prdIdx 상품 인덱스
      * @return array 상품 데이터
      */
-    public function getProductData($prdIdx) 
+    public function getProductDataForSite($prdIdx)
+    {
+
+        $productData = ProductModel::query()
+            ->where('CD_IDX', $prdIdx)
+            ->first()
+            ->toArray();
+
+        if (!empty($productData)) {
+            if (!empty($productData['CD_PD_INFO'])) {
+                $productData['CD_PD_INFO'] = json_decode($productData['CD_PD_INFO'], true);
+            }
+
+            if (!empty($productData['CD_SIZE'])) {
+                $productData['CD_SIZE'] = json_decode($productData['CD_SIZE'], true);
+            }
+
+            if(!empty($productData['cd_weight_fn'])){
+                $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'], true);
+            }
+        }
+
+        return $productData;
+
+    }
+
+
+    /**
+     * 관리자용 - 상품 데이터 조회
+     * 
+     * @param int $prdIdx 상품 인덱스
+     * @return array 상품 데이터
+     */
+    public function getProductDataForAdmin($prdIdx) 
     {
 
         $productData = ProductModel::query()
@@ -235,6 +397,7 @@ class ProductService extends BaseClass {
 
         return $productData;
     }
+
 
     /**
      * HBTI 상품 등록현황 카운터
@@ -286,4 +449,5 @@ class ProductService extends BaseClass {
             'mostUsedCount' => $fourCharCounts[$mostUsed] ?? 0,
         ];
     }
+
 }

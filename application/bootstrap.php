@@ -20,8 +20,8 @@ Autoloader::register();
 // Helper 함수 로드
 require_once __DIR__ . '/helpers.php';
 
-// View Service Provider 등록
-// 사이트별로 필요한 Provider를 조건부로 등록
+// View Service Provider 부트스트랩
+// 사이트별로 필요한 Provider를 조건부로 부팅
 
 // URL을 기반으로 자동 판단
 $requestUri = $_SERVER['REQUEST_URI'] ?? '';
@@ -29,10 +29,10 @@ $requestUri = $_SERVER['REQUEST_URI'] ?? '';
 if (strpos($requestUri, '/onadb') === 0 || 
     (isset($_SERVER['HTTP_HOST']) && in_array($_SERVER['HTTP_HOST'], ['onadb.net', 'onadbs.com', 'dnfixhead.mycafe24.com']))) {
     // Onadb 사이트
-    OnadbViewServiceProvider::register();
+    OnadbViewServiceProvider::boot();
 } elseif (strpos($requestUri, '/admin') === 0 || strpos($requestUri, '/ad/') === 0) {
     // Admin 사이트
-    AdminViewServiceProvider::register();
+    AdminViewServiceProvider::boot();
 }
 
 // 기타 초기화 작업...

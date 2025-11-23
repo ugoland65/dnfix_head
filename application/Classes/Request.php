@@ -4,6 +4,7 @@ namespace App\Classes;
 
 class Request extends RequestHandler
 {
+    
     /**
      * Request 클래스는 RequestHandler를 상속받아 
      * Laravel과 유사한 인터페이스를 제공
@@ -12,7 +13,7 @@ class Request extends RequestHandler
     /**
      * 모든 입력 데이터 반환 (Laravel의 all() 메서드와 동일)
      */
-    public function all($filter = FILTER_SANITIZE_STRING)
+    public function all($filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         return parent::all($filter);
     }
@@ -20,7 +21,7 @@ class Request extends RequestHandler
     /**
      * 특정 키의 값 반환 (Laravel의 input() 메서드와 동일)
      */
-    public function input($key = null, $default = null, $filter = FILTER_SANITIZE_STRING)
+    public function input($key = null, $default = null, $filter = FILTER_SANITIZE_FULL_SPECIAL_CHARS)
     {
         $value = parent::input($key, $filter);
         return $value !== null ? $value : $default;

@@ -8,19 +8,15 @@ use App\Services\BrandService;
 use App\Services\ProductPartnerService;
 use App\Services\PartnersService;
 use App\Utils\Pagination;
-class ProductController extends BaseClass {
+class ProductController extends BaseClass 
+{
 
-    /*
-    @php버전수정
-    private ProductService $productService;
-    */
     private $productService;
     private $productPartnerService;
     private $partnersService;
 
     public function __construct() {
         parent::__construct();
-        // 의존성을 직접 생성
         $this->productService = new ProductService();
         $this->productPartnerService = new ProductPartnerService();
         $this->partnersService = new PartnersService();
@@ -32,14 +28,15 @@ class ProductController extends BaseClass {
      * @skin : skin.prd_db.php
      * @return array
      */
-    public function prdDbIndex() {
+    public function prdDbIndex() 
+    {
 
         $getData = $this->requestHandler->getAll(); // GET 데이터 받기
 
         $extraData = [];
 
         // 상품 데이터 조회
-        $result = $this->productService->getProductList($getData, $extraData);
+        $result = $this->productService->getProductListOld($getData, $extraData);
         $pagination = new Pagination($result['total'], $result['per_page'], $result['current_page'], 10);
         $paginationHtml = $pagination->renderLinks();
 
@@ -84,7 +81,7 @@ class ProductController extends BaseClass {
         }
         
         // 상품 데이터 조회
-        $productData = $this->productService->getProductData($prdIdx);
+        $productData = $this->productService->getProductDataForAdmin($prdIdx);
         
         // 조회 결과가 없는 경우 처리
         if (!$productData) {
@@ -125,7 +122,7 @@ class ProductController extends BaseClass {
         ];
 
         // 상품 데이터 조회
-        $result = $this->productService->getProductList($getData, $extraData);
+        $result = $this->productService->getProductListOld($getData, $extraData);
         $pagination = new Pagination($result['total'], $result['per_page'], $result['current_page'], 10);
         $paginationHtml = $pagination->renderLinks();
 

@@ -12,9 +12,10 @@ use App\Core\View;
 class ViewServiceProvider
 {
     /**
-     * View Composer 등록
+     * View Composer 부트스트랩
+     * Laravel 컨벤션에 따라 boot 메서드 사용
      */
-    public static function register(): void
+    public static function boot(): void
     {
         // Admin 전용 Composer
         View::composer('admin.*', function($view) {

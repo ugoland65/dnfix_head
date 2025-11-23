@@ -24,4 +24,13 @@ class ProductCommentModel extends BaseModel
         'pc_ip',
     ];
 
+    /**
+     * 유저 정보 심플 조회
+     * @return \App\Core\BelongsToRelation
+     */
+    public function userSimple() {
+        return $this->belongsTo(UserModel::class, 'pc_user_idx', 'user_idx')
+            ->select(['user_idx', 'user_nick', 'user_level']);
+    }
+
 }

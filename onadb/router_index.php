@@ -3,8 +3,12 @@
 require_once __DIR__ . '/autoloader.php';
 
 use App\Core\Router;
-use App\Controllers\Admin\StaffController;
+use App\Core\MiddlewareManager;
 use App\Controllers\Onadb\HomeController;
+use App\Controllers\Onadb\AuthController;
+use App\Controllers\Onadb\ProductController;
+use App\Controllers\Onadb\MyPageController;
+use App\Middleware\OnadbAuthMiddleware;
 
 try {
 
@@ -19,10 +23,30 @@ try {
     } else {
         $basePath = '/onadb';
     }
+
+    // 미들웨어 별칭 등록
+    MiddlewareManager::registerMany([
+        'auth' => OnadbAuthMiddleware::class,
+    ]);
     
     $router = new Router($basePath);  // 라우터 인스턴스 생성
 
     $router->get('/', HomeController::class, 'index'); //메인페이지
+
+    $router->get('/login', AuthController::class, 'login'); //로그인페이지
+    $router->post('/login', AuthController::class, 'loginProc'); //로그인처리
+    $router->get('/logout', AuthController::class, 'logout'); //로그아웃
+    $router->get('/join', AuthController::class, 'registerForm'); //회원가입페이지
+    $router->post('/check-availability', AuthController::class, 'checkAvailability'); //회원 중복확인
+    $router->post('/join-register', AuthController::class, 'register'); //회원가입
+
+    $router->get('/pv/{idx}', ProductController::class, 'productDetail'); //상품상세페이지
+
+    //인증 페이지 그룹
+    $router->middleware('auth', function ($router) {
+        $router->get('/mypage', MyPageController::class, 'mypage'); //마이페이지
+        $router->post('/mypage', MyPageController::class, 'mypageProc'); //마이페이지처리
+    });
 
     // 라우트 처리
     $router->dispatch();
