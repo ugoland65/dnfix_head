@@ -1,8 +1,17 @@
 <?
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
 // 변수 초기화
 $_prd_idx = $_get1 ?? "";
 $prd_data = [];
 $img_path = "";
+
+// 디버깅: $_prd_idx 값 확인
+if( !$_prd_idx ){
+	echo "오류: 상품 IDX가 없습니다. _get1 = " . ($_get1 ?? 'undefined');
+	exit;
+}
 
 if( $_prd_idx ){
 	$_colum = "A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count";
@@ -10,28 +19,53 @@ if( $_prd_idx ){
 	$_colum .= ", C.BD_NAME";
 
 	$_query = "select ".$_colum." from "._DB_COMPARISON." A
-		left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX  ) 
-		left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX  ) 
-		where CD_IDX = '".$_prd_idx."' ";
+		left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX) 
+		left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
+		where A.CD_IDX = '".$_prd_idx."' ";
 
-	$prd_data = sql_fetch_array(sql_query_error($_query));
+	// 디버깅: 쿼리 확인
+	// echo "<pre>쿼리: " . $_query . "</pre>";
+	
+	$result = sql_query_error($_query);
+	
+	// 디버깅: 쿼리 결과 확인
+	if(!$result){
+		echo "쿼리 실행 실패";
+		exit;
+	}
+
+	$prd_data = sql_fetch_array($result);
 	
 	// 배열 검증
-	if (!is_array($prd_data)) {
+	if (!is_array($prd_data) || empty($prd_data)) {
+		echo "<pre>오류: 상품 데이터를 찾을 수 없습니다.<br>";
+		echo "상품 IDX: " . $_prd_idx . "<br>";
+		echo "쿼리: " . $_query . "</pre>";
 		$prd_data = [];
 	}
 
-	if( $prd_data['CD_IMG'] ?? '' ){
+	// 디버깅: 데이터 확인
+	// echo "<pre>prd_data: "; print_r($prd_data); echo "</pre>";
+
+	if( !empty($prd_data['CD_IMG']) ){
 		$img_path = '/data/comparion/'.$prd_data['CD_IMG'];
 	}
 }
+
+// 디버깅: 최종 데이터 확인
+// echo "<pre>최종 prd_data: "; print_r($prd_data); echo "</pre>";
+// echo "<pre>img_path: " . $img_path . "</pre>";
 
 include ($docRoot."/admin2/layout/header_popup.php");
 ?>
 <div class="prd-quick-left">
 	
 	<div class="prd-img">
-		<img src="<?=$img_path?>" style="height:150px; border:1px solid #eee !important;">
+		<? if($img_path){ ?>
+			<img src="<?=$img_path?>" style="height:150px; border:1px solid #eee !important;">
+		<? }else{ ?>
+			<div style="width:150px; height:150px; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#999;">이미지 없음</div>
+		<? } ?>
 	</div>
 
 	<div class="prd-quick-info">
@@ -39,10 +73,10 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<ul class="prd-name"><b><?=$prd_data['CD_NAME'] ?? ''?></b></ul>
 		<!-- <ul class="prd-name-en"><?=$prd_data['CD_NAME_OG'] ?? ''?></ul> -->
 
-		<? if( $prd_data['ps_idx'] ?? '' ){ ?>
+		<? if( !empty($prd_data['ps_idx']) ){ ?>
 			<ul class="prd-stock-code">
 				<b><?=$prd_data['ps_idx']?></b>
-				<? if( $prd_data['ps_rack_code'] ?? '' ){ ?> ( <b><?=$prd_data['ps_rack_code']?></b> )<? } ?>
+				<? if( !empty($prd_data['ps_rack_code']) ){ ?> ( <b><?=$prd_data['ps_rack_code']?></b> )<? } ?>
 			</ul>
 		<? }else{ ?>
 			<ul class="prd-stock-code-make"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.makePsIdx()"> <i class="fas fa-plus-circle"></i> 재고 코드 생성</button></ul>
@@ -66,7 +100,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 	</div>
 
-	<? if( $prd_data['ps_idx'] ?? '' ){ ?>
+	<? if( !empty($prd_data['ps_idx']) ){ ?>
 	<div class="stock-write-box">
 		<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
 

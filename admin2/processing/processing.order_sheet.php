@@ -1,7 +1,10 @@
 <?
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
 	$_reg_d = array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
+	$response = array('success' => false, 'msg' => '잘못된 요청입니다.');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 주문서 신규 등록
@@ -10,9 +13,9 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$_oo_name = $_POST['oo_name'] ?? "";
 	$_oo_import = $_POST['oo_import'] ?? "";
-	$_oo_form_idx = $_POST['oo_form_idx'] ?? "";
+	$_oo_form_idx = (int)($_POST['oo_form_idx'] ?? 0);
 	$_sum_currency = $_POST['sum_currency'] ?? "";
-	$_sum_exchange_rate = $_POST['sum_exchange_rate'] ?? "";
+	$_sum_exchange_rate = (double)($_POST['sum_exchange_rate'] ?? 0);
 	$_oo_memo = $_POST['oo_memo'] ?? "";
 
 	//주문서 소트 최대값 구하기
@@ -39,6 +42,51 @@ if( $_a_mode == "orderSheet_reg" ){
 		oo_sum_currency = '".$_sum_currency."',
 		oo_sum_exchange_rate = '".$_sum_exchange_rate."',
 		oo_memo = '".$_oo_memo."',
+		oo_json = '[]',
+		oo_price_data = '[]',
+		oo_false = '[]',
+		oo_sum_goods = '0',
+		oo_sum_qty = '0',
+		oo_sum_weight = '0',
+		oo_sum_price = '0',
+		oo_sum_cbm = '0',
+		oo_state = '0',
+		oo_date_data = '{}',
+		oo_stock = '{}',
+		oo_upload_file = '[]',
+		oo_fn_price = '0',
+		oo_express_data = '{}',
+		oo_tex_data = '{}',
+		oo_po_name = '',
+		oo_approval_date = '0000-00-00',
+		oo_date = '0',
+		oo_code = '',
+		oo_token = '',
+		oo_date_modify = '0',
+		oo_c_idx = '[]',
+		oo_price = '[]',
+		oo_qty = '[]',
+		oo_unit_state = '[]',
+		oo_price_jp = '0',
+		oo_price_kr = '0',
+		oo_price_date = '0000-00-00',
+		oo_in_date = '0000-00-00',
+		oo_reported_price = '0',
+		oo_duty_price = '0',
+		oo_duty_due_date = '0000-00-00',
+		oo_duty_settlement_date = '0000-00-00',
+		oo_memo2 = '',
+		oo_express = 'FEDEX',
+		oo_express_number = '',
+		oo_box = '0',
+		oo_box_weight = '0',
+		oo_box_weight_fix = '0',
+		oo_express_price = '0',
+		oo_express_price_date = '0000-00-00',
+		oo_express_price_settlement_date = '0000-00-00',
+		oo_import_declaration = '',
+		oo_json_date = '{}',
+		comment_count = '0',
 		reg = '".$_reg."',
 		oo_r_mode = 'V4' ";
 	sql_query_error($query);
@@ -87,6 +135,8 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_order_send_date = $_POST['order_send_date'] ?? "";
 	$_in_date = $_POST['in_date'] ?? "";
 	$_oo_memo = $_POST['oo_memo'] ?? "";
+	$_sum_currency = $_POST['sum_currency'] ?? "";
+	$_sum_exchange_rate = $_POST['sum_exchange_rate'] ?? "";
 
 	// 배열 검증
 	if (!is_array($_change_price_mode)) $_change_price_mode = [];
@@ -150,7 +200,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	}
 
 	$_ary_price_data = array(
-		'price' => $_price,
+		'price' => $_oo_sum_price ?? 0,
 		'currency' => $_currency,
 		'change_price' => $_change_price,
 		'pay_fee' => $_pay_fee,
@@ -559,6 +609,7 @@ if( $_a_mode == "orderSheet_reg" ){
 			data = '".$_data."',
 			targrt_idx = '".$_idx."',
 			memo = '".$_memo."',
+			comment_count = '0',
 			reg = '".$_reg."' ";
 		sql_query_error($query);
 
@@ -570,6 +621,10 @@ if( $_a_mode == "orderSheet_reg" ){
 
 
 
+	if (!isset($_approval_date[$_ap_mode]) || !is_array($_approval_date[$_ap_mode])) {
+		$_approval_date[$_ap_mode] = [];
+	}
+	
 	$_approval_date[$_ap_mode]['price'] = $_price;
 	$_approval_date[$_ap_mode]['approval'] = array(
 		"date" => $_date,
@@ -732,6 +787,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_price = (double)str_replace(',','', $price);
 	//$_price = str_replace(',','', $price);
 
+	$_ary_price_hidtory = [];
 	$_ary_price_hidtory[] = array(
 		"reg_mode" => $_reg_mode,
 		"oop_code" => $_oop_code,
@@ -895,8 +951,10 @@ if( $_a_mode == "orderSheet_reg" ){
 			psu_stock = '".$_psu_stock."',
 			psu_kind = '신규입고',
 			psu_memo = '".$_this_s_memo."',
+			psu_token = '',
 			psu_id = '".$_ad_id."',
-			psu_date = '".$check_time ."' ";
+			psu_date = '".$check_time ."',
+			reg = '' ";
 		sql_query_error($query);
 
 	}
@@ -910,10 +968,26 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$data = sql_fetch_array(sql_query_error("SELECT oo_date_data, oo_stock FROM ona_order WHERE oo_idx = '".$_os_idx."' "));
 
-	$_json_oo_date_data = json_decode($data['oo_date_data'], true);
-	$_json_oo_stock = json_decode($data['oo_stock'], true);
+	// 배열 검증
+	if (!is_array($data) || empty($data)) {
+		$data = ['oo_date_data' => '{}', 'oo_stock' => '{}'];
+	}
 
-	if( $_json_oo_stock['state'] ){
+	$_json_oo_date_data = json_decode($data['oo_date_data'] ?? '{}', true);
+	$_json_oo_stock = json_decode($data['oo_stock'] ?? '{}', true);
+
+	// 배열 검증
+	if (!is_array($_json_oo_date_data)) {
+		$_json_oo_date_data = [];
+	}
+	if (!is_array($_json_oo_stock)) {
+		$_json_oo_stock = [];
+	}
+	if (!isset($_json_oo_date_data['stock_state']) || !is_array($_json_oo_date_data['stock_state'])) {
+		$_json_oo_date_data['stock_state'] = [];
+	}
+
+	if( isset($_json_oo_stock['state']) && !empty($_json_oo_stock['state']) ){
 		$_stock_state_before = $_json_oo_stock['state'];
 	}else{
 		$_stock_state_before = "첫등록";
@@ -1074,29 +1148,46 @@ if( $_a_mode == "orderSheet_reg" ){
 // 상품 단종처리
 }elseif( $_a_mode == "orderSheet_soldOut" ){
 
+	$_oop_idx = $_POST['oop_idx'] ?? "";
+	$_soldoutmode = $_POST['soldoutmode'] ?? "";
+	$_num = $_POST['num'] ?? 0;
+
 	$oop_data = sql_fetch_array(sql_query_error("select oop_data from ona_order_prd where oop_idx = '".$_oop_idx."' "));
 
-	$_oop_json_check_data = substr($oop_data['oop_data'], 0,1);
+	// 배열 검증
+	if (!is_array($oop_data) || empty($oop_data)) {
+		$oop_data = ['oop_data' => '[]'];
+	}
+
+	$_oop_json_check_data = substr($oop_data['oop_data'] ?? '', 0,1);
 	
 	if( $_oop_json_check_data == "[" ){
-		$_oop_json = $oop_data['oop_data'];
+		$_oop_json = $oop_data['oop_data'] ?? '[]';
 	}else{
-		$_oop_json = '['.$oop_data['oop_data'].']';
+		$_oop_json = '['.($oop_data['oop_data'] ?? '').']';
 	}
 
-	$_oop_jsondata = json_decode($_oop_json,true);
+	$_oop_jsondata = json_decode($_oop_json, true);
 
-
-	if( $_soldoutmode == "out" ){
-		$_oop_jsondata[$_num]['state'] = "out";
-		$_cd_sale_state = "N";
-	}elseif( $_soldoutmode == "on" ){
-		$_oop_jsondata[$_num]['state'] = "on";
-		$_cd_sale_state = "Y";
+	// 배열 검증
+	if (!is_array($_oop_jsondata)) {
+		$_oop_jsondata = [];
 	}
 
+	$_cd_sale_state = "Y";
+	$_cd_idx = "";
 
-	$_cd_idx = $_oop_jsondata[$_num]['idx'];
+	if( isset($_oop_jsondata[$_num]) && is_array($_oop_jsondata[$_num]) ){
+		if( $_soldoutmode == "out" ){
+			$_oop_jsondata[$_num]['state'] = "out";
+			$_cd_sale_state = "N";
+		}elseif( $_soldoutmode == "on" ){
+			$_oop_jsondata[$_num]['state'] = "on";
+			$_cd_sale_state = "Y";
+		}
+
+		$_cd_idx = $_oop_jsondata[$_num]['idx'] ?? "";
+	}
 
 	$_oop_data = json_encode($_oop_jsondata, JSON_UNESCAPED_UNICODE);
 
@@ -1116,25 +1207,42 @@ if( $_a_mode == "orderSheet_reg" ){
 // 상품 주문 실패처리
 }elseif( $_a_mode == "orderSheet_unitFalse" ){
 
-	//$_oop_idx
+	$_oo_idx = $_POST['oo_idx'] ?? "";
+	$_oop_idx = $_POST['oop_idx'] ?? "";
+	$_pidx = $_POST['pidx'] ?? "";
+	$_unit_false_mode = $_POST['unit_false_mode'] ?? "";
+	$_pidx_memo = $_POST['pidx_memo'] ?? "";
 
 	$oo_data =sql_fetch_array(sql_query_error("SELECT oo_json, oo_false, oo_sum_goods, oo_sum_qty, oo_sum_weight, oo_sum_price FROM ona_order WHERE oo_idx = '".$_oo_idx."' "));
 
-	$_false_check_data = substr($oo_data['oo_false'], 0,1);
-	if( $_false_check_data == "[" ){
-		$_false_data = $oo_data['oo_false'];
-	}else{
-		$_false_data = '['.$oo_data['oo_false'].']';
+	// 배열 검증
+	if (!is_array($oo_data) || empty($oo_data)) {
+		$oo_data = ['oo_json' => '[]', 'oo_false' => '[]', 'oo_sum_goods' => 0, 'oo_sum_qty' => 0, 'oo_sum_weight' => 0, 'oo_sum_price' => 0];
 	}
-	$_false_json = json_decode($_false_data,true);
 
+	$_false_check_data = substr($oo_data['oo_false'] ?? '', 0,1);
+	if( $_false_check_data == "[" ){
+		$_false_data = $oo_data['oo_false'] ?? '[]';
+	}else{
+		$_false_data = '['.($oo_data['oo_false'] ?? '').']';
+	}
+	$_false_json = json_decode($_false_data, true);
+
+	// 배열 검증
+	if (!is_array($_false_json)) {
+		$_false_json = [];
+	}
+
+	$_oo_false = [];
 
 	for ($z=0; $z<count($_false_json); $z++){
+		
+		if (!is_array($_false_json[$z])) continue;
 		
 		if( $_unit_false_mode == "out" ){
 			
 			//주문 실패 처리이고 해당값이 있는지 체크
-			if( $_false_json[$z]['pidx'] == $_pidx ){
+			if( ($_false_json[$z]['pidx'] ?? "") == $_pidx ){
 				$response = array( 'success' => false, 'msg' => '이미 실패처리된 상품입니다.' );
 				header('Content-Type: application/json');
 				echo json_encode($response); 
@@ -1144,7 +1252,7 @@ if( $_a_mode == "orderSheet_reg" ){
 		
 		}elseif( $_unit_false_mode == "on" ){
 			
-			if( $_false_json[$z]['pidx'] == $_pidx ){
+			if( ($_false_json[$z]['pidx'] ?? "") == $_pidx ){
 			}else{
 				$_oo_false[] = $_false_json[$z];
 			}
@@ -1154,29 +1262,38 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	
 
-	$_oo_json = json_decode($oo_data['oo_json'], true);
+	$_oo_json = json_decode($oo_data['oo_json'] ?? '[]', true);
+
+	// 배열 검증
+	if (!is_array($_oo_json)) {
+		$_oo_json = [];
+	}
 
 	$_bidx_json_key = "";
 
 	foreach($_oo_json as $key => $val) {
-		if( $_oo_json[$key]['bidx'] == $_oop_idx ){
+		if (!is_array($val)) continue;
+		if( ($_oo_json[$key]['bidx'] ?? "") == $_oop_idx ){
 			$_bidx_json_key = $key;
 			break;
 		}
 	}
 
+	$_selpd = [];
+	if( $_bidx_json_key !== "" && isset($_oo_json[$_bidx_json_key]['selpd']) && is_array($_oo_json[$_bidx_json_key]['selpd']) ){
+		$_selpd = $_oo_json[$_bidx_json_key]['selpd'];
+	}
 
-	$_selpd = $_oo_json[$_bidx_json_key]['selpd'];
 
-
-	$_unit_qty = "";
-	$_unit_price = "";
-	$_unit_sum_price = "";
+	$_unit_qty = 0;
+	$_unit_price = 0;
+	$_unit_sum_price = 0;
 	//$_unit_memo = "";
 	$_unit_memo = $_pidx_memo;
 
 	foreach($_selpd as $key => $val) {
-		if( $_selpd[$key]['pidx'] == $_pidx ){
+		if (!is_array($val)) continue;
+		if( ($_selpd[$key]['pidx'] ?? "") == $_pidx ){
 
 			if( $_unit_false_mode == "out" ){ // 주문실패시
 				$_oo_json[$_bidx_json_key]['selpd'][$key]['false'] = true;
@@ -1185,8 +1302,8 @@ if( $_a_mode == "orderSheet_reg" ){
 				$_oo_json[$_bidx_json_key]['selpd'][$key]['false'] = false;
 			}
 
-			$_unit_qty = $_oo_json[$_bidx_json_key]['selpd'][$key]['qty'];
-			$_unit_price = $_oo_json[$_bidx_json_key]['selpd'][$key]['price'];
+			$_unit_qty = $_oo_json[$_bidx_json_key]['selpd'][$key]['qty'] ?? 0;
+			$_unit_price = $_oo_json[$_bidx_json_key]['selpd'][$key]['price'] ?? 0;
 			$_unit_sum_price = $_unit_price * $_unit_qty;
 			//$_unit_memo = $_oo_json[$_bidx_json_key]['selpd'][$key]['memo'];
 
@@ -1197,10 +1314,21 @@ if( $_a_mode == "orderSheet_reg" ){
 	//상품무게 알아내기
 	$prd_data = sql_fetch_array(sql_query_error("select cd_weight_fn from "._DB_COMPARISON." where CD_IDX = '".$_pidx."' "));
 
-	$_cd_weight_data = json_decode($prd_data['cd_weight_fn'], true);
-	$_cd_weight_1 = $_cd_weight_data['1'];
-	$_cd_weight_2 = $_cd_weight_data['2'];
-	$_cd_weight_3 = $_cd_weight_data['3'];
+	// 배열 검증
+	if (!is_array($prd_data) || empty($prd_data)) {
+		$prd_data = ['cd_weight_fn' => '{}'];
+	}
+
+	$_cd_weight_data = json_decode($prd_data['cd_weight_fn'] ?? '{}', true);
+	
+	// 배열 검증
+	if (!is_array($_cd_weight_data)) {
+		$_cd_weight_data = [];
+	}
+	
+	$_cd_weight_1 = $_cd_weight_data['1'] ?? 0;
+	$_cd_weight_2 = $_cd_weight_data['2'] ?? 0;
+	$_cd_weight_3 = $_cd_weight_data['3'] ?? 0;
 
 	if( $_cd_weight_3 ){
 		$_weight = $_cd_weight_3;
@@ -1210,10 +1338,10 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$_unit_sum_weight = $_weight * $_unit_qty;
 
-	$_old_false = $_oo_json[$_bidx_json_key]['false'];
-	$_old_false_sum_qty = $_oo_json[$_bidx_json_key]['false_sum_qty'];
-	$_old_false_sum_price = $_oo_json[$_bidx_json_key]['false_sum_price'];
-	$_old_false_sum_weight = $_oo_json[$_bidx_json_key]['false_sum_weight'];
+	$_old_false = $_oo_json[$_bidx_json_key]['false'] ?? 0;
+	$_old_false_sum_qty = $_oo_json[$_bidx_json_key]['false_sum_qty'] ?? 0;
+	$_old_false_sum_price = $_oo_json[$_bidx_json_key]['false_sum_price'] ?? 0;
+	$_old_false_sum_weight = $_oo_json[$_bidx_json_key]['false_sum_weight'] ?? 0;
 
 
 

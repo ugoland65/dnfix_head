@@ -300,12 +300,13 @@ $params = [
 
 		// 주요 댓글 데이터 조회
 		$query = $this->queryBuilder
-			->table('work_comment AS A')
-			->select([
-				'A.*',
-				'B.ad_nick, B.ad_image',
-			])
-			->join('admin AS B', 'B.idx', '=', 'A.mb_idx', 'LEFT')
+		->table('work_comment AS A')
+		->select([
+			'A.*',
+			'B.ad_nick',
+			'B.ad_image',
+		])
+		->join('admin AS B', 'B.idx', '=', 'A.mb_idx', 'LEFT')
 			->where('A.mode', '=', $_mode)
 			->where('A.kind', '=', 'S')
 			->where('A.tidx', '=', $_tidx)
@@ -548,17 +549,21 @@ $params = [
 			// Mention 문자열 생성
 			//$_mention_mb = "@" . implode("@", $postData['target_mb_idx']);
 
-			$insertData = [
-				'mode' => $postData['mode'] ?? null,
-				'kind' => 'S',
-				'tidx' => $postData['tidx'] ?? null,
-				'comment' => $postData['comment'] ?? null,
-				'mb_idx' => AuthAdmin::getSession('sess_idx'),
-				'reg' => json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE) ?? null,
-				'mention_mb' => $_mention_mb ?? null,
-				'is_reply' => $_is_reply,
-				'reply_data' => $_reply_data ?? null,
-			];
+		$insertData = [
+			'mode' => $postData['mode'] ?? null,
+			'kind' => 'S',
+			'tidx' => $postData['tidx'] ?? null,
+			'comment' => $postData['comment'] ?? null,
+			'mb_idx' => AuthAdmin::getSession('sess_idx'),
+			'reg' => json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE) ?? null,
+			'mention_mb' => $_mention_mb ?? null,
+			'is_reply' => $_is_reply,
+			'reply_data' => $_reply_data ?? null,
+			'grpno' => '0',
+			'grpord' => '0',
+			'depth' => '0',
+			'ancestor' => '0',
+		];
 
 			$CommentModel = new CommentModel();
 			$CommentInsertResult = $CommentModel->insert($insertData);

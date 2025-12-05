@@ -233,7 +233,7 @@ for ($i=0; $i<count($_ary_save_data_oo_c_idx); $i++){
 	
 	$img_path = "";
 	if($comparison_data[CD_IMG] ){
-		$img_path = 'http://dgmall.wepix-hosting.co.kr/data/comparion/'.$comparison_data[CD_IMG];
+		$img_path = '/data/comparion/'.$comparison_data[CD_IMG];
 	}
 
 	$_img_path = str_replace('../../data/comparion/','', $comparison_data[CD_IMG]);

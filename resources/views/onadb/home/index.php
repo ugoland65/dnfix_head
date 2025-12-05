@@ -33,7 +33,7 @@
                     <ul class="img">
                         <div class="thum"><a href="/pv/<?=$product['CD_IDX']?>" ><img src="<?=$img_path?>" class="<?=$img_class?>"></a></div>
                         <? if( $product['cd_tier'] == "1" || $product['cd_tier'] == "2" ){ ?>
-                        <div class="tier-icon"><img src="/dist/onadb/img/tier_<?=$product['cd_tier']?>.png" /></div>
+                        <div class="tier-icon"><img src="/public/onadb/img/tier_<?=$product['cd_tier']?>.png" /></div>
                         <? } ?>
                     </ul>
                     <ul class="info">

@@ -1,6 +1,7 @@
 {
     "require": {
-        "jenssegers/agent": "^2.6"
+        "jenssegers/agent": "^2.6",
+        "phpoffice/phpspreadsheet": "^5.3"
     },
     "config": {
         "platform": {
@@ -8,4 +9,3 @@
         }
     }
 }
-  

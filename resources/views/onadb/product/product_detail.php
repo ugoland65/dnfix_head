@@ -168,10 +168,9 @@ $_img_class = !empty($productData['CD_IMG2']) ? 'thum-icon' : 'thum-no-icon';
                 </span>
             </div>
 
-            <div class="comment-write" id="comment_form">
-                <form id="form1">
-                <input type="hidden" name="a_mode" value="commWrite" >
-                <input type="hidden" name="pd_idx" value="<?= htmlspecialchars($_idx) ?>" >
+            <div class="comment-write" id="comment_form_wrap">
+                <form id="comment_form">
+                <input type="hidden" name="pd_idx" value="<?= htmlspecialchars($pd_idx) ?>" >
                 
                 <div>
                     <select name="score_mode" id="score_mode">
@@ -269,11 +268,11 @@ $_img_class = !empty($productData['CD_IMG2']) ? 'thum-icon' : 'thum-no-icon';
 
         </div>
     </ul>
-</div>
+    </div>
 
-<script>
+<script type="text/javascript">
     var prdIdx = "<?=$_idx?>";
-
+    var isLoggedIn = <?php if( $auth['is_logged_in'] == true ){ echo "true"; } else { echo "false"; } ?>;
     var prdScore = {
         "s1" : "<?=$data_score['ps_score']['score']['1']['score_avg'] ?? 0?>",
         "s2" : "<?=$data_score['ps_score']['score']['2']['score_avg'] ?? 0?>",
@@ -327,11 +326,90 @@ $_img_class = !empty($productData['CD_IMG2']) ? 'thum-icon' : 'thum-no-icon';
             options: chart_options
         };
 
+        const API_ENDPOINTS = {
+            comment_write: "/prd-comment",
+        };
+
         var commentFormReset = function() {
             $(".comment-write select option:eq(0)").prop("selected", true);
             $(".comment-write-name-wrap input").val("");
             $(".comment-write-wrap textarea").val("");
         };
+
+        function comment() {
+            
+            var formData = $("#comment_form").serializeArray();
+
+            ajaxRequest(API_ENDPOINTS.comment_write, formData, {})
+                .then(res => {
+                    if( res.success == true ){
+                        alert('등록완료. 참여해주셔서 감사합니다.');
+                        location.reload();
+                    }else{
+                        showAlert("Error", res.message, "alert2" );
+                        return false;
+                    }
+                })
+                .catch(error => {
+                    console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                    showAlert("Error", "에러", "alert2" );
+                    return false;
+                });
+
+            /*
+            $.ajax({
+                url: "/processing-prd",
+                data : formData,
+                type: "POST",
+                dataType: "json",
+                success: function(res){
+                    if (res.success == true ){
+                        
+                        if( res.pc_score_mode == "after" ){
+                            myRadar.data.labels = [['자극/기믹','('+ res.ps_score_1 +')'], ['유지관리','('+ res.ps_score_2 +')'], ['냄새/유분/소재','('+ res.ps_score_3 +')'],['조임/탄력','('+ res.ps_score_4 +')'],['마감/내구성','('+ res.ps_score_5 +')'],['조형/패키지','('+ res.ps_score_6 +')'],['가성비','('+ res.ps_score_7 +')']];
+                            myRadar.data.datasets.data = [res.ps_score_1, res.ps_score_2, res.ps_score_3, res.ps_score_4, res.ps_score_5, res.ps_score_6, res.ps_score_7];
+                            myRadar.update();
+                        }
+                        //$("#body").val("");
+                        prdView.list();
+                        
+                        if( res.level_up > 0 ){
+                            toast("info", "LEVEL UP", "축하드립니다. 레밸( Lv."+ res.level_up +")가 되셨습니다.","","toast-bottom-center");
+                        }
+
+                        if ( typeof UC_APP.GLOBAL_USER !== 'undefined' ){
+                            var toast_msg = "";
+                            if( res.give_score > 0 ){
+                                toast_msg += " 기여도 점수 +"+ res.give_score +" 상승 ";
+                            }
+                            if( res.give_point > 0 ){
+                                toast_msg += " | 포인트 +"+ res.give_point +" 획득 ";
+                            }
+                            toast("info", "코멘트 등록완료", toast_msg,"","toast-bottom-center");
+                        }else{
+                        }
+
+                        commentFormReset();
+                        $(".comment-btn").show();
+                        $(".comment-write").hide();
+
+                    }else{
+                        showAlert("Error", res.msg, "alert2" );
+                        return false;
+                    }
+                },
+                error: function(request, status, error){
+                    console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+                    showAlert("Error", "에러", "alert2" );
+                    return false;
+                },
+                complete: function() {
+                    //$(obj).attr('disabled', false);
+
+                }
+            });
+            */
+        }
 
 
         return {
@@ -362,85 +440,7 @@ $_img_class = !empty($productData['CD_IMG2']) ? 'thum-icon' : 'thum-no-icon';
                 */
 
             },
-            comment : function() {
-
-                var formData = $("#form1").serializeArray();
-
-                if ( typeof UC_APP.GLOBAL_USER !== 'undefined' ){
-                    
-
-                }else{
-
-                    if( $("#comm_pw").val() == "" ){
-                        showAlert("Error", "비밀번호를 입력해 주세요.", "alert2" );
-                        return false;
-                    }
-
-                }
-
-                if( $("#body").val() == "" ){
-                    showAlert("Error", "내용을 입력해 주세요.", "alert2" );
-                    return false;
-                }
-
-                if( $('#grade').val() == "0" ){
-                    showAlert("NOTICE", "개인평점 스코어를 입력해 주세요.", "alert2" );
-                    return false;
-                }
-
-                $.ajax({
-                    url: "/processing-prd",
-                    data : formData,
-                    type: "POST",
-                    dataType: "json",
-                    success: function(res){
-                        if (res.success == true ){
-                            
-                            if( res.pc_score_mode == "after" ){
-                                myRadar.data.labels = [['자극/기믹','('+ res.ps_score_1 +')'], ['유지관리','('+ res.ps_score_2 +')'], ['냄새/유분/소재','('+ res.ps_score_3 +')'],['조임/탄력','('+ res.ps_score_4 +')'],['마감/내구성','('+ res.ps_score_5 +')'],['조형/패키지','('+ res.ps_score_6 +')'],['가성비','('+ res.ps_score_7 +')']];
-                                myRadar.data.datasets.data = [res.ps_score_1, res.ps_score_2, res.ps_score_3, res.ps_score_4, res.ps_score_5, res.ps_score_6, res.ps_score_7];
-                                myRadar.update();
-                            }
-                            //$("#body").val("");
-                            prdView.list();
-                            
-                            if( res.level_up > 0 ){
-                                toast("info", "LEVEL UP", "축하드립니다. 레밸( Lv."+ res.level_up +")가 되셨습니다.","","toast-bottom-center");
-                            }
-
-                            if ( typeof UC_APP.GLOBAL_USER !== 'undefined' ){
-                                var toast_msg = "";
-                                if( res.give_score > 0 ){
-                                    toast_msg += " 기여도 점수 +"+ res.give_score +" 상승 ";
-                                }
-                                if( res.give_point > 0 ){
-                                    toast_msg += " | 포인트 +"+ res.give_point +" 획득 ";
-                                }
-                                toast("info", "코멘트 등록완료", toast_msg,"","toast-bottom-center");
-                            }else{
-                            }
-
-                            commentFormReset();
-                            $(".comment-btn").show();
-                            $(".comment-write").hide();
-
-                        }else{
-                            showAlert("Error", res.msg, "alert2" );
-                            return false;
-                        }
-                    },
-                    error: function(request, status, error){
-                        console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
-                        showAlert("Error", "에러", "alert2" );
-                        return false;
-                    },
-                    complete: function() {
-                        //$(obj).attr('disabled', false);
-
-                    }
-                });
-
-            }
+            comment
         };
 
     }();
@@ -491,27 +491,51 @@ $_img_class = !empty($productData['CD_IMG2']) ? 'thum-icon' : 'thum-no-icon';
                     return false;
                 }
                 if( $('#score_4').val() == "0" ){
-                    showAlert("NOTICE", "냄새 스코어를 입력해 주세요.", "dialog" );
+                    showAlert("NOTICE", "마감/내구성 스코어를 입력해 주세요.", "dialog" );
                     return false;
                 }
                 if( $('#score_5').val() == "0" ){
-                    showAlert("NOTICE", "유분 스코어를 입력해 주세요.", "dialog" );
+                    showAlert("NOTICE", "조형/패키지 스코어를 입력해 주세요.", "dialog" );
+                    return false;
+                }
+                if( $('#score_6').val() == "0" ){
+                    showAlert("NOTICE", "진공 스코어를 입력해 주세요.", "dialog" );
                     return false;
                 }
             }
 
-
-            if( typeof(UC_APP_GLOBAL_USER) ){
+            if( isLoggedIn ){
             }else{
-                showAlert("NOTICE", "비밀번호는 필수입니다.", "dialog" );
+                if( $('#comm_name').val() == "" ){
+                    showAlert("NOTICE", "이름을 입력해 주세요.", "dialog" );
+                    return false;
+                }
+                if( $('#comm_pw').val() == "" ){
+                    showAlert("NOTICE", "비밀번호를 입력해 주세요.", "dialog" );
+                    return false;
+                }
+            }
+
+            if( $("#body").val() == "" ){
+                showAlert("Error", "내용을 입력해 주세요.", "alert2" );
+                return false;
+            }
+
+            if( $('#grade').val() == "0" ){
+                showAlert("NOTICE", "개인평점 스코어를 입력해 주세요.", "alert2" );
                 return false;
             }
 
             prdView.comment();
+
         });
 
     });
 </script>
 
+<?php 
+/*
 <?=dump($data_comment);?>
 <?=dump($productData);?>
+*/
+?>

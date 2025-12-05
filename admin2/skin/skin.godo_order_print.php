@@ -20,6 +20,7 @@ echo "</pre>";
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="referrer" content="no-referrer">
     <title>주문서 출력</title>
 
 	<script src="/plugins/jquery/jquery-3.6.0.min.js"></script>
@@ -66,9 +67,30 @@ echo "</pre>";
                 page-break-after: auto;
             }
 
-            /* 버튼 숨기기 (프린트 시) */
-            .print-button {
-                display: none;
+            /* 버튼 및 헤더 숨기기 (프린트 시) */
+            .print-button,
+            .order-print-header {
+                display: none !important;
+            }
+
+            /* 프린트 시에도 빨간색 유지 */
+            span[style*="color:#ff0000"],
+            span[style*="color: #ff0000"],
+            b[style*="color:#ff0000"],
+            b[style*="color: #ff0000"] {
+                color: #ff0000 !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
+            }
+
+            /* 프린트 시에도 파란색 유지 */
+            span[style*="color:#0000ff"],
+            span[style*="color: #0000ff"],
+            b[style*="color:#0000ff"],
+            b[style*="color: #0000ff"] {
+                color: #0000ff !important;
+                -webkit-print-color-adjust: exact !important;
+                print-color-adjust: exact !important;
             }
         }
 
@@ -115,9 +137,10 @@ echo "</pre>";
                             td{
 								text-align: left;
                                 border: 1px solid #000;
+                                padding:0;
                                 &.goods-image{
-                                    width: 20mm;
-                                    height: 20mm;
+                                    width: 25mm;
+                                    height: 25mm;
                                     img{
                                         width: 100%;
                                         height: 100%;
@@ -188,6 +211,17 @@ echo "</pre>";
             text-align: right;
         }
 
+        .order-gift-info{
+            width: 100%;
+            border-bottom: 1px solid #000;
+            padding-bottom: 10px;
+            h2{
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+        }
+
         .order-receiver-info{
             margin-top: 10px;
             h2{
@@ -249,21 +283,24 @@ echo "</pre>";
                     <table style="width: 100%;">
                         <tr>
                             <td class="goods-image" >
-                                <img src="<?=$goods['thumbImageUrl']?>" alt="">
+                                <img src="<?=$goods['thumbImageUrl']?>" alt="" referrerpolicy="no-referrer">
                             </td>
-                            <td>
+                            <td class="p-l-10">
                                 <div>
                                     <ul class="goods-nm">
                                         <b><?=$goods['goodsNm']?></b>
                                     </ul>
 
-                                    <?php if(!empty($goods['bar_code'])) { ?>
-                                    <ul class="goods-barcode">
-                                        <b><?=$goods['bar_code'] ?? '없음'?></b>
+                                    <?php if(!empty($goods['bar_code'])) { 
+                                        $_bar_code_normal = substr($goods['bar_code'], 0, -5);
+                                        $_bar_code_point = substr($goods['bar_code'], -5);
+                                    ?>
+                                    <ul class="goods-barcode m-t-5">
+                                        <b><?=$_bar_code_normal?> <span style="color:#0000ff;"><?=$_bar_code_point?></span></b>
                                     </ul>
                                     <?php } ?>
 
-                                    <ul class="goods-code">
+                                    <ul class="goods-code m-t-5">
                                         재고 : <b><?=$goods['stock'] ?? 0?></b>
                                         <?php if(!empty($goods['rack_code'])) { ?>
                                             | 랙코드 : <b><?=$goods['rack_code']?></b>
@@ -273,14 +310,18 @@ echo "</pre>";
                                     <? if(!empty($goods['optionInfo'])) { ?>
                                     <ul class="goods-optionInfo">
                                         <? foreach($goods['optionInfo'] as $option) { ?>
-                                            <p><?=$option[0]?> : <b><?=$option[1]?></b></p>
+                                            <p><?=$option[0]?> : <b style="color:#ff0000;"><?=$option[1]?></b></p>
                                         <? } ?>
                                     </ul>
                                     <? } ?>
                                 </div>
                             </td>
                             <td class="goods-cnt">
-                                <b><?=$goods['goodsCnt']?></b>
+                                <?php if($goods['goodsCnt'] > 1) { ?>
+                                    <b style="color:#ff0000; font-size:20px; font-weight:900;"><?=$goods['goodsCnt']?></b>
+                                <?php } else { ?>
+                                    <b><?=$goods['goodsCnt']?></b>
+                                <?php } ?>
                             </td>
                         </tr>
                     </table>
@@ -350,6 +391,14 @@ echo "</pre>";
                 <?php } ?>
             </div>
             <?php } } ?>
+
+            <div class="order-gift-info">
+                <?php if($order['settlePrice'] >= 100000) { ?>
+                    <p>사은품 : <b style="font-size:16px;">10만원 사은품</b></p>
+                <?php } elseif($order['settlePrice'] >= 10000) { ?>
+                    <p>사은품 : <b style="font-size:16px;">만원 사은품</b></p>
+                <?php } ?>
+            </div>
 
             <div class="order-receiver-info">
                 <h2>수령자 정보</h2>

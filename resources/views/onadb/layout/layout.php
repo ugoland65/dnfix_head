@@ -85,7 +85,8 @@ var UC_APP_GLOBAL_USER = { account : "<?=$_sess_id?>" };
 <? } ?>
 //--> 
 </script>
-
+*/
+?>
 
 <!-- Google tag (gtag.js) -->
 <script async src="https://www.googletagmanager.com/gtag/js?id=G-R04W3DHFC2"></script>
@@ -96,8 +97,7 @@ var UC_APP_GLOBAL_USER = { account : "<?=$_sess_id?>" };
 
   gtag('config', 'G-R04W3DHFC2');
 </script>
-*/
-?>
+
 </head>
 <body>
 <?php

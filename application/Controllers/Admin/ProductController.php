@@ -82,7 +82,7 @@ class ProductController extends BaseClass
         
         // 상품 데이터 조회
         $productData = $this->productService->getProductDataForAdmin($prdIdx);
-        
+
         // 조회 결과가 없는 경우 처리
         if (!$productData) {
             return [

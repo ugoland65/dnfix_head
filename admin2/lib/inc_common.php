@@ -251,10 +251,17 @@ if( $_ad_lang=="usa"){
 // 상품 in세일 아이콘
 function in_sale_icon( $ps_in_sale_s, $ps_in_sale_e, $ps_in_sale_data ){
 	global $action_time;
+	
+	$shtml = "";
 
 	if( $ps_in_sale_s <= $action_time && $ps_in_sale_e >= $action_time ){
 		
-		$_data = json_decode($ps_in_sale_data, true);
+		$_data = json_decode($ps_in_sale_data ?? '{}', true);
+		
+		// 배열 검증
+		if (!is_array($_data) || empty($_data['sale_mode']) || empty($_data['sale_per'])) {
+			return $shtml;
+		}
 
 		if( $_data['sale_mode'] == "period" ){
 			$_sale_name = "기간할인중 ";
@@ -272,6 +279,7 @@ function in_sale_icon( $ps_in_sale_s, $ps_in_sale_e, $ps_in_sale_data ){
 // 페이징
 function paging( $current_page, $total_page, $list_num, $page_num, $url ){
 
+	$link_str = "";
 	$link_str .= "<div class='paging'>";
 
 	//페이지가 하나만 있을때

@@ -1,9 +1,12 @@
 <?
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 	// 변수 초기화
 	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
 
 	$_reg_d = array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
+	$response = array('success' => false, 'msg' => '잘못된 요청입니다.');
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 상품 그룹핑 생성
@@ -14,6 +17,10 @@ if( $_a_mode == "prdGrouping_reg" ){
 	$_pg_sday = $_POST['pg_sday'] ?? "";
 	$_pg_day = $_POST['pg_day'] ?? "";
 	$_reg_mode = $_POST['reg_mode'] ?? "";
+
+	// 날짜 빈 값 처리
+	if (empty($_pg_sday)) $_pg_sday = '0000-00-00';
+	if (empty($_pg_day)) $_pg_day = '0000-00-00';
 
 	if( !$_reg_mode ) $_reg_mode = "basic";
 	if( $_reg_mode == "make_prouping" ){
@@ -30,6 +37,8 @@ if( $_a_mode == "prdGrouping_reg" ){
 		pg_mode = '".$_pg_mode."',
 		pg_sday = '".$_pg_sday."',
 		pg_day = '".$_pg_day."',
+		pg_memo = '',
+		data = '[]',
 		reg = '".$_reg."' ";
 	sql_query_error($query);
 	
@@ -56,6 +65,11 @@ if( $_a_mode == "prdGrouping_reg" ){
 	if (!is_array($_memo)) $_memo = [];
 
 	$data = sql_fetch_array(sql_query_error("select * from prd_grouping WHERE idx = '".$_idx."' "));
+	
+	// 배열 검증
+	if (!is_array($data) || empty($data)) {
+		$data = ['idx' => ''];
+	}
 
 	$_data_array = [];
 	for ( $i=0; $i<count($_prd_idx); $i++ ){
@@ -105,6 +119,10 @@ if( $_a_mode == "prdGrouping_reg" ){
 	$_original_sale_price = $_POST['original_sale_price'] ?? [];
 	$_pg_prd_memo = $_POST['pg_prd_memo'] ?? [];
 
+	// 날짜 빈 값 처리
+	if (empty($_pg_sday)) $_pg_sday = '0000-00-00';
+	if (empty($_pg_day)) $_pg_day = '0000-00-00';
+
 	// 배열 검증
 	if (!is_array($_pg_prd_qty)) $_pg_prd_qty = [];
 	if (!is_array($_pg_prd_per)) $_pg_prd_per = [];
@@ -129,6 +147,16 @@ if( $_a_mode == "prdGrouping_reg" ){
 	}
 
 	for ($z=0; $z<count($_prd_jsondata); $z++){
+		
+		// 배열 검증
+		if (!isset($_prd_jsondata[$z]) || !is_array($_prd_jsondata[$z])) {
+			continue;
+		}
+		
+		// mode_data가 배열이 아니면 초기화
+		if (!isset($_prd_jsondata[$z]['mode_data']) || !is_array($_prd_jsondata[$z]['mode_data'])) {
+			$_prd_jsondata[$z]['mode_data'] = [];
+		}
 
 		if( ($data['pg_mode'] ?? '') == "qty" ){
 
@@ -137,15 +165,15 @@ if( $_a_mode == "prdGrouping_reg" ){
 		}elseif( ($data['pg_mode'] ?? '') == "event" || ($data['pg_mode'] ?? '') == "sale" || ($data['pg_mode'] ?? '') == "period" ){
 
 			$_prd_jsondata[$z]['mode_data'] = array(
-				"per" => $_pg_prd_per[$z] ?? 0,
-				"sale_price" => $_dis_sale_price[$z] ?? 0,
-				"margin_price" => $_dis_margin_price[$z] ?? 0,
-				"margin_per" => $_dis_margin_per[$z] ?? 0
+				"per" => (int)($_pg_prd_per[$z] ?? 0),
+				"sale_price" => (int)($_dis_sale_price[$z] ?? 0),
+				"margin_price" => (int)($_dis_margin_price[$z] ?? 0),
+				"margin_per" => (float)($_dis_margin_per[$z] ?? 0)
 			);
 
 			if( ( ($data['pg_mode'] ?? '') == "sale" || ($data['pg_mode'] ?? '') == "period" ) && $_save_mode == "end" ){
 				
-				if( ($data['pg_mode'] ?? '') == "period" && $_pg_sday == 0 ){
+				if( ($data['pg_mode'] ?? '') == "period" && ($_pg_sday == 0 || $_pg_sday == '0000-00-00' || empty($_pg_sday)) ){
 
 					$response = array('success' => false, 'msg' => '진행 시작일을 등록해 주세요.' );
 					header('Content-Type: application/json');
@@ -154,7 +182,7 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 				}
 
-				if( $_pg_day == 0 ){
+				if( $_pg_day == 0 || $_pg_day == '0000-00-00' || empty($_pg_day) ){
 
 					$response = array('success' => false, 'msg' => '진행일을 등록해 주세요.' );
 					header('Content-Type: application/json');
@@ -165,6 +193,12 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 
 				$_ps_idx = $_prd_jsondata[$z]['stockidx'] ?? "";
+				
+				// ps_idx가 비어있으면 건너뛰기
+				if (empty($_ps_idx)) {
+					continue;
+				}
+				
 				$ps_data = sql_fetch_array(sql_query_error("select ps_sale_date, ps_sale_log from prd_stock WHERE ps_idx = '".$_ps_idx."' "));
 
 				// 배열 검증
@@ -183,6 +217,11 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 				for ($i=0; $i<count($_ps_sale_log_data); $i++){
 					
+					// 배열 검증
+					if (!isset($_ps_sale_log_data[$i]) || !is_array($_ps_sale_log_data[$i])) {
+						continue;
+					}
+					
 					//등록된 로그가 있는지?
 					if( ($_ps_sale_log_data[$i]['grouping_idx'] ?? '') == $_idx && ($_ps_sale_log_data[$i]['sale_per'] ?? 0) == ($_pg_prd_per[$z] ?? 0) ){
 						$_is_log = false;
@@ -191,8 +230,9 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 				}
 
-				if( ($ps_data['ps_sale_date'] ?? '') > $_pg_day ){
-					$_ps_sale_date = $ps_data['ps_sale_date'] ?? '';
+				$_ps_sale_date_old = $ps_data['ps_sale_date'] ?? '0000-00-00';
+				if( !empty($_ps_sale_date_old) && $_ps_sale_date_old != '0000-00-00' && $_ps_sale_date_old > $_pg_day ){
+					$_ps_sale_date = $_ps_sale_date_old;
 				}else{
 					$_ps_sale_date = $_pg_day;
 				}
@@ -201,15 +241,29 @@ if( $_a_mode == "prdGrouping_reg" ){
 				if( ($data['pg_mode'] ?? '') == "sale" ){
 					$_sale_mode = "day";
 
-					$_ps_in_sale_s = date("Y-m-d",strtotime($_pg_day))." 17:00:00";
-					$_ps_in_sale_e = date("Y-m-d",strtotime($_pg_day." +1 days"))." 17:00:00";
+					if (!empty($_pg_day) && $_pg_day != '0000-00-00') {
+						$_ps_in_sale_s = date("Y-m-d",strtotime($_pg_day))." 17:00:00";
+						$_ps_in_sale_e = date("Y-m-d",strtotime($_pg_day." +1 days"))." 17:00:00";
+					} else {
+						$_ps_in_sale_s = "";
+						$_ps_in_sale_e = "";
+					}
 
 				//기간할인 일경우
 				}elseif( ($data['pg_mode'] ?? '') == "period" ){
 					$_sale_mode = "period";
 
-					$_ps_in_sale_s = date("Y-m-d",strtotime($_pg_sday))." 17:00:00";
-					$_ps_in_sale_e = date("Y-m-d",strtotime($_pg_day))." 17:00:00";
+					if (!empty($_pg_sday) && $_pg_sday != '0000-00-00' && !empty($_pg_day) && $_pg_day != '0000-00-00') {
+						$_ps_in_sale_s = date("Y-m-d",strtotime($_pg_sday))." 17:00:00";
+						$_ps_in_sale_e = date("Y-m-d",strtotime($_pg_day))." 17:00:00";
+					} else {
+						$_ps_in_sale_s = "";
+						$_ps_in_sale_e = "";
+					}
+				}else{
+					$_sale_mode = "";
+					$_ps_in_sale_s = "";
+					$_ps_in_sale_e = "";
 				}
 
 				//기간 period 데이 day
@@ -224,7 +278,7 @@ if( $_a_mode == "prdGrouping_reg" ){
 					"sale_price" => $_dis_sale_price[$z] ?? 0,
 					"margin_price" => $_dis_margin_price[$z] ?? 0,
 					"margin_per" => $_dis_margin_per[$z] ?? 0,
-					"d" => $_reg_d ?? ""
+					"d" => $_reg_d ?? []
 				);
 
 				if( $_is_log == true ){
@@ -238,6 +292,10 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 				$_ps_sale_log = json_encode($_ps_sale_log_data, JSON_UNESCAPED_UNICODE);
 				$_ps_in_sale_data = json_encode($_sale_log_unit, JSON_UNESCAPED_UNICODE);
+
+				// ps_in_sale_s와 ps_in_sale_e가 빈 값이면 빈 문자열로 설정
+				$_ps_in_sale_s = $_ps_in_sale_s ?? "";
+				$_ps_in_sale_e = $_ps_in_sale_e ?? "";
 
 				$query = "update prd_stock set
 					ps_sale_date = '".$_ps_sale_date."',
@@ -321,7 +379,8 @@ if( $_a_mode == "prdGrouping_reg" ){
 
 			//중복 여부 체크하기
 			for ($i=0; $i<count($_new_add_array); $i++){
-				if( ($_new_add_array[$i] ?? "") == $_prd_idx ){
+				$_check_idx = isset($_new_add_array[$i]) ? $_new_add_array[$i] : "";
+				if( $_check_idx == $_prd_idx ){
 					$_is_jungbok = "ok";
 					$_jungbok++;
 					break;

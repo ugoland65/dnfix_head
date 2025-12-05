@@ -1,7 +1,10 @@
 <?
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 	// 변수 초기화
 	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
+	$response = array('success' => false, 'msg' => '잘못된 요청입니다.');
 
 	$_reg_d = array( "date" => $action_time, "id" => $_sess_id, "idx" => $_ad_idx,  "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
 
@@ -81,7 +84,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select file, reg from work_manual WHERE idx = '".$_idx."' "));
 	
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['file' => '{}', 'reg' => '{}'];
 	}
 
@@ -158,7 +161,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select file from work_manual WHERE idx = '".$_idx."' "));
 
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['file' => '{}'];
 	}
 
@@ -200,7 +203,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select file from ".$_pmode." WHERE idx = '".$_idx."' "));
 
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['file' => '{}'];
 	}
 
@@ -313,6 +316,9 @@ if( $_a_mode == "work_manual_reg" ){
 		reg = '".$_reg."',
 		reg_idx = '".$_ad_idx."',
 		target_mb = '".$_target_mb."',
+		view_check = '0',
+		cmt_s_count = '0',
+		cmt_b_count = '0',
 		reg_date = '".$action_time."' ";
 	sql_query_error($query);
 
@@ -325,7 +331,7 @@ if( $_a_mode == "work_manual_reg" ){
 		$admin_data = wepix_fetch_array(wepix_query_error("select * from admin WHERE idx = '".$_this_idx."' "));
 
 		// 배열 검증
-		if (!is_array($admin_data)) {
+		if (!is_array($admin_data) || empty($admin_data)) {
 			$admin_data = ['ad_line_token' => ''];
 		}
 
@@ -375,7 +381,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select file, reg from work_log WHERE idx = '".$_idx."' "));
 	
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['file' => '{}', 'reg' => '{}'];
 	}
 
@@ -456,7 +462,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select * from work_log WHERE idx = '".$_idx."' "));
 	
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['subject' => '', 'state' => '', 'reg' => '{}', 'reg_idx' => '', 'target_mb' => ''];
 	}
 
@@ -472,9 +478,9 @@ if( $_a_mode == "work_manual_reg" ){
 	//저장된 상태와 변경상태가 다른경우 저장
 	if( ($data['state'] ?? '') != $_state ){
 
-		$_state_make = array("brfore" => $data['state'], "after" => $_state, "reg" => $_reg_d );
+		$_state_make = array("brfore" => $data['state'] ?? '', "after" => $_state, "reg" => $_reg_d );
 
-		if( !$_reg_data['state'] ){
+		if( !isset($_reg_data['state']) || empty($_reg_data['state']) ){
 			$_reg_data['state'] = array( $_state_make );
 		}else{
 			array_unshift($_reg_data['state'], $_state_make);
@@ -494,7 +500,7 @@ if( $_a_mode == "work_manual_reg" ){
 			$reg_data = wepix_fetch_array(wepix_query_error("select ad_line_token from admin WHERE idx = '".($data['reg_idx'] ?? "")."' "));
 
 			// 배열 검증
-			if (!is_array($reg_data)) {
+			if (!is_array($reg_data) || empty($reg_data)) {
 				$reg_data = ['ad_line_token' => ''];
 			}
 
@@ -523,7 +529,7 @@ if( $_a_mode == "work_manual_reg" ){
 			$reg_data = wepix_fetch_array(wepix_query_error("select ad_line_token from admin WHERE idx = '".($_this_target_mb_idx[$i] ?? "")."' "));
 
 			// 배열 검증
-			if (!is_array($reg_data)) {
+			if (!is_array($reg_data) || empty($reg_data)) {
 				$reg_data = ['ad_line_token' => ''];
 			}
 
@@ -572,7 +578,7 @@ if( $_a_mode == "work_manual_reg" ){
 		$data = sql_fetch_array(sql_query_error("select * from work_comment WHERE idx = '".$_tidx."' "));
 		
 		// 배열 검증
-		if (!is_array($data)) {
+		if (!is_array($data) || empty($data)) {
 			$data = ['mention_mb' => ''];
 		}
 
@@ -652,7 +658,7 @@ if( $_a_mode == "work_manual_reg" ){
 	$data = sql_fetch_array(sql_query_error("select * from work_log WHERE idx = '".$_tidx."' "));
 
 	// 배열 검증
-	if (!is_array($data)) {
+	if (!is_array($data) || empty($data)) {
 		$data = ['category' => '', 'subject' => ''];
 	}
 
@@ -665,7 +671,7 @@ if( $_a_mode == "work_manual_reg" ){
 		$mb_data = wepix_fetch_array(wepix_query_error("select * from admin WHERE idx = '".$_mb_idx."' "));
 
 		// 배열 검증
-		if (!is_array($mb_data)) {
+		if (!is_array($mb_data) || empty($mb_data)) {
 			$mb_data = ['ad_line_token' => ''];
 		}
 
@@ -694,21 +700,21 @@ if( $_a_mode == "work_manual_reg" ){
 
 	$_where = " WHERE mode = '".$_work_comment_mode."' AND kind = '".$_kind."' AND tidx = '".$_tidx."' ";
 
-	$_grpno = "";
-	$_grpord = "";
-	$_depth = "";
+	$_grpno = "0";
+	$_grpord = "0";
+	$_depth = "0";
 	$_ancestor = "";
 
 	if( $_kind == "S" ){
 		
-		$max_grpno = sql_fetch_array(sql_query_error("select max(grpno) from work_comment ".$_where." "));
+		$max_grpno = sql_fetch_array(sql_query_error("select max(grpno) as max_grpno from work_comment ".$_where." "));
 		
-		// 배열 검증
-		if (!is_array($max_grpno)) {
-			$max_grpno = [0];
+		// 배열 검증 및 값 추출
+		if (!is_array($max_grpno) || empty($max_grpno)) {
+			$_grpno = 1;
+		}else{
+			$_grpno = (int)($max_grpno['max_grpno'] ?? 0) + 1;
 		}
-
-		$_grpno = ($max_grpno[0] ?? 0) + 1;
 		$_grpord = "0";
 		$_depth = "1";
 		$_ancestor = "";
@@ -724,6 +730,7 @@ if( $_a_mode == "work_manual_reg" ){
 		reg = '".$_reg."',
 		reg_date = '".$action_time."',
 		mention_mb = '".$_mention_mb."',
+		state = '대기',
 		grpno = '".$_grpno."',
 		grpord = '".$_grpord."',
 		depth = '".$_depth."',

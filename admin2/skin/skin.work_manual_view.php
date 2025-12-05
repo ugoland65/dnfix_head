@@ -5,6 +5,12 @@ if( $_idx ){
 	$data = sql_fetch_array(sql_query_error("select * from work_manual WHERE idx = '".$_idx."' "));
 	
 	$_file_data = json_decode($data['file'], true);
+	if (!is_array($_file_data)) {
+		$_file_data = ['file_name' => []];
+	}
+	if (!isset($_file_data['file_name']) || !is_array($_file_data['file_name'])) {
+		$_file_data['file_name'] = [];
+	}
 }
 ?>
 <style type="text/css">
@@ -34,11 +40,15 @@ if( $_idx ){
 				<th>첨부파일</th>
 				<td>
 					<div id="file_list_wrap">
-						<? for ( $i=0; $i<count($_file_data['file_name']); $i++ ){ ?>
-						<div class="file-list">
-							<a href="/data/work_manual/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
-							<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" data-filename="<?=$_file_data['file_name'][$i]?>" onclick="workManualView.fileDel(this, '<?=$_idx?>', '<?=$i?>')" ><i class="fas fa-trash-alt"></i> 파일삭제</button>
-						</div>
+						<? if (!empty($_file_data['file_name']) && is_array($_file_data['file_name'])) { ?>
+							<? for ( $i=0; $i<count($_file_data['file_name']); $i++ ){ ?>
+							<div class="file-list">
+								<a href="/data/work_manual/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
+								<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" data-filename="<?=$_file_data['file_name'][$i]?>" onclick="workManualView.fileDel(this, '<?=$_idx?>', '<?=$i?>')" ><i class="fas fa-trash-alt"></i> 파일삭제</button>
+							</div>
+							<? } ?>
+						<? } else { ?>
+							<p>첨부파일이 없습니다.</p>
 						<? } ?>
 					</div>
 				</td>

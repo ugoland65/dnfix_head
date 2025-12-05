@@ -145,4 +145,68 @@ class UserServices
 
     }
 
+    
+    /**
+     * 상품코멘트 포인트 / 점수 지급
+     * 
+     * @param int|null $userId
+     * @param string $scoreMode
+     * @param int $commentId
+     * @param int $productId
+     * @return array
+     */
+    public function giveRewardForComment(?int $userId, string $scoreMode, int $commentId, int $productId): array
+    {
+        if (!$userId) {
+            return ['point' => 0, 'score' => 0, 'level_up' => 0];
+        }
+
+        $reward = [
+            'point' => $scoreMode === 'after' ? $_u_point_prd_comment_after : $_u_point_prd_comment_before,
+            'score' => $scoreMode === 'after' ? $_u_score_prd_comment_after : $_u_score_prd_comment_before
+        ];
+
+        if ($reward['point'] > 0) {
+            $this->userModel->addPoint($userId, $reward['point'], '상품코맨트', [
+                'pc_idx' => $commentId,
+                'pd_idx' => $productId
+            ]);
+        }
+
+        $levelUp = 0;
+        if ($reward['score'] > 0) {
+            $result = $this->userModel->addScore($userId, $reward['score'], '상품코맨트', [
+                'pc_idx' => $commentId,
+                'pd_idx' => $productId
+            ]);
+            $levelUp = $result['level_up'] ?? 0;
+        }
+
+        return [
+            'point' => $reward['point'],
+            'score' => $reward['score'],
+            'level_up' => $levelUp,
+        ];
+    }
+
+
+    /**
+     * 사용자 닉네임 조회
+     * 
+     * @param string $nickname
+     * @return array
+     */
+    public function getUserNick(string $nickname)
+    {
+        $user = UserModel::where('user_nick', $nickname)->first();
+
+        if( $user ){
+            return $user;
+        }else{
+            return null;
+        }
+
+    }
+
+
 }

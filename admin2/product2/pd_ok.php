@@ -1,4 +1,8 @@
-<?
+<?php
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
+
+
 include "../lib/inc_common.php";
 include('../../class/image.php'); //이미지 처리 클래스
 
@@ -71,19 +75,36 @@ if($_a_mode == "brandNew"){
 	}
 
 	$_bd_api_info_ary = array(
-		'active' => $_bd_api_active,
-		'name' => $_bd_api_name,
-		'name_en' => $_bd_api_name_en,
-		'logo' => $_bd_api_logo,
-		'logo_mobile' => $_bd_api_logo_mobile,
-		'bg' => $_bd_api_bg,
-		'bg_rgb' => $_bd_api_bg_rgb,
-		'info_class' => $_bd_api_info_class,
-		'bg_mobile' => $_bd_api_bg_mobile
+		'active' => $_bd_api_active ?? '',
+		'name' => $_bd_api_name ?? '',
+		'name_en' => $_bd_api_name_en ?? '',
+		'logo' => $_bd_api_logo ?? '',
+		'logo_mobile' => $_bd_api_logo_mobile ?? '',
+		'bg' => $_bd_api_bg ?? '',
+		'bg_rgb' => $_bd_api_bg_rgb ?? '',
+		'info_class' => $_bd_api_info_class ?? '',
+		'bg_mobile' => $_bd_api_bg_mobile ?? ''
 	);
 
 	$_bd_api_info = json_encode($_bd_api_info_ary, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
 	//$_bd_api_info = addslashes($_bd_api_info);
+
+	// 변수 초기화
+	$_bd_kind_ona = $_bd_kind_ona ?? "N";
+	$_bd_kind_breast = $_bd_kind_breast ?? "N";
+	$_bd_kind_gel = $_bd_kind_gel ?? "N";
+	$_bd_kind_condom = $_bd_kind_condom ?? "N";
+	$_bd_kind_annal = $_bd_kind_annal ?? "N";
+	$_bd_kind_prostate = $_bd_kind_prostate ?? "N";
+	$_bd_kind_care = $_bd_kind_care ?? "N";
+	$_bd_kind_dildo = $_bd_kind_dildo ?? "N";
+	$_bd_kind_vibe = $_bd_kind_vibe ?? "N";
+	$_bd_kind_suction = $_bd_kind_suction ?? "N";
+	$_bd_kind_man = $_bd_kind_man ?? "N";
+	$_bd_kind_nipple = $_bd_kind_nipple ?? "N";
+	$_bd_kind_cos = $_bd_kind_cos ?? "N";
+	$_bd_kind_perfume = $_bd_kind_perfume ?? "N";
+	$_bd_kind_bdsm = $_bd_kind_bdsm ?? "N";
 
 	if( $_bd_kind_ona !="Y" ) $_bd_kind_ona = "N";
 	if( $_bd_kind_breast !="Y" ) $_bd_kind_breast = "N";
@@ -121,6 +142,9 @@ if($_a_mode == "brandNew"){
 
 	$_bd_kind = json_encode($_ary_bd_kind);
 
+	// 변수 초기화 및 타입 캐스팅
+	$_bd_maker = (int)($_bd_maker ?? 0);
+	$_bd_logo = $_bd_logo ?? '';
 
 	$query = "insert into  "._DB_BRAND." set
 		BD_MD_IDX ='".$_bd_maker."',
@@ -151,6 +175,17 @@ if($_a_mode == "brandNew"){
 // 브랜드 수정
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif($_a_mode == "brandModify"){
+	
+	// 기존 브랜드 데이터 조회
+	$brand_data = wepix_fetch_array(wepix_query_error("SELECT * FROM "._DB_BRAND." WHERE BD_IDX = '".$_idx."'"));
+	
+	// 배열 검증
+	if (!is_array($brand_data) || empty($brand_data)) {
+		$brand_data = ['BD_LOGO' => ''];
+	}
+	
+	// 기존 이미지 경로 초기화
+	$_modify_bd_logo = $brand_data['BD_LOGO'] ?? '';
     
 	$_file = $_FILES['bd_logo'];
 
@@ -179,19 +214,36 @@ if($_a_mode == "brandNew"){
 	}
 
 	$_bd_api_info_ary = array(
-		'active' => $_bd_api_active,
-		'name' => $_bd_api_name,
-		'name_en' => $_bd_api_name_en,
-		'logo' => $_bd_api_logo,
-		'logo_mobile' => $_bd_api_logo_mobile,
-		'bg' => $_bd_api_bg,
-		'bg_rgb' => $_bd_api_bg_rgb,
-		'info_class' => $_bd_api_info_class,
-		'bg_mobile' => $_bd_api_bg_mobile
+		'active' => $_bd_api_active ?? '',
+		'name' => $_bd_api_name ?? '',
+		'name_en' => $_bd_api_name_en ?? '',
+		'logo' => $_bd_api_logo ?? '',
+		'logo_mobile' => $_bd_api_logo_mobile ?? '',
+		'bg' => $_bd_api_bg ?? '',
+		'bg_rgb' => $_bd_api_bg_rgb ?? '',
+		'info_class' => $_bd_api_info_class ?? '',
+		'bg_mobile' => $_bd_api_bg_mobile ?? ''
 	);
 
 	$_bd_api_info = json_encode($_bd_api_info_ary, JSON_UNESCAPED_UNICODE);
 
+	// 변수 초기화
+	$_bd_kind_ona = $_bd_kind_ona ?? "N";
+	$_bd_kind_breast = $_bd_kind_breast ?? "N";
+	$_bd_kind_gel = $_bd_kind_gel ?? "N";
+	$_bd_kind_condom = $_bd_kind_condom ?? "N";
+	$_bd_kind_annal = $_bd_kind_annal ?? "N";
+	$_bd_kind_prostate = $_bd_kind_prostate ?? "N";
+	$_bd_kind_care = $_bd_kind_care ?? "N";
+	$_bd_kind_dildo = $_bd_kind_dildo ?? "N";
+	$_bd_kind_vibe = $_bd_kind_vibe ?? "N";
+	$_bd_kind_suction = $_bd_kind_suction ?? "N";
+	$_bd_kind_man = $_bd_kind_man ?? "N";
+	$_bd_kind_nipple = $_bd_kind_nipple ?? "N";
+	$_bd_kind_cos = $_bd_kind_cos ?? "N";
+	$_bd_kind_perfume = $_bd_kind_perfume ?? "N";
+	$_bd_kind_bdsm = $_bd_kind_bdsm ?? "N";
+	
 	if( $_bd_kind_ona !="Y" ) $_bd_kind_ona = "N";
 	if( $_bd_kind_breast !="Y" ) $_bd_kind_breast = "N";
 	if( $_bd_kind_gel !="Y" ) $_bd_kind_gel = "N";
@@ -227,6 +279,9 @@ if($_a_mode == "brandNew"){
 	);
 
 	$_bd_kind = json_encode($_ary_bd_kind);
+
+	// 변수 초기화 및 타입 캐스팅
+	$_bd_maker = (int)($_bd_maker ?? 0);
 
 	$query = "update "._DB_BRAND." set
 		BD_MD_IDX ='".$_bd_maker."',
@@ -327,9 +382,15 @@ if( $_load_page == "popup_brand_view" ){
 
 		//$st_dat2 = wepix_fetch_array(wepix_query_error("select TG_CODE from "._DB_TAG." where TG_PARENT_IDX = '".$_st_code."' "));
 		$st_data = wepix_fetch_array(wepix_query_error("select TG_CODE, max(TG_SORT_NUM) as sort_num from "._DB_TAG." where TG_PARENT_IDX = '".$_st_code."' "));
+		
+		// 배열 검증
+		if (!is_array($st_data) || empty($st_data)) {
+			$st_data = ['sort_num' => 0, 'TG_CODE' => ''];
+		}
+		
 		$_st_parent_idx = $_st_code;
-		$_st_sort_num = $st_data[sort_num]+1;
-		$_st_code = $st_data[TG_CODE];
+		$_st_sort_num = ($st_data['sort_num'] ?? 0) + 1;
+		$_st_code = $st_data['TG_CODE'] ?? '';
 
 /*
 		echo $st_name."/".$_st_code;
@@ -369,8 +430,14 @@ if( $_load_page == "popup_brand_view" ){
 
 	if($_st_haed != 1){
 		$st_data = wepix_fetch_array(wepix_query_error("select TG_CODE, max(TG_SORT_NUM) as sort_num from "._DB_TAG." where TG_PARENT_IDX = '".$_st_code."' "));
+		
+		// 배열 검증
+		if (!is_array($st_data) || empty($st_data)) {
+			$st_data = ['TG_CODE' => ''];
+		}
+		
 		$_st_parent_idx = $_st_code;
-		$_st_code = $st_data[TG_CODE];
+		$_st_code = $st_data['TG_CODE'] ?? '';
 	}else{
 		$_st_parent_idx = 0;
 	}
@@ -442,12 +509,26 @@ if( $_load_page == "popup_brand_view" ){
 	$_tg_sort = securityVal($tg_sort);
 	$_tg_name = securityVal($tg_name);
 
+	// 배열 검증
+	if (!is_array($_tg_idx)) {
+		$_tg_idx = [];
+	}
+	if (!is_array($_tg_sort)) {
+		$_tg_sort = [];
+	}
+	if (!is_array($_tg_name)) {
+		$_tg_name = [];
+	}
 	
 	for($i=0;$i<count($_tg_idx);$i++){
+		$tg_idx = $_tg_idx[$i] ?? '';
+		$tg_sort = $_tg_sort[$i] ?? '';
+		$tg_name = $_tg_name[$i] ?? '';
+		
 		$query = "update "._DB_TAG." set
-			  TG_SORT_NUM = '".$_tg_sort[$i]."',
-			  TG_NAME = '".$_tg_name[$i]."'
-		 where TG_IDX = '".$_tg_idx[$i]."'";
+			  TG_SORT_NUM = '".$tg_sort."',
+			  TG_NAME = '".$tg_name."'
+		 where TG_IDX = '".$tg_idx."'";
 		
 		wepix_query_error($query);
 	}
@@ -461,12 +542,19 @@ if( $_load_page == "popup_brand_view" ){
 
 	$_sort_mode = securityVal($sort_mode);
 	$_ary_bd_idx = securityVal($bd_idx);
+	
+	// 배열 검증
+	if (!is_array($_ary_bd_idx)) {
+		$_ary_bd_idx = [];
+	}
+	
 	for($i=0;$i<count($_ary_bd_idx);$i++){
 		$_sort_num = $i+1;
+		$bd_idx = $_ary_bd_idx[$i] ?? '';
 		
 		$query = "update  "._DB_BRAND." set
 					BD_SORT = '".$_sort_num."'
-				  where BD_IDX = '".$_ary_bd_idx[$i]."'";
+				  where BD_IDX = '".$bd_idx."'";
 		$result = wepix_query_error($query);
 	}
 
@@ -480,7 +568,13 @@ if( $_load_page == "popup_brand_view" ){
 	$_keyword = securityVal($keyword);
 	$key = trim($_keyword);
 	$key_word_data =  wepix_fetch_array(wepix_query_error("SELECT * FROM keyword WHERE kw_word = '".$key."'"));
-	if(!$key_word_data[kw_id]){
+	
+	// 배열 검증
+	if (!is_array($key_word_data)) {
+		$key_word_data = [];
+	}
+	
+	if(!isset($key_word_data['kw_id'])){
 		$query = "insert into keyword set kw_word = '".$key."'";
 		 $result = wepix_query_error($query);
 		 echo "|Processing_Complete|처리완료|";

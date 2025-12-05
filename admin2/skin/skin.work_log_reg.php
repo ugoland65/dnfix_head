@@ -1,10 +1,19 @@
 <?
 $_idx = $_get1;
+$data = [];
 if( $_idx ){
 
 	$data = sql_fetch_array(sql_query_error("select * from work_log WHERE idx = '".$_idx."' "));
 	
-	$_file_data = json_decode($data['file'], true);
+	$_file_data = json_decode($data['file'] ?? null, true);
+	if (!is_array($_file_data)) {
+		$_file_data = ['file_name' => []];
+	}
+	if (!isset($_file_data['file_name']) || !is_array($_file_data['file_name'])) {
+		$_file_data['file_name'] = [];
+	}
+}else{
+	$_file_data = ['file_name' => []];
 }
 ?>
 <style type="text/css">
@@ -33,10 +42,13 @@ if( $_idx ){
 				<td>
 					<select name="category" onchange="workLogReg.categoryOnChange(this.value)">
 					<?
-						for ($i=0; $i<count($_work_log_cate); $i++){
-							$selected = ( $data['category'] == $_work_log_cate[$i]['name'] ) ? "selected" : "";
-							echo "<option value=\"".$_work_log_cate[$i]['name']."\" ".$selected.">".$_work_log_cate[$i]['name']."</option>";
-					} 
+						if (isset($_work_log_cate) && is_array($_work_log_cate)) {
+							for ($i=0; $i<count($_work_log_cate); $i++){
+								$selected = ( isset($data['category']) && $data['category'] == $_work_log_cate[$i]['name'] ) ? "selected" : "";
+								$cateName = $_work_log_cate[$i]['name'] ?? '';
+								echo "<option value=\"".$cateName."\" ".$selected.">".$cateName."</option>";
+							}
+						}
 					?>
 					</select>
 				</td>
@@ -44,7 +56,7 @@ if( $_idx ){
 
 			<tr>
 				<th>제목</th>
-				<td><input type='text' name='subject' id='subject' value="<?=$data['subject']?>" class="width-full"></td>
+				<td><input type='text' name='subject' id='subject' value="<?=$data['subject'] ?? ''?>" class="width-full"></td>
 			 </tr>
 
 			<tr>
@@ -52,10 +64,10 @@ if( $_idx ){
 				<td><!-- selected -->
 					상태 : 
 					<select name="state">
-						<option value="대기" >대기</option>
-						<option value="확인" >확인</option>
-						<option value="완료" >완료</option>
-						<option value="반려" >반려</option>
+						<option value="대기" <?=(isset($data['state']) && $data['state'] == '대기') ? 'selected' : ''?>>대기</option>
+						<option value="확인" <?=(isset($data['state']) && $data['state'] == '확인') ? 'selected' : ''?>>확인</option>
+						<option value="완료" <?=(isset($data['state']) && $data['state'] == '완료') ? 'selected' : ''?>>완료</option>
+						<option value="반려" <?=(isset($data['state']) && $data['state'] == '반려') ? 'selected' : ''?>>반려</option>
 					</select>
 
 <?
@@ -70,17 +82,18 @@ if( !$data['category'] || $data['category'] == "업무일지" || $data['category
 .target-mb-id-div{}
 .target-mb-id-div label{ border:1px solid #ccc; border-radius:5px; padding:5px; }
 </style>
-					<div id="target_mb_id_div" class="target-mb-id-div" style="<?=$_target_mb_id_div_style?> margin-top:10px;">
+					<div id="target_mb_id_div" class="target-mb-id-div" style="<?=$_target_mb_id_div_style ?? ''?> margin-top:10px;">
 						참여자 :
 						<label><input type="checkbox" name="target_mb_idx_all" id="target_mb_idx_all" value="" onclick="checkboxAll()"> 전체선택</label>
 						<?
+							$_where = "";
 							$_query = "select * from admin ".$_where." ORDER BY idx DESC";
 							$_result = sql_query_error($_query);
 							while($_list = wepix_fetch_array($_result)){
 								
 								$_checked = "";
 								$_target_mb_text = "@".$_list['idx'];
-								if (strstr($data['target_mb'], $_target_mb_text)){
+								if (isset($data['target_mb']) && strstr($data['target_mb'], $_target_mb_text)){
 									$_checked = "checked";
 								}
 						?>
@@ -98,11 +111,13 @@ if( !$data['category'] || $data['category'] == "업무일지" || $data['category
 					
 					<div>
 					<div class="file-list-wrap">
-						<? for ($i=0; $i<count($_file_data['file_name']); $i++){ ?>
-						<div class="file-list">
-							<a href="/data/work_log/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
-							<input type="hidden" name="old_work_log_file[]" value="<?=$_file_data['file_name'][$i]?>" >
-						</div>
+						<? if (!empty($_file_data['file_name']) && is_array($_file_data['file_name'])) { ?>
+							<? for ($i=0; $i<count($_file_data['file_name']); $i++){ ?>
+							<div class="file-list">
+								<a href="/data/work_log/<?=$_file_data['file_name'][$i]?>"><?=$_file_data['file_name'][$i]?></a>
+								<input type="hidden" name="old_work_log_file[]" value="<?=$_file_data['file_name'][$i]?>" >
+							</div>
+							<? } ?>
 						<? } ?>
 					</div>
 					</div>
@@ -147,7 +162,7 @@ if( !$data['category'] || $data['category'] == "업무일지" || $data['category
 			<tr>
 				<th>내용</th>
 				<td>
-					<textarea name="body" id="summernote" ><?=$data['body']?></textarea>
+					<textarea name="body" id="summernote" ><?=$data['body'] ?? ''?></textarea>
 				</td>
 			</tr>
 		</table>

@@ -34,6 +34,60 @@ if (!is_array($prd_data)) {
 	$prd_data = [];
 }
 
+// 디버깅: prd_data 확인
+// echo "<pre>prd_data: "; print_r($prd_data); echo "</pre>";
+
+// JSON 필드 디코딩
+if (!empty($prd_data)) {
+	// CD_SIZE 디코딩
+	if (isset($prd_data['CD_SIZE']) && is_string($prd_data['CD_SIZE'])) {
+		$prd_data['CD_SIZE'] = json_decode($prd_data['CD_SIZE'], true);
+		if (!is_array($prd_data['CD_SIZE'])) {
+			$prd_data['CD_SIZE'] = [];
+		}
+	}
+
+	// cd_weight_fn 디코딩
+	if (isset($prd_data['cd_weight_fn']) && is_string($prd_data['cd_weight_fn'])) {
+		$prd_data['cd_weight_fn'] = json_decode($prd_data['cd_weight_fn'], true);
+		if (!is_array($prd_data['cd_weight_fn'])) {
+			$prd_data['cd_weight_fn'] = [];
+		}
+	}
+
+	// cd_size_fn 디코딩
+	if (isset($prd_data['cd_size_fn']) && is_string($prd_data['cd_size_fn'])) {
+		$prd_data['cd_size_fn'] = json_decode($prd_data['cd_size_fn'], true);
+		if (!is_array($prd_data['cd_size_fn'])) {
+			$prd_data['cd_size_fn'] = [];
+		}
+	}
+
+	// cd_add_img 디코딩
+	if (isset($prd_data['cd_add_img']) && is_string($prd_data['cd_add_img'])) {
+		$prd_data['cd_add_img'] = json_decode($prd_data['cd_add_img'], true);
+		if (!is_array($prd_data['cd_add_img'])) {
+			$prd_data['cd_add_img'] = [];
+		}
+	}
+
+	// cd_hbti_data 디코딩
+	if (isset($prd_data['cd_hbti_data']) && is_string($prd_data['cd_hbti_data'])) {
+		$prd_data['cd_hbti_data'] = json_decode($prd_data['cd_hbti_data'], true);
+		if (!is_array($prd_data['cd_hbti_data'])) {
+			$prd_data['cd_hbti_data'] = [];
+		}
+	}
+
+	// hbti_target 설정
+	if (!isset($prd_data['hbti_target'])) {
+		$prd_data['hbti_target'] = (!empty($prd_data['cd_hbti']) || !empty($prd_data['cd_hbti_data'])) ? 'Y' : 'N';
+	}
+}
+
+// 디버깅: 디코딩 후 데이터 확인
+// echo "<pre>디코딩 후 prd_data: "; print_r($prd_data); echo "</pre>";
+
 // 전역 배열 초기화 (inc_common.php에서 정의되지 않은 경우 대비)
 if (!isset($koedge_prd_kind_array)) {
 	$koedge_prd_kind_array = [];
@@ -326,7 +380,7 @@ echo "</pre>";
 	<tr>
 		<th>HBTI 대상</th>
 		<td>
-			<label><input type="checkbox" name="hbti_target" value="N" <? if(($prd_data['hbti_target'] ?? '') == "Y" ) echo "checked"; ?>> 비대상</label>
+			<label><input type="checkbox" name="hbti_target" value="N" <? if(($prd_data['hbti_target'] ?? '') == "N" ) echo "checked"; ?>> 비대상</label>
 			<div class="admin-guide-text">
 				- 비대상 체크후 저장하면 HBTI 설정값이 초기화 되고 기존 데이터는 삭제됩니다.
 			</div>

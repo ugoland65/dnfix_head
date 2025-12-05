@@ -131,98 +131,118 @@ $scmMapping = [
 								<?php
 									$no = 0;
 
-									$totalGoodsPrice = 0;
-									$totalSalePrice = 0;
-									$totalRefundPrice = 0;
-									$totalFinalPrice = 0;
-									$totalCost = 0;
-									$totalMargin = 0;
-									$totalMarginRate = 0;
+								$totalGoodsPrice = 0;
+								$totalSalePrice = 0;
+								$totalRefundPrice = 0;
+								$totalFinalPrice = 0;
+								$totalCost = 0;
+								$totalMargin = 0;
+								$totalMarginRate = 0;
 
-									foreach ($viewData['orderMargin'] as $order) {
-										$no++;
-										$totalGoodsPrice += $order['totalGoodsPrice'];
-										$totalSalePrice += $order['salePrice'];
-										$totalRefundPrice += $order['refundPrice'];
-										$totalFinalPrice += $order['finalPrice'];
-										$totalCost += $order['totalCost'];
-										$totalMargin += $order['marginAmount'];
-										$totalMarginRate += $order['marginRate'];
+								$orderMargin = $viewData['orderMargin'] ?? [];
+								if (!is_array($orderMargin)) {
+									$orderMargin = [];
+								}
 
-										if( $order['goodsCnt'] != $order['costGoodsCount'] ){
-											$trClass = "notice";
-										}else{
-											$trClass = "";
-										}
+								foreach ($orderMargin as $order) {
+									// 배열 검증
+									if (!is_array($order)) {
+										continue;
+									}
+									
+									$no++;
+									$totalGoodsPrice += $order['totalGoodsPrice'] ?? 0;
+									$totalSalePrice += $order['salePrice'] ?? 0;
+									$totalRefundPrice += $order['refundPrice'] ?? 0;
+									$totalFinalPrice += $order['finalPrice'] ?? 0;
+									$totalCost += $order['totalCost'] ?? 0;
+									$totalMargin += $order['marginAmount'] ?? 0;
+									$totalMarginRate += $order['marginRate'] ?? 0;
+
+									if( ($order['goodsCnt'] ?? 0) != ($order['costGoodsCount'] ?? 0) ){
+										$trClass = "notice";
+									}else{
+										$trClass = "";
+									}
 								?>
-								<tr class="<?=$trClass?>">	
-									<td><?=$no?></td>
-									<td>
-										<a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?=$order['orderNo']?>" target="_blank"><?=$order['orderNo']?></a>
-									</td>
-									<td>
-										<?=date('Y-m-d', strtotime($order['orderDate']))?>
-									</td>
-									<td>
-										<?=date('Y-m-d', strtotime($order['paymentDt']))?>
-									</td>
-									<td>
-										<?=$order['settleKind']?>
-									</td>
-									<!-- 상품개수 -->
-									<td class="text-center">
-										<?=$order['orderGoodsCnt']?>
-									</td>
-									<!-- 총상품금액 -->
-									<td class="text-right">
-										<?=number_format($order['totalGoodsPrice'])?>
-									</td>
-									<!-- 결제금액 -->
-									<td class="text-right">
-										<?=number_format($order['salePrice'])?>
-									</td>
-									<!-- 환불금액 -->
-									<td class="text-right">
-										<?php if( $order['refundPrice'] > 0 ){ ?>
-											<?=number_format($order['refundPrice'])?>
-										<?php } ?>
-									</td>
-									<!-- 정산금액 -->
-									<td class="text-right">
-										<?=number_format($order['finalPrice'])?>
-									</td>
-									<!-- 총원가 -->
-									<td class="text-right">
-										<?=number_format($order['totalCost'])?>
-									</td>
-									<!-- 총수익 -->
-									<td class="text-right">
-										<?=number_format($order['marginAmount'])?>
-									</td>
-									<!-- 수익률 -->
-									<td class="text-right">
-										<?=$order['marginRate']?>%
-									</td>
-									<!-- 대상상품 -->
-									<td class="text-center">
-										<?=$order['goodsCnt']?>
-									</td>
-									<!-- 보유상품 -->
-									<td class="text-center">
-										<?=$order['scm_my']?>
-									</td>
-									<!-- 미보유상품 -->
-									<td class="text-center">
-										<?php if( $order['scm_not_my'] > 0 ){ ?>
-											<?=$order['scm_not_my']?>
-										<?php } ?>
-									</td>
-									<!-- 원가상품 -->
-									<td class="text-center">
-										<?=$order['costGoodsCount']?>
-									</td>
-								</tr>
-								<?php } ?>
+							<tr class="<?=$trClass?>">	
+								<td><?=$no?></td>
+								<td>
+									<a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?=$order['orderNo'] ?? ''?>" target="_blank"><?=$order['orderNo'] ?? ''?></a>
+								</td>
+								<td>
+									<?php 
+										$orderDate = $order['orderDate'] ?? '';
+										if (!empty($orderDate)) {
+											echo date('Y-m-d', strtotime($orderDate));
+										}
+									?>
+								</td>
+								<td>
+									<?php 
+										$paymentDt = $order['paymentDt'] ?? '';
+										if (!empty($paymentDt)) {
+											echo date('Y-m-d', strtotime($paymentDt));
+										}
+									?>
+								</td>
+								<td>
+									<?=$order['settleKind'] ?? ''?>
+								</td>
+								<!-- 상품개수 -->
+								<td class="text-center">
+									<?=$order['orderGoodsCnt'] ?? 0?>
+								</td>
+								<!-- 총상품금액 -->
+								<td class="text-right">
+									<?=number_format($order['totalGoodsPrice'] ?? 0)?>
+								</td>
+								<!-- 결제금액 -->
+								<td class="text-right">
+									<?=number_format($order['salePrice'] ?? 0)?>
+								</td>
+								<!-- 환불금액 -->
+								<td class="text-right">
+									<?php if( ($order['refundPrice'] ?? 0) > 0 ){ ?>
+										<?=number_format($order['refundPrice'])?>
+									<?php } ?>
+								</td>
+								<!-- 정산금액 -->
+								<td class="text-right">
+									<?=number_format($order['finalPrice'] ?? 0)?>
+								</td>
+								<!-- 총원가 -->
+								<td class="text-right">
+									<?=number_format($order['totalCost'] ?? 0)?>
+								</td>
+								<!-- 총수익 -->
+								<td class="text-right">
+									<?=number_format($order['marginAmount'] ?? 0)?>
+								</td>
+								<!-- 수익률 -->
+								<td class="text-right">
+									<?=$order['marginRate'] ?? 0?>%
+								</td>
+								<!-- 대상상품 -->
+								<td class="text-center">
+									<?=$order['goodsCnt'] ?? 0?>
+								</td>
+								<!-- 보유상품 -->
+								<td class="text-center">
+									<?=$order['scm_my'] ?? 0?>
+								</td>
+								<!-- 미보유상품 -->
+								<td class="text-center">
+									<?php if( ($order['scm_not_my'] ?? 0) > 0 ){ ?>
+										<?=$order['scm_not_my']?>
+									<?php } ?>
+								</td>
+							<!-- 원가상품 -->
+							<td class="text-center">
+								<?=$order['costGoodsCount'] ?? 0?>
+							</td>
+						</tr>
+						<?php } ?>
 							</tbody>
 							<tfoot>
 								<tr>
@@ -246,15 +266,18 @@ $scmMapping = [
 									<th class="text-right">
 										<?=number_format($totalCost)?>
 									</th>
-									<th class="text-right">
-										<?=number_format($totalMargin)?>
-									</th>
-									<?php
+								<th class="text-right">
+									<?=number_format($totalMargin)?>
+								</th>
+								<?php
+									$avgMarginRate = 0;
+									if ($totalSalePrice > 0) {
 										$avgMarginRate = $totalMargin / $totalSalePrice * 100;
-									?>
-									<th class="text-center">
-										<?=number_format($avgMarginRate)?> %
-									</th>
+									}
+								?>
+								<th class="text-center">
+									<?=number_format($avgMarginRate, 2)?> %
+								</th>
 									<th class="text-center" colspan="100%">
 										
 									</th>
@@ -284,52 +307,87 @@ $scmMapping = [
 								</thead>
 								<tbody>
 									<?php
-										$errorCodeMapping = [
-											'scm_code_not_match' => '상품 코드 공급사 상품 매칭 실패',
-											'cost_price_not_found' => '원가 정보 없음',
-											'product_data_not_found' => '상품 데이터 없음',
-										];
-										$i = 0;
-										foreach ($viewData['errorList'] as $error) {
-											$i++;
+									$errorCodeMapping = [
+										'scm_code_not_match' => '상품 코드 공급사 상품 매칭 실패',
+										'cost_price_not_found' => '원가 정보 없음',
+										'product_data_not_found' => '상품 데이터 없음',
+									];
+									$i = 0;
+									
+									$errorList = $viewData['errorList'] ?? [];
+									if (!is_array($errorList)) {
+										$errorList = [];
+									}
+									
+									foreach ($errorList as $error) {
+										// 배열 검증
+										if (!is_array($error)) {
+											continue;
+										}
+										
+										$i++;
 
-											$errorText = "";
-											$errorDetail = "";
+										$errorText = "";
+										$errorDetail = "";
 
-											if( empty($error['error_code']) ){
-												$errorText = "( ".$error['code']." )"." 에러코드 없음";
-												$errorDetail = "주문번호 : ".$error['orderNo']."
-													<br>상품명 : ".($error['orderGoods']['goodsNm'] ?? "상품명 없음")."
-													<br>상품코드 : ".($error['orderGoods']['goodsCd'] ?? "상품코드 없음")."
-													<br>공급사번호 : ".($error['orderGoods']['scmNo'] ?? "공급사번호 없음")."
-													<br>공급사이름 : ".($scmMapping[$error['orderGoods']['scmNo']]['name'] ?? "공급사이름 없음");	
-				
+										if( empty($error['error_code']) ){
+											$errorText = "( ".($error['code'] ?? '')." )"." 에러코드 없음";
 											
-											}elseif( $error['error_code'] == 'scm_code_not_match' ){
-												$errorText = "( ".$error['code']." )"."<br>".$errorCodeMapping[$error['error_code']];
-												$errorDetail = "주문번호 : ".$error['orderNo']."
-													<br>상품명 : ".$error['orderGoods']['goodsNm']."
-													<br>상품코드 : ".$error['orderGoods']['goodsCd']."
-													<br>공급사번호 : ".$error['orderGoods']['scmNo']."
-													<br>공급사이름 : ".$scmMapping[$error['orderGoods']['scmNo']]['name'];
-											
-											}elseif( $error['error_code'] == 'cost_price_not_found' ){
-												
-												$errorText = "( ".$error['code']." )"."<br>".$errorCodeMapping[$error['error_code']];
-												
-												$goodsNm = $error['dbGoods']['goods_name'] ?? "상품명 없음";
-												$goodsCd = $error['code'] ?? "상품코드 없음";
-												$scmNo = $error['scmNo'] ?? null;
-
-												$errorDetail = "주문번호 : ".$error['orderNo']."
-													<br>상품명 : <b>".$goodsNm."</b>	
-													<br>재고코드 : ".$goodsCd;
-
-												if( !empty($scmNo) ){
-													$errorDetail .= "<br>공급사번호 : ".$scmNo."<br>공급사이름 : <b>".$scmMapping[$scmNo]['name']."</b>";
-												}
-
+											$orderGoods = $error['orderGoods'] ?? [];
+											if (!is_array($orderGoods)) {
+												$orderGoods = [];
 											}
+											
+											$scmNo = $orderGoods['scmNo'] ?? '';
+											$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";
+											
+											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
+												<br>상품명 : ".($orderGoods['goodsNm'] ?? "상품명 없음")."
+												<br>상품코드 : ".($orderGoods['goodsCd'] ?? "상품코드 없음")."
+												<br>공급사번호 : ".($orderGoods['scmNo'] ?? "공급사번호 없음")."
+												<br>공급사이름 : ".$scmName;	
+			
+										
+										}elseif( ($error['error_code'] ?? '') == 'scm_code_not_match' ){
+											$errorText = "( ".($error['code'] ?? '')." )"."<br>".($errorCodeMapping[$error['error_code']] ?? '');
+											
+											$orderGoods = $error['orderGoods'] ?? [];
+											if (!is_array($orderGoods)) {
+												$orderGoods = [];
+											}
+											
+											$scmNo = $orderGoods['scmNo'] ?? '';
+											$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";
+											
+											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
+												<br>상품명 : ".($orderGoods['goodsNm'] ?? '')."
+												<br>상품코드 : ".($orderGoods['goodsCd'] ?? '')."
+												<br>공급사번호 : ".($orderGoods['scmNo'] ?? '')."
+												<br>공급사이름 : ".$scmName;
+										
+										}elseif( ($error['error_code'] ?? '') == 'cost_price_not_found' ){
+											
+											$errorText = "( ".($error['code'] ?? '')." )"."<br>".($errorCodeMapping[$error['error_code']] ?? '');
+											
+											$dbGoods = $error['dbGoods'] ?? [];
+											if (!is_array($dbGoods)) {
+												$dbGoods = [];
+											}
+											
+											$goodsNm = $dbGoods['goods_name'] ?? "상품명 없음";
+											$goodsCd = $error['code'] ?? "상품코드 없음";
+											$scmNo = $error['scmNo'] ?? null;
+
+											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
+												<br>상품명 : <b>".$goodsNm."</b>	
+												<br>재고코드 : ".$goodsCd;
+
+											if( !empty($scmNo) ){
+												$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";
+												$errorDetail .= "<br>공급사번호 : ".$scmNo."<br>공급사이름 : <b>".$scmName."</b>";
+											}
+
+										}
 									?>
 									<tr>	
 										<td><?=$i?></td>
@@ -345,24 +403,24 @@ $scmMapping = [
 											
 											<div>
 												<?=$errorText?>
-											</div>
+										</div>
 
+										<?php
+											if( ($error['error_code'] ?? '') == 'cost_price_not_found' ){
+										?>
+										<div>
 											<?php
-												if( $error['error_code'] == 'cost_price_not_found' ){
+												if( ($error['mode'] ?? '') == 'stock' ){
 											?>
-											<div>
-												<?php
-													if( $error['mode'] == 'stock' ){
-												?>
-													<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-													onclick="onlyAD.prdView('<?=$error['idx']?>','price');" >상품정보</button>
-												<?php }else{ ?>
-													<button type="button" id="" class="btnstyle1 btnstyle1-warning btnstyle1-xs" 
-													onclick="onlyAD.prdProviderQuick('<?=$error['idx']?>','price');" >공급사상품</button>
-												<?php } ?>
-
-											</div>
+												<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
+												onclick="onlyAD.prdView('<?=$error['idx'] ?? ''?>','price');" >상품정보</button>
+											<?php }else{ ?>
+												<button type="button" id="" class="btnstyle1 btnstyle1-warning btnstyle1-xs" 
+												onclick="onlyAD.prdProviderQuick('<?=$error['idx'] ?? ''?>','price');" >공급사상품</button>
 											<?php } ?>
+
+										</div>
+										<?php } ?>
 
 										</td>
 										<td><?=$errorDetail?></td>

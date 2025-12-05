@@ -2,15 +2,51 @@
 RewriteEngine On
 RewriteBase /
 
-# dnfixhead.mycafe24.com 도메인 전용 처리 - 모든 요청을 onadb 라우터로
-RewriteCond %{HTTP_HOST} ^dnfixhead\.mycafe24\.com$ [NC]
+# router 폴더 요청은 상위 규칙을 타지 않고 그대로 전달
+# RewriteRule ^router/ - [L]
+
+########################################
+# 1) 오나DB 사이트 onadb.net 
+# onadb.net 도메인 전용 처리 - 모든 요청을 onadb 라우터로
+########################################
+RewriteCond %{HTTP_HOST} ^onadb\.net$ [NC]
 RewriteCond %{REQUEST_URI} !^/onadb/
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
 RewriteRule ^(.*)$ /onadb/router_index.php [QSA,L]
 
-# router 폴더 요청은 상위 규칙을 타지 않고 그대로 전달
-RewriteRule ^router/ - [L]
+
+########################################
+# 2) jcyh.co.kr 전용 API 룰
+########################################
+
+# /api/brand/123 → /showdang/brand_api.php?cate_no=123
+RewriteCond %{HTTP_HOST} ^jcyh\.co\.kr$ [NC]
+RewriteRule ^api/brand/(.*)$ /showdang/brand_api.php?cate_no=$1 [QSA,L]
+
+# /api/type/nt → /showdang/api.php?type=type&nt=nt
+RewriteCond %{HTTP_HOST} ^jcyh\.co\.kr$ [NC]
+RewriteRule ^api/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /showdang/api.php?type=$1&nt=$2 [QSA,L]
+
+# /api → /showdang/index.php
+RewriteCond %{HTTP_HOST} ^jcyh\.co\.kr$ [NC]
+RewriteRule ^api$ /showdang/index.php [QSA,L]
+
+# jcyh.co.kr 에서는 API 이외 모든 요청 차단
+# 위의 API 룰에 안 걸린 나머지 전부 403
+# (404로 하고 싶으면 [F] 대신 [R=404,L] 사용)
+RewriteCond %{HTTP_HOST} ^jcyh\.co\.kr$ [NC]
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^ - [F]
+
+
+# API 관련 Rewrite
+# RewriteRule ^api/brand/(.*)$ /showdang/brand_api.php?cate_no=$1 [QSA,L]
+# RewriteRule ^api/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /showdang/api.php?type=$1&nt=$2 [QSA,L]
+# RewriteRule ^api$ /showdang/index.php [QSA,L]
+
+
 
 # 관리 페이지 Rewrite
 RewriteRule ^ad/processing$ /admin2/processing.php [L]
@@ -31,10 +67,6 @@ RewriteRule ^ad/([a-zA-Z0-9]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-
 RewriteRule ^ad/([a-zA-Z0-9]+)$ /admin2/index.php?pageN=$1 [QSA,L]
 RewriteRule ^ad3/([a-zA-Z0-9]+)$ /admin3/index.php?pageN=$1 [QSA,L]
 
-# API 관련 Rewrite
-RewriteRule ^api/brand/(.*)$ /showdang/brand_api.php?cate_no=$1 [QSA,L]
-RewriteRule ^api/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /showdang/api.php?type=$1&nt=$2 [QSA,L]
-RewriteRule ^api$ /showdang/index.php [QSA,L]
 
 # 정적 파일 리소스 경로 Rewrite
 RewriteRule ^dist/js/(.*)$ /f/js/$1 [L]

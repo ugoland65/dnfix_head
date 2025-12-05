@@ -17,8 +17,8 @@ if( $check_domain == "jcyh.co.kr" ){
 	exit;
 
 //-----------------------------------------------------------------------------------------------------------------------
-//}elseif( $check_domain == "onadb.net" || $check_domain == "onadbs.com" ){
-}elseif ( $check_domain == "dnfixhead.mycafe24.com" ) {
+}elseif( $check_domain == "onadb.net" || $check_domain == "onadbs.com" ){
+//}elseif ( $check_domain == "dnfixhead.mycafe24.com" ) {
 	
 	// onadb 라우터로 처리
 	require_once $docRoot."/onadb/router_index.php";
@@ -27,7 +27,7 @@ if( $check_domain == "jcyh.co.kr" ){
 }
 
 
-
+/*
 
 
 
@@ -47,7 +47,7 @@ if (_GLOB_WS_CODE == "KOEDGE" ){
     exit;
 
 
-/*
+
 if( ( !preg_match('/(iPad)/i', $_SERVER['HTTP_USER_AGENT']) && preg_match('/(iPhone|Mobile|UP.Browser|Android|BlackBerry|Windows CE|Nokia|webOS|Opera Mini|SonyEricsson|opera mobi|Windows Phone|IEMobile|POLARIS)/i', $_SERVER['HTTP_USER_AGENT']) ) AND $_GET['page'] != "join" AND $not_mobile != "ok" ) {
 
 	include "user/lib/inc_common.php";

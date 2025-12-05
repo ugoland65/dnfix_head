@@ -5,7 +5,8 @@ namespace App\Services;
 use App\Core\BaseClass;
 use App\Models\ProductStockModel;
 
-class ProductStockService extends BaseClass {
+class ProductStockService extends BaseClass 
+{
 
     /**
      * 상품 재고 Where In 조회
@@ -29,5 +30,7 @@ class ProductStockService extends BaseClass {
             ->keyBy('ps_idx')
             ->toArray();
     }
+
+
 
 }

@@ -33,4 +33,9 @@ class ProductCommentModel extends BaseModel
             ->select(['user_idx', 'user_nick', 'user_level']);
     }
 
+    public function productSimple() {
+        return $this->belongsTo(ProductModel::class, 'pc_pd_idx', 'CD_IDX')
+            ->select(['CD_IDX', 'CD_NAME', 'CD_IMG', 'CD_IMG2']);
+    }
+
 }

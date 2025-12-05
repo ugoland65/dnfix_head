@@ -32,5 +32,42 @@ class BrandService
 
     }
 
+    /**
+     * 브랜드 목록 조회
+     * 
+     * @param array $criteria 검색 조건
+     * @return array
+     */
+    public function getOnadbBrandList($criteria)
+    {
+
+        $brandList = BrandModel::query()
+            ->where('bd_onadb_active', 'Y')
+            ->orderBy('bd_onadb_sort_num', 'asc')
+            ->get()
+            ->toArray();
+
+        return $brandList;
+
+    }
+
+
+    /**
+     * 브랜드 정보 조회
+     * 
+     * @param array $criteria 검색 조건
+     * @return array
+     */
+    public function getBrandInfo($idx)
+    {
+        $brandInfo = BrandModel::query()
+            ->where('BD_IDX', $idx)
+            ->first()
+            ->toArray();
+
+        return $brandInfo;
+
+    }
+
 }
 

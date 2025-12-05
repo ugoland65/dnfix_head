@@ -1,0 +1,38 @@
+<div class="tier-title">
+	<img src="/public/onadb/img/tier_detail_<?=$tier?>.png" />
+	<p><?=$tier?>티어 오나홀</p>
+</div>
+<div class="prd-list-wrap">
+    <?php
+        foreach($productList['data'] as $product){
+            
+            if( $product['CD_IMG2'] ){
+                $img_path = '../../data/comparion/'.$product['CD_IMG2'];
+                $img_class = "thum-icon";
+            }else{
+                $img_path = '../../data/comparion/'.$product['CD_IMG'];
+                $img_class = "thum-no-icon img-blur";
+            }
+
+            $_brand_link = "/brand/".($product['CD_BRAND_IDX'] ?? '');
+            
+    ?>
+        <ul>
+            <div class="prd-list-box">
+                <ul class="img">
+                    <div class="thum"><a href="/pv/<?=$product['CD_IDX']?>" ><img src="<?=$img_path?>" class="<?=$img_class?>"></a></div>
+                    <? if( $product['cd_tier'] == "1" || $product['cd_tier'] == "2" ){ ?>
+                    <div class="tier-icon"><img src="/public/onadb/img/tier_<?=$product['cd_tier']?>.png" /></div>
+                    <? } ?>
+                </ul>
+                <ul class="info">
+                    <div class="pd-info">
+                        <ul class="pd-name"><a href="/pv/<?=$product['CD_IDX']?>" ><?=$product['CD_NAME']?></a></ul>
+                        <ul class="pd-brand-info"><a href="<?=$_brand_link?>"  ><?=$product['brand_name'] ?? ''?></a></ul>
+                    </div>
+                </ul>
+            </div>
+        </ul>
+    <?php } ?>
+</div>
+<div class="pageing-wrap"><?=$paginationHtml?></div>

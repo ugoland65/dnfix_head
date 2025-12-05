@@ -1,9 +1,11 @@
 <?php
+
 // 허용할 도메인 목록
 $allowed_origins = [
     "https://www.showdang.co.kr",
     "https://showdang.co.kr",
-    "https://m.showdang.co.kr"
+    "https://m.showdang.co.kr",
+	"https://dnfixhead.mycafe24.com"
 ];
 
 if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowed_origins)) {
@@ -12,6 +14,12 @@ if (isset($_SERVER['HTTP_ORIGIN']) && in_array($_SERVER['HTTP_ORIGIN'], $allowed
 
 header("Access-Control-Allow-Methods: GET, POST, PUT, DELETE, OPTIONS");
 header("Access-Control-Allow-Headers: Content-Type, Authorization");
+
+// OPTIONS 요청 처리 (Preflight)
+if ($_SERVER['REQUEST_METHOD'] === 'OPTIONS') {
+    http_response_code(200);
+    exit;
+}
 
 	require_once '../application/Core/Autoloader.php';
 
@@ -33,6 +41,8 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 	
 	header('Content-Type: application/json');
 
+	$response = [];
+
 	if( $apiMode == "brandList" ){
 	
 		$response = $ShowdangApi->brandList();
@@ -41,6 +51,11 @@ header("Access-Control-Allow-Headers: Content-Type, Authorization");
 
 		$response = $ShowdangApi->brandInfo($requestData);
 
+	}else{
+		$response = [
+			'success' => false,
+			'message' => '잘못된 요청입니다.',
+		];
 	}
 
 	echo json_encode($response, JSON_UNESCAPED_UNICODE);

@@ -25,6 +25,8 @@ class ProductService extends BaseClass
         $page = $criteria['page'] ?? 1;
         $show_mode = $criteria['show_mode'] ?? null;
         $search_value = $criteria['search_value'] ?? '';
+        $tier = $criteria['tier'] ?? null;
+        $brand_idx = $criteria['brand_idx'] ?? null;
 
         $query = ProductModel::query()
             ->when($kind_code, function($query) use ($kind_code) {
@@ -32,6 +34,12 @@ class ProductService extends BaseClass
             })
             ->when($site_show, function($query) use ($site_show) {
                 $query->where('cd_site_show', $site_show);
+            })
+            ->when($tier, function($query) use ($tier) {
+                $query->where('cd_tier', $tier);
+            })
+            ->when($brand_idx, function($query) use ($brand_idx) {
+                $query->where('CD_BRAND_IDX', $brand_idx);
             })
             ->orderBy('CD_IDX', 'desc');
 
@@ -232,10 +240,16 @@ class ProductService extends BaseClass
             foreach($result['data'] as &$item) {
                 
                 // HBTI 데이터 추가
-                $_cd_hbti_data = json_decode($item['cd_hbti_data'], true);
+                $_cd_hbti_data = json_decode($item['cd_hbti_data'] ?? '[]', true);
+                
+                // 배열 검증
+                if (!is_array($_cd_hbti_data)) {
+                    $_cd_hbti_data = [];
+                }
+                
                 $hbti_html = '';
 
-                if(isset($_cd_hbti_data)){
+                if(!empty($_cd_hbti_data)){
                     foreach($_cd_hbti_data as $value){
                         if($value){
                             $hbti_html .= $value;
@@ -283,9 +297,9 @@ class ProductService extends BaseClass
         // 할인 기간 체크
         if ($ps_in_sale_s <= $current_time && $ps_in_sale_e >= $current_time) {
             // JSON 데이터 파싱
-            $_data = json_decode($ps_in_sale_data, true);
+            $_data = json_decode($ps_in_sale_data ?? '{}', true);
     
-            // JSON 파싱 실패 또는 필수 데이터 누락 시 빈 문자열 반환
+            // 배열 검증 및 JSON 파싱 실패 또는 필수 데이터 누락 시 빈 문자열 반환
             if (!is_array($_data) || empty($_data['sale_mode']) || empty($_data['sale_per'])) {
                 return '';
             }
@@ -328,15 +342,24 @@ class ProductService extends BaseClass
 
         if (!empty($productData)) {
             if (!empty($productData['CD_PD_INFO'])) {
-                $productData['CD_PD_INFO'] = json_decode($productData['CD_PD_INFO'], true);
+                $productData['CD_PD_INFO'] = json_decode($productData['CD_PD_INFO'] ?? '[]', true);
+                if (!is_array($productData['CD_PD_INFO'])) {
+                    $productData['CD_PD_INFO'] = [];
+                }
             }
 
             if (!empty($productData['CD_SIZE'])) {
-                $productData['CD_SIZE'] = json_decode($productData['CD_SIZE'], true);
+                $productData['CD_SIZE'] = json_decode($productData['CD_SIZE'] ?? '[]', true);
+                if (!is_array($productData['CD_SIZE'])) {
+                    $productData['CD_SIZE'] = [];
+                }
             }
 
             if(!empty($productData['cd_weight_fn'])){
-                $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'], true);
+                $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'] ?? '{}', true);
+                if (!is_array($productData['cd_weight_fn'])) {
+                    $productData['cd_weight_fn'] = [];
+                }
             }
         }
 
@@ -363,34 +386,50 @@ class ProductService extends BaseClass
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
             ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'COMPARISON_DB.CD_BRAND_IDX')
             ->where('COMPARISON_DB.CD_IDX', '=', $prdIdx)
-            ->first();
+            ->first()
+            ->toArray();
 
         // JSON 데이터 디코딩 처리
         if ($productData) {
 
             // CD_SIZE 디코딩
             if (!empty($productData['CD_SIZE'])) {
-                $productData['CD_SIZE'] = json_decode($productData['CD_SIZE'], true);
+                $productData['CD_SIZE'] = json_decode($productData['CD_SIZE'] ?? '[]', true);
+                if (!is_array($productData['CD_SIZE'])) {
+                    $productData['CD_SIZE'] = [];
+                }
             }
             
             // cd_size_fn 디코딩
             if (!empty($productData['cd_size_fn'])) {
-                $productData['cd_size_fn'] = json_decode($productData['cd_size_fn'], true);
+                $productData['cd_size_fn'] = json_decode($productData['cd_size_fn'] ?? '{}', true);
+                if (!is_array($productData['cd_size_fn'])) {
+                    $productData['cd_size_fn'] = [];
+                }
             }
             
             // cd_weight_fn 디코딩
             if (!empty($productData['cd_weight_fn'])) {
-                $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'], true);
+                $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'] ?? '{}', true);
+                if (!is_array($productData['cd_weight_fn'])) {
+                    $productData['cd_weight_fn'] = [];
+                }
             }
             
             // cd_add_img 디코딩
             if (!empty($productData['cd_add_img'])) {
-                $productData['cd_add_img'] = json_decode($productData['cd_add_img'], true);
+                $productData['cd_add_img'] = json_decode($productData['cd_add_img'] ?? '{}', true);
+                if (!is_array($productData['cd_add_img'])) {
+                    $productData['cd_add_img'] = [];
+                }
             }
 
-            // cd_add_img 디코딩
+            // cd_hbti_data 디코딩
             if (!empty($productData['cd_hbti_data'])) {
-                $productData['cd_hbti_data'] = json_decode($productData['cd_hbti_data'], true);
+                $productData['cd_hbti_data'] = json_decode($productData['cd_hbti_data'] ?? '[]', true);
+                if (!is_array($productData['cd_hbti_data'])) {
+                    $productData['cd_hbti_data'] = [];
+                }
             }
 
         }

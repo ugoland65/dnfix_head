@@ -1,5 +1,11 @@
 <?
 
+// 변수 초기화
+$_where = "";
+$_pn = $_pn ?? 1;
+$_open_mode = $_open_mode ?? "";
+$_s_text = $_s_text ?? "";
+
 	if( $_s_text ){
 
 		if( $_where ){ $_where .= "AND"; }else{ $_where .= "WHERE"; }
@@ -89,7 +95,7 @@
 	}elseif( $_sort_kind == "soldout_asc" ){
 
 		$_sort = " ( CASE WHEN D.ps_stock < 1  THEN 0 WHEN D.ps_stock > 0  THEN 1 END ),  
-			( CASE WHEN  D.ps_soldout_date = 0 THEN 9999999999999 ELSE D.ps_soldout_date END ) ASC ";
+			( CASE WHEN  D.ps_soldout_date = '0000-00-00 00:00:00' THEN 9999999999999 ELSE D.ps_soldout_date END ) ASC ";
 
 	//판매가 높은순
 	}elseif( $_sort_kind == "price_desc" ){
@@ -230,6 +236,7 @@
 
 	while($list = sql_fetch_array($_result)){
 
+		$img_path = "";
 		if( $list['CD_IMG'] ){
 			$img_path = '/data/comparion/'.$list['CD_IMG'];
 		}
@@ -241,10 +248,14 @@
 		}
 
 		$_cd_weight_data = json_decode($list['cd_weight_fn'], true);
-		$_cd_weight_1 = $_cd_weight_data['1'];
-		$_cd_weight_2 = $_cd_weight_data['2'];
-		$_cd_weight_3 = $_cd_weight_data['3'];
+		if (!is_array($_cd_weight_data)) {
+			$_cd_weight_data = [];
+		}
+		$_cd_weight_1 = $_cd_weight_data['1'] ?? null;
+		$_cd_weight_2 = $_cd_weight_data['2'] ?? null;
+		$_cd_weight_3 = $_cd_weight_data['3'] ?? null;
 
+		$_weight = "";
 		if( !$_cd_weight_2 && !$_cd_weight_3 ){
 			$_weight = "<span>무게없음</span>";
 		}elseif( $_cd_weight_3 ){
@@ -254,9 +265,12 @@
 		}
 
 		$_cd_code_data = json_decode($list['cd_code_fn'], true);
+		if (!is_array($_cd_code_data)) {
+			$_cd_code_data = [];
+		}
 
 		$_name = $list['CD_NAME'];
-		$_jancode = $_cd_code_data['jan'];
+		$_jancode = $_cd_code_data['jan'] ?? '';
 
 		if( $_s_text ){
 			$_name = preg_replace("/".$_s_text."/","<b style='color:red;'>".$_s_text."</b>",$_name);
@@ -270,8 +284,10 @@
 			$_sale_count = count($ps_sale_log_data);
 		}
 		*/
-		$ps_sale_log_data = "";
 		$ps_sale_log_data = json_decode($list['ps_sale_log'], true);
+		if (!is_array($ps_sale_log_data)) {
+			$ps_sale_log_data = [];
+		}
 		$_sale_count = count($ps_sale_log_data);
 
 	?>
@@ -295,7 +311,7 @@
 			<? } ?>
 		</td>
 		<td class="">
-			<?=$koedge_prd_kind_name[$list['CD_KIND_CODE']]?>
+			<?=$koedge_prd_kind_name[$list['CD_KIND_CODE']] ?? ''?>
 		</td>
 		<td class="text-left">
 			<div>
@@ -303,7 +319,7 @@
 				<ul><b onclick="onlyAD.prdView('<?=$list['CD_IDX']?>','info');" style="cursor:pointer;" ><?=$_name?></b></ul>
 				<? if($list['CD_NAME_OG']){ ?><ul class="m-t-5"><?=$list['CD_NAME_OG']?></ul><? } ?>
 				<? if( $list['cd_memo2'] ){ ?><ul class="m-t-3" style="word-break:break-all"><span class="prd-memo"><i class="fas fa-feather-alt"></i> <?=$list['cd_memo2']?></span></ul><? } ?>
-				<? if( $_weight ){ ?><ul class="m-t-4">무게 : <?=number_format($_weight)?>g</ul><? } ?>
+				<? if( $_weight ){ ?><ul class="m-t-4">무게 : <?=$_weight?></ul><? } ?>
 				<ul ><?=in_sale_icon($list['ps_in_sale_s'], $list['ps_in_sale_e'], $list['ps_in_sale_data'])?></ul>
 			</div>
 		</td>
@@ -371,10 +387,10 @@
 		<td class="text-center">
 			<div>
 			<? if( $list['ps_sale_date'] > 0 ){ ?><ul><?=$list['ps_sale_date']?></ul><? } ?>
-			<? if( $_sale_count ){ ?>
+			<? if( $_sale_count && isset($ps_sale_log_data[0]) ){ ?>
 				<ul class="text-center" style="font-size:12px;">할인수 : <?=$_sale_count?></ul>
-				<ul class="text-center" style="font-size:11px;"><?=$ps_sale_log_data[0]['pg_subject']?></ul>
-				<ul class="text-center"><?=$ps_sale_log_data[0]['sale_per']?>%</ul>
+				<ul class="text-center" style="font-size:11px;"><?=$ps_sale_log_data[0]['pg_subject'] ?? ''?></ul>
+				<ul class="text-center"><?=$ps_sale_log_data[0]['sale_per'] ?? 0?>%</ul>
 			<? } ?>
 			</div>
 		</td>

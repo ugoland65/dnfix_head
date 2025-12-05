@@ -1,4 +1,6 @@
 <?
+ini_set('display_errors', 1);
+error_reporting(E_ALL);
 
 // 변수 초기화
 $_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
@@ -38,8 +40,11 @@ if( $_a_mode == "calendar_reg" ){
 		date_s = '".$_date_s."',
 		date_e = '".$_date_e."',
 		memo = '".$_memo."',
+		comment_count = '0',
 		reg = '".$_reg."' ";
 	sql_query_error($query);
+
+	$_key = mysqli_insert_id($connect);
 
 	$response = array('success' => true, 'msg' => '완료', 'key' => $_key );
 
@@ -116,7 +121,7 @@ if( $_a_mode == "calendar_reg" ){
 		where idx = '".$_idx."' ";
 	sql_query_error($query);
 
-	$response = array('success' => true, 'msg' => '완료', 'key' => $_key );
+	$response = array('success' => true, 'msg' => '완료', 'key' => $_idx );
 
 }
 

@@ -113,7 +113,7 @@ if( $_a_mode == "day_stock" ){
 				if( $_prd_stock_count < 1 ){
 					$_ps_soldout_date = $action_time;
 				}else{
-					$_ps_soldout_date = 0;
+					$_ps_soldout_date = '0000-00-00 00:00:00';
 				}
 
 				$query = "UPDATE prd_stock set 
@@ -136,6 +136,7 @@ if( $_a_mode == "day_stock" ){
 				psu_memo = '".$_psu_memo."',
 				psu_id = '".$_ad_id."',
 				psu_date = '".$check_time ."',
+				psu_token = '',
 				reg = '".$_reg."' ";
 			sql_query_error($query);
 
@@ -316,7 +317,7 @@ if( $_a_mode == "day_stock" ){
 
 
 	//while ($row = fgetcsv($fp, 2000, ',')) { 
-	while ($row = fgetcsv($fp)) { 
+	while ($row = fgetcsv($fp, 0, ',', '"', '\\')) { 
 
 		$count++;
 
@@ -336,14 +337,14 @@ if( $_a_mode == "day_stock" ){
     // EUC-KR에서 UTF-8로 안전하게 변환
     $_name = mb_convert_encoding($row[0], "UTF-8", "EUC-KR"); // 수령인
     $_phone = mb_convert_encoding($row[1], "UTF-8", "EUC-KR"); // 수령인 휴대전화
-    $_phone2 = mb_convert_encoding($row[2], "UTF-8", "EUC-KR"); // 수령인 전화번호
-    $_add = mb_convert_encoding($row[3], "UTF-8", "EUC-KR"); // 수령인 주소(전체)
-    $_prdCode = mb_convert_encoding($row[4], "UTF-8", "EUC-KR"); // 상품자체코드
-    $_prdCodeSub = mb_convert_encoding($row[5], "UTF-8", "EUC-KR"); // 자체품목코드
-    $_qty = ($row[6] * 1); // 수량
-    $_d_msg = mb_convert_encoding($row[7], "UTF-8", "EUC-KR"); // 배송메시지
-    $_orderNum = mb_convert_encoding($row[8], "UTF-8", "EUC-KR"); // 주문번호
-    $_option = mb_convert_encoding($row[12], "UTF-8", "EUC-KR"); // 옵션
+    $_phone2 = mb_convert_encoding($row[2] ?? '', "UTF-8", "EUC-KR"); // 수령인 전화번호
+    $_add = mb_convert_encoding($row[3] ?? '', "UTF-8", "EUC-KR"); // 수령인 주소(전체)
+    $_prdCode = mb_convert_encoding($row[4] ?? '', "UTF-8", "EUC-KR"); // 상품자체코드
+    $_prdCodeSub = mb_convert_encoding($row[5] ?? '', "UTF-8", "EUC-KR"); // 자체품목코드
+    $_qty = (int)($row[6] ?? 0); // 수량
+    $_d_msg = mb_convert_encoding($row[7] ?? '', "UTF-8", "EUC-KR"); // 배송메시지
+    $_orderNum = mb_convert_encoding($row[8] ?? '', "UTF-8", "EUC-KR"); // 주문번호
+    $_option = mb_convert_encoding($row[12] ?? '', "UTF-8", "EUC-KR"); // 옵션
 
  		//첫줄제거
 		if( $count > 1 && $_name != "" ){
@@ -356,7 +357,7 @@ if( $_a_mode == "day_stock" ){
 			
 				${'order_num_'.$_prdCode}[] = array('num'=>$_orderNum, 'qty'=> $_qty);
 
-				if( ${'stock_'.$_prdCode} > 0 ){
+				if( isset(${'stock_'.$_prdCode}) && ${'stock_'.$_prdCode} > 0 ){
 					${'stock_'.$_prdCode} = ${'stock_'.$_prdCode} + $_qty;
 				}else{
 
@@ -371,7 +372,7 @@ if( $_a_mode == "day_stock" ){
 				}
 
 				if ( strpos($_option,"패키지 제거 여부 : 패키지 제거") !== false ){
-					if( ${'packageOut_'.$_prdCode} > 0 ){
+					if( isset(${'packageOut_'.$_prdCode}) && ${'packageOut_'.$_prdCode} > 0 ){
 						${'packageOut_'.$_prdCode} = ${'packageOut_'.$_prdCode} + $_qty;
 					}else{
 						${'packageOut_'.$_prdCode} = $_qty;
@@ -396,7 +397,7 @@ if( $_a_mode == "day_stock" ){
 
 								${'order_set_num_'.$_set_prdCode}[] = array('num'=>$_orderNum, 'qty'=> $_qty);
 
-								if( ${'stock_set_'.$_set_prdCode} > 0 ){
+								if( isset(${'stock_set_'.$_set_prdCode}) && ${'stock_set_'.$_set_prdCode} > 0 ){
 									${'stock_set_'.$_set_prdCode} = ${'stock_set_'.$_set_prdCode} + $_qty;
 								}else{
 									$stock_data = sql_fetch_array(sql_query_error("select ps_idx from prd_stock where ps_idx = '".$_set_prdCode."' "));
@@ -409,7 +410,7 @@ if( $_a_mode == "day_stock" ){
 								}
 
 								if (strpos($_option,"패키지 제거 여부 : 패키지 제거") !== false ){
-									if( ${'packageOut_set_'.$_prdCode} > 0 ){
+									if( isset(${'packageOut_set_'.$_prdCode}) && ${'packageOut_set_'.$_prdCode} > 0 ){
 										${'packageOut_set_'.$_prdCode} = ${'packageOut_set_'.$_prdCode} + $_qty;
 									}else{
 										${'packageOut_set_'.$_prdCode} = $_qty;
@@ -431,7 +432,7 @@ if( $_a_mode == "day_stock" ){
 							
 							${'order_set_num_'.$_set_prdCode}[] = array('num'=>$_orderNum, 'qty'=> $_qty);
 
-							if( ${'stock_set_'.$_set_prdCode} > 0 ){
+							if( isset(${'stock_set_'.$_set_prdCode}) && ${'stock_set_'.$_set_prdCode} > 0 ){
 								${'stock_set_'.$_set_prdCode} = ${'stock_set_'.$_set_prdCode} + $_qty;
 							}else{
 								$stock_data = sql_fetch_array(sql_query_error("select ps_idx from prd_stock where ps_idx = '".$_set_prdCode."' "));
@@ -444,7 +445,7 @@ if( $_a_mode == "day_stock" ){
 							}
 
 							if (strpos($_option,"패키지 제거 여부 : 패키지 제거") !== false ){
-								if( ${'packageOut_set_'.$_prdCode} > 0 ){
+								if( isset(${'packageOut_set_'.$_prdCode}) && ${'packageOut_set_'.$_prdCode} > 0 ){
 									${'packageOut_set_'.$_prdCode} = ${'packageOut_set_'.$_prdCode} + $_qty;
 								}else{
 									${'packageOut_set_'.$_prdCode} = $_qty;
@@ -465,7 +466,7 @@ if( $_a_mode == "day_stock" ){
 
 						${'order_set_num_'.$_set_prdCode}[] = array('num'=>$_orderNum, 'qty'=> $_this_qty);
 
-						if( ${'stock_set_'.$_set_prdCode} > 0 ){
+						if( isset(${'stock_set_'.$_set_prdCode}) && ${'stock_set_'.$_set_prdCode} > 0 ){
 							${'stock_set_'.$_set_prdCode} = ${'stock_set_'.$_set_prdCode} + $_this_qty;
 						}else{
 							$stock_data = sql_fetch_array(sql_query_error("select ps_idx from prd_stock where ps_idx = '".$_set_prdCode."' "));
@@ -478,7 +479,7 @@ if( $_a_mode == "day_stock" ){
 						}
 
 						if (strpos($_option,"패키지 제거 여부 : 패키지 제거") !== false ){
-							if( ${'packageOut_set_'.$_prdCode} > 0 ){
+							if( isset(${'packageOut_set_'.$_prdCode}) && ${'packageOut_set_'.$_prdCode} > 0 ){
 								${'packageOut_set_'.$_prdCode} = ${'packageOut_set_'.$_prdCode} + $_qty;
 							}else{
 								${'packageOut_set_'.$_prdCode} = $_qty;
@@ -594,6 +595,7 @@ if( $_a_mode == "day_stock" ){
 	$query = "insert prd_stock_history set
 		file_name = '".$_file_name."',
 		reg_time = '".$action_time."',
+		end_time = '0000-00-00 00:00:00',
 		reg_id = '".$_ad_id."',
 		data = '".$_st_data."',
 		step = '1',

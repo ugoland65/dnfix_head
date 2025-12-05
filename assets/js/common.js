@@ -62,6 +62,8 @@ function showAlert(title, msg, type, mode ) {
 			title: title,
 			content: msg,
 			type: color,
+			alignMiddle: true,
+			closeAnimation: 'zoom',
 		});
 	}else if( type == "alert2" ){
 		$.alert({
@@ -70,6 +72,8 @@ function showAlert(title, msg, type, mode ) {
 			title: title,
 			content: msg,
 			type: color,
+			alignMiddle: true,
+			closeAnimation: 'zoom',
 		});
 	}else if( type == "alert" ){
 		$.alert({
@@ -77,6 +81,8 @@ function showAlert(title, msg, type, mode ) {
 			title: false,
 			content: msg,
 			type: color,
+			alignMiddle: true,	
+			closeAnimation: 'zoom',
 		});
 	}
 
