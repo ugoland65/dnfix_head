@@ -2,7 +2,11 @@
 
 namespace App\Controllers\Admin;
 
+use Exception;
+use Throwable;
 use App\Core\BaseClass;
+use App\Classes\Request;
+
 use App\Services\ProductService;
 use App\Services\BrandService;
 use App\Services\ProductPartnerService;
@@ -22,9 +26,61 @@ class ProductController extends BaseClass
         $this->partnersService = new PartnersService();
     }
 
+    /**
+     * 상품 재고 목록 화면
+     * 
+     * @param Request $request
+     * @return view
+     */
+    public function productStock(Request $request) 
+    {
+
+        try{
+
+            $requestData = $request->all();
+            $page = $requestData['page'] ?? 1;
+
+            $payload = [
+                'paging' => true,
+                'page' => $page,
+                'per_page' => 100,
+                'show_mode' => 'product_stock'
+            ];
+
+            $productList = $this->productService->getProductListForAdmin($payload);
+
+            $pagination = new Pagination(
+                $productList['total'],
+                $productList['per_page'],
+                $productList['current_page'],
+                10
+            );
+
+            $paginationHtml = $pagination->renderLinks();
+            $paginationArray = $pagination->toArray();
+
+            $data = [
+                'productList' => $productList['data'],
+                'paginationHtml' => $paginationHtml,
+                'paginationArray' => $paginationArray
+            ];
+
+            return view('admin.product.product_stock', $data)
+                ->extends('admin.layout.layout',['pageGroup2' => 'prd']);
+
+        } catch (Throwable $e) {
+            dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+
+    }
+
 
     /**
      * 상품 DB 목록 화면
+     * 
      * @skin : skin.prd_db.php
      * @return array
      */

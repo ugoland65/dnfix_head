@@ -84,6 +84,329 @@ class ProductService extends BaseClass
     
 
     /**
+     * 상품 목록 조회 (관리자용)
+     * 
+     * @param array $criteria 검색 조건
+     * @return array 상품 목록 데이터
+     */
+    public function getProductListForAdmin($criteria)
+    {
+
+        $paging = $criteria['paging'] ?? true;
+        $perPage = $criteria['per_page'] ?? 100;
+        $page = $criteria['page'] ?? 1;
+        $show_mode = $criteria['show_mode'] ?? '';
+
+
+        // 기본 쿼리
+        $query = ProductModel::query()
+            ->from('COMPARISON_DB as A');
+
+        // prd_stock에 연결된 상품만 (재고 관련 모드)
+        if ($show_mode === 'product_stock') {
+
+            // INNER JOIN으로 재고 있는 상품만 자동 필터링 + 정렬도 가능
+            // 상품당 재고 1개이므로 GROUP BY 불필요
+            $query->join('prd_stock as D', 'D.ps_prd_idx', '=', 'A.CD_IDX')
+                  ->select('A.*', 'D.*');  // 상품 + 재고 정보 모두 가져오기
+
+            $sort_mode = $criteria['sort_mode'] ?? 'stock';
+        }else{
+            $sort_mode = $criteria['sort_mode'] ?? 'idx';
+        }
+
+        // 정렬 적용
+        $this->applySortMode($query, $sort_mode);
+
+        $result = $paging ? $query->paginate($perPage, $page)
+            : $query->get()->toArray();
+
+        // 브랜드명 추가
+        $result = $this->attachBrandNames($result, $paging);
+
+        // 페이지네이션인 경우 data 키에서 가져옴
+        $products = $paging ? ($result['data'] ?? []) : $result;
+
+        $config_product = config('admin.product');
+        $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
+        // 상품 종류 추가
+        foreach ($products as &$product) {
+
+            $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
+            if (!is_array($product['cd_size_fn'])) {
+                $product['cd_size_fn'] = [];
+            }
+
+            // 패키지 사이즈 부피구하기 (명시적 타입 캐스팅)
+            $_cd_size_w = (float)($product['cd_size_fn']['package']['W'] ?? 0);
+            $_cd_size_h = (float)($product['cd_size_fn']['package']['H'] ?? 0);
+            $_cd_size_d = (float)($product['cd_size_fn']['package']['D'] ?? 0);
+            $_cd_size_volume = $_cd_size_w * $_cd_size_h * $_cd_size_d;
+            
+            $product['package_volume'] = $_cd_size_volume;  // cm³ (세제곱센티미터)
+            $product['package_volume_m3'] = $_cd_size_volume / 1000000;  // m³ (세제곱미터)
+
+            $product['package_volume_level'] = $this->getVolumeLevel($_cd_size_volume) ?? 0;
+
+            $product['cd_weight_fn'] = json_decode($product['cd_weight_fn'] ?? '{}', true);
+            if (!is_array($product['cd_weight_fn'])) {
+                $product['cd_weight_fn'] = [];
+            }
+
+            $_cd_weight_1 = $product['cd_weight_fn']['1'] ?? null;
+            $_cd_weight_2 = $product['cd_weight_fn']['2'] ?? null;
+            $_cd_weight_3 = $product['cd_weight_fn']['3'] ?? null;
+
+            // 명시적으로 숫자로 캐스팅
+            $_cd_weight_2 = !empty($_cd_weight_2) ? (float)$_cd_weight_2 : 0;
+            $_cd_weight_3 = !empty($_cd_weight_3) ? (float)$_cd_weight_3 : 0;
+
+            $_weight = "";
+            if( !$_cd_weight_2 && !$_cd_weight_3 ){
+                $_weight = "";
+            }elseif( $_cd_weight_3 ){
+                $_weight = $_cd_weight_3;
+            }elseif( $_cd_weight_2 && !$_cd_weight_3 ){
+                $_weight = $_cd_weight_2;
+            }
+
+            $product['weight'] = $_weight;
+
+            $product['cd_code_fn'] = json_decode($product['cd_code_fn'] ?? '{}', true);
+            if (!is_array($product['cd_code_fn'])) {
+                $product['cd_code_fn'] = [];
+            }
+
+            $product['ps_sale_log'] = json_decode($product['ps_sale_log'] ?? '[]', true);
+            if (!is_array($product['ps_sale_log'])) {
+                $product['ps_sale_log'] = [];
+            }
+
+            $product['last_sale'] = [
+                'sale_date' => $product['ps_sale_date'] ?? '',
+                'sale_count' => count($product['ps_sale_log']) ?? 0,
+                'sale_subject' => $product['ps_sale_log'][0]['pg_subject'] ?? '',
+                'sale_per' => $product['ps_sale_log'][0]['sale_per'] ?? 0,
+            ];
+
+            $product['prd_kind_name'] = $prd_kind_name[$product['CD_KIND_CODE']] ?? '미지정';
+
+        }
+        unset($product); // 참조 변수 해제
+
+        if ($paging) {
+            $result['data'] = $products;
+        } else {
+            $result = $products;
+        }
+
+        return $result;
+
+    }
+
+
+/**
+ * 부피(cm³)에 따라 스케일 레벨 리턴
+ *
+ * 기준 스케일:
+ *  - 512,000 cm³  → 레벨 3
+ *  - 2,075,625 cm³ → 레벨 5
+ *
+ * 위 두 점 사이의 간격을 기준으로
+ * 선형으로 레벨을 확장 (10 넘어가도 허용)
+ *
+ * 예)
+ *  - 512,000  → 3
+ *  - 2,075,625 → 5
+ *  - 9,856,000 → 약 15
+ *
+ * @param int|float $volumeCm3 부피(cm³)
+ * @return int 1 이상 레벨 (정수)
+ */
+private function getVolumeLevel($volumeCm3): int
+{
+    $volume = (float) $volumeCm3;
+
+    // 기준 부피
+    $baseVolume   = 512000;     // 기존 1단계 기준 → 레벨 3에 매핑
+    $centerVolume = 2075625;    // 기존 3단계 기준 → 레벨 5에 매핑
+
+    // 레벨 차이 (3 → 5 사이 2레벨)
+    $baseLevel   = 3.0;
+    $centerLevel = 5.0;
+
+    // 부피 1레벨당 증가량 S
+    $stepVolume = ($centerVolume - $baseVolume) / ($centerLevel - $baseLevel); // ≈ 781,812.5
+
+    // stepVolume이 0이 되는 비정상 상황 가드
+    if ($stepVolume <= 0) {
+        return 1;
+    }
+
+    // 기본 레벨 계산 (선형 스케일)
+    $rawLevel = $baseLevel + (($volume - $baseVolume) / $stepVolume);
+
+    // 반올림해서 정수 레벨로 (최소 1 보장)
+    $level = (int) round($rawLevel);
+
+    if ($level < 1) {
+        $level = 1;
+    }
+
+    return $level;
+}
+
+
+
+
+    /**
+     * 정렬 모드 적용
+     * 
+     * @param QueryBuilder $query
+     * @param string $sort_mode
+     * @return void
+     */
+    private function applySortMode($query, $sort_mode)
+    {
+        switch ($sort_mode) {
+
+            case 'stock':
+                // 재고 많은순 (idx_prd_stock_stock)
+                $query->orderBy('D.ps_stock', 'DESC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'stock_asc':
+                // 재고 적은순 (idx_prd_stock_stock)
+                $query->orderBy('D.ps_stock', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'rack_code':
+                // 랙코드순 (idx_prd_stock_rack_code)
+                $query->orderBy('D.ps_rack_code', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'soldout':
+                /**
+                 * 품절 먼저, 그 안에서 품절일 최근순
+                 *  - D.ps_stock < 1 : 품절/마이너스 재고
+                 *  - D.ps_soldout_date : idx_prd_stock_soldout (ps_stock, ps_soldout_date)
+                 */
+                $query->orderByRaw('D.ps_stock < 1 DESC')   // 품절(1) → 재고있음(0)
+                    ->orderBy('D.ps_soldout_date', 'DESC');
+                break;
+
+            case 'soldout_asc':
+                // 품절 먼저, 품절일 오래된 순
+                $query->orderByRaw('D.ps_stock < 1 DESC')
+                    ->orderBy('D.ps_soldout_date', 'ASC');
+                break;
+
+            case 'price_desc':
+                // 판매가 높은순 (idx_comparison_db_cd_sale_price)
+                $query->orderBy('A.cd_sale_price', 'DESC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'price_asc':
+                /**
+                 * 판매가 낮은순
+                 *  - 0원(미설정)은 맨 뒤로 보내고 싶다면: cd_sale_price = 0 플래그 먼저, 그다음 가격
+                 */
+                $query->orderByRaw('A.cd_sale_price = 0 ASC')   // 0 → true(1) 이라서 마지막으로
+                    ->orderBy('A.cd_sale_price', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'margin':
+                /**
+                 * 마진율 높은순
+                 *  - 아직 마진 컬럼이 없다고 보고 런타임 계산
+                 *  - A alias 사용 (from COMPARISON_DB as A)
+                 */
+                $query->selectRaw("
+                        A.*,
+                        D.*,
+                        CASE
+                            WHEN A.cd_sale_price > 0 AND A.cd_cost_price > 0 THEN
+                                CASE
+                                    WHEN A.cd_sale_price > 29999
+                                        THEN (((A.cd_sale_price - A.cd_cost_price) + 2500) / A.cd_sale_price) * 100
+                                    ELSE ((A.cd_sale_price - A.cd_cost_price) / A.cd_sale_price) * 100
+                                END
+                            ELSE NULL
+                        END AS margin_per
+                    ")
+                    // 마진 계산 불가능(0, null)은 뒤로
+                    ->orderByRaw('margin_per IS NULL ASC')
+                    ->orderBy('margin_per', 'DESC');
+                break;
+
+            case 'release_date':
+                /**
+                 * 출시일 최근순
+                 *  - 재고 있는 상품 우선, 그 안에서 최신 출시일
+                 *  - idx_comparison_db_cd_release_date + ps_stock 인덱스 조합 활용
+                 */
+                $query->orderByRaw('D.ps_stock > 0 DESC')         // 재고있음(1) → 품절(0)
+                    ->orderBy('A.CD_RELEASE_DATE', 'DESC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'old_release_date':
+                /**
+                 * 출시일 오래된 순
+                 *  - 출시일 0(미등록)은 맨 뒤로
+                 */
+                $query->orderByRaw('D.ps_stock > 0 DESC')
+                    ->orderByRaw('A.CD_RELEASE_DATE = 0 ASC')
+                    ->orderBy('A.CD_RELEASE_DATE', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'old_sale_date':
+                /**
+                 * 판매일 오래된 순
+                 *  - 재고 있는 상품 우선
+                 *  - idx_prd_stock_last_in_sale (ps_last_date, ps_in_date, ps_sale_date)
+                 */
+                $query->orderByRaw('D.ps_stock > 0 DESC')
+                    ->orderBy('D.ps_last_date', 'ASC')
+                    ->orderBy('D.ps_in_date', 'ASC')
+                    ->orderBy('D.ps_sale_date', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'new_dis_date':
+                /**
+                 * 할인일(판매일) 최근순
+                 *  - idx_prd_stock_sale_date (ps_sale_date, ps_stock)
+                 */
+                $query->orderBy('D.ps_sale_date', 'DESC')
+                    ->orderBy('D.ps_stock', 'DESC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'old_dis_date':
+                // 할인일 오래된 순
+                $query->orderBy('D.ps_sale_date', 'ASC')
+                    ->orderBy('D.ps_stock', 'DESC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'idx':
+            default:
+                // 기본: 최신 등록순 (PK 인덱스 사용)
+                $query->orderBy('A.CD_IDX', 'DESC');
+                break;
+        }
+    }
+
+
+    /**
      * 상품 목록에 브랜드명 추가
      * 
      * @param array|object $result 상품 목록 (페이지네이션 또는 배열)
@@ -99,9 +422,20 @@ class ProductService extends BaseClass
             return $result;
         }
         
-        // 1. CD_BRAND_IDX 추출
-        $brandIds = array_column($products, 'CD_BRAND_IDX');
-        $brandIds = array_filter($brandIds); // null 제거
+        // 1. CD_BRAND_IDX와 CD_BRAND2_IDX 추출
+        $brandIds = [];
+        
+        foreach ($products as $product) {
+            // CD_BRAND_IDX 추가
+            if (!empty($product['CD_BRAND_IDX'])) {
+                $brandIds[] = $product['CD_BRAND_IDX'];
+            }
+            // CD_BRAND2_IDX 추가 (존재하고 0이 아닐 경우)
+            if (!empty($product['CD_BRAND2_IDX']) && $product['CD_BRAND2_IDX'] != 0) {
+                $brandIds[] = $product['CD_BRAND2_IDX'];
+            }
+        }
+        
         $brandIds = array_unique($brandIds); // 중복 제거
         
         if (empty($brandIds)) {
@@ -123,7 +457,15 @@ class ProductService extends BaseClass
         
         // 4. 상품에 브랜드명 추가
         foreach ($products as &$product) {
+            // 첫 번째 브랜드명
             $product['brand_name'] = $brandMap[$product['CD_BRAND_IDX']] ?? '';
+            
+            // 두 번째 브랜드명 (존재하고 0이 아닐 경우)
+            if (!empty($product['CD_BRAND2_IDX']) && $product['CD_BRAND2_IDX'] != 0) {
+                $product['brand_name2'] = $brandMap[$product['CD_BRAND2_IDX']] ?? '';
+            } else {
+                $product['brand_name2'] = '';
+            }
         }
         
         // 5. 결과 반환

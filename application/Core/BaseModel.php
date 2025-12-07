@@ -178,7 +178,17 @@ class BaseModel {
         if (empty($this->table)) {
             throw new Exception("Table name is not defined in " . static::class);
         }
-        return app('queryBuilder')->table($this->table);
+        $qb = app('queryBuilder')->table($this->table);
+        
+        // QueryBuilder에 모델 인스턴스 설정 (whereHas를 위해)
+        $reflection = new \ReflectionClass($qb);
+        if ($reflection->hasProperty('model')) {
+            $modelProp = $reflection->getProperty('model');
+            $modelProp->setAccessible(true);
+            $modelProp->setValue($qb, $this);
+        }
+        
+        return $qb;
     }
 
 
@@ -253,6 +263,15 @@ class BaseModel {
     public function getTable()
     {
         return $this->table;
+    }
+
+    /**
+     * Primary Key 반환
+     * @return string
+     */
+    public function getPrimaryKey()
+    {
+        return $this->primaryKey;
     }
 
 

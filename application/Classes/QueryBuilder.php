@@ -17,13 +17,17 @@ class QueryBuilder
 	private $bindings = [];
     private $data = [];
     private $withCounts = [];
+    private $model = null; // 관계 조회를 위한 모델 인스턴스
+    private $eagerLoad = []; // Eager Loading 관계 목록
 
     /** 
 	 * 생성자: PDO 주입 
 	 * @param PDO $db
+	 * @param object|null $model BaseModel 인스턴스 (관계 조회용)
 	 */
-    public function __construct(PDO $db) {
+    public function __construct(PDO $db, $model = null) {
         $this->db = $db;
+        $this->model = $model;
     }
 
     /**
@@ -40,6 +44,8 @@ class QueryBuilder
 		$this->bindings = [];
         $this->data = [];
         $this->withCounts = [];
+        $this->model = null;
+        $this->eagerLoad = [];
         return $this;
     }
 
@@ -53,6 +59,16 @@ class QueryBuilder
 		$this->clearCache(); // 자동으로 캐시 제거
         $this->table = $table;
         return $this;
+    }
+
+	/**
+	 * 테이블 설정 (Laravel 스타일 별칭)
+	 * @param string $table
+	 * @return $this
+	 */
+    public function from($table)
+    {
+        return $this->table($table);
     }
 
 	/**
@@ -91,10 +107,210 @@ class QueryBuilder
 	 * @param string|array $relations
 	 * @return EagerLoadBuilder
      */
+    /**
+     * Eager Loading 관계 설정 (Laravel 스타일)
+     * 
+     * @param string|array $relations 관계 이름 또는 배열
+     * @return $this
+     */
     public function with($relations)
     {
         $rels = is_array($relations) ? $relations : [$relations];
-        return new \App\Core\EagerLoadBuilder($this, $rels);
+        foreach ($rels as $relation) {
+            if (!in_array($relation, $this->eagerLoad)) {
+                $this->eagerLoad[] = $relation;
+            }
+        }
+        return $this;
+    }
+
+    /**
+     * Eager Loading 관계 데이터 로드
+     * 
+     * @return void
+     */
+    protected function loadEagerRelations()
+    {
+        if (!$this->results || empty($this->results)) {
+            return;
+        }
+
+        $results = is_array($this->results) ? $this->results : [$this->results];
+        
+        foreach ($this->eagerLoad as $relationName) {
+            if (!method_exists($this->model, $relationName)) {
+                continue;
+            }
+
+            // 관계 인스턴스 가져오기
+            $relationInstance = $this->model->$relationName();
+            
+            // 관계 타입 확인
+            $isHasOne = $relationInstance instanceof \App\Core\HasOneRelation;
+            
+            // 관계 정보 추출
+            $reflection = new \ReflectionClass($relationInstance);
+            $relatedInstanceProp = $reflection->getProperty('relatedInstance');
+            $relatedInstanceProp->setAccessible(true);
+            $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+            $foreignKeyProp = $reflection->getProperty('foreignKey');
+            $foreignKeyProp->setAccessible(true);
+            $foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+            $localKeyProp = $reflection->getProperty('localKey');
+            $localKeyProp->setAccessible(true);
+            $localKey = $localKeyProp->getValue($relationInstance);
+
+            // 부모 키 값 수집
+            $parentKeys = [];
+            foreach ($results as $result) {
+                $keyValue = is_array($result) ? ($result[$localKey] ?? null) : null;
+                if ($keyValue !== null && !in_array($keyValue, $parentKeys)) {
+                    $parentKeys[] = $keyValue;
+                }
+            }
+
+            if (empty($parentKeys)) {
+                continue;
+            }
+
+            // 관계 데이터 일괄 조회
+            $relatedTable = $relatedModel->getTable();
+            $relatedData = $relatedModel::query()
+                ->whereIn($foreignKey, $parentKeys)
+                ->get()
+                ->toArray();
+
+            // 관계 데이터를 부모 키로 그룹화
+            $grouped = [];
+            foreach ($relatedData as $item) {
+                $fkValue = $item[$foreignKey] ?? null;
+                if ($fkValue !== null) {
+                    if ($isHasOne) {
+                        // hasOne: 첫 번째 것만 저장
+                        if (!isset($grouped[$fkValue])) {
+                            $grouped[$fkValue] = $item;
+                        }
+                    } else {
+                        // hasMany: 배열로 저장
+                        if (!isset($grouped[$fkValue])) {
+                            $grouped[$fkValue] = [];
+                        }
+                        $grouped[$fkValue][] = $item;
+                    }
+                }
+            }
+
+            // 결과에 관계 데이터 추가
+            foreach ($results as &$result) {
+                if (is_array($result)) {
+                    $keyValue = $result[$localKey] ?? null;
+                    if ($isHasOne) {
+                        // hasOne: 단일 객체 또는 null
+                        $result[$relationName] = $grouped[$keyValue] ?? null;
+                    } else {
+                        // hasMany: 배열
+                        $result[$relationName] = $grouped[$keyValue] ?? [];
+                    }
+                }
+            }
+            unset($result);
+
+            // 결과 업데이트
+            $this->results = count($results) === 1 ? $results[0] : $results;
+        }
+    }
+
+    /**
+     * 배열에 대한 Eager Loading 처리 (paginate용)
+     * 
+     * @param array &$data 참조로 전달된 데이터 배열
+     * @return void
+     */
+    protected function loadEagerRelationsForArray(&$data)
+    {
+        if (empty($data) || !is_array($data)) {
+            return;
+        }
+
+        foreach ($this->eagerLoad as $relationName) {
+            if (!method_exists($this->model, $relationName)) {
+                continue;
+            }
+
+            // 관계 인스턴스 가져오기
+            $relationInstance = $this->model->$relationName();
+            
+            // 관계 타입 확인
+            $isHasOne = $relationInstance instanceof \App\Core\HasOneRelation;
+            
+            // 관계 정보 추출
+            $reflection = new \ReflectionClass($relationInstance);
+            $relatedInstanceProp = $reflection->getProperty('relatedInstance');
+            $relatedInstanceProp->setAccessible(true);
+            $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+            $foreignKeyProp = $reflection->getProperty('foreignKey');
+            $foreignKeyProp->setAccessible(true);
+            $foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+            $localKeyProp = $reflection->getProperty('localKey');
+            $localKeyProp->setAccessible(true);
+            $localKey = $localKeyProp->getValue($relationInstance);
+
+            // 부모 키 값 수집
+            $parentKeys = [];
+            foreach ($data as $item) {
+                $keyValue = $item[$localKey] ?? null;
+                if ($keyValue !== null && !in_array($keyValue, $parentKeys)) {
+                    $parentKeys[] = $keyValue;
+                }
+            }
+
+            if (empty($parentKeys)) {
+                continue;
+            }
+
+            // 관계 데이터 일괄 조회
+            $relatedData = $relatedModel::query()
+                ->whereIn($foreignKey, $parentKeys)
+                ->get()
+                ->toArray();
+
+            // 관계 데이터를 부모 키로 그룹화
+            $grouped = [];
+            foreach ($relatedData as $item) {
+                $fkValue = $item[$foreignKey] ?? null;
+                if ($fkValue !== null) {
+                    if ($isHasOne) {
+                        // hasOne: 첫 번째 것만 저장
+                        if (!isset($grouped[$fkValue])) {
+                            $grouped[$fkValue] = $item;
+                        }
+                    } else {
+                        // hasMany: 배열로 저장
+                        if (!isset($grouped[$fkValue])) {
+                            $grouped[$fkValue] = [];
+                        }
+                        $grouped[$fkValue][] = $item;
+                    }
+                }
+            }
+
+            // 결과에 관계 데이터 추가
+            foreach ($data as &$item) {
+                $keyValue = $item[$localKey] ?? null;
+                if ($isHasOne) {
+                    // hasOne: 단일 객체 또는 null
+                    $item[$relationName] = $grouped[$keyValue] ?? null;
+                } else {
+                    // hasMany: 배열
+                    $item[$relationName] = $grouped[$keyValue] ?? [];
+                }
+            }
+            unset($item);
+        }
     }
 
     /**
@@ -691,6 +907,80 @@ class QueryBuilder
 	}
 
 	/**
+	 * WHERE EXISTS (관계 존재 여부 확인)
+	 * 
+	 * @param string $relation 관계 메서드명 (예: 'stocks')
+	 * @param callable|null $callback 추가 조건 (선택사항)
+	 * @return $this
+	 */
+	public function whereHas($relation, ?callable $callback = null)
+	{
+		if (!$this->model) {
+			throw new \Exception('whereHas requires a model instance. Use model::query() instead of new QueryBuilder()');
+		}
+
+		if (!method_exists($this->model, $relation)) {
+			throw new \Exception("Relation method '{$relation}' does not exist on " . get_class($this->model));
+		}
+
+		// 관계 인스턴스 가져오기
+		$relationInstance = $this->model->$relation();
+		
+		// HasManyRelation인지 확인
+		if (!($relationInstance instanceof \App\Core\HasManyRelation) && 
+			!($relationInstance instanceof \App\Core\HasOneRelation) && 
+			!($relationInstance instanceof \App\Core\BelongsToRelation)) {
+			throw new \Exception("Relation '{$relation}' must return a valid relation instance");
+		}
+
+		// 관계 정보 추출 (리플렉션 사용)
+		$reflection = new \ReflectionClass($relationInstance);
+		$relatedInstanceProp = $reflection->getProperty('relatedInstance');
+		$relatedInstanceProp->setAccessible(true);
+		$relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+		$foreignKeyProp = $reflection->getProperty('foreignKey');
+		$foreignKeyProp->setAccessible(true);
+		$foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+		$localKeyProp = $reflection->getProperty('localKey');
+		$localKeyProp->setAccessible(true);
+		$localKey = $localKeyProp->getValue($relationInstance);
+
+		// 관련 테이블명 가져오기
+		$relatedTable = $relatedModel->getTable();
+		$mainTable = $this->model->getTable();
+		$mainPrimaryKey = $this->model->getPrimaryKey();
+
+		// WHERE EXISTS 서브쿼리 생성
+		$subQuery = "SELECT 1 FROM `{$relatedTable}` WHERE `{$relatedTable}`.`{$foreignKey}` = `{$mainTable}`.`{$localKey}`";
+
+		// 추가 조건이 있으면 서브쿼리에 추가
+		if ($callback) {
+			$subQueryBuilder = new QueryBuilder($this->db);
+			$subQueryBuilder->from($relatedTable);
+			$callback($subQueryBuilder);
+			
+			// 서브쿼리의 WHERE 조건 추출
+			$subParams = [];
+			$subWhere = $subQueryBuilder->buildWhereClause($subParams);
+			if (!empty($subWhere)) {
+				$subQuery .= " AND " . str_replace('WHERE ', '', $subWhere);
+				// 바인딩 파라미터 병합
+				$this->bindings = array_merge($this->bindings, $subParams);
+			}
+		}
+
+		// EXISTS 조건 추가
+		$this->wheres[] = [
+			'type' => 'exists',
+			'query' => $subQuery
+		];
+
+		return $this;
+	}
+
+	/**
 	 * WHERE 절 빌드
 	 * @param array $params
 	 * @return string
@@ -834,6 +1124,11 @@ class QueryBuilder
                             $params[$key] = $value;
                         }
                     }
+                    break;
+
+                case 'exists':
+                    // WHERE EXISTS 서브쿼리 처리
+                    $clauses[] = "EXISTS ({$where['query']})";
                     break;
 			}
 		}
@@ -1001,7 +1296,13 @@ class QueryBuilder
             // withCount 적용
             if (!empty($this->withCounts) && !empty($this->data)) {
                 $this->applyWithCounts();
-            }
+			}
+			
+			// Eager Loading 처리
+			if (!empty($this->eagerLoad) && $this->model) {
+				$this->loadEagerRelations();
+			}
+			
 			return $this; // 객체 자신을 반환하여 메서드 체이닝 가능하게 함
 			
 		} catch (\PDOException $e) {
@@ -1277,6 +1578,11 @@ class QueryBuilder
 
         // 데이터 조회
         $data = $this->get()->toArray();
+
+        // Eager Loading 처리 (paginate에서도 작동하도록)
+        if (!empty($this->eagerLoad) && $this->model && !empty($data)) {
+            $this->loadEagerRelationsForArray($data);
+        }
 
         // 결과 반환
         return [

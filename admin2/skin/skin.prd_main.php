@@ -5,14 +5,14 @@
 		<button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdMain.swindow()" >새창으로 열기</button>
 		<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdMain.makeGrouping('');" >선택상품 그룹핑</button>
 	</div>
-<!-- 
-    <div id="head_write_btn">
-		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="" > 
-			<i class="fas fa-plus-circle"></i>
-			신규상품 등록
-		</button>
-	</div>
- -->
+	<!-- 
+		<div id="head_write_btn">
+			<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="" > 
+				<i class="fas fa-plus-circle"></i>
+				신규상품 등록
+			</button>
+		</div>
+	-->
 	<div class="head-right-fixed-wrap">
 
 		<div>
