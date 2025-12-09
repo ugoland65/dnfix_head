@@ -6,6 +6,7 @@ use App\Core\Router;
 use App\Controllers\Admin\StaffController;
 use App\Controllers\Admin\RackController;
 use App\Controllers\Admin\ProductController;
+use App\Controllers\Admin\SalesController;
 
 try {
 
@@ -14,6 +15,7 @@ try {
     $router->get('/staff/list', StaffController::class, 'staffList'); //직원목록
 
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
+    $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
 
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록
     $router->get('/stock/rack_info', RackController::class, 'rackCreate'); //랙신규등록

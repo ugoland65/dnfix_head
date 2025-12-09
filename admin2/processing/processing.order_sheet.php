@@ -2,6 +2,12 @@
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
+// POST 데이터가 많을 경우를 대비한 메모리 및 제한 설정
+@ini_set('memory_limit', '512M');           // PHP 메모리 제한 (기본 128M → 512M)
+@ini_set('post_max_size', '100M');          // POST 데이터 최대 크기 (기본 8M → 100M)
+@ini_set('max_input_vars', 100000);         // POST/GET 변수 최대 개수 (기본 1000 → 100000)
+@ini_set('max_execution_time', 300);        // 스크립트 최대 실행 시간 (기본 30초 → 300초)
+
 	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
 	$_reg_d = array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
 	$response = array('success' => false, 'msg' => '잘못된 요청입니다.');
@@ -33,6 +39,13 @@ if( $_a_mode == "orderSheet_reg" ){
 	);
 
 	$_reg = json_encode($_ary_reg, JSON_UNESCAPED_UNICODE);
+	
+	// SQL Injection 방지를 위한 escape 처리
+	$_reg = mysqli_real_escape_string($connect, $_reg);
+	$_oo_name = mysqli_real_escape_string($connect, $_oo_name);
+	$_oo_import = mysqli_real_escape_string($connect, $_oo_import);
+	$_sum_currency = mysqli_real_escape_string($connect, $_sum_currency);
+	$_oo_memo = mysqli_real_escape_string($connect, $_oo_memo);
 
 	$query = "insert ona_order set
 		oo_name = '".$_oo_name."',
@@ -247,6 +260,12 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_oo_express_data = json_encode($_ary_express_data, JSON_UNESCAPED_UNICODE);
 	$_oo_tex_data = json_encode($_ary_tex_data, JSON_UNESCAPED_UNICODE);
 	$_date_data = json_encode($_oo_date_data, JSON_UNESCAPED_UNICODE);
+	
+	// SQL Injection 방지를 위한 escape 처리
+	$_oo_price_data = mysqli_real_escape_string($connect, $_oo_price_data);
+	$_oo_express_data = mysqli_real_escape_string($connect, $_oo_express_data);
+	$_oo_tex_data = mysqli_real_escape_string($connect, $_oo_tex_data);
+	$_date_data = mysqli_real_escape_string($connect, $_date_data);
 
 	$_reg_json = json_decode($data['reg'] ?? '{}', true);
 
@@ -267,6 +286,15 @@ if( $_a_mode == "orderSheet_reg" ){
 	);
 
 	$_reg = json_encode($_reg_json, JSON_UNESCAPED_UNICODE);
+	$_reg = mysqli_real_escape_string($connect, $_reg);
+	
+	// 문자열 변수들도 escape 처리
+	$_oo_name = mysqli_real_escape_string($connect, $_oo_name);
+	$_oo_po_name = mysqli_real_escape_string($connect, $_oo_po_name);
+	$_oo_import = mysqli_real_escape_string($connect, $_oo_import);
+	$_oo_memo = mysqli_real_escape_string($connect, $_oo_memo);
+	$_sum_currency = mysqli_real_escape_string($connect, $_sum_currency);
+	$_idx = mysqli_real_escape_string($connect, $_idx);
 
 	/*
 	oo_state = '".$_oo_state."',
@@ -1190,6 +1218,10 @@ if( $_a_mode == "orderSheet_reg" ){
 	}
 
 	$_oop_data = json_encode($_oop_jsondata, JSON_UNESCAPED_UNICODE);
+	
+	// SQL Injection 방지를 위한 escape 처리
+	$_oop_data = mysqli_real_escape_string($connect, $_oop_data);
+	$_oop_idx = mysqli_real_escape_string($connect, $_oop_idx);
 
 	$query = "update ona_order_prd set
 		oop_data = '".$_oop_data."'
@@ -1521,7 +1553,10 @@ if( $_a_mode == "orderSheet_reg" ){
 		if( $_this_name ){
 
 			if( !$_this_oop_idx ){
-				sql_query_error(" INSERT ona_order_prd SET oop_name = '".$_this_name."', oop_code = '".$_oop_code."' ");
+				// SQL Injection 방지를 위한 escape 처리
+				$_this_name_escaped = mysqli_real_escape_string($connect, $_this_name);
+				$_oop_code_escaped = mysqli_real_escape_string($connect, $_oop_code);
+				sql_query_error(" INSERT ona_order_prd SET oop_name = '".$_this_name_escaped."', oop_code = '".$_oop_code_escaped."' ");
 				$_this_oop_idx = mysqli_insert_id($connect);
 			}
 
@@ -1535,6 +1570,10 @@ if( $_a_mode == "orderSheet_reg" ){
 	} // for END
 
 	$_oog_brand = json_encode($_data_ary, JSON_UNESCAPED_UNICODE);
+	
+	// SQL Injection 방지를 위한 escape 처리
+	$_oog_brand = mysqli_real_escape_string($connect, $_oog_brand);
+	$_idx = mysqli_real_escape_string($connect, $_idx);
 
 	$query = "UPDATE ona_order_group SET 
 		oog_brand = '".$_oog_brand."'
@@ -1603,10 +1642,14 @@ if( $_a_mode == "orderSheet_reg" ){
 	} //for END
 
 	$_oop_data = json_encode($_data_array, JSON_UNESCAPED_UNICODE);
+	
+	// SQL Injection 방지를 위한 escape 처리
+	$_oop_data_escaped = mysqli_real_escape_string($connect, $_oop_data);
+	$_idx_escaped = mysqli_real_escape_string($connect, $_idx);
 
 	$query = "update ona_order_prd set
-		oop_data = '".$_oop_data."'
-		where oop_idx = '".$_idx."' ";
+		oop_data = '".$_oop_data_escaped."'
+		where oop_idx = '".$_idx_escaped."' ";
 	sql_query_error($query);
 
 	$response = array('success' => true, 'msg' => '완료' );

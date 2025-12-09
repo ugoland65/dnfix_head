@@ -19,6 +19,21 @@
 #list_new_wrap{
 	height:calc(100% - 20px);
 }
+
+.top-search-wrap + #list_new_wrap{
+	max-height:calc(100% - 60px);
+}
+
+.top-count-wrap + #list_new_wrap{
+	max-height:calc(100% - 120px);
+}
+
+.top-search-wrap{
+	display:flex;
+	gap:5px;
+}
+
+
 .table-top{
 	margin-top:-10px;
 	height:30px; line-height:30px; 
@@ -64,15 +79,16 @@
 .list-top{ 
 	width:100%; height:30px; line-height:30px; 
 	display:flex;
-
 	ul{
 		&:last-child {
 			margin-left: auto;
 		}
-
         button {
             margin-top: -10px;
         }
+	}
+	.right{
+		margin-left: auto;
 	}
 }
 

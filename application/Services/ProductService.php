@@ -96,6 +96,7 @@ class ProductService extends BaseClass
         $perPage = $criteria['per_page'] ?? 100;
         $page = $criteria['page'] ?? 1;
         $show_mode = $criteria['show_mode'] ?? '';
+        $rack_code = $criteria['rack_code'] ?? null;
 
 
         // 기본 쿼리
@@ -109,6 +110,10 @@ class ProductService extends BaseClass
             // 상품당 재고 1개이므로 GROUP BY 불필요
             $query->join('prd_stock as D', 'D.ps_prd_idx', '=', 'A.CD_IDX')
                   ->select('A.*', 'D.*');  // 상품 + 재고 정보 모두 가져오기
+
+            if( $rack_code ){
+                $query->where('D.ps_rack_code', $rack_code);
+            }
 
             $sort_mode = $criteria['sort_mode'] ?? 'stock';
         }else{
@@ -206,58 +211,56 @@ class ProductService extends BaseClass
     }
 
 
-/**
- * 부피(cm³)에 따라 스케일 레벨 리턴
- *
- * 기준 스케일:
- *  - 512,000 cm³  → 레벨 3
- *  - 2,075,625 cm³ → 레벨 5
- *
- * 위 두 점 사이의 간격을 기준으로
- * 선형으로 레벨을 확장 (10 넘어가도 허용)
- *
- * 예)
- *  - 512,000  → 3
- *  - 2,075,625 → 5
- *  - 9,856,000 → 약 15
- *
- * @param int|float $volumeCm3 부피(cm³)
- * @return int 1 이상 레벨 (정수)
- */
-private function getVolumeLevel($volumeCm3): int
-{
-    $volume = (float) $volumeCm3;
+    /**
+     * 부피(cm³)에 따라 스케일 레벨 리턴
+     *
+     * 기준 스케일:
+     *  - 512,000 cm³  → 레벨 3
+     *  - 2,075,625 cm³ → 레벨 5
+     *
+     * 위 두 점 사이의 간격을 기준으로
+     * 선형으로 레벨을 확장 (10 넘어가도 허용)
+     *
+     * 예)
+     *  - 512,000  → 3
+     *  - 2,075,625 → 5
+     *  - 9,856,000 → 약 15
+     *
+     * @param int|float $volumeCm3 부피(cm³)
+     * @return int 1 이상 레벨 (정수)
+     */
+    public function getVolumeLevel($volumeCm3): int
+    {
+        $volume = (float) $volumeCm3;
 
-    // 기준 부피
-    $baseVolume   = 512000;     // 기존 1단계 기준 → 레벨 3에 매핑
-    $centerVolume = 2075625;    // 기존 3단계 기준 → 레벨 5에 매핑
+        // 기준 부피
+        $baseVolume   = 512000;     // 기존 1단계 기준 → 레벨 3에 매핑
+        $centerVolume = 2075625;    // 기존 3단계 기준 → 레벨 5에 매핑
 
-    // 레벨 차이 (3 → 5 사이 2레벨)
-    $baseLevel   = 3.0;
-    $centerLevel = 5.0;
+        // 레벨 차이 (3 → 5 사이 2레벨)
+        $baseLevel   = 3.0;
+        $centerLevel = 5.0;
 
-    // 부피 1레벨당 증가량 S
-    $stepVolume = ($centerVolume - $baseVolume) / ($centerLevel - $baseLevel); // ≈ 781,812.5
+        // 부피 1레벨당 증가량 S
+        $stepVolume = ($centerVolume - $baseVolume) / ($centerLevel - $baseLevel); // ≈ 781,812.5
 
-    // stepVolume이 0이 되는 비정상 상황 가드
-    if ($stepVolume <= 0) {
-        return 1;
+        // stepVolume이 0이 되는 비정상 상황 가드
+        if ($stepVolume <= 0) {
+            return 1;
+        }
+
+        // 기본 레벨 계산 (선형 스케일)
+        $rawLevel = $baseLevel + (($volume - $baseVolume) / $stepVolume);
+
+        // 반올림해서 정수 레벨로 (최소 1 보장)
+        $level = (int) round($rawLevel);
+
+        if ($level < 1) {
+            $level = 1;
+        }
+
+        return $level;
     }
-
-    // 기본 레벨 계산 (선형 스케일)
-    $rawLevel = $baseLevel + (($volume - $baseVolume) / $stepVolume);
-
-    // 반올림해서 정수 레벨로 (최소 1 보장)
-    $level = (int) round($rawLevel);
-
-    if ($level < 1) {
-        $level = 1;
-    }
-
-    return $level;
-}
-
-
 
 
     /**
@@ -284,8 +287,21 @@ private function getVolumeLevel($volumeCm3): int
                 break;
 
             case 'rack_code':
-                // 랙코드순 (idx_prd_stock_rack_code)
-                $query->orderBy('D.ps_rack_code', 'ASC')
+                /**
+                 * 랙코드순 정렬
+                 *  - 1순위: 재고 있는 상품 먼저 (ps_stock > 0)
+                 *  - 2순위: 랙코드 있는 애들 먼저, 없는/빈 값은 뒤로
+                 *  - 3순위: 랙코드 오름차순
+                 *  - 4순위: 동일 랙코드 내에서는 최근 등록순
+                 */
+                $query
+                    // 재고 있는 상품 우선
+                    ->orderByRaw('D.ps_stock > 0 DESC')
+                    // 랙코드 없는/빈 값은 맨 뒤로
+                    ->orderByRaw('(D.ps_rack_code IS NULL OR D.ps_rack_code = \'\') ASC')
+                    // 랙코드 오름차순
+                    ->orderBy('D.ps_rack_code', 'ASC')
+                    // 동일 랙코드 안에서는 CD_IDX 최신순
                     ->orderBy('A.CD_IDX', 'DESC');
                 break;
 

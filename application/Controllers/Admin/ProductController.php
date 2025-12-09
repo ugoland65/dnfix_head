@@ -38,13 +38,18 @@ class ProductController extends BaseClass
         try{
 
             $requestData = $request->all();
+
             $page = $requestData['page'] ?? 1;
+            $sort_mode = $requestData['sort_mode'] ?? 'stock';
+            $rack_code = $requestData['rack_code'] ?? null;
 
             $payload = [
                 'paging' => true,
                 'page' => $page,
                 'per_page' => 100,
-                'show_mode' => 'product_stock'
+                'show_mode' => 'product_stock',
+                'sort_mode' => $sort_mode,
+                'rack_code' => $rack_code
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -59,8 +64,20 @@ class ProductController extends BaseClass
             $paginationHtml = $pagination->renderLinks();
             $paginationArray = $pagination->toArray();
 
+            // 브랜드 셀렉트바를 위한 조회
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
+
+            $config_product = config('admin.product');
+            $prdKindSelect = $config_product['prd_kind_name'] ?? [];
+            $importingCountrySelect = $config_product['importing_country'] ?? [];
+
             $data = [
                 'productList' => $productList['data'],
+                'brandForSelect' => $brandForSelect,
+                'prdKindSelect' => $prdKindSelect,
+                'importingCountrySelect' => $importingCountrySelect,
+                'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
                 'paginationArray' => $paginationArray
             ];

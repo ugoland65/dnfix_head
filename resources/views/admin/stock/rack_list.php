@@ -42,7 +42,7 @@
                     <td class="text-center"><?=$rack['code_group']?></td>
                     <td class="text-center"><?=$rack['code']?></td>
                     <td class="text-center" data-prd-count="<?=$rack['prd_count'] ?? 0?>">
-                        <?=$rack['prd_count'] ?? 0?>
+                        <a href="/admin/product/product_stock?rack_code=<?=$rack['code']?>" target="_blank"><?=$rack['prd_count'] ?? 0?></a>
                     </td>
                     <td><?=$rack['memo'] ?? ''?></td>
                     <td class="text-center">

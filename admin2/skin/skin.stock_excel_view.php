@@ -292,8 +292,15 @@ var stockExcelView = function() {
 		},
 
 		swindow : function() {
+			/*
 			window.open(
 				"/admin2/product2/prd2_stock_excel_view2.php?idx=<?=$_idx ?? ''?>&sort=qty", 
+				"excelDown", 
+				"width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no"
+			);
+			*/
+			window.open(
+				"/admin/sales/picking_list/<?=$_idx ?? ''?>", 
 				"excelDown", 
 				"width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no"
 			);

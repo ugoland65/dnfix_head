@@ -33,7 +33,9 @@ if( $_idx ){
 ?>
 <div class="prd-search-add-wrap">
 	<ul class="left">
-	
+		<div>
+			<?=$_idx?>
+		</div>
 		<div>
 			<input type="text" name="prdSearch"  id="prdSearch" value="" autocomplete="off" placeholder="검색어">
 		</div>	
@@ -46,7 +48,11 @@ if( $_idx ){
 	</ul>
 	<ul class="right">
 
-		<div>※ 추가된 상품은 저장을 눌러야 최종 적용됩니다.</div>
+	<?php
+	// 배열 검증 후 count
+$_prd_jsondata_count = is_array($_prd_jsondata) ? count($_prd_jsondata) : 0;
+	?>
+		<div>※ 추가된 상품은 저장을 눌러야 최종 적용됩니다. / 총상품 : <b><?=$_prd_jsondata_count?></b></div>
 		<div class="prd-search-add-prd-list-wrap">
 
 			<form id="form2">
@@ -55,8 +61,7 @@ if( $_idx ){
 
 			<div id="prd_search_add_prd_list_table" class="prd-search-add-prd-list-table">
 <?
-// 배열 검증 후 count
-$_prd_jsondata_count = is_array($_prd_jsondata) ? count($_prd_jsondata) : 0;
+
 
 for ($z=0; $z<$_prd_jsondata_count; $z++){
 
@@ -156,32 +161,32 @@ var osFormGroupReg = function() {
 
 		},
 
-		prdSave : function( obj, oop_idx ) {
+	prdSave : function( obj, oop_idx ) {
 
-			//$(obj).attr('disabled', true);
+		//$(obj).attr('disabled', true);
 
-			var formData = $("#form2").serializeArray();
+		var formData = $("#form2").serializeArray();
 
-			$.ajax({
-				url: "/ad/processing/order_sheet",
-				data: formData,
-				type: "POST",
-				dataType: "json",
-				success: function(res){
-					if ( res.success == true ){
-						toast2("success", "그룹 상품리스트", "설정이 저장되었습니다.");
-						orderSheetForm.groupViewReset( oop_idx );
-						orderSheetDetail.PrdListReload();
-					}else{
-						showAlert("Error", res.msg, "alert2" );
-						return false;
-					}
-				},
-				error: function(request, status, error){
-					console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
-					showAlert("Error", "에러", "alert2" );
+		$.ajax({
+			url: "/ad/processing/order_sheet",
+			data: formData,
+			type: "POST",
+			dataType: "json",
+			success: function(res){
+				if ( res.success == true ){
+					toast2("success", "그룹 상품리스트", "설정이 저장되었습니다.");
+					orderSheetForm.groupViewReset( oop_idx );
+					orderSheetDetail.PrdListReload();
+				}else{
+					showAlert("Error", res.msg, "alert2" );
 					return false;
-				},
+				}
+			},
+			error: function(request, status, error){
+				console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
+				showAlert("Error", "에러", "alert2" );
+				return false;
+			},
 				complete: function() {
 					//$(obj).attr('disabled', false);
 				}

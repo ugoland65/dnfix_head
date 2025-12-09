@@ -80,7 +80,7 @@
 
 .ospl-top{ width:100%; height:100%;  display:table; }
 .ospl-top > ul{ display:table-cell; box-sizing:border-box;  padding:6px; }
-.ospl-top > ul.btn{ width:160px; }
+.ospl-top > ul.btn{ width:160px; display:flex; }
 .ospl-top > ul.btn button{ height:100% !important; }
 
 .group-side-allsum-price{ font-weight:bold !important; }

@@ -189,7 +189,7 @@ echo "</pre>";
 	<tr>
 		 <th>브랜드</th>
 		 <td>
-			<select name="cd_brand_idx">
+			<select name="cd_brand_idx" class="dn-select2">
 				<option value=''>브랜드 선택</option>
 				<?
 					foreach ($viewData['brandForSelect'] as $brand) {
@@ -198,8 +198,7 @@ echo "</pre>";
 				<option value='<?=$brand['BD_IDX'] ?? ''?>'<? if( ($brand['BD_IDX'] ?? '') == ($prd_data['CD_BRAND_IDX'] ?? '') ) echo "selected"; ?>><?=$brand['BD_NAME'] ?? ''?></option>
 				<? } ?>
 			</select>
-
-			<select name="cd_brand2_idx">
+			<select name="cd_brand2_idx" class="dn-select2">
 				<option value=''>브랜드2 선택</option>
 				<?
 					foreach ($viewData['brandForSelect'] as $brand) {
@@ -746,7 +745,7 @@ echo "</pre>";
 <? } ?>
 
 <script type="text/javascript"> 
-<!-- 
+<!--
 var prdRegForm = function() {
 
 	var B;
@@ -803,10 +802,12 @@ var prdRegForm = function() {
 
 $(function(){
 
+	$(".dn-select2").select2();
+
 	if( $(".calendar-input input").length ){
 		$(".calendar-input input").datepicker(clareCalendar);
 	}
 
 });
-//--> 
-</script> 
+//-->
+</script>

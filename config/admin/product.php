@@ -19,8 +19,16 @@ $prd_kind_name = [
     'COSTUME' => "코스튬",
 ];
 
+$importing_country = [
+    'jp' => "일본",
+    'cn' => "중국",
+    'kr' => "한국",
+    'dollar' => "그외 달러 국가",
+];
+
 $data = [
-    'prd_kind_name' => $prd_kind_name
+    'prd_kind_name' => $prd_kind_name,
+    'importing_country' => $importing_country
 ];
 
 return $data;

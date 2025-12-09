@@ -17,23 +17,15 @@
 	<link rel="stylesheet" type="text/css" href="/admin2/css/page.css?ver=<?=$wepix_now_time?>" />
  -->
 
-
 	<!-- FontAwesome -->
 	<link href="/plugins/font-awesome/css/font-awesome.min.css" rel="stylesheet" />
 	<link rel="stylesheet" href="https://use.fontawesome.com/releases/v5.6.3/css/all.css" integrity="sha384-UHRtZLI+pbxtHCWp1t77Bi1L4ZtiqrqD80Kn4Z8NTSRyMA2Fd33n5dQ8lWUE00s/" crossorigin="anonymous">
 
 	<script src="/plugins/jquery/jquery-3.6.0.min.js"></script>
 
-	<script src="/plugins/jquery/jquery.confirm-action.js"></script>
-
 	<!-- jqueryui -->
-
 	<link rel="stylesheet" href="/plugins/jquery-ui-1.13.2/jquery-ui.min.css">
 	<script src="/plugins/jquery-ui-1.13.2/jquery-ui.min.js"></script>
-<!-- 
-	<link rel="stylesheet" href="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/themes/smoothness/jquery-ui.css">
-	<script src="https://ajax.googleapis.com/ajax/libs/jqueryui/1.12.1/jquery-ui.min.js"></script>
- -->
 
 	<link rel="stylesheet" href="/plugins/jquery-confirm-v3.3.4/jquery-confirm.min.css">
 	<script src="/plugins/jquery-confirm-v3.3.4/jquery-confirm.min.js"></script>
@@ -47,6 +39,14 @@
 	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
 	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
 
+    <!-- tabulator -->
+	<link href="/plugins/tabulator/tabulator.css" rel="stylesheet">
+	<script type="text/javascript" src="/plugins/tabulator/tabulator.min.js"></script>
+
+    <!-- select2 -->
+    <link href="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/css/select2.min.css" rel="stylesheet" />
+    <script src="https://cdn.jsdelivr.net/npm/select2@4.1.0-rc.0/dist/js/select2.min.js"></script>
+
 	<script src="/assets/js/common.ad.js?ver=<?=$wepix_now_time?>"></script>
 	<script src="/admin2/js/common.js?ver=<?=$wepix_now_time?>"></script>
 
@@ -58,13 +58,18 @@
 
 	<link href="/admin2/css/v2-style.css?t=<?=time()?>" rel="stylesheet" >
 
-	<STYLE TYPE="text/css">
-	/* bootstrap 재가공 */ 
-
+	<!-- bootstrap 재가공 -->
+	<style type="text/css">
 	/* 라디오 버튼 */
 	.radio-form label{ height:28px !important; font-size:12px !important; border:1px solid #9096a3 !important; }
 	.radio-form label.active{ color:#fff !important; text-shadow:none !important; font-weight:bold !important; background-color:#008cd4 !important; }
-	</STYLE>
+
+	label {
+		margin-bottom: 0;
+		font-weight: 500;
+		cursor:pointer;
+	}
+	</style>
 
 <STYLE TYPE="text/css">
 /* Popup */
