@@ -121,6 +121,11 @@ img, fieldset{ border:none; vertical-align:top; }
 .display-table-cell{ display:table-cell !important; } 
 .display-none{ display:none !important; } 
 
+.hidden {
+    display: none !important;
+    visibility: hidden !important;
+}
+
 .position-relative { position:relative !important; }
 .position-absolute { position:absolute !important; }
 

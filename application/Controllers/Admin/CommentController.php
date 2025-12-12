@@ -73,7 +73,7 @@ class CommentController extends BaseClass {
 		$result = [];
 
 		//달력 댓글경우 데이터가 없을경우 생성
-		if( $postData['mode'] == "calendar" && empty($postData['idx']) && !empty($postData['dayCode']) ){
+		if( isset($postData['mode']) && $postData['mode'] == "calendar" && empty($postData['idx']) && !empty($postData['dayCode']) ){
 
 			$_subject = $postData['dayCode']." 캘린더";
 			$_date_s = $postData['dayCode']." 00:00:00";

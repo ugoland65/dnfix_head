@@ -9,6 +9,10 @@ $Comment = new CommentController();
 
 $result = $Comment->commentMainIndex();
 
+// GET/POST 파라미터 초기화
+$_mode = $_REQUEST['mode'] ?? '';
+$_idx = $_REQUEST['idx'] ?? '';
+
 /*
 	echo "<pre>";
 	print_r($result);

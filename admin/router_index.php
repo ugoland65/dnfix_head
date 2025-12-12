@@ -16,6 +16,7 @@ try {
 
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
+    $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
 
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록
     $router->get('/stock/rack_info', RackController::class, 'rackCreate'); //랙신규등록

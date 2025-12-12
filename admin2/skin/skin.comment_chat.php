@@ -8,6 +8,14 @@ use App\Controllers\Admin\CommentController;
 $Comment = new CommentController(); 
 
 $result = $Comment->commentChatIndex();
+
+// GET/POST 파라미터 초기화
+$_mode = $_REQUEST['mode'] ?? '';
+$_tidx = $_REQUEST['tidx'] ?? '';
+
+// 세션에서 관리자 정보 가져오기
+$_ad_idx = $_SESSION['_ad_idx'] ?? 0;
+
 /*
 	echo "<pre>";
 	print_r($result['test']);
@@ -196,7 +204,7 @@ $_reaction_icon['Check'] = "✔️";
 			$_where = "";
 			$_query = "select idx, ad_name from admin ".$_where." ORDER BY idx DESC";
 			$_result = sql_query_error($_query);
-			while($_list = wepix_fetch_array($_result)){
+			while($_list = sql_fetch_array($_result)){
 		?>
 			<label><input type="checkbox" name="target_mb_idx[]" value="<?=$_list['idx']?>" > <?=$_list['ad_name']?></label>
 		<? } ?>
@@ -245,6 +253,15 @@ function replyOff() {
 
 	$("#reply_mode_wrap").addClass("hidden");
 
+}
+
+// chatWrap 변수와 scrollToBottom 함수 정의
+var chatWrap = null;
+
+function scrollToBottom() {
+	if (chatWrap && chatWrap.scrollHeight !== undefined) {
+		chatWrap.scrollTop = chatWrap.scrollHeight;
+	}
 }
 
 $(function(){

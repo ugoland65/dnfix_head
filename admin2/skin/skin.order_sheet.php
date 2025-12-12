@@ -171,10 +171,18 @@ if( $_get2 ){ $_oop_idx = $_get2; }
 	</div>
 </div>
 
+<?php 
+/*
+@deprecated
 <link href="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/css/bootstrap-editable.css" rel="stylesheet"/>
 <script src="//cdnjs.cloudflare.com/ajax/libs/x-editable/1.5.0/bootstrap3-editable/js/bootstrap-editable.min.js"></script>
+*/ 
+?>
+<!-- 🔹 Bootstrap 5용 X-Editable -->
+<link href="https://cdn.jsdelivr.net/npm/x-editable-bs5@1.5.8/dist/bootstrap5-editable/css/bootstrap-editable.css" rel="stylesheet">
+<script src="https://cdn.jsdelivr.net/npm/x-editable-bs5@1.5.8/dist/bootstrap5-editable/js/bootstrap-editable.min.js"></script>
 
-<script src="/admin2/js/order_sheet.js?ver=<?=$wepix_now_time?>"></script>
+<script src="/admin2/js/order_sheet.js?ver=<?=time()?>"></script>
 <script type="text/javascript">
 <!-- 
 <? if( $_idx ){ ?>

@@ -13,7 +13,8 @@
 		</form>
 	</div>
 	<div class="btn-group-wrap m-l-10">
-		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="stockExcel.godoOrderPrint()" >고도몰 주문서 프린트</button>
+		<button type="button" class="btnstyle1 btnstyle1-sm" onclick="stockExcel.godoOrderPrint()" >고도몰 주문서 프린트 (구버전)</button>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="stockExcel.godoOrderPrint('new')" >고도몰 주문서 프린트 (신버전)</button>
 	</div>
 </div>
 
@@ -191,8 +192,14 @@ var stockExcel = (function () {
 	/**
 	* 고도몰 주문서 프린트
 	*/
-	function godoOrderPrint() {
-		window.open("/ad/ajax/godo_order_print", "aa", "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+	function godoOrderPrint(mode) {
+
+		if( mode == 'new') {
+			window.open("/admin/sales/packing_list", "bb", "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		}else{
+			window.open("/ad/ajax/godo_order_print", "aa", "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		}
+		
 	}
 
 	return {

@@ -329,7 +329,6 @@ echo "</pre>";
                 <?php } ?>
             </div>
 
-			
         </div>
 
         <div class="order-total-price">
@@ -361,82 +360,82 @@ echo "</pre>";
 
         </div>
 
-<?php
-/*
-echo "<pre>";
-print_r($order['dc_info']);
-echo "</pre>";
-*/
-?>
+        <?php
+        /*
+        echo "<pre>";
+        print_r($order['dc_info']);
+        echo "</pre>";
+        */
+        ?>
 
-            <?php 
-            if(!empty($order['addField'])) { 
-                if( count($order['addField']) > 0 ) {
-            ?>
-            <div class="order-add-field" >
-                <?php foreach ($order['addField'] as $addField) { ?>
+        <?php 
+        if(!empty($order['addField'])) { 
+            if( count($order['addField']) > 0 ) {
+        ?>
+        <div class="order-add-field" >
+            <?php foreach ($order['addField'] as $addField) { ?>
+            
+            <?php if($addField['name'] == '패키지 제거 여부') { ?>
+                <?php if($addField['data'] == '패키지 제거') { ?>
+                    <ul class="package-remove">
+                        <h3>패키지 제거</h3>
+                    </ul>
+                <?php } ?>
+            <?php } else { ?>
+            <ul>
+                <?=$addField['name']?> : <b><?=$addField['data']?></b>
+            </ul> 
+            <?php } ?>
                 
-                <?php if($addField['name'] == '패키지 제거 여부') { ?>
-                    <?php if($addField['data'] == '패키지 제거') { ?>
-                        <ul class="package-remove">
-                            <h3>패키지 제거</h3>
-                        </ul>
-                    <?php } ?>
-                <?php } else { ?>
-                <ul>
-                    <?=$addField['name']?> : <b><?=$addField['data']?></b>
-                </ul> 
-                <?php } ?>
-					
-                <?php } ?>
-            </div>
-            <?php } } ?>
+            <?php } ?>
+        </div>
+        <?php } } ?>
 
-            <div class="order-gift-info">
-                <?php if($order['settlePrice'] >= 100000) { ?>
-                    <p>사은품 : <b style="font-size:16px;">10만원 사은품</b></p>
-                <?php } elseif($order['settlePrice'] >= 10000) { ?>
-                    <p>사은품 : <b style="font-size:16px;">만원 사은품</b></p>
-                <?php } ?>
-            </div>
+        <div class="order-gift-info">
+            <?php if($order['settlePrice'] >= 100000) { ?>
+                <p>사은품 : <b style="font-size:16px;">10만원 사은품</b></p>
+            <?php } elseif($order['settlePrice'] >= 10000) { ?>
+                <p>사은품 : <b style="font-size:16px;">만원 사은품</b></p>
+            <?php } ?>
+        </div>
 
-            <div class="order-receiver-info">
-                <h2>수령자 정보</h2>
-                <table class="order-table">
-                    <tr>
-                        <th>수령자명</th>
-                        <td><?=$order['receiverName']?></td>
-                        <th>회원</th>
-                        <td>
-                            <?php if(!empty($order['member']['memId'])) { ?>
-                                <?=$order['member']['groupNm']?>
-                            <?php } else { ?>
-                               비회원
-                            <?php } ?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>일반전화</th>
-                        <td><?=$order['receiverPhone'] ?? '-'?></td>
-                        <th>휴대전화</th>
-                        <td><?=$order['receiverCellPhone'] ?? '-'?></td>
-                    </tr>
-                    <tr>
-                        <th>배송지 주소</th>
-                        <td colspan="3">
-                            (<?=$order['receiverZonecode'] ?? '-'?>) 
-                            <?=$order['receiverAddress'] ?? '-'?>
-                            <?=$order['receiverAddressSub'] ?? '-'?>
-                        </td>
-                    </tr>
-                    <tr>
-                        <th>배송 메시지</th>
-                        <td colspan="3"> <?=$order['orderMemo'] ?? '-'?></td>
-                    </tr>
-                </table>
-            </div>
+        <div class="order-receiver-info">
+            <h2>수령자 정보</h2>
+            <table class="order-table">
+                <tr>
+                    <th>수령자명</th>
+                    <td><?=$order['receiverName']?></td>
+                    <th>회원</th>
+                    <td>
+                        <?php if(!empty($order['member']['memId'])) { ?>
+                            <?=$order['member']['groupNm']?>
+                        <?php } else { ?>
+                            비회원
+                        <?php } ?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>일반전화</th>
+                    <td><?=$order['receiverPhone'] ?? '-'?></td>
+                    <th>휴대전화</th>
+                    <td><?=$order['receiverCellPhone'] ?? '-'?></td>
+                </tr>
+                <tr>
+                    <th>배송지 주소</th>
+                    <td colspan="3">
+                        (<?=$order['receiverZonecode'] ?? '-'?>) 
+                        <?=$order['receiverAddress'] ?? '-'?>
+                        <?=$order['receiverAddressSub'] ?? '-'?>
+                    </td>
+                </tr>
+                <tr>
+                    <th>배송 메시지</th>
+                    <td colspan="3"> <?=$order['orderMemo'] ?? '-'?></td>
+                </tr>
+            </table>
+        </div>
 
-     </div>
+    </div>
     <?php } ?>
 
     <script>

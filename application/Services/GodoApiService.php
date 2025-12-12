@@ -31,7 +31,8 @@ class GodoApiService extends BaseClass {
      * @param array $requestData 요청 데이터
      * @return array
      */
-    public function getOrderList($requestData) {
+    public function getOrderList($requestData) 
+    {
 
         /**
          * 주문상태 단계
@@ -96,7 +97,7 @@ class GodoApiService extends BaseClass {
             echo "<pre>";
             print_r($apiData['data']);
             echo "</pre>";
-*/
+            */
 
             foreach ($apiData['data'] as &$order) {
     
@@ -452,7 +453,6 @@ class GodoApiService extends BaseClass {
         $productStockData = $this->calculateGoodsQuantity($numericGoodsListOriginal, $productData, $packageRemoveList);
     
         $result = [
-
             'test' => $test,
             'start_date' => $start_date,
             'end_date' => $end_date,
@@ -460,7 +460,6 @@ class GodoApiService extends BaseClass {
             'otherGoodsList' => $otherGoodsList,
             'productPartnerData' => $productPartnerData,
             'unmatchedGoodsList' => $unmatchedGoodsList,
-    
             'orderMargin' => $orderMargin,
             'errorGoodsList' => $errorGoodsList,
             'numericGoodsList' => $numericGoodsList,
@@ -475,13 +474,110 @@ class GodoApiService extends BaseClass {
 
 
     /**
+     * 패킹리스트 조회
+     * @param array $criteria 검색 조건
+     * @return array
+     */
+    public function getOrderPackingList($criteria) 
+    {
+        
+        $mode = $criteria['mode'] ?? 'b';
+        $start_date = $criteria['start_date'] ?? date('Y-m-d');
+        $end_date = $criteria['end_date'] ?? date('Y-m-d');
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
+        $response = HttpClient::getData($apiUrl);
+        
+        $apiData = json_decode($response, true);
+
+        if( $apiData['total'] > 0 ){
+
+            $errorGoodsList = []; // 오류 데이터 저장
+            $numericGoodsList = [];
+            $setGoodsList = [];
+            $otherGoodsList = [];
+
+            foreach ($apiData['data'] as &$order) {
+                foreach ($order['orderGoods'] as &$goods) {
+                    $goodsCd = $goods['goodsCd'];
+
+                    // goodsCd 값에 한글이 포함되어 있는지 검사
+                    if (preg_match('/[가-힣]/u', $goodsCd)) {
+                        $goods['match'] = "error";
+                        $errorGoodsList[] = [
+                            'goodsNo' => $goods['goodsNo'],
+                            'goodsCd' => $goodsCd,
+                            'orderNo' => $order['orderNo'],
+                            'error_message' => 'goodsCd에 한글 포함됨',
+                        ];
+                        continue; // 오류 데이터는 매칭하지 않음
+                    }
+
+                    // 숫자로만 이루어진 goodsCd
+                    if (ctype_digit($goodsCd)) {
+                        $goods['match'] = "stock";
+                        $numericGoodsList[] = $goodsCd;
+                    }
+                    // "set" 또는 "qty" 단어가 포함된 goodsCd
+                    elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false) {
+                        $goods['match'] = "set";
+                        $setGoodsList[] = $goodsCd;
+                    }
+                    // 기타 (한글은 없지만 숫자가 아닌 다른 문자 포함)
+                    else {
+                        $goods['match'] = "scm";
+                        $otherGoodsList[] = $goodsCd;
+                    }
+
+                }
+            }
+
+            // 중복 제거 및 인덱스 재정렬
+            $numericGoodsList = array_values(array_unique($numericGoodsList));
+            $setGoodsList = array_values(array_unique($setGoodsList));
+            $otherGoodsList = array_values(array_unique($otherGoodsList));
+
+            $productStockService = new ProductStockService();
+            $productData = $productStockService->getProductStockWhereIn($numericGoodsList);
+            
+            
+            foreach ($apiData['data'] as &$order) {
+                foreach ($order['orderGoods'] as &$goods) {
+                    if ($goods['match'] == "stock") {
+                        $goods['stock'] = $productData[$goods['goodsCd']]['ps_stock'];
+                        $goods['rack_code'] = $productData[$goods['goodsCd']]['ps_rack_code'];
+                        $goods['bar_code'] = $productData[$goods['goodsCd']]['CD_CODE'];
+                        $goods['package_volume'] = $productData[$goods['goodsCd']]['package_volume'];
+                        $goods['package_volume_m3'] = $productData[$goods['goodsCd']]['package_volume_m3'];
+                        $goods['package_volume_level'] = $productData[$goods['goodsCd']]['package_volume_level'];
+                    }
+                }
+            }
+
+            $test = [
+                'errorGoodsList' => $errorGoodsList,
+                'numericGoodsList' => $numericGoodsList,
+                'setGoodsList' => $setGoodsList,
+                'otherGoodsList' => $otherGoodsList,
+                'productData' => $productData,
+            ];
+
+        }
+
+        return $apiData;
+
+    }
+
+
+    /**
      * 상품코드별 수량을 계산하는 함수
      * @param array $goodsList 상품 코드 배열
      * @param array $productData 상품 데이터 배열
      * @param array $packageRemoveList 패키지 제거 여부 배열
      * @return array 상품코드별 수량 배열 [['code' => 코드, 'qty' => 수량, 'package_remove_qty' => 패키지제거수량, ...], ...]
      */
-    public function calculateGoodsQuantity($goodsList, $productData, $packageRemoveList) {
+    public function calculateGoodsQuantity($goodsList, $productData, $packageRemoveList) 
+    {
         
         $result = [];
         $counts = array_count_values($goodsList);

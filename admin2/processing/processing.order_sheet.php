@@ -1556,7 +1556,7 @@ if( $_a_mode == "orderSheet_reg" ){
 				// SQL Injection 방지를 위한 escape 처리
 				$_this_name_escaped = mysqli_real_escape_string($connect, $_this_name);
 				$_oop_code_escaped = mysqli_real_escape_string($connect, $_oop_code);
-				sql_query_error(" INSERT ona_order_prd SET oop_name = '".$_this_name_escaped."', oop_code = '".$_oop_code_escaped."' ");
+				sql_query_error(" INSERT ona_order_prd SET oop_name = '".$_this_name_escaped."', oop_code = '".$_oop_code_escaped."', oop_data = '[]' ");
 				$_this_oop_idx = mysqli_insert_id($connect);
 			}
 
