@@ -295,7 +295,13 @@
     padding: 105px 20px 20px 20px !important;
 }
 #contents_body_bottom_padding{ height:20px; }
-#contents_bottom { width:100%; height:45px; line-height:42px; background-color:#fff; padding-left:20px; border-top:1px solid #555; position:relative; box-sizing:border-box; }
+#contents_bottom { 
+	width:100%; height:45px; line-height:42px; background-color:#fff; 
+	padding-left:20px; border-top:1px solid #555; position:relative; box-sizing:border-box; 
+	display:flex;
+	align-items: center;
+	gap:10px;
+}
 
 #contents_body.partition-body{ overflow-y:hidden; }
 #contents_body.partition-body > div#contents_body_wrap{ padding:0; }

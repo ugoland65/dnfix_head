@@ -14,7 +14,7 @@ $_mode = $_REQUEST['mode'] ?? '';
 $_tidx = $_REQUEST['tidx'] ?? '';
 
 // 세션에서 관리자 정보 가져오기
-$_ad_idx = $_SESSION['_ad_idx'] ?? 0;
+//$_ad_idx = $_SESSION['ad_idx'] ?? 0;
 
 /*
 	echo "<pre>";

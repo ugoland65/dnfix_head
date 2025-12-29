@@ -6,19 +6,26 @@
 
         <!-- 검색 영역 -->
         <div class="top-search-wrap">
+            <ul class="">
+				<select name="in_stock" id="in_stock" >
+					<option value="all" <? if( $in_stock == 'all' ) echo "selected";?>>전체상품</option>
+                    <option value="have" <? if( $in_stock == 'have' ) echo "selected";?>>재고보유</option>
+                    <option value="no" <? if( $in_stock == 'no' ) echo "selected";?>>재고없음</option>
+				</select>
+			</ul>
 			<ul class="">
 				<select name="s_brand" id="s_brand" class="dn-select2">
-					<option value="">전체 브랜드</option>
+					<option value="">브랜드</option>
 					<?
 					foreach( $brandForSelect as $brand ){
 					?>
-					<option value="<?=$brand['BD_IDX']?>" <? if( $brand['BD_IDX'] == ($_s_brand ?? '') ) echo "selected";?> ><?=$brand['BD_NAME']?></option>
+					<option value="<?=$brand['BD_IDX']?>" <? if( $brand['BD_IDX'] == ($s_brand ?? '') ) echo "selected";?> ><?=$brand['BD_NAME']?></option>
 					<? } ?>
 				</select>
 			</ul>
             <ul>
                 <select name="s_prd_kind" id="s_prd_kind" >
-                    <option value="">전체 상품</option>
+                    <option value="">상품분류</option>
                     <?
                     foreach( $prdKindSelect as $code => $name ){
                     ?>
@@ -28,7 +35,7 @@
             </ul>
             <ul>
                 <select name="s_importing_country" id="s_importing_country" >
-                    <option value="">전체 수입국</option>
+                    <option value="">수입국</option>
                     <?
                     foreach( $importingCountrySelect as $code => $name ){
                     ?>
@@ -37,7 +44,31 @@
                 </select>
             </ul>
             <ul>
-                <input type='text' name='search_value' id='search_value' value="<?= $_GET['search_value'] ?? '' ?>" placeholder="검색어" style="min-width: 300px;">
+                <select name="s_margin_group" id="s_margin_group" >
+                    <option value="">마진그룹 </option>
+                    <?
+                    $marginGroupSelect = [
+                        'A' => 'A',
+                        'B' => 'B',
+                        'C' => 'C',
+                        'D' => 'D',
+                        'E' => 'E',
+                        'F' => 'F',
+                        'G' => 'G',
+                        'H' => 'H',
+                        'I' => 'I',
+                    ];
+                    foreach( $marginGroupSelect as $code => $name ){
+                    ?>
+                    <option value="<?=$code?>" <? if( $code == ($s_margin_group ?? '') ) echo "selected";?> ><?=$name?></option>
+                    <? } ?>
+                </select>
+            </ul>
+            <ul>
+                <input type='text' name='rack_code' id='rack_code' value="<?=$rack_code ?? '' ?>" placeholder="랙코드" style="width:80px;">
+            </ul>
+            <ul>
+                <input type='text' name='search_value' id='search_value' value="<?= $_GET['search_value'] ?? '' ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
             <ul>
                 <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="searchBtn">
@@ -97,6 +128,7 @@
                                 <th>판매가</th>
                                 <th>책정원가</th>
                                 <th>마진율</th>
+                                <th>마진등급</th>
                                 <th>최근판매일</th>
                                 <th>최근입고일</th>
                                 <th>최근품절일</th>
@@ -140,9 +172,41 @@
                                             $_margin_per =  round( ($product['cd_sale_price'] - ($product['cd_cost_price'] + 2500) ) / $product['cd_sale_price'] * 100, 2);
                                         }
                                     }
+
+                                    // 등급 계산 (40% 기준, 5단위)
+                                    $grade = '';
+                                    $gradeColor = '';
+                                    if ($_margin_per > 39) {
+                                        $grade = 'A';
+                                        $gradeColor = '#28a745'; // 초록색
+                                    } elseif ($_margin_per >= 35) {
+                                        $grade = 'B';
+                                        $gradeColor = '#20c997'; // 연두색
+                                    } elseif ($_margin_per >= 30) {
+                                        $grade = 'C';
+                                        $gradeColor = '#17a2b8'; // 청록색
+                                    } elseif ($_margin_per >= 25) {
+                                        $grade = 'D';
+                                        $gradeColor = '#0dcaf0'; // 하늘색
+                                    } elseif ($_margin_per >= 20) {
+                                        $grade = 'E';
+                                        $gradeColor = '#ffc107'; // 노란색
+                                    } elseif ($_margin_per >= 15) {
+                                        $grade = 'F';
+                                        $gradeColor = '#fd7e14'; // 오렌지색
+                                    } elseif ($_margin_per >= 10) {
+                                        $grade = 'G';
+                                        $gradeColor = '#dc3545'; // 빨간색
+                                    } elseif ($_margin_per >= 5) {
+                                        $grade = 'H';
+                                        $gradeColor = '#d63384'; // 진한 빨강
+                                    } elseif ($_margin_per > 0) {
+                                        $grade = 'I';
+                                        $gradeColor = '#6c757d'; // 회색
+                                    }
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"></td>
+                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['ps_idx']?>"></td>
                                     <td class="text-center"><?=$product['CD_IDX']?></td>
                                     <td class="text-center"><?=$product['ps_idx']?></td>
                                     <td class="p-5">
@@ -159,7 +223,7 @@
                                             <?=$product['brand2_name']?>
                                         <?php } ?>
                                     </td>
-                                    <td><?=$product['cd_code_fn']['jan']?></td>
+                                    <td><?=$product['barcode']?></td>
                                     <td class="text-center">
                                         <?php if( $product['ps_stock'] == 0 ){ ?>
                                             <span style="color:#ff0000;">재고없음</span>
@@ -205,7 +269,16 @@
                                     <td class="text-center"><?=$_national_text[$product['cd_national']]?></td>
                                     <td class="text-right"><?=number_format($product['cd_sale_price'])?></td>
                                     <td class="text-right"><?=number_format($product['cd_cost_price'])?></td>
-                                    <td class="text-right"><?=$_margin_per?>%</td>
+                                    <td class="text-right"><b><?=$_margin_per?>%</b></td>
+                                    <td class="text-center">
+                                        <?php if (!empty($grade)) { ?>
+                                            <span style="display:inline-block; padding:2px 8px; background-color:<?=$gradeColor?>; color:white; font-weight:bold; border-radius:3px;">
+                                                <?=$grade?>
+                                            </span>
+                                        <?php } else { ?>
+                                            -
+                                        <?php } ?>
+                                    </td>
                                     <td class="text-center">
                                         <?php
                                             $lastSaleDate = $product['ps_last_date'] ?? null;
@@ -288,20 +361,69 @@
 </div>
 <div id="contents_bottom">
 	<div class="pageing-wrap" id="pageing_ajax_show"><?=$paginationHtml?></div>
+    <div class="m-l-20">
+        선택된 상품 <span id="selected_product_count"></span>
+        <input type='text' name='rack_change_code' id='rack_change_code' value="" placeholder="변경할 랙코드" style="width:80px;">
+        <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="rackChangeBtn">랙 일괄변경</button>
+    </div>
 </div>
+
+<style>
+    tr.selected-row {
+        background-color: #e3f2fd !important;
+    }
+    tr.selected-row:hover {
+        background-color: #bbdefb !important;
+    }
+</style>
 
 <script type="text/javascript">
 <!--
 
     $(function(){
         $(".dn-select2").select2();
+        
+        // 개별 체크박스 선택 시 행 배경색 변경
+        $(document).on('change', 'input[name="check_idx[]"]', function() {
+            if($(this).is(':checked')) {
+                $(this).closest('tr').addClass('selected-row');
+            } else {
+                $(this).closest('tr').removeClass('selected-row');
+            }
+            updateSelectedCount();
+        });
+        
+        // 초기 선택 개수 업데이트
+        updateSelectedCount();
     });
+    
+    // 선택된 상품 개수 업데이트
+    function updateSelectedCount() {
+        var count = $('input[name="check_idx[]"]:checked').length;
+        $('#selected_product_count').text(count + '개');
+    }
+
+    // 전체 선택 함수 수정
+    function select_all() {
+        var checkboxes = document.getElementsByName('check_idx[]');
+        var selectAll = event.target.checked;
+        
+        for(var i = 0; i < checkboxes.length; i++) {
+            checkboxes[i].checked = selectAll;
+            
+            // 행 배경색 변경
+            if(selectAll) {
+                $(checkboxes[i]).closest('tr').addClass('selected-row');
+            } else {
+                $(checkboxes[i]).closest('tr').removeClass('selected-row');
+            }
+        }
+        updateSelectedCount();
+    }
 
     $("#sort_kind").change(function(){
-
         var url = "?sort_mode=" + $(this).val();
         window.location.href = url;
-
     });
 
     $("#search_reset").click(function(){
@@ -309,5 +431,92 @@
         window.location.href = url;
     });
 
+    $("#searchBtn").on('click',function(){
+
+        // 검색 파라미터 수집
+        var params = {};
+
+        // URL에서 viewMode 파라미터 가져오기
+        var urlParams = new URLSearchParams(window.location.search);
+
+        // 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
+        var fields = {
+            's_site': $("#s_site").val(),
+            's_brand': $("#s_brand").val(),
+            's_prd_kind': $("#s_prd_kind").val(),
+            's_importing_country': $("#s_importing_country").val(),
+            's_margin_group': $("#s_margin_group").val(),
+            'rack_code': $("#rack_code").val(),
+            'search_value': $("#search_value").val(),
+        };
+
+        // 유효한 값만 params에 추가
+        for (var key in fields) {
+            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+                params[key] = fields[key];
+            }
+        }
+
+        // URL 쿼리 문자열 생성
+        var queryString = Object.keys(params)
+            .map(function(key) {
+                return key + '=' + encodeURIComponent(params[key]);
+            })
+            .join('&');
+
+        // 페이지 이동
+        location.href = '/admin/product/product_stock' + (queryString ? '?' + queryString : '');
+
+    });
+
+    // 랙코드 일괄 변경
+    $("#rackChangeBtn").on('click', function() {
+        // 선택된 상품 확인
+        var selectedItems = [];
+        $('input[name="check_idx[]"]:checked').each(function() {
+            selectedItems.push($(this).val());
+        });
+
+        if (selectedItems.length === 0) {
+            alert('변경할 상품을 선택해주세요.');
+            return;
+        }
+
+        // 랙코드 확인
+        var rackCode = $('#rack_change_code').val().trim();
+        if (rackCode === '') {
+            alert('변경할 랙코드를 입력해주세요.');
+            $('#rack_change_code').focus();
+            return;
+        }
+
+        // 확인 메시지
+        if (!confirm(selectedItems.length + '개 상품의 랙코드를 "' + rackCode + '"(으)로 변경하시겠습니까?')) {
+            return;
+        }
+
+        // AJAX POST 요청
+        $.ajax({
+            url: '/admin/product/proc/rack_change_batch',
+            type: 'POST',
+            data: {
+                check_idx: selectedItems,
+                rack_code: rackCode
+            },
+            dataType: 'json',
+            success: function(response) {
+                if (response.success) {
+                    alert(response.message || '랙코드가 변경되었습니다.');
+                    location.reload();
+                } else {
+                    alert(response.message || '랙코드 변경에 실패했습니다.');
+                }
+            },
+            error: function(xhr, status, error) {
+                console.error('Error:', error);
+                alert('랙코드 변경 중 오류가 발생했습니다.');
+            }
+        });
+    });
 //--> 
 </script>

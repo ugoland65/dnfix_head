@@ -2057,14 +2057,80 @@ class QueryBuilder
 			return $value instanceof RawExpression ? "`$key` = $value" : "`$key` = :$key";
 		}, array_keys($data), $data));
 
-		// WHERE 절 생성
-		$whereClauses = implode(' AND ', array_map(function($where) {
+		// WHERE 절 생성 (다양한 타입 지원)
+		$whereClauses = [];
+		$whereParams = [];
+		$paramIndex = 0;
+
+		foreach ($this->wheres as $where) {
 			$escapedCol = $this->escapeColumnName($where['column']);
-			return "$escapedCol {$where['operator']} :where_{$where['column']}";
-		}, $this->wheres));
+			
+			switch ($where['type']) {
+				case 'basic':
+					$paramName = ":where_param_" . $paramIndex++;
+					$whereClauses[] = "$escapedCol {$where['operator']} $paramName";
+					$whereParams[$paramName] = $where['value'];
+					break;
+
+				case 'in':
+					$placeholders = [];
+					foreach ($where['values'] as $value) {
+						$paramName = ":where_param_" . $paramIndex++;
+						$placeholders[] = $paramName;
+						$whereParams[$paramName] = $value;
+					}
+					$inOperator = isset($where['not']) && $where['not'] ? 'NOT IN' : 'IN';
+					$whereClauses[] = "$escapedCol $inOperator (" . implode(', ', $placeholders) . ")";
+					break;
+
+				case 'between':
+					$paramStart = ":where_param_" . $paramIndex++;
+					$paramEnd = ":where_param_" . $paramIndex++;
+					$whereClauses[] = "$escapedCol BETWEEN $paramStart AND $paramEnd";
+					$whereParams[$paramStart] = $where['values'][0];
+					$whereParams[$paramEnd] = $where['values'][1];
+					break;
+
+				case 'notBetween':
+					$paramStart = ":where_param_" . $paramIndex++;
+					$paramEnd = ":where_param_" . $paramIndex++;
+					$whereClauses[] = "$escapedCol NOT BETWEEN $paramStart AND $paramEnd";
+					$whereParams[$paramStart] = $where['values'][0];
+					$whereParams[$paramEnd] = $where['values'][1];
+					break;
+
+				case 'null':
+					$whereClauses[] = "$escapedCol IS NULL";
+					break;
+
+				case 'notNull':
+					$whereClauses[] = "$escapedCol IS NOT NULL";
+					break;
+
+				case 'raw':
+					$whereClauses[] = $where['sql'];
+					if (isset($where['bindings'])) {
+						foreach ($where['bindings'] as $key => $value) {
+							$whereParams[$key] = $value;
+						}
+					}
+					break;
+
+				default:
+					// 기본 케이스 (하위 호환성)
+					if (isset($where['operator']) && isset($where['value'])) {
+						$paramName = ":where_param_" . $paramIndex++;
+						$whereClauses[] = "$escapedCol {$where['operator']} $paramName";
+						$whereParams[$paramName] = $where['value'];
+					}
+					break;
+			}
+		}
+
+		$whereClause = implode(' AND ', $whereClauses);
 
 		// SQL 쿼리 생성
-		$query = "UPDATE {$this->table} SET $setPart WHERE $whereClauses";
+		$query = "UPDATE {$this->table} SET $setPart WHERE $whereClause";
 		$stmt = $this->db->prepare($query);
 
 		// SET 절의 파라미터 바인딩 (RawExpression은 제외)
@@ -2075,8 +2141,8 @@ class QueryBuilder
 		}
 
 		// WHERE 절의 파라미터 바인딩
-		foreach ($this->wheres as $where) {
-			$stmt->bindValue(":where_{$where['column']}", $where['value']);
+		foreach ($whereParams as $paramName => $value) {
+			$stmt->bindValue($paramName, $value);
 		}
 
 		// 실행

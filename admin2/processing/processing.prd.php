@@ -176,7 +176,7 @@ if( $_a_mode == "prd_reg" ){
 	// 가격 필드 초기화
 	$_cd_sale_price = 0;
 	$_cd_cost_price = 0;
-	$_cd_cost_price_info = '';
+	$_cd_cost_price_info = json_encode([], JSON_UNESCAPED_UNICODE);
 	$_cd_cost_price_memo = '';
 
 	// 기타 필드 초기화 (DB NOT NULL 필드들)
@@ -713,7 +713,11 @@ if( $_a_mode == "prd_reg" ){
 	$_cd_price_history = $data['cd_price_history'] ?? '';
 	$_cd_sale_price = $data['cd_sale_price'] ?? 0;
 	$_cd_cost_price = $data['cd_cost_price'] ?? 0;
-	$_cd_cost_price_info = $data['cd_cost_price_info'] ?? '';
+	$_cd_cost_price_info = $data['cd_cost_price_info'] ?? json_encode([], JSON_UNESCAPED_UNICODE);
+	// 빈 문자열이면 빈 JSON 배열로 변환
+	if (empty($_cd_cost_price_info)) {
+		$_cd_cost_price_info = json_encode([], JSON_UNESCAPED_UNICODE);
+	}
 	$_cd_cost_price_memo = $data['cd_cost_price_memo'] ?? '';
 	$_cd_tier = $data['cd_tier'] ?? '';
 	$_cd_maching_code = $data['CD_MACHING_CODE'] ?? '';

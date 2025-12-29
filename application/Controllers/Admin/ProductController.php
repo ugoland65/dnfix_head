@@ -43,13 +43,27 @@ class ProductController extends BaseClass
             $sort_mode = $requestData['sort_mode'] ?? 'stock';
             $rack_code = $requestData['rack_code'] ?? null;
 
+            $in_stock = $requestData['in_stock'] ?? 'have';
+            $s_brand = $requestData['s_brand'] ?? null;
+            $s_prd_kind = $requestData['s_prd_kind'] ?? null;
+            $s_importing_country = $requestData['s_importing_country'] ?? null;
+            $s_margin_group = $requestData['s_margin_group'] ?? null;
+            $search_value = $requestData['search_value'] ?? null;
+            $rack_code = $requestData['rack_code'] ?? null;
+
             $payload = [
                 'paging' => true,
                 'page' => $page,
                 'per_page' => 100,
                 'show_mode' => 'product_stock',
+                'in_stock' => $in_stock,
                 'sort_mode' => $sort_mode,
-                'rack_code' => $rack_code
+                'rack_code' => $rack_code,
+                's_brand' => $s_brand,
+                's_prd_kind' => $s_prd_kind,
+                's_importing_country' => $s_importing_country,
+                's_margin_group' => $s_margin_group,
+                'search_value' => $search_value,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -73,6 +87,13 @@ class ProductController extends BaseClass
             $importingCountrySelect = $config_product['importing_country'] ?? [];
 
             $data = [
+                's_brand' => $s_brand,
+                's_prd_kind' => $s_prd_kind,
+                's_importing_country' => $s_importing_country,
+                's_margin_group' => $s_margin_group,
+                'rack_code' => $rack_code,
+                'in_stock' => $in_stock,
+                'search_value' => $search_value,
                 'productList' => $productList['data'],
                 'brandForSelect' => $brandForSelect,
                 'prdKindSelect' => $prdKindSelect,

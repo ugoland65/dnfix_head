@@ -842,7 +842,7 @@ var orderSheetDetailPrd = function() {
 				dataType: "json",
 				success: function(res){
 					if (res.success == true ){
-						location.href='/ad/order/order_sheet/'+ oo_idx +'/'+ oop_idx;
+						location.href='/ad/order/order_sheet/'+ oo_idx +'?oop_idx='+ oop_idx;
 					}else{
 						showAlert("Error", res.msg, "alert2" );
 						return false;

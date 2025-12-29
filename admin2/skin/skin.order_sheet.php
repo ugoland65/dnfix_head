@@ -47,8 +47,7 @@ if( !empty($_idx) ){
 
 }
 
-$_oop_idx = "";
-if( $_get2 ){ $_oop_idx = $_get2; }
+$_oop_idx = $_GET['oop_idx'] ?? $_POST['oop_idx'] ?? "";
 
 ?>
 <style type="text/css">

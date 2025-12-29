@@ -25,7 +25,19 @@ class RequestHandler
             return $this->filterArrayRecursive($this->inputData, $filter);
         }
 
-        return isset($this->inputData[$key]) ? filter_var($this->inputData[$key], $filter, $options) : null;
+        if (!isset($this->inputData[$key])) {
+            return null;
+        }
+
+        $value = $this->inputData[$key];
+
+        // 배열인 경우 재귀적으로 필터링
+        if (is_array($value)) {
+            return $this->filterArrayRecursive($value, $filter);
+        }
+
+        // 스칼라 값인 경우 filter_var 사용
+        return filter_var($value, $filter, $options);
     }
 
     // 모든 입력값 반환 (GET, POST)

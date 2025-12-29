@@ -12,13 +12,20 @@ class AdminModel extends BaseModel
 	protected $fillable = [
         'ad_id',
         'ad_pw',
+        'ad_employee_id', // 사번
+        'ad_role', // 직책
+        'ad_title', // 직함
         'ad_nick',
         'ad_name',
         'ad_name_en',
         'ad_level',
+        'ad_department', // 부서
+        'ad_work_status', // 재직상태
+        'ad_job_type', // 고용형태
         'ad_birth',
         'ad_joining',
         'ad_data',
+        'ad_google', // 구글 아이디
         'ad_image',
         'ad_line_token',
         'ad_telegram_token',

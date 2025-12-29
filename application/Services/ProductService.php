@@ -98,11 +98,90 @@ class ProductService extends BaseClass
         $show_mode = $criteria['show_mode'] ?? '';
         $rack_code = $criteria['rack_code'] ?? null;
 
+        $in_stock = $criteria['in_stock'] ?? 'have';
+        $s_brand = $criteria['s_brand'] ?? null;
+        $s_prd_kind = $criteria['s_prd_kind'] ?? null;
+        $s_importing_country = $criteria['s_importing_country'] ?? null;
+        $s_margin_group = $criteria['s_margin_group'] ?? null;
+        $search_value = $criteria['search_value'] ?? null;
+
+        $since = $criteria['since'] ?? null;
+
 
         // 기본 쿼리
         $query = ProductModel::query()
             ->from('COMPARISON_DB as A');
 
+        // 브랜드 검색
+        if( $s_brand ){
+            $query->where('A.CD_BRAND_IDX', $s_brand)
+                ->orWhere('A.CD_BRAND2_IDX', $s_brand);
+        }
+
+        if ($since) {
+            $query->where('D.updated_at', '>=', $since);
+        }
+
+        // 검색어 처리
+        if( $search_value ){
+            $query->where(function($query) use ($search_value) {
+                $query->whereRaw("INSTR(LOWER(A.CD_NAME), LOWER(?))", [$search_value])
+                    ->orWhereRaw("INSTR(replace(A.CD_NAME,' ',''), LOWER(?))", [$search_value])
+                    ->orWhereRaw("INSTR(LOWER(A.CD_NAME_OG), LOWER(?))", [$search_value])
+                    ->orWhereRaw("INSTR(LOWER(A.CD_SEARCH_TERM), LOWER(?))", [$search_value])
+                    ->orWhereRaw("INSTR(A.cd_code_fn, ?)", [$search_value]);
+            });
+        }
+
+        // 상품 종류 검색
+        if ($s_prd_kind) {
+            $query->where('A.CD_KIND_CODE', $s_prd_kind);
+        }
+
+        // 수입국 검색
+        if ($s_importing_country) {
+            $query->where('A.cd_national', $s_importing_country);
+        }
+
+        // 마진율 그룹 검색 (A~I)
+        if (!empty($s_margin_group)) {
+            // 마진율(%) 계산식 (PHP 로직과 동일)
+            $marginPerSql = "
+                (
+                    CASE
+                        WHEN A.cd_sale_price > 0 AND A.cd_cost_price > 0 THEN
+                            CASE
+                                WHEN A.cd_sale_price < 29999 THEN
+                                    ((A.cd_sale_price - A.cd_cost_price) / A.cd_sale_price) * 100
+                                ELSE
+                                    ((A.cd_sale_price - (A.cd_cost_price + 2500)) / A.cd_sale_price) * 100
+                            END
+                        ELSE 0
+                    END
+                )
+            ";
+
+            // 마진 등급 CASE (PHP 로직과 동일)
+            $marginGradeSql = "
+                (
+                    CASE
+                        WHEN {$marginPerSql} > 39 THEN 'A'
+                        WHEN {$marginPerSql} >= 35 THEN 'B'
+                        WHEN {$marginPerSql} >= 30 THEN 'C'
+                        WHEN {$marginPerSql} >= 25 THEN 'D'
+                        WHEN {$marginPerSql} >= 20 THEN 'E'
+                        WHEN {$marginPerSql} >= 15 THEN 'F'
+                        WHEN {$marginPerSql} >= 10 THEN 'G'
+                        WHEN {$marginPerSql} >= 5  THEN 'H'
+                        WHEN {$marginPerSql} > 0   THEN 'I'
+                        ELSE ''
+                    END
+                )
+            ";
+
+            $query->whereRaw("{$marginGradeSql} = ?", [$s_margin_group]);
+        }
+        
         // prd_stock에 연결된 상품만 (재고 관련 모드)
         if ($show_mode === 'product_stock') {
 
@@ -115,7 +194,14 @@ class ProductService extends BaseClass
                 $query->where('D.ps_rack_code', $rack_code);
             }
 
+            if( $in_stock == 'have' ){
+                $query->where('D.ps_stock', '>', 0);
+            }elseif( $in_stock == 'no' ){
+                $query->where('D.ps_stock', 0);
+            }
+
             $sort_mode = $criteria['sort_mode'] ?? 'stock';
+
         }else{
             $sort_mode = $criteria['sort_mode'] ?? 'idx';
         }
@@ -135,68 +221,14 @@ class ProductService extends BaseClass
         $config_product = config('admin.product');
         $prd_kind_name = $config_product['prd_kind_name'] ?? [];
 
+        $_national_text = [];
+        $_national_text['jp'] = "일본";
+        $_national_text['cn'] = "중국";
+        $_national_text['kr'] = "한국";
+
         // 상품 종류 추가
         foreach ($products as &$product) {
-
-            $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
-            if (!is_array($product['cd_size_fn'])) {
-                $product['cd_size_fn'] = [];
-            }
-
-            // 패키지 사이즈 부피구하기 (명시적 타입 캐스팅)
-            $_cd_size_w = (float)($product['cd_size_fn']['package']['W'] ?? 0);
-            $_cd_size_h = (float)($product['cd_size_fn']['package']['H'] ?? 0);
-            $_cd_size_d = (float)($product['cd_size_fn']['package']['D'] ?? 0);
-            $_cd_size_volume = $_cd_size_w * $_cd_size_h * $_cd_size_d;
-            
-            $product['package_volume'] = $_cd_size_volume;  // cm³ (세제곱센티미터)
-            $product['package_volume_m3'] = $_cd_size_volume / 1000000;  // m³ (세제곱미터)
-
-            $product['package_volume_level'] = $this->getVolumeLevel($_cd_size_volume) ?? 0;
-
-            $product['cd_weight_fn'] = json_decode($product['cd_weight_fn'] ?? '{}', true);
-            if (!is_array($product['cd_weight_fn'])) {
-                $product['cd_weight_fn'] = [];
-            }
-
-            $_cd_weight_1 = $product['cd_weight_fn']['1'] ?? null;
-            $_cd_weight_2 = $product['cd_weight_fn']['2'] ?? null;
-            $_cd_weight_3 = $product['cd_weight_fn']['3'] ?? null;
-
-            // 명시적으로 숫자로 캐스팅
-            $_cd_weight_2 = !empty($_cd_weight_2) ? (float)$_cd_weight_2 : 0;
-            $_cd_weight_3 = !empty($_cd_weight_3) ? (float)$_cd_weight_3 : 0;
-
-            $_weight = "";
-            if( !$_cd_weight_2 && !$_cd_weight_3 ){
-                $_weight = "";
-            }elseif( $_cd_weight_3 ){
-                $_weight = $_cd_weight_3;
-            }elseif( $_cd_weight_2 && !$_cd_weight_3 ){
-                $_weight = $_cd_weight_2;
-            }
-
-            $product['weight'] = $_weight;
-
-            $product['cd_code_fn'] = json_decode($product['cd_code_fn'] ?? '{}', true);
-            if (!is_array($product['cd_code_fn'])) {
-                $product['cd_code_fn'] = [];
-            }
-
-            $product['ps_sale_log'] = json_decode($product['ps_sale_log'] ?? '[]', true);
-            if (!is_array($product['ps_sale_log'])) {
-                $product['ps_sale_log'] = [];
-            }
-
-            $product['last_sale'] = [
-                'sale_date' => $product['ps_sale_date'] ?? '',
-                'sale_count' => count($product['ps_sale_log']) ?? 0,
-                'sale_subject' => $product['ps_sale_log'][0]['pg_subject'] ?? '',
-                'sale_per' => $product['ps_sale_log'][0]['sale_per'] ?? 0,
-            ];
-
-            $product['prd_kind_name'] = $prd_kind_name[$product['CD_KIND_CODE']] ?? '미지정';
-
+            $product = $this->processProductData($product, $prd_kind_name, $_national_text);
         }
         unset($product); // 참조 변수 해제
 
@@ -207,6 +239,110 @@ class ProductService extends BaseClass
         }
 
         return $result;
+
+    }
+
+
+    /**
+     * 개별 상품 데이터 처리
+     */
+    private function processProductData($product, $prdKindName, $nationalText)
+    {
+        $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
+        if (!is_array($product['cd_size_fn'])) {
+            $product['cd_size_fn'] = [];
+        }
+
+        // 패키지 사이즈 부피구하기 (명시적 타입 캐스팅)
+        $_cd_size_w = (float)($product['cd_size_fn']['package']['W'] ?? 0);
+        $_cd_size_h = (float)($product['cd_size_fn']['package']['H'] ?? 0);
+        $_cd_size_d = (float)($product['cd_size_fn']['package']['D'] ?? 0);
+        $_cd_size_volume = $_cd_size_w * $_cd_size_h * $_cd_size_d;
+        
+        $product['package_size'] = $_cd_size_w . ' x ' . $_cd_size_h . ' x ' . $_cd_size_d;
+        $product['package_volume'] = $_cd_size_volume;
+        $product['package_volume_m3'] = $_cd_size_volume / 1000000;
+        $product['package_volume_level'] = $this->getVolumeLevel($_cd_size_volume) ?? 0;
+
+        $product['cd_weight_fn'] = json_decode($product['cd_weight_fn'] ?? '{}', true);
+        if (!is_array($product['cd_weight_fn'])) {
+            $product['cd_weight_fn'] = [];
+        }
+
+        $_cd_weight_1 = $product['cd_weight_fn']['1'] ?? null;
+        $_cd_weight_2 = $product['cd_weight_fn']['2'] ?? null;
+        $_cd_weight_3 = $product['cd_weight_fn']['3'] ?? null;
+
+        $_cd_weight_2 = !empty($_cd_weight_2) ? (float)$_cd_weight_2 : 0;
+        $_cd_weight_3 = !empty($_cd_weight_3) ? (float)$_cd_weight_3 : 0;
+
+        $_weight = "";
+        if (!$_cd_weight_2 && !$_cd_weight_3) {
+            $_weight = "";
+        } elseif ($_cd_weight_3) {
+            $_weight = $_cd_weight_3;
+        } elseif ($_cd_weight_2 && !$_cd_weight_3) {
+            $_weight = $_cd_weight_2;
+        }
+
+        $product['weight'] = $_weight;
+
+        $product['cd_code_fn'] = json_decode($product['cd_code_fn'] ?? '{}', true);
+        if (!is_array($product['cd_code_fn'])) {
+            $product['cd_code_fn'] = [];
+        }
+
+        $product['barcode'] = $product['cd_code_fn']['jan'] ?? '';
+
+        $product['ps_sale_log'] = json_decode($product['ps_sale_log'] ?? '[]', true);
+        if (!is_array($product['ps_sale_log'])) {
+            $product['ps_sale_log'] = [];
+        }
+
+        $product['last_sale'] = [
+            'sale_date' => $product['ps_sale_date'] ?? '',
+            'sale_count' => count($product['ps_sale_log']) ?? 0,
+            'sale_subject' => $product['ps_sale_log'][0]['pg_subject'] ?? '',
+            'sale_per' => $product['ps_sale_log'][0]['sale_per'] ?? 0,
+        ];
+
+        $product['prd_kind_name'] = $prdKindName[$product['CD_KIND_CODE']] ?? '미지정';
+        $product['national_text'] = $nationalText[$product['cd_national']] ?? '';
+
+        $product['margin_per'] = 0;
+        $product['margin_grade'] = '';
+
+        // 마진율 계산
+        if ($product['cd_sale_price'] > 0 && $product['cd_cost_price'] > 0) {
+            if ($product['cd_sale_price'] < 29999) {
+                $product['margin_per'] = round(($product['cd_sale_price'] - $product['cd_cost_price']) / $product['cd_sale_price'] * 100, 2);
+            } else {
+                $product['margin_per'] = round(($product['cd_sale_price'] - ($product['cd_cost_price'] + 2500)) / $product['cd_sale_price'] * 100, 2);
+            }
+        }
+
+        // 마진율 그룹
+        if ($product['margin_per'] > 39) {
+            $product['margin_grade'] = 'A';
+        } elseif ($product['margin_per'] >= 35) {
+            $product['margin_grade'] = 'B';
+        } elseif ($product['margin_per'] >= 30) {
+            $product['margin_grade'] = 'C';
+        } elseif ($product['margin_per'] >= 25) {
+            $product['margin_grade'] = 'D';
+        } elseif ($product['margin_per'] >= 20) {
+            $product['margin_grade'] = 'E';
+        } elseif ($product['margin_per'] >= 15) {
+            $product['margin_grade'] = 'F';
+        } elseif ($product['margin_per'] >= 10) {
+            $product['margin_grade'] = 'G';
+        } elseif ($product['margin_per'] >= 5) {
+            $product['margin_grade'] = 'H';
+        } elseif ($product['margin_per'] > 0) {
+            $product['margin_grade'] = 'I';
+        }
+
+        return $product;
 
     }
 

@@ -6,6 +6,7 @@ use App\Core\Router;
 use App\Controllers\Admin\StaffController;
 use App\Controllers\Admin\RackController;
 use App\Controllers\Admin\ProductController;
+use App\Controllers\Admin\ProductProcController;
 use App\Controllers\Admin\SalesController;
 
 try {
@@ -25,6 +26,9 @@ try {
     $router->post('/stock/delete_rack', RackController::class, 'deleteRack'); //랙삭제
     $router->get('/stock/rack_change', RackController::class, 'rackChange'); //랙그룹변경 페이지
     $router->post('/stock/save_rack_change', RackController::class, 'saveRackChange'); //랙그룹변경 저장
+
+    // 상품 처리
+    $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
 
     // 라우트 처리
     $router->dispatch();

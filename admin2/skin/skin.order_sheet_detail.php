@@ -1,4 +1,5 @@
-<?
+<?php
+
 	// 변수 초기화
 	$form_view = $_GET['form_view'] ?? $form_view ?? "show";
 	$_order_sec_data = [];
@@ -169,6 +170,7 @@ var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
 		</div>
 	</ul>
 	<ul class="right">
+		///<?=$_open_oop_idx?>
 		<div id="order_sheet_detail_prd_list" class="overflow-y">
 		</div>
 	</ul>
@@ -454,7 +456,8 @@ var orderSheetDetail = function() {
 }();
 
 <? if( $_open_oop_idx ){ ?>
-	orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_open_oop_idx?>')
+	orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_open_oop_idx?>');
+
 <? } ?>
 
 <? if( ($oo_data['oo_form_idx'] ?? 0) == 0 ){ ?>

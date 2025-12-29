@@ -8,6 +8,21 @@ error_reporting(E_ALL);
 @ini_set('max_input_vars', 100000);         // POST/GET 변수 최대 개수 (기본 1000 → 100000)
 @ini_set('max_execution_time', 300);        // 스크립트 최대 실행 시간 (기본 30초 → 300초)
 
+// 숫자 또는 나눗셈 표현식을 평가하는 헬퍼 함수
+function evaluate_numeric($value) {
+	if (is_numeric($value)) {
+		return (float)$value;
+	}
+	// 나눗셈 연산자가 포함된 경우 계산
+	if (is_string($value) && strpos($value, '/') !== false) {
+		$parts = explode('/', $value);
+		if (count($parts) == 2 && is_numeric($parts[0]) && is_numeric($parts[1]) && $parts[1] != 0) {
+			return (float)$parts[0] / (float)$parts[1];
+		}
+	}
+	return 0;
+}
+
 	$_a_mode = $_POST['a_mode'] ?? $_GET['a_mode'] ?? "";
 	$_reg_d = array( "date" => $action_time, "id" => $_sess_id, "name" => $_ad_name, "ip" => $check_ip, "domain" => $check_domain );
 	$response = array('success' => false, 'msg' => '잘못된 요청입니다.');
@@ -368,7 +383,7 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$_idx = $_POST['idx'] ?? "";
 	$_smode = $_POST['smode'] ?? "";
-	$_view_name = $_POST['view_name'] ?? "";
+	$_view_name = $_POST['sname'] ?? "";
 
 	$_uploads_dir = "../data/uploads";
 
@@ -1044,11 +1059,12 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_send_price = $_POST['send_price'] ?? [];
 	$_send_qty = $_POST['send_qty'] ?? [];
 	$_send_memo = $_POST['send_memo'] ?? [];
-	$_item = $_POST['item'] ?? 0;
-	$_total_qty = $_POST['total_qty'] ?? 0;
-	$_total_price = $_POST['total_price'] ?? 0;
-	$_total_weight = $_POST['total_weight'] ?? 0;
-	$_total_cbm = $_POST['total_cbm'] ?? 0;
+
+	$_item = (int)($_POST['item'] ?? 0);
+	$_total_qty = (int)($_POST['total_qty'] ?? 0);
+	$_total_price = evaluate_numeric($_POST['total_price'] ?? 0);
+	$_total_weight = evaluate_numeric($_POST['total_weight'] ?? 0);
+	$_total_cbm = evaluate_numeric($_POST['total_cbm'] ?? 0);
 
 	// 배열 검증
 	if (!is_array($_send_idx)) $_send_idx = [];
@@ -1123,16 +1139,16 @@ if( $_a_mode == "orderSheet_reg" ){
 			
 			$_oo_sum_goods = $_oo_sum_goods + ($_oo_json[$z]['item'] ?? 0); //주문 아이템
 			$_oo_sum_qty = $_oo_sum_qty + ($_oo_json[$z]['qty'] ?? 0); //주문 수량
-			$_oo_sum_weight = $_oo_sum_weight + ($_oo_json[$z]['weight'] ?? 0); //주문 무게
-			$_oo_sum_price = $_oo_sum_price + ($_oo_json[$z]['price'] ?? 0); //주문 금액
-			$_oo_sum_cbm = $_oo_sum_cbm + ($_oo_json[$z]['cbm'] ?? 0); // CBM
+			$_oo_sum_weight = $_oo_sum_weight + evaluate_numeric($_oo_json[$z]['weight'] ?? 0); //주문 무게
+			$_oo_sum_price = $_oo_sum_price + evaluate_numeric($_oo_json[$z]['price'] ?? 0); //주문 금액
+			$_oo_sum_cbm = $_oo_sum_cbm + evaluate_numeric($_oo_json[$z]['cbm'] ?? 0); // CBM
 
 			if( ($_oo_json[$z]['false'] ?? 0) > 0 ){
 				$_oo_sum_goods = $_oo_sum_goods - ($_oo_json[$z]['false'] ?? 0);
 				$_oo_sum_qty = $_oo_sum_qty - ($_oo_json[$z]['false_sum_qty'] ?? 0);
-				$_oo_sum_weight = $_oo_sum_weight - ($_oo_json[$z]['false_sum_weight'] ?? 0);
-				$_oo_sum_price = $_oo_sum_price - ($_oo_json[$z]['false_sum_price'] ?? 0);
-				$_oo_sum_cbm = $_oo_sum_cbm - ($_oo_json[$z]['false_sum_cbm'] ?? 0);
+				$_oo_sum_weight = $_oo_sum_weight - evaluate_numeric($_oo_json[$z]['false_sum_weight'] ?? 0);
+				$_oo_sum_price = $_oo_sum_price - evaluate_numeric($_oo_json[$z]['false_sum_price'] ?? 0);
+				$_oo_sum_cbm = $_oo_sum_cbm - evaluate_numeric($_oo_json[$z]['false_sum_cbm'] ?? 0);
 			}
 
 		}
@@ -1358,9 +1374,9 @@ if( $_a_mode == "orderSheet_reg" ){
 		$_cd_weight_data = [];
 	}
 	
-	$_cd_weight_1 = $_cd_weight_data['1'] ?? 0;
-	$_cd_weight_2 = $_cd_weight_data['2'] ?? 0;
-	$_cd_weight_3 = $_cd_weight_data['3'] ?? 0;
+	$_cd_weight_1 = evaluate_numeric($_cd_weight_data['1'] ?? 0);
+	$_cd_weight_2 = evaluate_numeric($_cd_weight_data['2'] ?? 0);
+	$_cd_weight_3 = evaluate_numeric($_cd_weight_data['3'] ?? 0);
 
 	if( $_cd_weight_3 ){
 		$_weight = $_cd_weight_3;
@@ -1372,8 +1388,8 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$_old_false = $_oo_json[$_bidx_json_key]['false'] ?? 0;
 	$_old_false_sum_qty = $_oo_json[$_bidx_json_key]['false_sum_qty'] ?? 0;
-	$_old_false_sum_price = $_oo_json[$_bidx_json_key]['false_sum_price'] ?? 0;
-	$_old_false_sum_weight = $_oo_json[$_bidx_json_key]['false_sum_weight'] ?? 0;
+	$_old_false_sum_price = evaluate_numeric($_oo_json[$_bidx_json_key]['false_sum_price'] ?? 0);
+	$_old_false_sum_weight = evaluate_numeric($_oo_json[$_bidx_json_key]['false_sum_weight'] ?? 0);
 
 
 
@@ -1391,8 +1407,8 @@ if( $_a_mode == "orderSheet_reg" ){
 
 		$_oo_sum_goods = $oo_data['oo_sum_goods'] - 1;
 		$_oo_sum_qty = $oo_data['oo_sum_qty'] - (int)$_unit_qty;
-		$_oo_sum_weight = $oo_data['oo_sum_weight'] - (double)$_unit_sum_weight;
-		$_oo_sum_price = $oo_data['oo_sum_price'] - (double)$_unit_sum_price;
+		$_oo_sum_weight = evaluate_numeric($oo_data['oo_sum_weight']) - (double)$_unit_sum_weight;
+		$_oo_sum_price = evaluate_numeric($oo_data['oo_sum_price']) - (double)$_unit_sum_price;
 
 
 
@@ -1425,8 +1441,8 @@ if( $_a_mode == "orderSheet_reg" ){
 
 		$_oo_sum_goods = $oo_data['oo_sum_goods'] + 1;
 		$_oo_sum_qty = $oo_data['oo_sum_qty'] + (int)$_unit_qty;
-		$_oo_sum_weight = $oo_data['oo_sum_weight'] + (double)$_unit_sum_weight;
-		$_oo_sum_price = $oo_data['oo_sum_price'] + (double)$_unit_sum_price;
+		$_oo_sum_weight = evaluate_numeric($oo_data['oo_sum_weight']) + (double)$_unit_sum_weight;
+		$_oo_sum_price = evaluate_numeric($oo_data['oo_sum_price']) + (double)$_unit_sum_price;
 
 		if( $_old_false > 0 ){
 			$_oo_json[$_bidx_json_key]['false'] = (int)$_old_false - 1;
