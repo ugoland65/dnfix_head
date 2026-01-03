@@ -447,6 +447,7 @@
             's_importing_country': $("#s_importing_country").val(),
             's_margin_group': $("#s_margin_group").val(),
             'rack_code': $("#rack_code").val(),
+            'in_stock': $("#in_stock").val(),
             'search_value': $("#search_value").val(),
         };
 

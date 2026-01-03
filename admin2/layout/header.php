@@ -1,7 +1,7 @@
 <!doctype html>
 <html lang="ko">
 <head>
-<title>인트라넷</title>
+<title>디엔픽스 IBS - DNFIX Integrated Business System</title>
 
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta http-equiv="content-style-type" content="text/css" />
@@ -306,12 +306,14 @@ $gnb_lang = "ko";
 
 <div id="header">
 	
-	<div id="logo"><a href="<?=_A_PATH_MAIN?>"><img src="/admin2/img/logo.png?v=1234" alt=""></a></div>
+	<div id="logo"><a href="<?=_A_PATH_MAIN?>"><img src="/admin2/img/logo_dnfix_ibs.png" alt=""></a></div>
 	
 	<div id="gnb">
 		<ul>
             <li class="<?=$gnb_lang?> <? if($pageGroup == "1") echo "active"; ?>"><a href="<?=_A_PATH_MAIN?>">DASHBOARD</a></li><!-- 통계/현황표 -->
-            <li class="<?=$gnb_lang?> <? if($_pageGroup == "staff") echo "active"; ?>"><a href="/ad/staff/work_log/공지사항">인사/업무</a></li>
+            <li class="<?=$gnb_lang?> <?php if( $_pageGroup == "staff" || $pageGroup2 == "staff" ) echo "active"; ?>">
+				<a href="/ad/staff/work_log/공지사항">인사/업무</a>
+			</li>
 			
 			<? /*
 			<li class="<?=$gnb_lang?> <? if($pageGroup == "product2") echo "active"; ?>"><a href="/admin2/product2/prd2_stock_excel.php">상품관리 v.2</a></li>
@@ -322,8 +324,65 @@ $gnb_lang = "ko";
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "onadb") echo "active"; ?>"><a href="/ad/onadb/onadb_prd_comment">오나디비</a></li>
             <li class="ko <? if($_pageGroup == "prd") echo "active"; ?>"><a href="#"><a href="/ad/prd/prd_db">상품관리</a></li>    
 			<li class="ko <? if($_pageGroup == "provider") echo "active"; ?>"><a href="#"><a href="/ad/provider/prd_provider">공급사 관리</a></li>   
-            <li class="ko <? if($_pageGroup == "order") echo "active"; ?>"><a href="/ad/order/order_sheet_main">재고/발주</a></li> 
+            <li class="ko <? if($_pageGroup == "order") echo "active"; ?>"><a href="/ad/order/order_sheet_main">재고/발주</a></li>
+
+			<? /*
 			<li class="ko <? if($_pageGroup == "accounting") echo "active"; ?>"><a href="/ad/accounting/payment">회계관리</a></li>
+			*/ ?>
+
+            <li class="have-sub-menu">
+				<i class="fas fa-external-link-alt" style="font-size:0.6em;"></i> 공유문서
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="https://docs.google.com/spreadsheets/d/1k0fVa1n5QrByZ4FHXQuJaYy_EbTxMFIZ8MtaWBvkcU0" target="_blank">
+								<i class="fas fa-external-link-alt" ></i> 일정관리
+							</a>
+						</li>
+						<li>
+							<a href="https://drive.google.com/drive/folders/1BVhbM8wRXf3YRNBRWPd4m2JmT-LWoPZW" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 공유문서
+							</a>
+						</li>
+						<li>
+							<a href="https://docs.google.com/spreadsheets/d/1h-A3grHGYlLXg_HoQ6EEtAY-XgyZShgSGSD7_C-ziXI" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 공유계정정보
+							</a>
+						</li>
+						<li>
+							<a href="https://docs.google.com/spreadsheets/d/1NH0YRjOJviOm8-zAX6syom9YfqlusGly69j7PHeWW4I" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 구매 요청서
+							</a>
+						</li>
+					</ul>
+				</div>
+			</li>
+			</li>
+			<li class="have-sub-menu">
+				<i class="fas fa-external-link-alt" style="font-size:0.6em;"></i> 외부링크
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="http://gdadmin.dnfix202439.godomall.com/base/login.php" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 고도몰 관리자
+							</a>
+						</li>
+						<li>
+							<a href="https://showdang.co.kr" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 쑈당몰 PC
+							</a>
+						</li>
+						<li>
+							<a href="https://m.showdang.co.kr" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 쑈당몰 모바일
+							</a>
+						</li>
+					</ul>
+				</div>
+
+
+			
+			</li>
 		</ul>
 	</div>
 

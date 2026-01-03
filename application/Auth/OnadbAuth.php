@@ -9,6 +9,7 @@ class OnadbAuth extends BaseAuth
     // 세션 키 
     protected static $sessionKey = 'onadb';
 
+
     /**
      * 로그인 세션 저장 
      * 
@@ -19,6 +20,7 @@ class OnadbAuth extends BaseAuth
         self::startSession();
         $_SESSION[self::$sessionKey] = $user;
     }
+
 
     /**
      * 세션 시작
@@ -69,6 +71,7 @@ class OnadbAuth extends BaseAuth
         }
     }
 
+
     /**
      * 유저 정보 제거 (로그아웃)
      * 
@@ -79,6 +82,7 @@ class OnadbAuth extends BaseAuth
         self::startSession();
         unset($_SESSION[self::$sessionKey]);
     }
+
 
     /**
      * 현재 로그인된 유저 정보 가져오기
@@ -109,6 +113,7 @@ class OnadbAuth extends BaseAuth
         }
     }
 
+
     /**
      * 유저가 로그인 상태인지 확인
      * 
@@ -120,6 +125,7 @@ class OnadbAuth extends BaseAuth
         return isset($_SESSION[self::$sessionKey]);
     }
 
+    
     /**
      * 세션 데이터 업데이트 (Laravel 스타일)
      * 

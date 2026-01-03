@@ -19,6 +19,7 @@ class QueryBuilder
     private $withCounts = [];
     private $model = null; // 관계 조회를 위한 모델 인스턴스
     private $eagerLoad = []; // Eager Loading 관계 목록
+    private $results = null; // 쿼리 결과 저장용
 
     /** 
 	 * 생성자: PDO 주입 
@@ -46,6 +47,7 @@ class QueryBuilder
         $this->withCounts = [];
         $this->model = null;
         $this->eagerLoad = [];
+        $this->results = null;
         return $this;
     }
 
@@ -147,20 +149,38 @@ class QueryBuilder
             
             // 관계 타입 확인
             $isHasOne = $relationInstance instanceof \App\Core\HasOneRelation;
+            $isBelongsTo = $relationInstance instanceof \App\Core\BelongsToRelation;
             
-            // 관계 정보 추출
+            // 관계 정보 추출 (관계 타입에 따라 다른 속성 사용)
             $reflection = new \ReflectionClass($relationInstance);
-            $relatedInstanceProp = $reflection->getProperty('relatedInstance');
-            $relatedInstanceProp->setAccessible(true);
-            $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+            
+            if ($isBelongsTo) {
+                // BelongsTo는 parentInstance, ownerKey 사용
+                $relatedInstanceProp = $reflection->getProperty('parentInstance');
+                $relatedInstanceProp->setAccessible(true);
+                $relatedModel = $relatedInstanceProp->getValue($relationInstance);
 
-            $foreignKeyProp = $reflection->getProperty('foreignKey');
-            $foreignKeyProp->setAccessible(true);
-            $foreignKey = $foreignKeyProp->getValue($relationInstance);
+                $foreignKeyProp = $reflection->getProperty('foreignKey');
+                $foreignKeyProp->setAccessible(true);
+                $foreignKey = $foreignKeyProp->getValue($relationInstance);
 
-            $localKeyProp = $reflection->getProperty('localKey');
-            $localKeyProp->setAccessible(true);
-            $localKey = $localKeyProp->getValue($relationInstance);
+                $localKeyProp = $reflection->getProperty('ownerKey');
+                $localKeyProp->setAccessible(true);
+                $localKey = $localKeyProp->getValue($relationInstance);
+            } else {
+                // HasOne, HasMany는 relatedInstance, localKey 사용
+                $relatedInstanceProp = $reflection->getProperty('relatedInstance');
+                $relatedInstanceProp->setAccessible(true);
+                $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+                $foreignKeyProp = $reflection->getProperty('foreignKey');
+                $foreignKeyProp->setAccessible(true);
+                $foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+                $localKeyProp = $reflection->getProperty('localKey');
+                $localKeyProp->setAccessible(true);
+                $localKey = $localKeyProp->getValue($relationInstance);
+            }
 
             // 부모 키 값 수집
             $parentKeys = [];
@@ -244,20 +264,38 @@ class QueryBuilder
             
             // 관계 타입 확인
             $isHasOne = $relationInstance instanceof \App\Core\HasOneRelation;
+            $isBelongsTo = $relationInstance instanceof \App\Core\BelongsToRelation;
             
-            // 관계 정보 추출
+            // 관계 정보 추출 (관계 타입에 따라 다른 속성 사용)
             $reflection = new \ReflectionClass($relationInstance);
-            $relatedInstanceProp = $reflection->getProperty('relatedInstance');
-            $relatedInstanceProp->setAccessible(true);
-            $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+            
+            if ($isBelongsTo) {
+                // BelongsTo는 parentInstance, ownerKey 사용
+                $relatedInstanceProp = $reflection->getProperty('parentInstance');
+                $relatedInstanceProp->setAccessible(true);
+                $relatedModel = $relatedInstanceProp->getValue($relationInstance);
 
-            $foreignKeyProp = $reflection->getProperty('foreignKey');
-            $foreignKeyProp->setAccessible(true);
-            $foreignKey = $foreignKeyProp->getValue($relationInstance);
+                $foreignKeyProp = $reflection->getProperty('foreignKey');
+                $foreignKeyProp->setAccessible(true);
+                $foreignKey = $foreignKeyProp->getValue($relationInstance);
 
-            $localKeyProp = $reflection->getProperty('localKey');
-            $localKeyProp->setAccessible(true);
-            $localKey = $localKeyProp->getValue($relationInstance);
+                $localKeyProp = $reflection->getProperty('ownerKey');
+                $localKeyProp->setAccessible(true);
+                $localKey = $localKeyProp->getValue($relationInstance);
+            } else {
+                // HasOne, HasMany는 relatedInstance, localKey 사용
+                $relatedInstanceProp = $reflection->getProperty('relatedInstance');
+                $relatedInstanceProp->setAccessible(true);
+                $relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+                $foreignKeyProp = $reflection->getProperty('foreignKey');
+                $foreignKeyProp->setAccessible(true);
+                $foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+                $localKeyProp = $reflection->getProperty('localKey');
+                $localKeyProp->setAccessible(true);
+                $localKey = $localKeyProp->getValue($relationInstance);
+            }
 
             // 부모 키 값 수집
             $parentKeys = [];
@@ -935,17 +973,35 @@ class QueryBuilder
 
 		// 관계 정보 추출 (리플렉션 사용)
 		$reflection = new \ReflectionClass($relationInstance);
-		$relatedInstanceProp = $reflection->getProperty('relatedInstance');
-		$relatedInstanceProp->setAccessible(true);
-		$relatedModel = $relatedInstanceProp->getValue($relationInstance);
+		$isBelongsTo = $relationInstance instanceof \App\Core\BelongsToRelation;
+		
+		if ($isBelongsTo) {
+			// BelongsTo는 parentInstance, ownerKey 사용
+			$relatedInstanceProp = $reflection->getProperty('parentInstance');
+			$relatedInstanceProp->setAccessible(true);
+			$relatedModel = $relatedInstanceProp->getValue($relationInstance);
 
-		$foreignKeyProp = $reflection->getProperty('foreignKey');
-		$foreignKeyProp->setAccessible(true);
-		$foreignKey = $foreignKeyProp->getValue($relationInstance);
+			$foreignKeyProp = $reflection->getProperty('foreignKey');
+			$foreignKeyProp->setAccessible(true);
+			$foreignKey = $foreignKeyProp->getValue($relationInstance);
 
-		$localKeyProp = $reflection->getProperty('localKey');
-		$localKeyProp->setAccessible(true);
-		$localKey = $localKeyProp->getValue($relationInstance);
+			$localKeyProp = $reflection->getProperty('ownerKey');
+			$localKeyProp->setAccessible(true);
+			$localKey = $localKeyProp->getValue($relationInstance);
+		} else {
+			// HasOne, HasMany는 relatedInstance, localKey 사용
+			$relatedInstanceProp = $reflection->getProperty('relatedInstance');
+			$relatedInstanceProp->setAccessible(true);
+			$relatedModel = $relatedInstanceProp->getValue($relationInstance);
+
+			$foreignKeyProp = $reflection->getProperty('foreignKey');
+			$foreignKeyProp->setAccessible(true);
+			$foreignKey = $foreignKeyProp->getValue($relationInstance);
+
+			$localKeyProp = $reflection->getProperty('localKey');
+			$localKeyProp->setAccessible(true);
+			$localKey = $localKeyProp->getValue($relationInstance);
+		}
 
 		// 관련 테이블명 가져오기
 		$relatedTable = $relatedModel->getTable();

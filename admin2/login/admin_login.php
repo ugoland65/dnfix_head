@@ -6,7 +6,7 @@ include "../lib/inc_common.php";
 ?>
 <!doctype html>
 <head>
-	<title><?=_A_GLOB_BROWSER_TITEL?></title>
+	<title>디엔픽스 IBS - DNFIX Integrated Business System</title>
 
 	<meta http-equiv="Content-Type" content="text/html; charset=UTF-8">
 	<meta http-equiv="content-style-type" content="text/css" />

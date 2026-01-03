@@ -8,7 +8,8 @@ use App\Classes\Database;
 /**
  * 인증 서비스
  */
-class AuthService {
+class AuthService 
+{
 
     /**
      * 구버전 비밀번호 암호화 결과 반환

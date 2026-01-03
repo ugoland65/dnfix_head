@@ -14,6 +14,10 @@ try {
     $router = new Router('/admin');  // 라우터 인스턴스 생성
 
     $router->get('/staff/list', StaffController::class, 'staffList'); //직원목록
+    $router->get('/staff/reg', StaffController::class, 'staffReg'); //신규 직원등록
+    $router->get('/staff/info', StaffController::class, 'staffInfo'); //직원 상세
+    $router->post('/staff/create', StaffController::class, 'createStaff'); //직원 신규생성
+    $router->post('/staff/update', StaffController::class, 'updateStaff'); //직원 수정
 
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트

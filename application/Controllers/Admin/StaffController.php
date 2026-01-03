@@ -2,6 +2,8 @@
 
 namespace App\Controllers\Admin;
 
+use Exception;
+use Throwable;
 use App\Core\BaseClass;
 use App\Classes\Request;
 use App\Services\AdminServices;
@@ -52,4 +54,99 @@ class StaffController extends BaseClass
 		}
 
 	}
+
+
+	/**
+	 * 신규 직원등록
+	 * 
+	 * @return view
+	 */
+	public function staffReg(Request $request) 
+	{
+		return view('admin.staff.staff_info');
+	}
+
+
+	/**
+	 * 직원 상세 조회
+	 * 
+	 * @return view
+	 */
+	public function staffInfo(Request $request) 
+	{
+
+		$requestData = $request->all();
+		$idx = $requestData['idx'] ?? null;
+
+		$adminServices = new AdminServices();
+		$payload = [
+			'idx' => $idx,
+		];
+		$admin = $adminServices->getAdmin($payload);
+
+		$data = [
+			'mode' => 'view',
+			'admin' => $admin,
+		];
+
+		return view('admin.staff.staff_info', $data);
+	}
+
+
+	/**
+	 * 직원 저장
+	 * 
+	 * @return json
+	 */
+	public function createStaff(Request $request) 
+	{
+		try{
+
+			$requestData = $request->all();
+
+			$adminServices = new AdminServices();
+			$admin = $adminServices->createAdmin($requestData);
+
+			return response()->json([
+				'success' => true,
+				'message' => '직원 생성 완료',
+			]);
+
+		} catch (Throwable $e) {
+			return response()->json([
+				'success' => false,
+				'message' => $e->getMessage(),
+			], 400);
+		}
+	}
+
+
+	/**
+	 * 직원 수정
+	 * 
+	 * @return json
+	 */
+	public function updateStaff(Request $request) 
+	{
+
+		try{
+
+			$requestData = $request->all();
+
+			$adminServices = new AdminServices();
+			$admin = $adminServices->updateAdmin($requestData);
+			
+			return response()->json([
+				'success' => true,
+				'message' => '직원 수정 완료',
+			]);
+
+		} catch (Throwable $e) {
+			return response()->json([
+				'success' => false,
+				'message' => $e->getMessage(),
+			], 400);
+		}
+	}
+
 }

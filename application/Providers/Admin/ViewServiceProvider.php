@@ -3,6 +3,7 @@
 namespace App\Providers\Admin;
 
 use App\Core\View;
+use App\Models\AdminModel;
 
 /**
  * Admin View Service Provider
@@ -33,7 +34,20 @@ class ViewServiceProvider
             session_start();
         }
         
+        $auth = [];
+
+        if( !empty($_SESSION['sess_idx']) ){
+            $admin = AdminModel::find($_SESSION['sess_idx']);
+            if( $admin ){
+                $auth['ad_id'] = $admin->ad_id;
+                $auth['ad_name'] = $admin->ad_name;
+                $auth['ad_nick'] = $admin->ad_nick;
+                $auth['ad_level'] = $admin->ad_level;
+            }
+        }
+
         $view->with([
+            'auth' => $auth,
             '_sess_id' => $_SESSION['sess_id'] ?? null,
             '_ad_name' => $_SESSION['ad_name'] ?? '',
             '_ad_nick' => $_SESSION['ad_nick'] ?? '',

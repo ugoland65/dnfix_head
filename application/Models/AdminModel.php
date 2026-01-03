@@ -30,8 +30,8 @@ class AdminModel extends BaseModel
         'ad_line_token',
         'ad_telegram_token',
 		'active',
-        'AD_REG_DATE',
-        'AD_UP_DATE',
+        'AD_REG_DATE', // 등록일
+        'AD_UP_DATE', // 수정일
     ];
 
 }
