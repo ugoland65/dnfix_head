@@ -53,10 +53,11 @@
                     if( !empty($admin['idx']) AND $auth['ad_level'] < 100){ 
                 ?>
                 <?=$admin['ad_name'] ?? '이름 미입력'?>
+                <input type='hidden' name='ad_name'  value="<?=$admin['ad_name'] ?? ''?>">
                 <?php 
                     } else { 
                 ?>
-				<input type='text' name='ad_name'  value="<?=$admin['ad_name' ?? '']?>" autocomplete="off" >
+				<input type='text' name='ad_name'  value="<?=$admin['ad_name'] ?? ''?>" autocomplete="off" >
                 <?php } ?>
 			</td>
 		</tr>
@@ -75,6 +76,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_work_status'] ?? '재직상태 미입력'?>
+                    <input type='hidden' name='ad_work_status'  value="<?=$admin['ad_work_status'] ?? ''?>">
                 <?php } ?>
             </td>
         </tr>
@@ -90,6 +92,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_role'] ?? '직책 미입력'?>
+                    <input type='hidden' name='ad_role'  value="<?=$admin['ad_role'] ?? ''?>">
                 <?php } ?>
             </td>
 			<th>직함</th>
@@ -102,6 +105,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_title'] ?? '직함 미입력'?>
+                    <input type='hidden' name='ad_title'  value="<?=$admin['ad_title'] ?? ''?>">
                 <?php } ?>
             </td>
         </tr>
@@ -117,6 +121,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_department'] ?? '부서 미입력'?>
+                    <input type='hidden' name='ad_department'  value="<?=$admin['ad_department'] ?? ''?>">
                 <?php } ?>
             </td>
 			<th>사번</th>
@@ -129,6 +134,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_employee_id'] ?? '사번 미입력'?>
+                    <input type='hidden' name='ad_employee_id'  value="<?=$admin['ad_employee_id'] ?? ''?>">
                 <?php } ?>
             </td>
         </tr>
@@ -148,6 +154,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_job_type'] ?? '고용형태 미입력'?>
+                    <input type='hidden' name='ad_job_type'  value="<?=$admin['ad_job_type'] ?? ''?>">
                 <?php } ?>
             </td>
         </tr>
@@ -163,6 +170,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_joining'] ?? '입사일 미입력'?>
+                    <input type='hidden' name='ad_joining'  value="<?=$admin['ad_joining'] ?? ''?>">
                 <?php } ?>
 			</td>
 		</tr>
@@ -244,6 +252,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_telegram_token'] ?? '텔레그램 토큰 미입력'?>
+                    <input type='hidden' name='ad_telegram_token'  value="<?=$admin['ad_telegram_token'] ?? ''?>">
                 <?php } ?>
 			</td>
 		</tr>
@@ -258,6 +267,7 @@
                     } else { 
                 ?>
                     <?=$admin['ad_line_token'] ?? '라인 토큰 미입력'?>
+                    <input type='hidden' name='ad_line_token'  value="<?=$admin['ad_line_token'] ?? ''?>">
                 <?php } ?>
 			</td>
 		</tr>

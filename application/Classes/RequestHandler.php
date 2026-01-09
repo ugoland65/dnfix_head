@@ -88,6 +88,15 @@ class RequestHandler
         return $_FILES[$key] ?? null;
     }
 
+    /**
+     * 업로드된 모든 파일 반환 (Laravel의 allFiles 유사)
+     * 중첩된 다중파일도 PHP $_FILES 형태를 재구성하여 반환
+     */
+    public function allFiles()
+    {
+        return $this->normalizeFiles($_FILES);
+    }
+
     public function hasFile($key)
     {
         return isset($_FILES[$key]) && $_FILES[$key]['error'] === UPLOAD_ERR_OK;
@@ -160,5 +169,54 @@ class RequestHandler
             session_start();
         }
 		*/
+    }
+
+    /**
+     * $_FILES 구조를 재귀적으로 Laravel과 유사한 형태로 정규화
+     * @param array $files
+     * @return array
+     */
+    private function normalizeFiles(array $files)
+    {
+        $normalized = [];
+
+        foreach ($files as $key => $file) {
+            if (!is_array($file) || !isset($file['name'])) {
+                continue;
+            }
+            $normalized[$key] = $this->normalizeFileItem($file);
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * 단일/다중 파일 항목을 재귀적으로 정규화
+     * @param array $file
+     * @return array
+     */
+    private function normalizeFileItem(array $file)
+    {
+        if (is_array($file['name'])) {
+            $items = [];
+            foreach ($file['name'] as $idx => $name) {
+                $items[$idx] = $this->normalizeFileItem([
+                    'name'     => $name,
+                    'type'     => $file['type'][$idx] ?? null,
+                    'tmp_name' => $file['tmp_name'][$idx] ?? null,
+                    'error'    => $file['error'][$idx] ?? UPLOAD_ERR_NO_FILE,
+                    'size'     => $file['size'][$idx] ?? 0,
+                ]);
+            }
+            return $items;
+        }
+
+        return [
+            'name'     => $file['name'],
+            'type'     => $file['type'] ?? null,
+            'tmp_name' => $file['tmp_name'] ?? null,
+            'error'    => $file['error'] ?? UPLOAD_ERR_NO_FILE,
+            'size'     => $file['size'] ?? 0,
+        ];
     }
 }

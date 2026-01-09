@@ -47,12 +47,20 @@ include ($docRoot."/admin2/layout/header_popup.php");
         <ul class="prd-stock-code m-t-10"><b><?=$prd_data['code'] ?? ''?></b></ul>
 
         <?php
+        /*
             if( !empty($prd_data['godo_is_option']) ){
         ?>
         <ul class="prd-option m-t-10">옵션있음</ul>
         <?php
             }
+        */
         ?>
+        <ul class="m-t-10"><?=$prd_data['status'] ?? ''?></ul>
+        <?php
+            if( $prd_data['sale_price'] > 0 ){
+        ?>
+        <ul class="prd-sale-price"><b><?=number_format($prd_data['sale_price'])?></b></ul>
+        <?php } ?>
         <ul class="prd-memo m-t-10"><?=$prd_data['memo'] ?? ''?></ul>
     </div>
 
@@ -126,7 +134,7 @@ const prdProviderInfo = (function(){
         procSave: '/ad/proc/Admin/Product/saveProductPartner',
         info: '/ad/ajax/prd_provider_info_form',
         match: '/ad/ajax/prd_provider_info_match',
-        cancelMatchProviderProduct: '/router/cancelMatchProviderProduct/',
+        cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product/',
         loadGodoGoodsInfo: '/router/loadGodoGoodsInfo/',
     };
 
@@ -185,6 +193,7 @@ const prdProviderInfo = (function(){
 
     /**
      * 고도몰 매칭 상품 정보 갱신
+     * 
      * @param {string} prd_idx - 상품 고유번호
      * @param {string} godo_goodsNo - 고도몰 상품코드
      */
@@ -195,7 +204,12 @@ const prdProviderInfo = (function(){
             godo_goodsNo,
         })
         .then(res => {
-            console.log(res);
+            if( res.status === 'success' ){
+                alert('고도몰 매칭 상품 정보 갱신 완료');
+                location.reload();
+            }else{
+                alert('고도몰 매칭 상품 정보 갱신 실패');
+            }
         })
         .catch(error => {
             console.error('AJAX 요청 실패:', error);

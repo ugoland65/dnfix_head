@@ -19,10 +19,14 @@ function userModify(id, mode){
 	window.open("<?=_A_PATH_MEMBER_INFO_POPUP?>?id="+ id +"&mode="+mode, "member_info_"+id, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
-
 //상품 창 prd_provider_info
 function prdProviderQuick(idx, vmode = "info"){
 	window.open("/ad/ajax/prd_provider_info?prd_idx="+ idx +"&vmode="+vmode, "prdProviderQuick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+}
+
+//브랜드 수정
+function brandModify(idx){
+	window.open("/admin/brand/detail/"+idx, "brand_view_"+idx, "width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 var koegAd = function() {

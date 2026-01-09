@@ -20,7 +20,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_main'"><li>상품 재고</li></ul>
 	*/ ?>
 
-	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>상품 재고 </li></ul>
+	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>상품 재고 (보유상품)</li></ul>
 	<ul <? if( $_pageN == "prd_grouping" || $_pageN == "prd_grouping_view" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_grouping'"><li>상품 그룹핑</li></ul>
 	<ul <? if( $_pageN == "set_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/set_prd'"><li>세트 상품</li></ul>
 	<ul <? if( $_pageN == "hbti_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/hbti_prd'"><li>HBTI 상품/관리</li></ul>
@@ -30,7 +30,12 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>브랜드</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( $_pageN == "brand") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/brand'"><li>브랜드 관리</li></ul>
+	<ul <?php if( $_pageN == "brand" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/brand'">
+		<li>브랜드 관리(구)</li>
+	</ul>
+	<ul <?php if( $pageNameCode == "brand" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/brand/list'">
+		<li>브랜드 관리</li>
+	</ul>
 </div>
 
 

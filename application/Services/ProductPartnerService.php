@@ -28,6 +28,7 @@ class ProductPartnerService extends BaseClass
         $s_keyword = $payloadData['s_keyword'] ?? '';
         $match_status = $payloadData['match_status'] ?? null;
         $s_brand = $payloadData['s_brand'] ?? null;
+        $sort_mode = $payloadData['sort_mode'] ?? 'idx';
 
         $page = $payloadData['page'] ?? null;
         $perPage = $payloadData['per_page'] ?? null;
@@ -67,7 +68,11 @@ class ProductPartnerService extends BaseClass
             $query->where('prd_partner.brand_idx', $s_brand);
         }
 
-        $query->orderBy('idx', 'DESC');
+        if( $sort_mode == 'idx' ){
+            $query->orderBy('idx', 'DESC');
+        }elseif( $sort_mode == 'updated_at' ){
+            $query->orderBy('updated_at', 'DESC');
+        }
 
         if ($perPage !== null ) {
             $result = $query->paginate($perPage, $page);

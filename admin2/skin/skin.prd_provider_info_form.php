@@ -193,7 +193,7 @@ $prd_data = $viewData['productPartnerInfo'];
                             data-prd-idx="<?=$prd_data['idx']?>"
                             data-godo-goods-no="<?=$prd_data['godo_goodsNo']?>"
                           >
-                            고도몰 정보 갱신
+                            고도몰 정보로 반영
                         </button>
                     </ul>
                     <?php
@@ -220,7 +220,9 @@ $prd_data = $viewData['productPartnerInfo'];
 
 
         <?php
-            if( !empty($prd_data['godo_is_option']) ){
+            $godoOptionNames = $prd_data['godo_option']['name'] ?? [];
+            $godoOptionItems = $prd_data['godo_option']['items'] ?? [];
+            if( !empty($prd_data['godo_is_option']) && is_array($godoOptionNames) && is_array($godoOptionItems) ){
         ?>
         <tr>
             <th>고도몰 옵션</th>
@@ -234,26 +236,20 @@ $prd_data = $viewData['productPartnerInfo'];
                     <thead>
                         <tr>
                             <th>옵션번호</th>
-                            <?php
-                                foreach($prd_data['godo_option']['name'] as $optionName){
-                            ?>
+                            <?php foreach($godoOptionNames as $optionName){ ?>
                             <th><?=$optionName?></th>
-                            <?php
-                                }
-                            ?>
+                            <?php } ?>
                             <th>옵션가격</th>
                             <th></th>
                         </tr>
                     </thead>
                     <tbody>
-                    <?php
-                        foreach($prd_data['godo_option']['items'] as $i => $option){
-                    ?>
+                    <?php foreach($godoOptionItems as $i => $option){ ?>
                     <tr>
                         <td><?=$option['optionNo']?></td>
                         <?php
                             $valueNum = 0;
-                            foreach($prd_data['godo_option']['name'] as $optionName){
+                            foreach($godoOptionNames as $optionName){
                                 $valueNum++;
                                 $keyName = 'optionValue'.$valueNum;
                         ?>

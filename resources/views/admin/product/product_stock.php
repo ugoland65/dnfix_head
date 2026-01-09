@@ -6,7 +6,13 @@
 
         <!-- 검색 영역 -->
         <div class="top-search-wrap">
-            <ul class="">
+            <ul class="count-wrap">
+                <span class="count">Total : <b><?=number_format($paginationArray['total']) ?></b></span>
+                <span class="m-l-10"><b><?=$paginationArray['current_page']?></b></span>
+                <span>/</span>
+                <span><b><?=$paginationArray['last_page']?></b> page</span>
+            </ul>
+            <ul class="m-l-10">
 				<select name="in_stock" id="in_stock" >
 					<option value="all" <? if( $in_stock == 'all' ) echo "selected";?>>전체상품</option>
                     <option value="have" <? if( $in_stock == 'have' ) echo "selected";?>>재고보유</option>
@@ -71,41 +77,34 @@
                 <input type='text' name='search_value' id='search_value' value="<?= $_GET['search_value'] ?? '' ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
             <ul>
-                <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="searchBtn">
+                <button type="button" class="btn btnstyle1 btnstyle1-primary btnstyle1-sm" id="searchBtn">
                     <i class="fas fa-search"></i> 검색
                 </button>
                 <button type="button" class="btnstyle1 btnstyle1-sm" id="search_reset">
                     <i class="far fa-trash-alt"></i> 초기화
                 </button>
             </ul>
+            <ul class="right">
+                <select name="sort_kind" id="sort_kind" >
+                    <option value="stock" <? if( $sort_mode == "stock" ) echo "selected";?>>재고 많은순</option>
+                    <option value="stock_asc" <? if( $sort_mode == "stock_asc" ) echo "selected";?>>재고 적은순</option>
+                    <option value="idx" <? if( $sort_mode == "idx" ) echo "selected";?> >상품 등록순</option>
+                    <option value="rack_code" <? if( $sort_mode == "rack_code" ) echo "selected";?> >랙코드순</option>
+                    <option value="soldout" <? if( $sort_mode == "soldout" ) echo "selected";?> >품절일 최근순</option>
+                    <option value="soldout_asc" <? if( $sort_mode == "soldout_asc" ) echo "selected";?> >품절일 오랜순</option>
+                    <option value="price_desc" <? if( $sort_mode == "price_desc" ) echo "selected";?> >판매가 높은순</option>
+                    <option value="price_asc" <? if( $sort_mode == "price_asc" ) echo "selected";?> >판매가 낮은순</option>
+                    <option value="margin" <? if( $sort_mode == "margin" ) echo "selected";?> >마진율 높은순</option>
+                    <option value="release_date" <? if( $sort_mode == "release_date" ) echo "selected";?> >출시일 최근순</option>
+                    <option value="old_release_date" <? if( $sort_mode == "old_release_date" ) echo "selected";?> >출시일 오랜순</option>
+                    <option value="old_sale_date" <? if( $sort_mode == "old_sale_date" ) echo "selected";?> >판매일 오랜순</option>
+                    <option value="new_dis_date" <? if( $sort_mode == "old_dis_date" ) echo "selected";?> >할인일 최근</option>
+                    <option value="old_dis_date" <? if( $sort_mode == "new_dis_date" ) echo "selected";?> >할인일 오랜순</option>
+                </select>
+            </ul>
         </div>
 
         <div id="list_new_wrap">
-            <div class="list-top">
-                <span class="count">Total : <b><?=number_format($paginationArray['total']) ?></b></span>
-                <span class="m-l-20"><b><?=$paginationArray['current_page']?></b></span>
-                <span> / </span>
-                <span><b><?=$paginationArray['last_page']?></b> page</span>
-
-                <ul class="right">
-                    <select name="sort_kind" id="sort_kind" >
-                        <option value="stock" <? if( $sort_mode == "stock" ) echo "selected";?>>재고 많은순</option>
-                        <option value="stock_asc" <? if( $sort_mode == "stock_asc" ) echo "selected";?>>재고 적은순</option>
-                        <option value="idx" <? if( $sort_mode == "idx" ) echo "selected";?> >상품 등록순</option>
-                        <option value="rack_code" <? if( $sort_mode == "rack_code" ) echo "selected";?> >랙코드순</option>
-                        <option value="soldout" <? if( $sort_mode == "soldout" ) echo "selected";?> >품절일 최근순</option>
-                        <option value="soldout_asc" <? if( $sort_mode == "soldout_asc" ) echo "selected";?> >품절일 오랜순</option>
-                        <option value="price_desc" <? if( $sort_mode == "price_desc" ) echo "selected";?> >판매가 높은순</option>
-                        <option value="price_asc" <? if( $sort_mode == "price_asc" ) echo "selected";?> >판매가 낮은순</option>
-                        <option value="margin" <? if( $sort_mode == "margin" ) echo "selected";?> >마진율 높은순</option>
-                        <option value="release_date" <? if( $sort_mode == "release_date" ) echo "selected";?> >출시일 최근순</option>
-                        <option value="old_release_date" <? if( $sort_mode == "old_release_date" ) echo "selected";?> >출시일 오랜순</option>
-                        <option value="old_sale_date" <? if( $sort_mode == "old_sale_date" ) echo "selected";?> >판매일 오랜순</option>
-                        <option value="new_dis_date" <? if( $sort_mode == "old_dis_date" ) echo "selected";?> >할인일 최근</option>
-                        <option value="old_dis_date" <? if( $sort_mode == "new_dis_date" ) echo "selected";?> >할인일 오랜순</option>
-                    </select>
-                </ul>
-            </div>
             <div class="table-wrap5">
                 <div class="scroll-wrap">
 
@@ -215,6 +214,9 @@
                                     <td class="text-center"><?=$product['prd_kind_name']?></td>
                                     <td>
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
+                                        <?php if( !empty($product['cd_memo2']) ){ ?>
+                                            <div class="m-t-3" style="color:#ff0000"><span class="prd-memo">- <?=$product['cd_memo2']?></span></div>
+                                        <?php } ?>
                                     </td>
                                     <td class="text-center">
                                         <?=$product['brand_name']?>
@@ -403,6 +405,50 @@
         $('#selected_product_count').text(count + '개');
     }
 
+    // 검색 파라미터 수집 공통 함수
+    function getSearchParams(additionalParams) {
+        var params = {};
+        
+        // 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
+        var fields = {
+            's_site': $("#s_site").val(),
+            's_brand': $("#s_brand").val(),
+            's_prd_kind': $("#s_prd_kind").val(),
+            's_importing_country': $("#s_importing_country").val(),
+            's_margin_group': $("#s_margin_group").val(),
+            'rack_code': $("#rack_code").val(),
+            'in_stock': $("#in_stock").val(),
+            'search_value': $("#search_value").val(),
+        };
+
+        // 추가 파라미터가 있으면 병합
+        if (additionalParams) {
+            fields = Object.assign(fields, additionalParams);
+        }
+
+        // 유효한 값만 params에 추가
+        for (var key in fields) {
+            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+                params[key] = fields[key];
+            }
+        }
+
+        return params;
+    }
+
+    // 검색 파라미터로 페이지 이동
+    function navigateWithParams(params) {
+        // URL 쿼리 문자열 생성
+        var queryString = Object.keys(params)
+            .map(function(key) {
+                return key + '=' + encodeURIComponent(params[key]);
+            })
+            .join('&');
+
+        // 페이지 이동
+        location.href = '/admin/product/product_stock' + (queryString ? '?' + queryString : '');
+    }
+
     // 전체 선택 함수 수정
     function select_all() {
         var checkboxes = document.getElementsByName('check_idx[]');
@@ -421,53 +467,29 @@
         updateSelectedCount();
     }
 
-    $("#sort_kind").change(function(){
-        var url = "?sort_mode=" + $(this).val();
-        window.location.href = url;
-    });
+
 
     $("#search_reset").click(function(){
         var url = "?";
         window.location.href = url;
     });
 
-    $("#searchBtn").on('click',function(){
-
-        // 검색 파라미터 수집
-        var params = {};
-
-        // URL에서 viewMode 파라미터 가져오기
-        var urlParams = new URLSearchParams(window.location.search);
-
-        // 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
-        var fields = {
-            's_site': $("#s_site").val(),
-            's_brand': $("#s_brand").val(),
-            's_prd_kind': $("#s_prd_kind").val(),
-            's_importing_country': $("#s_importing_country").val(),
-            's_margin_group': $("#s_margin_group").val(),
-            'rack_code': $("#rack_code").val(),
-            'in_stock': $("#in_stock").val(),
-            'search_value': $("#search_value").val(),
-        };
-
-        // 유효한 값만 params에 추가
-        for (var key in fields) {
-            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
-                params[key] = fields[key];
-            }
-        }
-
-        // URL 쿼리 문자열 생성
-        var queryString = Object.keys(params)
-            .map(function(key) {
-                return key + '=' + encodeURIComponent(params[key]);
-            })
-            .join('&');
-
+    $("#sort_kind").change(function(){
+        // 정렬 모드 추가하여 검색 파라미터 수집
+        var params = getSearchParams({
+            'sort_mode': $(this).val()
+        });
+        
         // 페이지 이동
-        location.href = '/admin/product/product_stock' + (queryString ? '?' + queryString : '');
+        navigateWithParams(params);
+    });
 
+    $("#searchBtn").on('click',function(){
+        // 검색 파라미터 수집
+        var params = getSearchParams();
+        
+        // 페이지 이동
+        navigateWithParams(params);
     });
 
     // 랙코드 일괄 변경

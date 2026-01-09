@@ -241,6 +241,13 @@
         }
     }
 
+    .delivery-note {
+        width: 100%;
+        margin-top: 10px;
+        border-bottom: 1px solid #000;
+        padding-bottom: 10px;
+        text-align: center;
+    }
     
     .print-button {
         margin: 20px;
@@ -487,10 +494,55 @@
             </table>
         </div>
 
+        <div class="delivery-note m-t-20" style="display:flex; gap:12px;">
+            <div style="flex:1;">
+                <div style="margin-bottom:6px; font-size:16px;">배송 특이사항 (인쇄 전 메모를 입력하세요)</div>
+                <textarea class="delivery-note-text" rows="3" style="width:100%; box-sizing:border-box; resize:vertical; font-size:15px;" placeholder="예: 경비실 보관, 파손주의 등"></textarea>
+                <div class="delivery-note-preview" style="margin-top:6px; min-height:32px; white-space:pre-wrap; border:1px solid #eee; padding:8px; background:#fafafa; font-size:15px;"></div>
+            </div>
+            <div style="flex:1;">
+                <div style="margin-bottom:6px; font-size:16px;">
+                    C/S 처리 요청
+                    <button class="cs-note-button">C/S 처리 요청</button>
+                </div>
+                <textarea class="cs-note-text" rows="3" style="width:100%; box-sizing:border-box; resize:vertical; font-size:15px;" placeholder="예: 고객 요청사항, 환불/교환 메모 등"></textarea>
+                <div class="cs-note-preview" style="margin-top:6px; min-height:32px; white-space:pre-wrap; border:1px solid #eee; padding:8px; background:#fafafa; font-size:15px;"></div>
+            </div>
+        </div>
+
     </div>
     <?php } ?>
 
 <script>
+    // 인쇄 시 입력창 숨김
+    const printStyle = document.createElement('style');
+    printStyle.innerHTML = `
+        @media print {
+            .delivery-note-text { display: none !important; }
+        }
+    `;
+    document.head.appendChild(printStyle);
+
+    // 배송 특이사항 / CS 요청 메모 미리보기
+    (function(){
+        const notes = document.querySelectorAll('.delivery-note');
+        notes.forEach(note => {
+            const pairs = [
+                { input: '.delivery-note-text', preview: '.delivery-note-preview' },
+                { input: '.cs-note-text', preview: '.cs-note-preview' },
+            ];
+            pairs.forEach(pair => {
+                const textarea = note.querySelector(pair.input);
+                const preview = note.querySelector(pair.preview);
+                if (textarea && preview) {
+                    textarea.addEventListener('input', function() {
+                        preview.textContent = this.value;
+                    });
+                }
+            });
+        });
+    })();
+
     function searchOrders() {
         const startDate = document.querySelector('input[name="start_date"]').value;
         const endDate = document.querySelector('input[name="end_date"]').value;

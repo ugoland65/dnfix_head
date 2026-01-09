@@ -17,6 +17,7 @@ $search_name = $requestData['search_name'] ?? null;
 $productPartnerService = new ProductPartnerService(); 
 $prdData = $productPartnerService->getProductPartnerInfo($prd_idx);
 
+//dump($prdData);
 $match_name = $search_name ?? $prdData['name'];
 
 /*
@@ -96,7 +97,7 @@ if (!empty($search_name)) {
         <tr>
             <th>매칭 상품명 검색</th>
             <td>
-                <input type="text" name="search_name" value="<?=$match_name?>" style="width:200px;">
+                <input type="text" name="search_name" value="<?=$match_name?>" style="width:200px;" id="search_name_input">
                 <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdProviderInfoMatch.search()">검색</button>
             </td>
         </tr>
@@ -129,8 +130,12 @@ if (!empty($search_name)) {
             <th>옵션</th>
             <th>사이트</th>
             <th>공급사 상품번호</th>
-            <th>공급사</th>
+            <th>공급<br>입점사</th>
             <th>공급가</th>
+            <?php if( $prdData['sale_price'] > 0 ){?>
+                <th>고도몰<br>판매가</th>
+                <th>마진율</th>
+            <?php } ?>
             <th>매칭</th>
         </tr>
         </thead>
@@ -151,7 +156,7 @@ if (!empty($search_name)) {
             data-supplier-site="<?=$row['match_data']['site']?>"
             data-supplier-2nd-name="<?=$row['match_data']['supplier']?>"
             data-supplier-prd-pk="<?=$row['match_data']['prd_pk']?>"
-            data-prd-name="<?=$row['match_data']['name']?>"
+            data-prd-name="<?=htmlspecialchars($row['match_data']['name'] ?? '', ENT_QUOTES, 'UTF-8')?>"
             data-supplier-img-src="<?=$row['match_data']['image_url']?>"
             data-is-vat="<?=$row['match_data']['is_vat']?>"
         >
@@ -186,40 +191,51 @@ if (!empty($search_name)) {
             </td>
             <td><?=$row['match_data']['supplier']?></td>
             <td class="text-right"><?=number_format($row['match_data']['price'])?></td>
+
+            <?php if( $prdData['sale_price'] > 0 ){?>
+                <td class="text-right"><?=number_format($prdData['sale_price'])?></td>
+                <td class="text-right">
+                    <?php
+                        $margin = ($prdData['sale_price'] ?? 0) - ($row['match_data']['price'] ?? 0);
+                        $margin_rate = $margin / $prdData['sale_price'] * 100;
+                    ?>
+                    <?=number_format($margin)?>
+                    <br><b><?=number_format($margin_rate, 2)?>%</b>
+                </td>
+            <?php } ?>
             <td>
                 <?php
-                    if( !empty($row['match_data']['is_option']=="N") ){
+                    if( $row['match_data']['is_option'] == "Y" ){
                 ?>
+                    <select name="option_match" id="option_match_<?=$row['match_data']['idx']?>">
+                        <?php
+                            foreach($option_data as $option){
+                                foreach($option['items'] as $item){
+                                    $disabled = '';
+                                    if( $item['is_matched'] == 'Y' ){
+                                        $disabled = 'disabled';
+                                        $value = $item['value']." (매칭완료 : #".$item['provider_prd_idx'].")";
+                                    }else{
+                                        $value = $item['value'];
+                                    }
+
+                                    echo "<option value='".$item['value']."' ".$disabled.">".$value."</option>";
+                                }
+                            }
+                        ?>
+                    </select>
+
+                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm option-match-btn" 
+                        data-db1-idx="<?=$prd_idx?>" 
+                        data-db2-idx="<?=$row['match_data']['idx']?>"
+                    >옵션매칭</button>
+                <?php } ?>
+
                 <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
                     data-db1-idx="<?=$prd_idx?>" 
                     data-db2-idx="<?=$row['match_data']['idx']?>"
                 >바로매칭</button>
-                <?
-                    }else{
-                ?>
-                <select name="option_match" id="option_match_<?=$row['match_data']['idx']?>">
-                    <?php
-                        foreach($option_data as $option){
-                            foreach($option['items'] as $item){
-                                $disabled = '';
-                                if( $item['is_matched'] == 'Y' ){
-                                    $disabled = 'disabled';
-                                    $value = $item['value']." (매칭완료 : #".$item['provider_prd_idx'].")";
-                                }else{
-                                    $value = $item['value'];
-                                }
 
-                                echo "<option value='".$item['value']."' ".$disabled.">".$value."</option>";
-                            }
-                        }
-                    ?>
-                </select>
-
-                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm option-match-btn" 
-                    data-db1-idx="<?=$prd_idx?>" 
-                    data-db2-idx="<?=$row['match_data']['idx']?>"
-                >옵션매칭</button>
-                <?php } ?>
             </td>
         </tr>
         <?php } ?>
@@ -399,6 +415,14 @@ var prdProviderInfoMatch = (function(){
 })();
 
 $(function(){
+    // 검색 인풋 엔터키 처리
+    $('#search_name_input').on('keypress', function(e){
+        if(e.which === 13){
+            e.preventDefault();
+            prdProviderInfoMatch.search();
+        }
+    });
+
 
     $('.match-btn').on('click', function(){
         const db1_idx = $(this).data('db1-idx');

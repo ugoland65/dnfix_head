@@ -34,6 +34,30 @@ class Request extends RequestHandler
     {
         return parent::has($key);
     }
+
+    /**
+     * 업로드된 단일 파일 반환 (Laravel file)
+     */
+    public function file($key)
+    {
+        return parent::file($key);
+    }
+
+    /**
+     * 업로드된 파일 존재 여부 확인 (Laravel hasFile)
+     */
+    public function hasFile($key)
+    {
+        return parent::hasFile($key);
+    }
+
+    /**
+     * 업로드된 모든 파일 반환 (Laravel allFiles 대응)
+     */
+    public function allFiles()
+    {
+        return parent::allFiles();
+    }
     
     /**
      * 여러 키의 값을 배열로 반환 (Laravel의 only() 메서드와 유사)

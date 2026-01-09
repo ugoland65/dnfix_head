@@ -194,6 +194,11 @@ class ProductService extends BaseClass
                 $query->where('D.ps_rack_code', $rack_code);
             }
 
+            // 검색어 처리
+            if( $search_value ){
+                $query->orWhere('D.ps_idx', $search_value);
+            }
+
             if( $in_stock == 'have' ){
                 $query->where('D.ps_stock', '>', 0);
             }elseif( $in_stock == 'no' ){

@@ -56,7 +56,8 @@ if( $site ){
 }
 ?>
 <div id="contents_head">
-	<h1>공급사 상품 가져오기</h1>
+	<h1>공급사 사이트 상품DB</h1>
+    <h3>공급사 사이트에서 크롤링(수집)된 상품입니다.</h3>
     <div id="head_write_btn">
 	</div>
 </div>
@@ -73,6 +74,7 @@ if( $site ){
 						<option value=""  >공급사 사이트</option>
                         <option value="mobe" <?=$site == 'mobe' ? 'selected' : ''?>>mobe (모브)</option>
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
+                        <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
 					</select>
 				</ul>
                 <ul>
@@ -97,27 +99,32 @@ if( $site ){
                         <tr>
                             <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                             <th class="list-idx">고유번호</th>
-                            <th class="list-">사이트</th>
+                            <th class="">공급사<br>사이트</th>
                             <th class="list-idx">사이트<br>고유번호</th>
                             <th class="">이미지</th>
                             <th class="">사이트<br>카테고리</th>
-                            <th class="">상품명</th>
+                            <th class="" style="width:300px;">상품명</th>
+                            <th>옵션</th>
                             <th>매칭</th>
+                            <th class="">공급<br>입점사</th>
                             <th>공급가</th>
                             <th>배송비</th>
+                            <th>택배사</th>
                             <th>VAT</th>
                             <th>10%</th>
                             <th>20%</th>
                             <th>30%</th>
                             <th>40%</th>
-                            <th>택배사</th>
                             <th>최저판매가</th>
                             <th>최저가 마진율</th>
+                            <th>수정일</th>
+                            <th>등록일</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php
                             foreach ( $data['data']['supplierProducts'] ?? [] as $row ){
+
                                 $cost_price = $row['price'] + $row['delivery_fee'];
                                 $margin10 = $cost_price / (1 - 0.10);
                                 $margin20 = $cost_price / (1 - 0.20);
@@ -142,23 +149,46 @@ if( $site ){
                             <td >
                                 <img src="<?=$row['image_url']?>" style="height:70px; border:1px solid #eee !important;">
                             </td>
-                            <td class=""><?=$row['category']?></td>
-                            <td class="text-left">
+                            <td class="text-center"><?=$row['category']?></td>
+                            <td class="text-left" style="white-space: normal !important;">
                                 <a href="javascript:goSupplierProductEdit('<?=$row['idx']?>');"><?=$row['name']?></a>
                             </td>
-                            <td class="text-center"><?=$row['provider_prd_idx']?></td>
+                            <td>
+                                <?php 
+                                    if( $row['is_option'] == 'Y' && !empty($row['option_data']) ){ 
+                                        $option_data = json_decode($row['option_data'], true);
+                                        foreach($option_data as $option){
+                                            echo $option['name']."<br>";
+                                            foreach($option['items'] as $item){
+                                                echo "-".$item['value']."<br>";
+                                            }
+                                        }
+                                    }else{
+                                ?>
+                                    -
+                                <?php } ?>
+                            </td>
+                            <td class="text-center">
+                                <?php if( !empty($row['provider_prd_idx']) ): ?>
+                                    <?=$row['provider_prd_idx']?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
+                            <td><?=$row['supplier']?></td>
                             <td class="text-right"><?=number_format($row['price'])?></td>
                             <td class="text-right"><?=number_format($row['delivery_fee'])?></td>
-                            <td class=""><?=$row['is_vat']?></td>
+                            <td class="text-center"><?=$row['delivery_com']?></td>
+                            <td class="text-center"><?=$row['is_vat']?></td>
                             <td class="text-right"><?=number_format($margin10)?><br><b><?=number_format($margin10 - $cost_price)?></b></td>
                             <td class="text-right"><?=number_format($margin20)?><br><b><?=number_format($margin20 - $cost_price)?></b></td>
                             <td class="text-right"><?=number_format($margin30)?><br><b><?=number_format($margin30 - $cost_price)?></b></td>
                             <td class="text-right"><?=number_format($margin40)?><br><b><?=number_format($margin40 - $cost_price)?></b></td>
-                            <td class=""><?=$row['delivery_com']?></td>
-                            <td class="text-right"><?=number_format($row['min_sale_price'])?>
-                            <?php if ($row['min_sale_price'] > 0): ?>   
-                                <br><b><?=number_format($row['min_sale_price'] - $cost_price)?></b>
-                            <?php endif; ?>
+                            <td class="text-right">
+                                <?=number_format($row['min_sale_price'])?>
+                                <?php if ($row['min_sale_price'] > 0): ?>   
+                                    <br><b><?=number_format($row['min_sale_price'] - $cost_price)?></b>
+                                <?php endif; ?>
                             </td>
                             <td class="text-right">
                                 <?php if ($row['min_sale_price'] > 0): ?>
@@ -167,6 +197,8 @@ if( $site ){
                                     -
                                 <?php endif; ?>
                             </td>
+                            <td class="text-center"><?=$row['updated_at']?></td>
+                            <td class="text-center"><?=$row['created_at']?></td>
                         </tr>
                         <?php } ?>
                         </tbody>

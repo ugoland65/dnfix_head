@@ -224,10 +224,16 @@ padding:0; margin:0; box-sizing:border-box; }
 	position:relative; 
 	box-sizing:border-box;
 	z-index: 200;
+
 	h1 { 
 		color:#222; font-size:20px; line-height:50px; height:50px;  padding:0 0 0 50px; margin:0 !important; background:url('/admin2/img/contents_head_bg.png'); 
 		background-repeat:no-repeat; 	display:inline-block; vertical-align:middle; 
 	}
+
+	h3{
+		color:#666; font-size:14px; line-height:50px; height:50px; padding:0 0 0 7px; margin:0 !important;
+	}
+
 
 	.head-btn-wrap{ display:inline-block; vertical-align:middle;  }
 

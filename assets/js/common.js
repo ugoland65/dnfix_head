@@ -124,6 +124,8 @@ function goSupplierProduct(site, code){
 		window.open('https://mobe.kr/product/view.asp?ref=1&seq='+code, '_blank');
 	}else if(site == 'byedam'){
 		window.open('https://www.bestoypn.co.kr/goods/goods_view.php?goodsNo='+code, '_blank');
+	}else if(site == 'doradora'){
+		window.open('https://doradora.kr/product/detail.html?product_no='+code, '_blank');
 	}
 }
 

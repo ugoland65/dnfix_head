@@ -2,26 +2,113 @@
 
 namespace App\Controllers\Admin;
 
+
 use App\Core\AuthAdmin;
 use App\Core\BaseClass;
 use App\Utils\HttpClient; 
+use App\Classes\Request;
 use App\Models\ProductPartnerModel;
 
 use App\Services\ProductPartnerService;
+use App\Services\PartnersService;
+use App\Services\BrandService;
 use App\Utils\Pagination;
 
-class ProductPartnerController extends BaseClass {
+class ProductPartnerController extends BaseClass 
+{
+
+    /**
+     * 공급사 상품 관리
+     * 
+     * @param Request $request
+     * @return view
+     */
+    public function getProductPartnerList( Request $request ) 
+    {
+
+        try{
+
+            $requestData = $request->all();
+
+            $page = $requestData['page'] ?? 1;
+            $s_partner = $requestData['s_partner'] ?? null; // 공급사
+            $s_godo_match = $requestData['s_godo_match'] ?? null; // 고도몰 매칭
+            $s_supplier_match = $requestData['s_supplier_match'] ?? null; // 공급사 매칭
+            $s_text = $requestData['s_text'] ?? null; // 상품명 검색
+            $s_brand = $requestData['s_brand'] ?? null; // 브랜드
+            $sort_mode = $requestData['sort_mode'] ?? 'idx'; // 정렬 모드
+
+            $payload = [
+                'paging' => true,
+                'page' => $page,
+                'per_page' => 100,
+                's_partner' => $s_partner,
+                's_godo_match' => $s_godo_match,
+                's_supplier_match' => $s_supplier_match,
+                's_text' => $s_text,
+                's_brand' => $s_brand,
+                'sort_mode' => $sort_mode,
+            ];
+
+            $productPartnerService = new ProductPartnerService();
+            $productPartnerList = $productPartnerService->getProductPartnerList($payload);
+
+            $pagination = new Pagination(
+                $productPartnerList['total'],
+                $productPartnerList['per_page'],
+                $productPartnerList['current_page'],
+                10
+            );
+
+            $paginationHtml = $pagination->renderLinks();
+            $paginationArray = $pagination->toArray();
+
+            $partnersService = new PartnersService();
+            $partnerForSelect = $partnersService->getPartnersForSelect(['showMode' => 'WHOLE_SUPPLIER']);
+
+            // 브랜드 셀렉트바를 위한 조회
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
+
+            $data = [
+                's_partner' => $s_partner,
+                's_godo_match' => $s_godo_match,
+                's_supplier_match' => $s_supplier_match,
+                's_text' => $s_text,
+                's_brand' => $s_brand,
+                'sort_mode' => $sort_mode,
+                'pagination' => $paginationArray,
+                'paginationHtml' => $paginationHtml,
+                'productPartnerList' => $productPartnerList['data'],
+                'partnerForSelect' => $partnerForSelect,
+                'brandForSelect' => $brandForSelect,
+            ];
+
+            return view('admin.provider.provider_product', $data)
+                ->extends('admin.layout.layout',[
+                    'pageGroup2' => 'provider',
+                    'pageNameCode' => 'prd_provider'
+                ]);
+
+        } catch (Throwable $e) {
+            dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+
+    }
 
     /**
      * 공급사 상품 매칭
      * @return array
      */
-    public function matchProviderProduct() 
+    public function matchProviderProduct( Request $request ) 
     {
 
         try{
             
-            $requestData = $this->requestHandler->allInput();
+            $requestData = $request->all();
 
             $mode = $requestData['mode'] ?? 'direct';
             $db1_idx = $requestData['db1_idx'] ?? null;
@@ -60,7 +147,11 @@ class ProductPartnerController extends BaseClass {
             $supplier_2nd_name = $requestData['supplier_2nd_name'] ?? null;
             $supplier_prd_pk = $requestData['supplier_prd_pk'] ?? null;
             $supplier_img_src = $requestData['supplier_img_src'] ?? null;
+            // 따옴표 포함 이름도 그대로 저장될 수 있도록 HTML 엔티티 해제
             $prd_name = $requestData['prd_name'] ?? null;
+            if ($prd_name !== null) {
+                $prd_name = html_entity_decode($prd_name, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+            }
             $is_vat = $requestData['is_vat'] ?? null;
 
             if($is_vat == 'N'){
@@ -104,7 +195,7 @@ class ProductPartnerController extends BaseClass {
 
             // 보낼 API Key
             $headers = [
-                "Accept: application/json",
+                "Content-Type: application/json",
                 "X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f"
             ];
             
@@ -114,12 +205,11 @@ class ProductPartnerController extends BaseClass {
 
             if($result){
 
-                 header('Content-Type: application/json');
-                 echo json_encode([
-                        'status' => 'success', 
-                        'message' => '저장되었습니다.',
-                        'data' => $data
-                    ], JSON_UNESCAPED_UNICODE);
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => '저장되었습니다.',
+                    'data' => $data
+                ]);
 
                  //return true;
 
@@ -127,33 +217,12 @@ class ProductPartnerController extends BaseClass {
                  throw new \Exception('상품 공급사 매칭에 실패했습니다.');
              }
 
-            /*
-
-
-
-            echo "<pre>";
-            print_r($productPartner);
-            echo "</pre>";
-
-
-            return $this->response(['success' => true, 'data' => $productPartner]);
-
-
-            // 기존 방식 테스트
-            $supplier_api = config('supplier_api');
-            echo "<h3>supplier_api</h3>";
-            echo "<pre>";
-            print_r($supplier_api);
-            echo "</pre>";
-            */
-
-
 
         } catch(\Exception $e){
-            header('Content-Type: application/json');
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-            return;
+            return response()->json([
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ]);
         }
 
     }
@@ -161,14 +230,20 @@ class ProductPartnerController extends BaseClass {
 
     /**
      * 공급사 상품 매칭 취소
+     * 
+     * @param Request $request
      * @return array
      */
-    public function cancelMatchProviderProduct() 
+    public function cancelMatchProviderProduct( Request $request )
     {
 
         try{
 
-            $requestData = $this->requestHandler->allInput();
+            ini_set('display_errors', 1);
+            ini_set('display_startup_errors', 1);
+            error_reporting(E_ALL);
+
+            $requestData = $request->all();
 
             $db1_idx = $requestData['db1_idx'] ?? null;
             $db2_idx = $requestData['db2_idx'] ?? null;
@@ -231,32 +306,38 @@ class ProductPartnerController extends BaseClass {
             $response = HttpClient::getData($url, $headers);
             $data = json_decode($response, true);
 
+            
+
             if($result){
 
-                header('Content-Type: application/json');
-                echo json_encode([
-                       'status' => 'success', 
-                       'message' => '취소되었습니다.',
-                       'data' => $data
-                   ], JSON_UNESCAPED_UNICODE);
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => '취소되었습니다.',
+                    'data' => $data
+                ]);
 
             }
 
         } catch (\Throwable $e) {
-        
+            return response()->json([
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ]);
         }
     }
     
 
     /**
      * 고도몰 매칭 상품 정보 갱신
+     * 
+     * @param Request $request
      * @return array
      */
-    public function loadGodoGoodsInfo() 
+    public function loadGodoGoodsInfo( Request $request ) 
     {
         try{
             
-            $requestData = $this->requestHandler->allInput();
+            $requestData = $request->all();
             $prd_idx = $requestData['prd_idx'] ?? null;
             $godo_goodsNo = $requestData['godo_goodsNo'] ?? null;
 
@@ -289,6 +370,7 @@ class ProductPartnerController extends BaseClass {
             $optionData = [];
 
             $optionFl = strtolower($godoGoods['optionFl'] ?? 'n');
+            
             if( $optionFl === 'y' ){
                 $optionName = explode('^|^', $godoGoods['optionName'] ?? '');
                 $optionData = [
@@ -319,26 +401,20 @@ class ProductPartnerController extends BaseClass {
                 'godoGoods' => $responseData
             ];
 
-            header('Content-Type: application/json');
-            
-            echo json_encode([
+            return response()->json([
                 'status' => 'success', 
                 'data' => $returnData,
                 'is_modify' => $is_modify,
                 'modify_message' => $modify_message
-            ], JSON_UNESCAPED_UNICODE);
+            ]);
             
         } catch(\Exception $e){
 
-            header('Content-Type: application/json');
-            http_response_code(500);
-            echo json_encode(['status' => 'error', 'message' => $e->getMessage()], JSON_UNESCAPED_UNICODE);
-            /*
-            return [
-                'status' => 'error',
+            return response()->json([
+                'status' => 'error', 
                 'message' => $e->getMessage()
-            ];
-            */
+            ]);
+            
         }
 
     }

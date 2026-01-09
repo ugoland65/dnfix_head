@@ -322,9 +322,41 @@ $gnb_lang = "ko";
 
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "showdang") echo "active"; ?>"><a href="/ad/showdang/brand_group">쑈당몰</a></li>
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "onadb") echo "active"; ?>"><a href="/ad/onadb/onadb_prd_comment">오나디비</a></li>
-            <li class="ko <? if($_pageGroup == "prd") echo "active"; ?>"><a href="#"><a href="/ad/prd/prd_db">상품관리</a></li>    
-			<li class="ko <? if($_pageGroup == "provider") echo "active"; ?>"><a href="#"><a href="/ad/provider/prd_provider">공급사 관리</a></li>   
-            <li class="ko <? if($_pageGroup == "order") echo "active"; ?>"><a href="/ad/order/order_sheet_main">재고/발주</a></li>
+            <li class="ko <?php if( $_pageGroup == "prd" || $pageGroup2 == "prd" ) echo "active"; ?>  have-sub-menu">
+				상품관리
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/ad/prd/prd_db">상품 DB</a>
+						</li>
+						<li>
+							<a href="/admin/product/product_stock">상품재고 (보유상품)</a>
+						</li>
+						<li>
+							<a href="/admin/brand/list">브랜드 관리</a>
+						</li>
+					</ul>
+				</div>
+			</li>    
+			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
+				<a href="/ad/provider/prd_provider">공급사 관리</a>
+			</li>   
+            <li class="ko <? if($_pageGroup == "order") echo "active"; ?> have-sub-menu">
+				재고/발주
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/ad/order/stock_excel">일일 재고관리</a>
+						</li>
+						<li>
+							<a href="/ad/order/order_sheet_main">주문/발주</a>
+						</li>
+						<li>
+							<a href="/admin/stock/rack_list">(RACK) 랙 관리</a>
+						</li>
+					</ul>
+				</div>
+			</li>
 
 			<? /*
 			<li class="ko <? if($_pageGroup == "accounting") echo "active"; ?>"><a href="/ad/accounting/payment">회계관리</a></li>
@@ -350,8 +382,18 @@ $gnb_lang = "ko";
 							</a>
 						</li>
 						<li>
+							<a href="https://docs.google.com/spreadsheets/d/1u88pHIp3by_76R6PMflcMlpEBU5AXoKm3RSzlvv_jd0" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 국내 위탁상품 리스트
+							</a>
+						</li>
+						<li>
 							<a href="https://docs.google.com/spreadsheets/d/1NH0YRjOJviOm8-zAX6syom9YfqlusGly69j7PHeWW4I" target="_blank">
 								<i class="fas fa-external-link-alt"></i> 구매 요청서
+							</a>
+						</li>
+						<li>
+							<a href="https://docs.google.com/spreadsheets/d/1gxg5UBM4KoUh1i8BEiU-FZFv3KUpq4CuWcQUai_j088" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 인트라넷 수정요청
 							</a>
 						</li>
 					</ul>
@@ -375,6 +417,11 @@ $gnb_lang = "ko";
 						<li>
 							<a href="https://m.showdang.co.kr" target="_blank">
 								<i class="fas fa-external-link-alt"></i> 쑈당몰 모바일
+							</a>
+						</li>
+						<li>
+							<a href="https://onadb.net" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 오나디비
 							</a>
 						</li>
 					</ul>

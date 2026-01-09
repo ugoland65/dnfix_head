@@ -56,6 +56,10 @@ $supplierData = [
         'name' => '바이담',
         'idx' => 10,
     ],
+    'doradora' => [
+        'name' => '도라도라',
+        'idx' => 6,
+    ],
 ];
 
 if( $site ){
@@ -86,10 +90,14 @@ if( $site ){
     $brandIdxList = array_unique(array_column($db1Rows, 'brand_idx'));
     $brandIdxList = array_values($brandIdxList);
 
-    $brands = BrandModel::whereIn('BD_IDX', $brandIdxList)
-        ->select('BD_NAME', 'BD_IDX')
-        ->get()
-        ->toArray();
+    if (!empty($brandIdxList)) {
+        $brands = BrandModel::whereIn('BD_IDX', $brandIdxList)
+            ->select('BD_NAME', 'BD_IDX')
+            ->get()
+            ->toArray();
+    } else {
+        $brands = [];
+    }
 
     /*
     echo "<pre>";
@@ -110,7 +118,8 @@ if( $site ){
 
 ?>
 <div id="contents_head">
-	<h1>공급사 외부 매칭</h1>
+	<h1>공급사 상품 매칭</h1>
+    <h3>인트라넷에 등록된 상품과 공급사 사이트 상품을 매칭합니다.</h3>
 </div>
 
 <?php
@@ -129,6 +138,11 @@ echo "</pre>";
 		word-break:break-all;
 	}
 
+/* 행 선택 시 강조 */
+.table-st1 tbody tr.row-selected {
+    background: #f0f8ff !important;
+}
+
     .prd-memo{
         color:#ff0000;
     }
@@ -146,6 +160,7 @@ echo "</pre>";
 						<option value=""  >공급사 사이트</option>
                         <option value="mobe" <?=$site == 'mobe' ? 'selected' : ''?>>mobe (모브)</option>
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
+                        <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
 					</select>
 				</ul>
                 <ul>
@@ -181,60 +196,62 @@ echo "</pre>";
                             <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                             <th class="list-idx">고유번호</th>
                             <th class="">고도몰<br>상품번호</th>
-                            <th class="">브랜드</th>
-                            <th class="">검색매칭</th>
-                            <th class="list-">쑈당몰 등록상품명</th>
-                            <th class="list-idx">쑈당몰<br>이미지</th>
+                            <th class="">고도몰<br>판매가</th>
+                            <th class="" style="width:100px;">브랜드</th>
+                            <th class="list-">상품명</th>
+                            <th class="list-idx">이미지</th>
                             <th class="">매칭 스코어</th>
                             <th class="">공급사<br>이미지</th>
                             <th class="">추천 매칭 상품명</th>
                             <th class="">옵션</th>
                             <th>공급사<br>매칭번호</th>
-                            <th>사이트</th>
+                            <th>공급사<br>사이트</th>
                             <th>공급사<br>상품번호</th>
-                            <th>공급사</th>
-                            <th>매칭</th>
+                            <th>공급<br>입점사</th>
+                            <th>공급가격</th>
+                            <th style="width:80px;">배송비</th>
+                            <th>최총공급가</th>
+                            <th>마진율</th>
+                            <th style="width:95px;">매칭</th>
+                            <th class="" style="width:95px;">검색매칭</th>
                         </tr>
                         </thead>
                         <tbody>
                         <?php
                             foreach ( $matchAllResult as $row ){
 
-                                if( $row['match_data']['is_option']=="Y") {
-                                    $option_data = [];
-                                    if( !empty($row['match_data']['option_data']) ){
-                                        $option_data = json_decode($row['match_data']['option_data'], true);
-                                    }
+                                // match_data 안전 처리
+                                $matchData   = $row['match_data'] ?? [];
+                                $isOption    = ($matchData['is_option'] ?? 'N') === 'Y';
+                                $option_data = [];
+                                if( $isOption && !empty($matchData['option_data']) ){
+                                    $option_data = json_decode($matchData['option_data'], true) ?: [];
                                 }
 
                         ?>
                         <tr id="match_id_<?=$row['db1_idx']?>"
-                            data-price="<?=$row['match_data']['price']?>"
-                            data-delivery-fee="<?=$row['match_data']['delivery_fee']?>"
-                            data-supplier-site="<?=$row['match_data']['site']?>"
-                            data-supplier-2nd-name="<?=$row['match_data']['supplier']?>"
-                            data-supplier-prd-pk="<?=$row['match_data']['prd_pk']?>"
-                            data-prd-name="<?=$row['match_data']['name']?>"
-                            data-supplier-img-src="<?=$row['match_data']['image_url']?>"
-                            data-is-vat="<?=$row['match_data']['is_vat']?>"
+                            data-price="<?=$matchData['price'] ?? ''?>"
+                            data-delivery-fee="<?=$matchData['delivery_fee'] ?? ''?>"
+                            data-supplier-site="<?=$matchData['site'] ?? ''?>"
+                            data-supplier-2nd-name="<?=$matchData['supplier'] ?? ''?>"
+                            data-supplier-prd-pk="<?=$matchData['prd_pk'] ?? ''?>"
+                            data-prd-name="<?=htmlspecialchars($matchData['name'] ?? '', ENT_QUOTES, 'UTF-8')?>"
+                            data-supplier-img-src="<?=$matchData['image_url'] ?? ''?>"
+                            data-is-vat="<?=$matchData['is_vat'] ?? ''?>"
                         >
                             <td><input type="checkbox" name="" value="<?php echo $row['db1_idx']; ?>"></td>
                             <td class="text-center"><?=$row['db1_idx']?></td>
                             <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
+                                <button type="button" class="btnstyle1 btnstyle1-xs" 
                                     onclick="goGodoMall(<?=$row['prd_data']['godo_goodsNo']?>);" >#<?=$row['prd_data']['godo_goodsNo']?></button>
                             </td>
+                            <td class="text-right"><?=number_format($row['prd_data']['sale_price'])?></td>
                             <td class="text-center">
                                 <a href="javascript:koegAd.brandModify(<?=$row['prd_data']['brand_idx']?>);"><?=$row['db1_brand_name']?></a>
                             </td>
-                            <td>
-                                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn-one" 
-                                    data-db1-idx="<?=$row['db1_idx']?>" 
-                                    data-db2-idx="<?=$row['match_data']['idx']?>"
-                                >검색매칭</button>
-                            </td>
+                            
                             <td class="text-right prd-name">
-                                <a href="javascript:prdProviderQuick(<?=$row['db1_idx']?>);"><?=$row['db1_name']?></a>
+                                <a href="javascript:prdProviderQuick(<?=$row['db1_idx']?>);"><b><?=$row['db1_name']?></b></a>
 
                                 <? if( !empty($row['prd_data']['memo']) ){ ?>
                                     <br><span class="prd-memo"><?=$row['prd_data']['memo']?></span>
@@ -251,13 +268,13 @@ echo "</pre>";
                             </td>
                             <td><img src="<?=$row['db1_img_src']?>" style="height:70px; border:1px solid #eee !important;"></td>
                             <td class="text-center"><?=round($row['score'], 2)?></td>
-                            <td><img src="<?=$row['match_data']['image_url']?>" style="height:70px; border:1px solid #eee !important;"></td>
+                            <td><img src="<?=$matchData['image_url'] ?? ''?>" style="height:70px; border:1px solid #eee !important;"></td>
                             <td class="text-left prd-name">
-                                <a href="javascript:goSupplierProductEdit('<?=$row['match_data']['idx']?>');"><?=$row['match_data']['name']?></a>
+                                <a href="javascript:goSupplierProductEdit('<?=$matchData['idx'] ?? ''?>');"><?=$matchData['name'] ?? ''?></a>
                             </td>
                             <td>
                                 <?php
-                                    if( $row['match_data']['is_option']=="Y") {
+                                    if( ($matchData['is_option'] ?? 'N')=="Y") {
                                         foreach($option_data as $option){
                                             echo $option['name']."<br>";
                                             foreach($option['items'] as $item){
@@ -269,18 +286,68 @@ echo "</pre>";
                                 <?php } ?>
                             </td>
                             <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-                                    onclick="goSupplierProductEdit('<?=$row['match_data']['idx']?>');" >#<?=$row['match_data']['idx']?></button>
+                                <button type="button" class="btnstyle1 btnstyle1-xs" 
+                                    onclick="goSupplierProductEdit('<?=$matchData['idx'] ?? ''?>');" >#<?=$matchData['idx'] ?? ''?></button>
                             </td>
-                            <td><?=$row['match_data']['site']?></td>
+                            <td><?=$matchData['site'] ?? ''?></td>
                             <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-                                    onclick="goSupplierProduct('<?=$row['match_data']['site']?>', '<?=$row['match_data']['prd_pk']?>');" >#<?=$row['match_data']['prd_pk']?></button>
+                                <button type="button" class="btnstyle1 btnstyle1-xs" 
+                                    onclick="goSupplierProduct('<?=$matchData['site'] ?? ''?>', '<?=$matchData['prd_pk'] ?? ''?>');" >#<?=$matchData['prd_pk'] ?? ''?></button>
                             </td>
-                            <td><?=$row['match_data']['supplier']?></td>
+                            <td><?=$matchData['supplier'] ?? ''?></td>
+                            <td class="text-right">
+                                <?php
+                                    if( !empty($matchData['price']) ){
+                                ?>
+                                        <?=number_format($matchData['price'])?>
+                                <?php }else{ ?>
+                                        -
+                                <?php } ?>
+                            </td>
+                            <td class="text-right">
+                                <?php
+                                    if( !empty($matchData['delivery_fee']) ){
+                                ?>
+                                    <span style="display:block; font-size:11px; color:#666;">(<?=$matchData['delivery_com']?>)</span>
+                                    <?=number_format($matchData['delivery_fee'])?>
+                                <?php }else{ ?>
+                                        -
+                                <?php } ?>
+                            </td>
+                            <td class="text-right">
+                                <?php
+                                    $total_cost_price = ($matchData['price'] ?? 0) + ($matchData['delivery_fee'] ?? 0);
+                                    if( !empty($total_cost_price) ){
+                                ?>
+                                    <?=number_format($total_cost_price)?>
+                                <?php }else{ ?>
+                                        -
+                                <?php } ?>
+                            </td>
+                            <td class="text-right">
+                                <?php
+                                    $margin_price = ($row['prd_data']['sale_price'] ?? 0) - ($total_cost_price ?? 0);
+                                    $margin_rate  = (($row['prd_data']['sale_price'] ?? 0) > 0)
+                                        ? ($margin_price / $row['prd_data']['sale_price'] * 100)
+                                        : null;
+
+                                    if( !empty($margin_price) ){
+                                ?>
+                                    <?=number_format($margin_price)?>
+                                    <div style="font-size:11px; color:#666;">
+                                        <?php if( !is_null($margin_rate) ){ ?>
+                                            <?=number_format($margin_rate, 2)?>%
+                                        <?php }else{ ?>
+                                            -
+                                        <?php } ?>
+                                    </div>
+                                <?php }else{ ?>
+                                        -
+                                <?php } ?>
+                            </td>
                             <td>
                                 
-                                <?php if( $row['prd_data']['godo_is_option'] == "Y" ): ?>
+                                <?php if( ($row['prd_data']['godo_is_option'] ?? 'N') == "Y" ): ?>
                             옵션있는 상품
                                 <?php else: ?>
 
@@ -291,6 +358,7 @@ echo "</pre>";
                                     <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
                                         data-db1-idx="<?=$row['db1_idx']?>" 
                                         data-db2-idx="<?=$row['match_data']['idx']?>"
+                                        id="match_btn_<?=$row['match_data']['idx']?>"
                                     >바로매칭</button>
                                     <?
                                         }else{
@@ -309,11 +377,18 @@ echo "</pre>";
                                     <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm option-match-btn" 
                                         data-db1-idx="<?=$row['db1_idx']?>" 
                                         data-db2-idx="<?=$row['match_data']['idx']?>"
+                                        id="option_match_btn_<?=$row['match_data']['idx']?>"
                                     >옵션매칭</button>
                                     <?php } } ?>
 
                                 <?php endif; ?>
 
+                            </td>
+                            <td>
+                                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn-one" 
+                                    data-db1-idx="<?=$row['db1_idx']?>" 
+                                    data-db2-idx="<?=$matchData['idx'] ?? ''?>"
+                                >검색매칭</button>
                             </td>
                         </tr>
                         <?php
@@ -370,9 +445,9 @@ const supplierProductMatch = (function(){
                 $(`#match_id_${db1_idx}`).addClass('matched').css('background-color', '#f0f8ff');
 
                 if( mode == 'direct' ){
-                    $(`#match_id_${db2_idx} .match-btn`).prop('disabled', true).text('완료');
+                    $(`#match_id_${db1_idx} .match-btn`).prop('disabled', true).text('완료');
                 }else{
-                    $(`#match_id_${db2_idx} .option-match-btn`).prop('disabled', true).text('완료');
+                    $(`#match_id_${db1_idx} .option-match-btn`).prop('disabled', true).text('완료');
                 }
 
             } else {
@@ -393,6 +468,12 @@ const supplierProductMatch = (function(){
 })();
 
 $(function(){
+
+    // 행 클릭/버튼 클릭 시 선택 표시
+    $('.table-st1 tbody').on('click', 'tr', function(e){
+        $('.table-st1 tbody tr').removeClass('row-selected');
+        $(this).addClass('row-selected');
+    });
 
     $('.match-btn').on('click', function(){
         const db1_idx = $(this).data('db1-idx');

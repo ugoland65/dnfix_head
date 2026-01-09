@@ -1,3 +1,7 @@
+.list-memo-text{
+	font-size:12px;
+	color:#ff0000;
+}
 
 .table-grid-top{ 
 	height:30px; line-height:30px; 
@@ -21,7 +25,8 @@
 }
 
 .top-search-wrap + #list_new_wrap{
-	max-height:calc(100% - 60px);
+	margin-top:7px;
+	max-height:calc(100% - 25px);
 }
 
 .top-count-wrap + #list_new_wrap{
@@ -30,7 +35,14 @@
 
 .top-search-wrap{
 	display:flex;
+	align-items: center;
 	gap:5px;
+	
+	>ul{
+		&.right{
+			margin-left: auto;
+		}
+	}
 }
 
 
@@ -42,6 +54,9 @@
 	ul{
 		&.total{
 			font-size:12px;
+		}
+		&.right{
+			margin-left: auto;
 		}
 	}
 }
@@ -191,10 +206,6 @@
     table-layout:fixed;
     border-spacing:0; border-collapse:separate;
 
-	& * {
-		font-size:12px;
-	}
-
     thead tr {
         position:sticky;
         top:0;
@@ -206,9 +217,11 @@
 			white-space: nowrap; 
 			border-bottom: 1px solid var(--dn-table-color1);
 			border-right: 1px solid var(--dn-table-line-color);
+			background:#f8f9fa;
 			text-align:center;
 			height:30px;
 			padding:5px 7px;
+			font-size:12px;
         }
     }
 
@@ -223,6 +236,8 @@
 				border-bottom: 1px solid var(--dn-table-line-color);
 				padding:5px 7px;
 				vertical-align: middle;
+				font-size:12px;
+
 				white-space: nowrap; 
 
 				&.list-img{

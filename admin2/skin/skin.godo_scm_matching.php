@@ -82,12 +82,18 @@ if( !empty($_scm) ){
 
 
 	$brandMapping = [];
+	$brandMapping2 = [];
+
 	foreach ($brandResults as $row) {
 		// BD_NAME에서 모든 공백(\s) 제거
 		$brandNameNoSpace = preg_replace('/\s+/', '', $row['BD_NAME']);
 
 		$brandMapping[$brandNameNoSpace] = [
 			'IDX' => $row['BD_IDX']
+		];
+
+		$brandMapping2[$row['BD_IDX']] = [
+			'name' => $row['BD_NAME']
 		];
 	}
 
@@ -113,7 +119,8 @@ if( !empty($_scm) ){
 ?>
 
 <div id="contents_head">
-	<h1>고도몰 공급사상품 매칭<?=$_pagegodo?></h1>
+	<h1>고도몰 등록 공급사 상품</h1>
+	<h3>고도몰에 등록된 공급사 상품입니다.</h3>
     <div id="head_write_btn">
 	</div>
 </div>
@@ -138,233 +145,226 @@ if( !empty($_scm) ){
     }
 </style>
 
-<div>
+		<div id="list_new_wrap" >
 
-	총 갯수 : <b><?=$responseData['total'] ?? 0?></b>
-	
-    <?php
-    /*
-    $total = 9500; // 총 개수
-    $perPage = 500; // 페이지당 개수
-    $totalPages = ceil($total / $perPage); // 총 페이지 수
-
-    // 현재 페이지 번호 가져오기 (GET 파라미터에서)
-    $_pagegodo = isset($_GET['pagegodo']) ? (int)$_GET['pagegodo'] : 1;
-
-    for ($i = 1; $i <= $totalPages; $i++) {
-        $start = (($i - 1) * $perPage) + 1;
-        $end = min($i * $perPage, $total);
-
-        // 현재 페이지와 일치하면 class="on" 추가
-        $activeClass = ($_pagegodo === $i) ? 'on' : '';
-
-        echo '<button type="button" class="pagebtn ' . $activeClass . '" data-page="' . $i . '" onclick="location.href=\'/ad/showdang/godo_goods_matching/?pagegodo=' . $i . '\'">' . $start . '~' . $end . '</button>' . PHP_EOL;
-    }
-        */
-
-	
-    foreach( $scmMapping as $key => $value ){
-		
-		$activeClass = ($_scm == $key) ? 'on' : '';
-		$name = isset($value['name']) ? $value['name'] : '이름없음';
-		
-		if( empty($value['display'] ) ){
-			echo '<button type="button" class="pagebtn ' . $activeClass . '" onclick="location.href=\'/ad/provider/godo_scm_matching/?scm=' . $key . '\'">' . $name . '</button>' . PHP_EOL;
-		}
-	}
-    ?>
-</div>
-
-		<div id="list_new_wrap" class="m-t-5">
-
-<div id="" class="table-wrap5">
-	<div class=" scroll-wrap">
-
-		<table class="table-st1">
-			<thead>
-			<tr>
-				<th class="list-idx">count</th>
-				<th class="">고도몰 상품코드</th>
-				<th class="">고도몰 이미지</th>
-				<th class="">고도몰 상품명</th>
-				<th class="">고도몰 자체코드</th>		
-				<th class="">고도몰 옵션</th>
-				<th class="">고도몰 공급사</th>
-
-				<th class="">고도몰 브랜드코드</th>
-				<th class="">고도몰 판매가</th>
-				<th class="">코엣지 브랜드</th>
-				<th>매칭 상태</th>
-				<th>메모</th>
-			</tr>
-			</thead>
-			<tbody>
-			<?
-				$insertCount = 0;
-				$count = 0;
-				foreach ( $responseData['data'] ?? [] as $product ) {
+			<div class="table-top">
+				<ul class="total">
+					Total : <b><?=$responseData['total'] ?? 0?></b>
+				</ul>
+				<ul>
+				<?php
+				foreach( $scmMapping as $key => $value ){
 					
-					$count++;
-					$scmNo = $product['scmNo'] ?? '0';
-					$cateNmNoSpace = preg_replace('/\s+/', '', $product['cateNm']);
-					$goodsNo = $product['goodsNo'];
+					$activeClass = ($_scm == $key) ? 'on' : '';
+					$name = isset($value['name']) ? $value['name'] : '이름없음';
 					
-					/*
-						17 = 리퍼브
-					*/
-					$_tr_class = "l";
-					
-					if( empty( $brandMapping[$cateNmNoSpace] ) ){
-						//$_tr_class = "status_clx";
+					if( empty($value['display'] ) ){
+						echo '<button type="button" class="pagebtn ' . $activeClass . '" onclick="location.href=\'/ad/provider/godo_scm_matching/?scm=' . $key . '\'">' . $name . '</button>' . PHP_EOL;
 					}
-					
-					$_errors = [];
-					
-					if( empty($product['goodsCd']) ){
-						$_errors[] = "고도몰 자체코드가 없음";
-					}
-					
-					if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
-						$_errors[] = "재고코드가 있는것으로 의심됨";
-					}
-					
-					if (!empty($product['goodsCd']) && preg_match('/[^a-zA-Z0-9\-_]/', $product['goodsCd'])) {
-						$_errors[] = "코드불량";
-					}
-					
-					if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'set') !== false) {
-						$_errors[] = "세트코드 제외";
-					}
-					
-					if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
-						$_errors[] = "toy 코드 제외";
-					}
-					
-					if( empty( $brandMapping[$cateNmNoSpace] ) ){
-						$_errors[] = "브랜드 매칭 안됨 (인트라넷에 브랜드 존재하는지 확인)";
-					}
-					
-					$matchedIdx = null;
-					
-					$ud = "";
+				}
+				?>
+				</ul>
+			</div>
 
-					$options = json_decode($product['options'] ?? '', true);
+			<div id="" class="table-wrap5" class="m-t-5">
+				<div class=" scroll-wrap">
 
-					$goodsOption = [];
-					if (is_array($options)) {
-						foreach( $options as $option ){
-							if( !empty($option['optionValue1'])){
-								$goodsOption[] = $option;
-							}
-						}
-					}
+					<table class="table-st1">
+						<thead>
+						<tr>
+							<th class="list-idx">count</th>
+							<th class="">고도몰 상품코드</th>
+							<th class="">고도몰 이미지</th>
+							<th class="">고도몰 상품명</th>
+							<th class="">고도몰 자체코드</th>		
+							<th class="">고도몰 옵션</th>
+							<th class="">고도몰 공급사</th>
 
-					
-					if ( count($_errors) > 0 ) {
-						$_tr_class = "status_bl";
-					}else{
-					
-						if (array_key_exists($goodsNo, $matchedGoodsNos)) {
-							$matchedIdx = $matchedGoodsNos[$goodsNo];
-					
-						}else{
-							
-
-
-							$brandIdx = isset($brandMapping[$cateNmNoSpace]['IDX']) ? $brandMapping[$cateNmNoSpace]['IDX'] : null;
-							$partnerKey = isset($scmMapping[$scmNo]['partner_key']) ? $scmMapping[$scmNo]['partner_key'] : null;
-
-							$query = "INSERT prd_partner SET 
-										name = :name,
-										img_mode = :img_mode,
-										img_src = :img_src,
-										sale_price = :sale_price,
-										code = :code,
-										partner_idx = :partner_idx,
-										brand_idx = :brand_idx,
-										godo_goodsNo = :godo_goodsNo";
-
-							$stmt = $db->prepare($query);
-
-							$stmt->bindValue(':name', $product['goodsNm'], PDO::PARAM_STR);
-							$stmt->bindValue(':img_mode', 'out', PDO::PARAM_STR);
-							$stmt->bindValue(':img_src', $product['thumbImageUrl'], PDO::PARAM_STR);
-							$stmt->bindValue(':sale_price', $product['goodsPrice'], PDO::PARAM_INT);
-							$stmt->bindValue(':code', $product['goodsCd'], PDO::PARAM_STR);
-							$stmt->bindValue(':partner_idx', $partnerKey, PDO::PARAM_INT);
-							$stmt->bindValue(':brand_idx', $brandIdx, PDO::PARAM_INT);
-							$stmt->bindValue(':godo_goodsNo', $product['goodsNo'], PDO::PARAM_INT);
-
-							try {
-								if ($stmt->execute()) {
-									$insertCount++;
-									$ud = "새롭게 저장됨";
+							<th class="">고도몰 브랜드코드</th>
+							<th class="">고도몰 판매가</th>
+							<th class="">인트라넷 브랜드</th>
+							<th>매칭 상태</th>
+							<th>메모</th>
+						</tr>
+						</thead>
+						<tbody>
+						<?
+							$insertCount = 0;
+							$count = 0;
+							foreach ( $responseData['data'] ?? [] as $product ) {
+								
+								$count++;
+								$scmNo = $product['scmNo'] ?? '0';
+								$cateNmNoSpace = preg_replace('/\s+/', '', $product['cateNm']);
+								$goodsNo = $product['goodsNo'];
+								
+								/*
+									17 = 리퍼브
+								*/
+								$_tr_class = "l";
+								
+								if( empty( $brandMapping[$cateNmNoSpace] ) ){
+									//$_tr_class = "status_clx";
 								}
-							} catch (PDOException $e) {
-								echo "DB Error: " . $e->getMessage();
-							}
+								
+								$_errors = [];
+								
+								if( empty($product['goodsCd']) ){
+									$_errors[] = "고도몰 자체코드가 없음";
+								}
+								
+								if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
+									$_errors[] = "재고코드가 있는것으로 의심됨";
+								}
+								
+								if (!empty($product['goodsCd']) && preg_match('/[^a-zA-Z0-9\-_]/', $product['goodsCd'])) {
+									$_errors[] = "코드불량";
+								}
+								
+								if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'set') !== false) {
+									$_errors[] = "세트코드 제외";
+								}
+								
+								if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
+									$_errors[] = "toy 코드 제외";
+								}
+								
+								if( empty( $brandMapping[$cateNmNoSpace] ) ){
+									$_errors[] = "브랜드 매칭 안됨 (인트라넷에 브랜드 존재하는지 확인)";
+								}
+								
+								$matchedIdx = null;
+								
+								$ud = "";
 
-						
-						}
-					}
-						
-			?>
-			<tr id="trid_<?=$ps_idx?>" class="<?=$_tr_class?>">
-				<td class="list-idx"><?=$count?></td>
-				<td class="text-center">
-					<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-						onclick="goGodoMall(<?=$product['goodsNo']?>);" >#<?=$product['goodsNo']?></button>
-				</td>
-				<td class=""><img src="<?=$product['thumbImageUrl']?>" style="height:70px; border:1px solid #eee !important;"></td>
-				<td class=""><?=$product['goodsNm']?></td>
-				<td class=""><?=$product['goodsCd']?></td>
-				<td class="">
-					<?php
-						echo "<pre>";
-						print_r($options);
-						echo "</pre>";
+								$options = json_decode($product['options'] ?? '', true);
 
-						echo "<pre>";
-						print_r($goodsOption);
-						echo "</pre>";
-					
-					?>
-				</td>
-				<td class=""><?=$product['scmNo']?> | <?=$scmMapping[$scmNo]['name']?></td>
-				<td class=""><?=$product['brandCd']?> | <?=$product['cateNm']?></td>
-				<td class="text-right"><?=number_format($product['goodsPrice'])?></td>
-				<td class="">
-					<? if( empty( $brandMapping[$cateNmNoSpace] ) ){ ?>
-						매칭 X
-					<? }else{ ?>
-						<?=$brandMapping[$cateNmNoSpace]['IDX']?>
-					<? } ?>
-				</td>
-				<td class="">
-					<? if( $matchedIdx == null ){ ?>
-						매칭X<br>
-					<? }else{ ?>
-						<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-							onclick="prdProviderQuick('<?=$matchedIdx?>');" >#<?=$matchedIdx?></button>	
-					<? } ?>
-					<?=$ud?>
-				</td>
-				<td class="text-left">
-					<div>
-					<? 
-					if ( count($_errors) > 0 ) { 
-						foreach ( $_errors as $er ) {
-					?>
-						<ul><?=$er?></ul>
-					<? } } ?>
-					</div>
-				</td>
-			</tr>
-			<? }  ?>
-			</tbody>
-		</table>
-	</div>
-</div>
+								$goodsOption = [];
+								if (is_array($options)) {
+									foreach( $options as $option ){
+										if( !empty($option['optionValue1'])){
+											$goodsOption[] = $option;
+										}
+									}
+								}
+
+								
+								if ( count($_errors) > 0 ) {
+									$_tr_class = "status_bl";
+								}else{
+									if (array_key_exists($goodsNo, $matchedGoodsNos)) {
+										$matchedIdx = $matchedGoodsNos[$goodsNo];
+									}else{
+										
+										// 필수 NOT NULL 컬럼 기본값 처리
+										$brandIdx = isset($brandMapping[$cateNmNoSpace]['IDX']) ? $brandMapping[$cateNmNoSpace]['IDX'] : 0; // 없으면 0
+										$partnerKey = isset($scmMapping[$scmNo]['partner_key']) ? $scmMapping[$scmNo]['partner_key'] : 0; // 없으면 0
+
+										$query = "INSERT prd_partner SET 
+													name = :name,
+													img_mode = :img_mode,
+													img_src = :img_src,
+													sale_price = :sale_price,
+													order_price = :order_price,
+													cost_price = :cost_price,
+													price_data = :price_data,
+													godo_option = :godo_option,
+													code = :code,
+													partner_idx = :partner_idx,
+													brand_idx = :brand_idx,
+													godo_goodsNo = :godo_goodsNo";
+
+										$stmt = $db->prepare($query);
+
+										$stmt->bindValue(':name', $product['goodsNm'], PDO::PARAM_STR);
+										$stmt->bindValue(':img_mode', 'out', PDO::PARAM_STR);
+										$stmt->bindValue(':img_src', $product['thumbImageUrl'], PDO::PARAM_STR);
+										$stmt->bindValue(':sale_price', $product['goodsPrice'], PDO::PARAM_INT);
+										// 발주가격 컬럼 필수: 판매가와 동일하게 채움
+										$stmt->bindValue(':order_price', $product['goodsPrice'], PDO::PARAM_INT);
+										// 원가(cost_price) 필수: 일단 판매가로 채움
+										$stmt->bindValue(':cost_price', $product['goodsPrice'], PDO::PARAM_INT);
+										// price_data 필수: 빈 JSON으로 기본값 채움
+										$stmt->bindValue(':price_data', '', PDO::PARAM_STR);
+										// 고도 옵션 필수: 기본 빈 문자열
+										$stmt->bindValue(':godo_option', '', PDO::PARAM_STR);
+										$stmt->bindValue(':code', $product['goodsCd'], PDO::PARAM_STR);
+										$stmt->bindValue(':partner_idx', $partnerKey, PDO::PARAM_INT);
+										$stmt->bindValue(':brand_idx', $brandIdx, PDO::PARAM_INT);
+										$stmt->bindValue(':godo_goodsNo', $product['goodsNo'], PDO::PARAM_INT);
+
+										try {
+											if ($stmt->execute()) {
+												$insertCount++;
+												$ud = "새롭게 저장됨";
+											}
+										} catch (PDOException $e) {
+											echo "DB Error: " . $e->getMessage();
+										}
+
+									
+									}
+								}
+									
+						?>
+						<tr id="trid_<?=$ps_idx?>" class="<?=$_tr_class?>">
+							<td class="list-idx"><?=$count?></td>
+							<td class="text-center">
+								<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
+									onclick="goGodoMall(<?=$product['goodsNo']?>);" >#<?=$product['goodsNo']?></button>
+							</td>
+							<td class=""><img src="<?=$product['thumbImageUrl']?>" style="height:70px; border:1px solid #eee !important;"></td>
+							<td class=""><?=$product['goodsNm']?></td>
+							<td class=""><?=$product['goodsCd']?></td>
+							<td class="">
+								<?php
+									/*
+									echo "<pre>";
+									print_r($options);
+									echo "</pre>";
+
+									echo "<pre>";
+									print_r($goodsOption);
+									echo "</pre>";
+									*/
+								?>
+							</td>
+							<td class=""><?=$product['scmNo']?> | <?=$scmMapping[$scmNo]['name']?></td>
+							<td class=""><?=$product['brandCd']?> | <?=$product['cateNm']?></td>
+							<td class="text-right"><?=number_format($product['goodsPrice'])?></td>
+							<td class="">
+								<? if( empty( $brandMapping[$cateNmNoSpace] ) ){ ?>
+									매칭 X
+								<? }else{ ?>
+									<?=$brandMapping[$cateNmNoSpace]['IDX']?><br>
+									<?=$brandMapping2[$brandMapping[$cateNmNoSpace]['IDX']]['name']?>
+								<? } ?>
+							</td>
+							<td class="">
+								<? if( $matchedIdx == null ){ ?>
+									매칭X<br>
+								<? }else{ ?>
+									<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
+										onclick="prdProviderQuick('<?=$matchedIdx?>');" >#<?=$matchedIdx?></button>	
+								<? } ?>
+								<?=$ud?>
+							</td>
+							<td class="text-left">
+								<div>
+								<? 
+								if ( count($_errors) > 0 ) { 
+									foreach ( $_errors as $er ) {
+								?>
+									<ul><?=$er?></ul>
+								<? } } ?>
+								</div>
+							</td>
+						</tr>
+						<? }  ?>
+						</tbody>
+					</table>
+				</div>
+			</div>
 		
 		</div>
 
