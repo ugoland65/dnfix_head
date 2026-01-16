@@ -35,7 +35,7 @@
                     <?
                     foreach( $prdKindSelect as $code => $name ){
                     ?>
-                    <option value="<?=$code?>" <? if( $code == ($_s_prd_kind ?? '') ) echo "selected";?> ><?=$name?></option>
+                    <option value="<?=$code?>" <? if( $code == ($s_prd_kind ?? '') ) echo "selected";?> ><?=$name?></option>
                     <? } ?> 
                 </select>
             </ul>

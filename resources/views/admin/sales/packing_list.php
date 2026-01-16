@@ -118,8 +118,8 @@
                             border: 1px solid #000;
                             padding:0;
                             &.goods-image{
-                                width: 25mm;
-                                height: 25mm;
+                                width: 22mm;
+                                height: 22mm;
                                 img{
                                     width: 100%;
                                     height: 100%;
@@ -166,6 +166,8 @@
             padding:0;
             margin:0;
             box-sizing: border-box;
+
+            /*
             &.package-remove{
                 width: 100%;
                 margin-top: 10px;
@@ -178,6 +180,7 @@
                     font-weight: bold;
                 }
             }
+            */
         }
         
     }
@@ -195,10 +198,26 @@
         border-bottom: 1px solid #000;
         padding-bottom: 10px;
         text-align:center;
+
+        display:flex;
+        align-items: center;
+        justify-content: center;
+        gap: 10px;
         h2{
             font-size: 16px;
             font-weight: bold;
             margin-bottom: 10px;
+        }
+
+        .package-remove{
+            padding: 10px 20px;
+            border-radius: 5px;
+            display: inline-block;
+            background-color:#eee;
+            border: 1px solid #000;
+            font-size: 16px;
+            font-weight: bold;
+            color:#ff0000;
         }
         .gift-box{
             padding: 10px 13px;
@@ -228,16 +247,24 @@
     .order-receiver-info{
         width: 100%;
         margin-top: 10px;
-        h2{
-            font-size: 16px;
-            font-weight: bold;
-            margin-bottom: 10px;
-        }
+
         .name-point{
-            font-size: 18px;
-            font-weight: bold;
-            margin-bottom: 10px;
-            color:#0000ff;
+
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            h2{
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 10px;
+            }
+
+            span{
+                font-size: 16px;
+                font-weight: bold;
+                margin-bottom: 10px;
+                color:#0000ff;
+            }
         }
     }
 
@@ -274,6 +301,11 @@
         $index_count = $index + 1;
     ?>
     <div class="order-container">
+        <input type="hidden" name="order_date" id="order_date_<?=$order['orderNo']?>" value="<?=$order['regDt']?>">
+        <input type="hidden" name="mem_no" id="mem_no_<?=$order['orderNo']?>" value="<?=$order['member']['memNo']?>">
+        <input type="hidden" name="mem_id" id="mem_id_<?=$order['orderNo']?>" value="<?=$order['member']['memId']?>">
+        <input type="hidden" name="group_nm" id="group_nm_<?=$order['orderNo']?>" value="<?=$order['member']['groupNm']?>">
+
         <div class="order-header">
             <h1>주문번호 : <?=$order['orderNo']?></h1>
             <h1>주문일자 : <?=$order['regDt']?> ( <b style="color:#ff0000"><?=$index_count?></b> / <?=$packingList['total']?> )</h1>
@@ -395,19 +427,19 @@
         ?>
 
         <?php 
+        $is_package_remove = false;
         if(!empty($order['addField'])) { 
             if( count($order['addField']) > 0 ) {
         ?>
         <div class="order-add-field" >
-            <?php foreach ($order['addField'] as $addField) { ?>
-            
-            <?php if($addField['name'] == '패키지 제거 여부') { ?>
-                <?php if($addField['data'] == '패키지 제거') { ?>
-                    <ul class="package-remove">
-                        <h3>패키지 제거</h3>
-                    </ul>
-                <?php } ?>
-            <?php } else { ?>
+            <?php 
+                foreach ($order['addField'] as $addField) { 
+                    if($addField['name'] == '패키지 제거 여부') {
+                        if($addField['data'] == '패키지 제거') {
+                            $is_package_remove = true;
+                        }
+                    } else {
+            ?>
             <ul>
                 <?=$addField['name']?> : <b><?=$addField['data']?></b>
             </ul> 
@@ -418,6 +450,11 @@
         <?php } } ?>
 
         <div class="order-gift-info m-t-10">
+
+            <?php if($is_package_remove) { ?>
+                <p class="package-remove">패키지 제거</p>
+            <?php } ?>
+
             <?php if($order['settlePrice'] >= 100000) { ?>
                 <p class="gift-box gift-box-100000">사은품 : <b style="font-size:16px;">10만원 사은품</b></p>
             <?php } elseif($order['settlePrice'] >= 10000) { ?>
@@ -426,8 +463,7 @@
         </div>
 
         <div class="order-receiver-info">
-            <h2>수령자 정보</h2>
-
+            
             <div class="name-point">
                 <?php
                 // 이름 마스킹 처리 (가운데 글자를 * 처리)
@@ -456,7 +492,9 @@
                     $masked_phone = $phone;
                 }
                 ?>
-                <?=$masked_name?> / <?=$masked_phone?>
+
+                <h2>수령자 정보</h2>
+                <span><?=$masked_name?> / <?=$masked_phone?></span>
 
             </div>
 
@@ -497,15 +535,20 @@
         <div class="delivery-note m-t-20" style="display:flex; gap:12px;">
             <div style="flex:1;">
                 <div style="margin-bottom:6px; font-size:16px;">배송 특이사항 (인쇄 전 메모를 입력하세요)</div>
-                <textarea class="delivery-note-text" rows="3" style="width:100%; box-sizing:border-box; resize:vertical; font-size:15px;" placeholder="예: 경비실 보관, 파손주의 등"></textarea>
+                <textarea class="delivery-note-text" rows="3" style="width:100%; height:100px; box-sizing:border-box; resize:vertical; font-size:15px;" placeholder="예: 경비실 보관, 파손주의 등"></textarea>
                 <div class="delivery-note-preview" style="margin-top:6px; min-height:32px; white-space:pre-wrap; border:1px solid #eee; padding:8px; background:#fafafa; font-size:15px;"></div>
             </div>
             <div style="flex:1;">
                 <div style="margin-bottom:6px; font-size:16px;">
                     C/S 처리 요청
-                    <button class="cs-note-button">C/S 처리 요청</button>
+                    <button class="cs-note-button" onclick="csRequest('<?=$order['orderNo']?>')">C/S 처리 요청</button>
                 </div>
-                <textarea class="cs-note-text" rows="3" style="width:100%; box-sizing:border-box; resize:vertical; font-size:15px;" placeholder="예: 고객 요청사항, 환불/교환 메모 등"></textarea>
+                <textarea 
+                    id="cs_body_<?=$order['orderNo']?>"
+                    class="cs-note-text" 
+                    rows="3" 
+                    style="width:100%; height:100px; box-sizing:border-box; resize:vertical; font-size:15px;" 
+                    placeholder="예: 고객 요청사항, 환불/교환 메모 등"></textarea>
                 <div class="cs-note-preview" style="margin-top:6px; min-height:32px; white-space:pre-wrap; border:1px solid #eee; padding:8px; background:#fafafa; font-size:15px;"></div>
             </div>
         </div>
@@ -562,5 +605,37 @@
         // 파라미터가 있으면 URL에 추가하여 페이지 이동
         const newUrl = params.toString() ? `${currentUrl}?${params.toString()}` : currentUrl;
         window.location.href = newUrl;
+    }
+
+    //c/s 처리 요청
+    function csRequest(orderNo) {
+
+        const orderDate = document.getElementById('order_date_' + orderNo).value;
+        const memNo = document.getElementById('mem_no_' + orderNo).value;
+        const memId = document.getElementById('mem_id_' + orderNo).value;
+        const groupNm = document.getElementById('group_nm_' + orderNo).value;
+        const csBody = document.getElementById('cs_body_' + orderNo).value;
+
+
+        const data = {
+            orderNo: orderNo,
+            orderDate: orderDate,
+            memNo: memNo,
+            memId: memId,
+            groupNm: groupNm,
+            csBody: csBody,
+        };
+
+        ajaxRequest("/admin/cs/cs_request", data)
+            .then(res => {
+                if(res.success) {
+                    alert('C/S 처리 요청 완료');
+                } else {
+                    alert(res.message);
+                }
+            })
+            .catch(error => {
+                console.error('AJAX 요청 실패:', error);
+            });
     }
 </script>

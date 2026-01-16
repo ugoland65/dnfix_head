@@ -24,7 +24,12 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>고도몰 연동</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( $_page == "godo_order_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/godo_order_list?mode=ds'"><li>주문 가져오기</li></ul>
+	<ul <? if( $_page == "godo_order_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/godo_order_list?mode=ds'">
+		<li>주문 가져오기 (구)</li>
+	</ul>
+	<ul <? if( $pageNameCode == "godo_order_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_list'">
+		<li>주문 가져오기</li>
+	</ul>
 </div>
 
 <div class="left-menu-mid-title">

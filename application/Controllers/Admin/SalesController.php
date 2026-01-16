@@ -92,6 +92,8 @@ class SalesController extends BaseClass
             $godoApiService = new GodoApiService();
             $packingList = $godoApiService->getOrderPackingList($payload);
 
+            //dump($packingList);
+
             $data = [
                 'start_date' => $startDate,
                 'end_date' => $endDate,

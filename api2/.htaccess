@@ -1,5 +1,5 @@
 RewriteEngine On
-RewriteBase /tablet/
+RewriteBase /api2/
 
 # CORS 헤더 설정
 Header always set Access-Control-Allow-Origin "*"
@@ -10,11 +10,9 @@ Header always set Access-Control-Allow-Headers "Content-Type, Authorization, X-R
 RewriteCond %{REQUEST_METHOD} OPTIONS
 RewriteRule ^(.*)$ - [R=200,L]
 
-# 실제 파일이나 디렉토리가 존재하지 않는 경우
+# 실제 파일이나 디렉토리가 존재하지 않는 경우에만 라우터로
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
-
-# 모든 요청을 api_index.php로 리다이렉트
 RewriteRule ^(.*)$ router_index.php [QSA,L]
 
 # PHP 에러 표시 (개발 환경용)

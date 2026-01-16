@@ -15,11 +15,17 @@ $requestData = $requestHandler->getAll();
 
 $s_match_status = $requestData['s_match_status'] ?? 'unmatched';
 $site = $requestData['s_site'] ?? null;
+$s_keyword = $requestData['s_keyword'] ?? '';
 $page = $requestData['page'] ?? 1;
 
 if( $site ){
 
-    $url = "https://dnetc01.mycafe24.com/api/SupplierProduct?site=".$site."&match_status=".$s_match_status."&page=".$page."&limit=500";
+    $url = "https://dnetc01.mycafe24.com/api/SupplierProduct";
+    $url .= "?site=".$site;
+    $url .= "&match_status=".$s_match_status;
+    $url .= "&keyword=".urlencode($s_keyword);
+    $url .= "&page=".$page;
+    $url .= "&limit=500";
 
     // 보낼 API Key
     $headers = [
@@ -31,6 +37,21 @@ if( $site ){
     $response = HttpClient::getData($url, $headers);
     $data = json_decode($response, true);
 
+    $supplierProductsMatchIdxs = [];
+    foreach ( $data['data']['supplierProducts'] ?? [] as $row ){
+        if( !empty($row['provider_prd_idx']) ){
+            $supplierProductsMatchIdxs[] = $row['provider_prd_idx'];
+        }
+    }
+
+    $supplierProductsMatchIdxs = array_unique($supplierProductsMatchIdxs);
+
+    $productPartnerMatchData = [];
+    if (!empty($supplierProductsMatchIdxs)) {
+        $productPartnerService = new ProductPartnerService();
+        $productPartnerMatchData = $productPartnerService->getProductPartnerWhereInIdx($supplierProductsMatchIdxs);
+    }
+
     /*
     echo "<pre>";
     print_r($data);
@@ -40,7 +61,6 @@ if( $site ){
     $pagination_total = $data['data']['pagination']['total'];
     $pagination_per_page = $data['data']['pagination']['per_page'];
     $pagination_current_page = $data['data']['pagination']['current_page'];
-
 
     $pagination = new Pagination($pagination_total, $pagination_per_page, $pagination_current_page, 10);
     $paginationHtml = $pagination->renderLinks();
@@ -54,6 +74,29 @@ if( $site ){
     $paginationHtml = '';
 
 }
+
+$supplierCodeData = [
+    'mobe' => [
+        'name' => '모브',
+        'idx' => 3,
+        'code' => 'mobe',
+    ],
+    'byedam' => [
+        'name' => '바이담',
+        'idx' => 10,
+        'code' => 'byedam',
+    ],
+    'doradora' => [
+        'name' => '도라도라',
+        'idx' => 6,
+        'code' => 'doradora',
+    ],
+    'bunny' => [
+        'name' => '바니컴퍼니',
+        'idx' => 8,
+        'code' => 'bunny',
+    ],
+];
 ?>
 <div id="contents_head">
 	<h1>공급사 사이트 상품DB</h1>
@@ -71,10 +114,11 @@ if( $site ){
 				</ul>
                 <ul>
 					<select name="s_site" id="s_site" >
-						<option value=""  >공급사 사이트</option>
+						<option value="" >공급사 사이트</option>
                         <option value="mobe" <?=$site == 'mobe' ? 'selected' : ''?>>mobe (모브)</option>
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
                         <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
+                        <option value="bunny" <?=$site == 'bunny' ? 'selected' : ''?>>bunny (바니컴퍼니)</option>
 					</select>
 				</ul>
                 <ul>
@@ -85,8 +129,16 @@ if( $site ){
 					</select>
 				</ul>
                 <ul>
+					<input type="text" name="s_keyword" id="s_keyword" placeholder="상품명 검색" value="<?= $s_keyword ?? '' ?>">
+				</ul>
+                <ul>
 					<button type="button" id="searchBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm"  > 
 						<i class="fas fa-search"></i> 검색
+					</button>
+				</ul>
+                <ul>
+					<button type="button" id="resetBtn" class="btnstyle1 btnstyle1-sm"  > 
+						<i class="fas fa-undo"></i> 초기화
 					</button>
 				</ul>
             </div> 
@@ -105,7 +157,7 @@ if( $site ){
                             <th class="">사이트<br>카테고리</th>
                             <th class="" style="width:300px;">상품명</th>
                             <th>옵션</th>
-                            <th>매칭</th>
+                            <th>매칭상품</th>
                             <th class="">공급<br>입점사</th>
                             <th>공급가</th>
                             <th>배송비</th>
@@ -117,8 +169,7 @@ if( $site ){
                             <th>40%</th>
                             <th>최저판매가</th>
                             <th>최저가 마진율</th>
-                            <th>수정일</th>
-                            <th>등록일</th>
+                            <th>수정일<br>등록일</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -138,13 +189,18 @@ if( $site ){
                                 }
 
                         ?>
-                        <tr id="trid_><?=$row['idx']?>" class="">
+                        <tr id="trid_<?=$row['idx']?>" >
                             <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="><?=$row['idx']?>" ></td>	
                             <td class="list-idx"><?=$row['idx']?></td>
                             <td class="list-idx"><?=$row['site']?></td>
                             <td class="list-idx">
-                                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-                                onclick="goSupplierProduct('<?=$row['site']?>', '<?=$row['prd_pk']?>');" >#<?=$row['prd_pk']?></button>
+                                <div style="font-size: 12px;">
+                                    #<?= $row['prd_pk'] ?>
+                                </div>
+                                <div class="m-t-3">
+                                    <button type="button" class="btnstyle1 btnstyle1-xs"
+                                        onclick="goSupplierProduct('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');">공급사 사이트</button>
+                                </div>
                             </td>
                             <td >
                                 <img src="<?=$row['image_url']?>" style="height:70px; border:1px solid #eee !important;">
@@ -168,14 +224,24 @@ if( $site ){
                                     -
                                 <?php } ?>
                             </td>
-                            <td class="text-center">
+                            <td class="text-left">
                                 <?php if( !empty($row['provider_prd_idx']) ): ?>
-                                    <?=$row['provider_prd_idx']?>
+                                    #<?=$row['provider_prd_idx']?>
+                                    <div class="m-t-3" style="font-size: 12px;">
+                                        <?= $productPartnerMatchData[$row['provider_prd_idx']]['name'] ?>
+                                    </div>
+                                    <div class="m-t-3">
+                                        <button type="button" class="btnstyle1 btnstyle1-xs"
+                                            onclick="onlyAD.prdProviderQuick('<?=$row['provider_prd_idx']?>', 'info');">매칭된 상품보기</button>
+                                    </div>
                                 <?php else: ?>
                                     -
                                 <?php endif; ?>
                             </td>
-                            <td><?=$row['supplier']?></td>
+                            <td>
+                                <b><?= $supplierCodeData[$row['site']]['name'] ?></b><br>
+                                <?=$row['supplier']?>
+                            </td>
                             <td class="text-right"><?=number_format($row['price'])?></td>
                             <td class="text-right"><?=number_format($row['delivery_fee'])?></td>
                             <td class="text-center"><?=$row['delivery_com']?></td>
@@ -197,8 +263,10 @@ if( $site ){
                                     -
                                 <?php endif; ?>
                             </td>
-                            <td class="text-center"><?=$row['updated_at']?></td>
-                            <td class="text-center"><?=$row['created_at']?></td>
+                            <td class="text-center">
+                                <?=date('Y.m.d H:i', strtotime($row['updated_at']))?><br>
+                                <?=date('Y.m.d H:i', strtotime($row['created_at']))?>
+                            </td>
                         </tr>
                         <?php } ?>
                         </tbody>
@@ -219,6 +287,13 @@ $(function(){
 
     $("#searchBtn").on('click',function(){
 
+        let s_site = $("#s_site").val();
+
+        if( !s_site ){
+            alert('공급사 사이트를 선택해주세요.');
+            return false;
+        }
+
         // 검색 파라미터 수집
         var params = {};
 
@@ -229,6 +304,7 @@ $(function(){
         var fields = {
             's_site': $("#s_site").val(),
             's_match_status': $("#s_match_status").val(),
+            's_keyword': $("#s_keyword").val(),
         };
 
         // 유효한 값만 params에 추가
@@ -247,6 +323,14 @@ $(function(){
 
         // 페이지 이동
         location.href = '/ad/provider/supplier_product' + (queryString ? '?' + queryString : '');
+    });
+
+    $("#resetBtn").on('click',function(){
+
+        let s_site = $("#s_site").val();
+        let s_match_status = $("#s_match_status").val();
+
+        location.href = '/ad/provider/supplier_product?s_site=' + s_site + '&s_match_status=' + s_match_status;
     });
 
 });

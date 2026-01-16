@@ -8,7 +8,7 @@
 
 
 <script type="text/javascript"> 
-<!-- 
+
 //가격비교 퀵 창
 function comparisonQuick(idx, vmode = "comparison"){
 	window.open("/admin2/comparison/popup.comparison_modify.php?idx="+ idx +"&vmode="+vmode, "comparison_quick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
@@ -72,7 +72,6 @@ $(function(){
 	});
 
 });
-//--> 
 </script> 
 <script src="/assets/js/common.js?ver=<?=$wepix_now_time?>"></script>
 

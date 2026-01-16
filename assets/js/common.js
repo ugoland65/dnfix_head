@@ -119,6 +119,10 @@ function goGodoMall(code){
 	window.open('https://showdang.co.kr/goods/goods_view.php?goodsNo='+code, '_blank');
 }
 
+function goGodoMallAdmin(code){
+	window.open('http://gdadmin.dnfix202439.godomall.com/goods/goods_register.php?goodsNo='+code, '_blank');
+}
+
 function goSupplierProduct(site, code){
 	if(site == 'mobe'){
 		window.open('https://mobe.kr/product/view.asp?ref=1&seq='+code, '_blank');
@@ -126,6 +130,8 @@ function goSupplierProduct(site, code){
 		window.open('https://www.bestoypn.co.kr/goods/goods_view.php?goodsNo='+code, '_blank');
 	}else if(site == 'doradora'){
 		window.open('https://doradora.kr/product/detail.html?product_no='+code, '_blank');
+	}else if(site == 'bunny'){
+		window.open('https://bunnycompany.co.kr/product/detail.html?product_no='+code, '_blank');
 	}
 }
 

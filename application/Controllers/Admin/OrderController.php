@@ -39,6 +39,8 @@ class OrderController extends BaseClass {
 
 
     /**
+     * @deprecated 2026-01-11
+     * 
      * 고도몰 상품준비중 가져오기
      * @skin : skin.godo_order_list.php
      * @return array

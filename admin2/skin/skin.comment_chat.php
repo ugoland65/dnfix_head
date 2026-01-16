@@ -221,7 +221,6 @@ $_reaction_icon['Check'] = "✔️";
 </form>
 
 <script type="text/javascript"> 
-<!-- 
 
 //답장활성화
 function replyOn(idx, mb_idx) {
@@ -348,9 +347,4 @@ $(document).ready(function () {
   });
 });
 
-
-
-
-
-//--> 
 </script> 

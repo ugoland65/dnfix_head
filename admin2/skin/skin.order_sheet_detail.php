@@ -170,14 +170,13 @@ var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
 		</div>
 	</ul>
 	<ul class="right">
-		///<?=$_open_oop_idx?>
-		<div id="order_sheet_detail_prd_list" class="overflow-y">
+		<div id="order_sheet_detail_prd_list" class="scroll-wrap">
 		</div>
 	</ul>
 </div>
 
-<script type="text/javascript">
-<!-- 
+<script>
+
 var orderSheetDetail = function() {
 
 	var detailDisplay;

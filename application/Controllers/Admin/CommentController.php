@@ -14,70 +14,72 @@ use App\Models\CalendarModel;
 use App\Utils\Pagination;
 use App\Utils\TelegramUtils;
 
-class CommentController extends BaseClass {
+class CommentController extends BaseClass
+{
 
 
-	public function getTitleInfo($mode, $tidx) {
-        
+	public function getTitleInfo($mode, $tidx)
+	{
+
 		$modes = [
-            'orderSheet' => [
-                'model' => OrderSheetModel::class,
-                'field' => 'oo_name',
-                'title' => '주문서',
-            ],
-            'log' => [
-                'model' => WorkLogModel::class,
-                'field' => 'subject',
-                'title' => '업무 게시판',
-            ],
-            'prd' => [
-                'model' => ProductModel::class,
-                'field' => 'CD_NAME',
-                'title' => '상품',
-            ],
-            'calendar' => [
-                'model' => CalendarModel::class,
-                'field' => 'subject',
-                'title' => '캘린더',
-            ],
-        ];
+			'orderSheet' => [
+				'model' => OrderSheetModel::class,
+				'field' => 'oo_name',
+				'title' => '주문서',
+			],
+			'log' => [
+				'model' => WorkLogModel::class,
+				'field' => 'subject',
+				'title' => '업무 게시판',
+			],
+			'prd' => [
+				'model' => ProductModel::class,
+				'field' => 'CD_NAME',
+				'title' => '상품',
+			],
+			'calendar' => [
+				'model' => CalendarModel::class,
+				'field' => 'subject',
+				'title' => '캘린더',
+			],
+		];
 
-        if (!isset($modes[$mode])) {
-            throw new \Exception("Invalid mode: {$mode}");
-        }
+		if (!isset($modes[$mode])) {
+			throw new \Exception("Invalid mode: {$mode}");
+		}
 
-        // 동적으로 모델 초기화
-        $modelClass = $modes[$mode]['model'];
-        $model = new $modelClass();
-        $field = $modes[$mode]['field'];
-        $title = $modes[$mode]['title'];
+		// 동적으로 모델 초기화
+		$modelClass = $modes[$mode]['model'];
+		$model = new $modelClass();
+		$field = $modes[$mode]['field'];
+		$title = $modes[$mode]['title'];
 
-        // 데이터 조회
-        $data = $model->find($tidx, [$field]);
+		// 데이터 조회
+		$data = $model->find($tidx, [$field]);
 
-        return [
-            'title_mode' => $title,
-            'title_name' => $data[$field] ?? '',
-        ];
-
-    }
+		return [
+			'title_mode' => $title,
+			'title_name' => $data[$field] ?? '',
+		];
+	}
 
 
 	/**
 	 * 코멘트 메인 - 화면
 	 */
-	public function commentMainIndex() {
+	public function commentMainIndex()
+	{
 
 		$postData = $this->postData;
 
 		$result = [];
 
 		//달력 댓글경우 데이터가 없을경우 생성
-		if( isset($postData['mode']) && $postData['mode'] == "calendar" && empty($postData['idx']) && !empty($postData['dayCode']) ){
+		if (isset($postData['mode']) && $postData['mode'] == "calendar" && empty($postData['idx']) && !empty($postData['dayCode'])) {
 
-			$_subject = $postData['dayCode']." 캘린더";
-			$_date_s = $postData['dayCode']." 00:00:00";
-			$_date_e	 = $postData['dayCode']." 23:59:59";
+			$_subject = $postData['dayCode'] . " 캘린더";
+			$_date_s = $postData['dayCode'] . " 00:00:00";
+			$_date_e	 = $postData['dayCode'] . " 23:59:59";
 
 			$CalendarModel = new CalendarModel();
 
@@ -98,8 +100,7 @@ class CommentController extends BaseClass {
 					->first();
 
 				$result['CalendarInsert']['idx'] = $CalendarInsertResult['idx'];
-
-			}else{
+			} else {
 
 				$insertData = [
 					'subject' => $_subject,
@@ -111,57 +112,23 @@ class CommentController extends BaseClass {
 				$CalendarInsertResult = $CalendarModel->insert($insertData);
 
 				$result['CalendarInsert']['idx'] = $CalendarInsertResult['insert_id'];
-
 			}
-
 		}
 
 		return $result;
-
 	}
 
 
 	/**
 	 * 코멘트 쳇 리스트 - 화면
 	 */
-	public function commentListIndex() {
+	public function commentListIndex()
+	{
 
 		$ad_idx = AuthAdmin::getSession('sess_idx');
-		$_target_mb_text = "@".$ad_idx;
+		$_target_mb_text = "@" . $ad_idx;
 
 		/*
-		$results = $this->queryBuilder
-			->table('work_comment AS A')
-			->selectRaw('A.*, MAX(A.reg_date) AS last_comment_date, B.ad_name, B.ad_image')
-			->join('admin AS B', 'B.idx', '=', 'A.mb_idx', 'LEFT')
-			->where('A.kind', '=', 'S')
-			//->whereRaw('FIND_IN_SET(:mention_mb, REPLACE(A.mention_mb, "@", "")) > 0', ['mention_mb' => $ad_idx])
-			//->where('A.mention_mb', 'LIKE', "@".$_ad_idx)
-			->whereRaw('INSTR(A.mention_mb, :mention_mb)', ['mention_mb' => $_target_mb_text])
-			->orWhere('A.mb_idx', '=', $ad_idx)
-			->groupBy('A.mode', 'A.tidx')
-			->orderByRaw('last_comment_date DESC')
-			->get();
-		*/
-
-
-        // SQL 쿼리 작성
-		/*
-		$sql = "
-			SELECT A.*,C.ad_name, C.ad_image
-			FROM work_comment AS A
-			LEFT JOIN work_view_check AS B 
-				ON B.mode = A.mode
-			   AND B.tidx = A.idx 
-			LEFT JOIN admin AS C
-				ON C.idx = A.mb_idx 
-			WHERE  INSTR(A.mention_mb, :target_mb_text) > 0
-			  AND B.idx IS NULL
-			ORDER BY A.idx DESC;
-		";
-		*/
-
-
 $sql = "
 SELECT A.*,C.ad_name, C.ad_image
 FROM work_comment AS A
@@ -177,12 +144,37 @@ WHERE A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')
   )
 ORDER BY A.idx DESC
 ";
+*/
 
-// 바인딩 값 설정
-$params = [
-    'target_mb_text' => "@".$ad_idx,
-    'ad_idx' => $ad_idx,
-];
+		$sql = "
+			SELECT
+				A.idx,
+				A.mode,
+				A.tidx,
+				A.mb_idx,
+				A.comment,
+				A.reg_date,
+				C.ad_name,
+				C.ad_image
+			FROM work_comment A
+			LEFT JOIN admin C
+				ON C.idx = A.mb_idx
+			LEFT JOIN work_view_check B
+				ON B.mode = A.mode
+				AND B.tidx = A.idx
+				AND B.mb_idx = :ad_idx
+			WHERE A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')
+				AND B.tidx IS NULL
+			ORDER BY A.idx DESC
+			LIMIT 50;
+		";
+
+
+		// 바인딩 값 설정
+		$params = [
+			'target_mb_text' => "@" . $ad_idx,
+			'ad_idx' => $ad_idx,
+		];
 
 
 		$stmt = $this->db->prepare($sql);
@@ -232,21 +224,19 @@ $params = [
 
 			}
 			*/
-
-
 		}
 
 
 		return [
 			'list' => $results,
 		];
-
 	}
 
 	/**
 	 * 코멘트 쳇 - 화면
 	 */
-	public function commentChatIndex() {
+	public function commentChatIndex()
+	{
 
 		$postData = $this->postData;
 
@@ -300,13 +290,13 @@ $params = [
 
 		// 주요 댓글 데이터 조회
 		$query = $this->queryBuilder
-		->table('work_comment AS A')
-		->select([
-			'A.*',
-			'B.ad_nick',
-			'B.ad_image',
-		])
-		->join('admin AS B', 'B.idx', '=', 'A.mb_idx', 'LEFT')
+			->table('work_comment AS A')
+			->select([
+				'A.*',
+				'B.ad_nick',
+				'B.ad_image',
+			])
+			->join('admin AS B', 'B.idx', '=', 'A.mb_idx', 'LEFT')
 			->where('A.mode', '=', $_mode)
 			->where('A.kind', '=', 'S')
 			->where('A.tidx', '=', $_tidx)
@@ -392,7 +382,7 @@ $params = [
 				'name' => $_title_name,
 			],
 			'comment' => $query,
-		/*
+			/*
 			'test' => [
 				'viewCheckQuery' => $viewCheckQuery,
 				'mentionIds' => $mentionIds,
@@ -405,9 +395,10 @@ $params = [
 	/**
 	 * 코멘트 등록
 	 */
-    public function createComment() {
+	public function createComment()
+	{
 
-		try{
+		try {
 
 			$postData = $this->postData;
 			$action_time = date('Y-m-d H:i:s');
@@ -419,53 +410,14 @@ $params = [
 			$_title_mode = $TitleInfo['title_mode'];
 			$_title_name = $TitleInfo['title_name'];
 
-			/*
-			//주문서 댓글
-			if( $postData['mode'] == "orderSheet" ){
-
-				$orderSheetModel = new orderSheetModel();
-				$orderSheet = $orderSheetModel->find( $postData['tidx'], ['oo_name']);
-
-				$target['name'] = $orderSheet['oo_name'];
-				$message = "<b><u>주문서 (".$orderSheet['oo_name'].") 멘션되었습니다.</u></b>";
-
-			// 업무게시판 댓글
-			}elseif( $postData['mode'] == "log" ){
-
-				$workLogModel = new WorkLogModel();
-				$workLog = $workLogModel->find( $postData['tidx'], ['subject']);
-
-				$target['name'] = $workLog['subject'];
-				$message = "<b><u>업무게시판 (".$workLog['subject'].") 멘션되었습니다.</u></b>";
-
-			//상품 댓글
-			}elseif( $postData['mode'] == "prd" ){
-
-				$ProductModel = new ProductModel();
-				$product = $ProductModel->find( $postData['tidx'], ['CD_NAME']);
-
-				$target['name'] = $product['CD_NAME'];
-				$message = "<b><u>상품정보 (".$product['CD_NAME'].") 멘션되었습니다.</u></b>";
-
-			// 달력 댓글
-			}elseif( $postData['mode'] == "calendar" ){
-
-				$CalendarModel = new CalendarModel();
-				$Calendar = $CalendarModel->find( $postData['tidx'], ['subject']);
-
-				$target['name'] = $Calendar['subject'];
-				$message = "<b><u>캘린더 (".$Calendar['subject'].") 멘션되었습니다.</u></b>";
-
-			}
-			*/
 			$message = "🟣 멘션 |";
-			$message .= "<b>[".$postData['tidx']."] ".$_title_mode." (".$_title_name.")</b>";
+			$message .= "<b>[" . $postData['tidx'] . "] " . $_title_mode . " (" . $_title_name . ")</b>";
 
 
 			$_is_reply = 0;
 
 			//만약 답장일때
-			if( !empty($postData['reply_idx']) ){
+			if (!empty($postData['reply_idx'])) {
 
 				$_is_reply = 1;
 
@@ -492,9 +444,9 @@ $params = [
 					->where('tidx', '=', $postData['reply_idx'])
 					->where('mb_idx', '=', AuthAdmin::getSession('sess_idx'))
 					->exists();
-				
+
 				//부모글을 체크 안했다면 바로 체크해버린다.
-				if ( !$isViewCheck ) {
+				if (!$isViewCheck) {
 
 					$insertData = [
 						'mode' => $postData['mode'],
@@ -505,40 +457,38 @@ $params = [
 					];
 
 					$WorkViewCheckInsertResult = $WorkViewCheckModel->insert($insertData);
-
 				}
-				
+
 				/*
 				$message = "<b><u>".$_title_mode." (".$_title_name.") 멘션되었습니다.</u></b>";
 				위에 쓴 메세지가 무시되고 새롭게 다시 쓴다.
 				*/
 
 				$message = "🟢 답변 | ";
-				$message .= "<b>[".$postData['tidx']."] ".$_title_mode." (".$_title_name.") </b>\n";
+				$message .= "<b>[" . $postData['tidx'] . "] " . $_title_mode . " (" . $_title_name . ") </b>\n";
 				$message .= "---------------------------------------------------\n";
-				$message .= "(".$postData['reply_name'].")\n";
-				$message .= "".$replySummary."\n";
+				$message .= "(" . $postData['reply_name'] . ")\n";
+				$message .= "" . $replySummary . "\n";
 				$message .= "---------------------------------------------------";
-
 			}
 
-				$message .= "\n\n".$postData['comment']."";
-				$message .= "\n\n( ".AuthAdmin::getSession('sess_name')." :: ".$action_time.")";
+			$message .= "\n\n" . $postData['comment'] . "";
+			$message .= "\n\n( " . AuthAdmin::getSession('sess_name') . " :: " . $action_time . ")";
 
 			//만약 답장일때
-			if( !empty($postData['reply_idx']) && !empty($postData['reply_mb_idx']) ){
+			if (!empty($postData['reply_idx']) && !empty($postData['reply_mb_idx'])) {
 				$_target_mb_idx = [$postData['reply_mb_idx']];
-			}else{
+			} else {
 				$_target_mb_idx = $postData['target_mb_idx'];
 			}
 
 			$_mention_mb = "";
-			foreach ( $_target_mb_idx as $mb_idx ){
-				$_mention_mb .= "@".$mb_idx;
-				
-				$ad = $AdminModel->find( $mb_idx, ['ad_telegram_token']);
+			foreach ($_target_mb_idx as $mb_idx) {
+				$_mention_mb .= "@" . $mb_idx;
 
-				if( !empty($ad) && !empty($ad['ad_telegram_token']) ){
+				$ad = $AdminModel->find($mb_idx, ['ad_telegram_token']);
+
+				if (!empty($ad) && !empty($ad['ad_telegram_token'])) {
 					$chatId = $ad['ad_telegram_token'];
 					//$message .= "<a href='https://example.com'>[멘션확인 처리하기]</a>";
 					$telegramResult = $telegram->sendMessage($chatId, $message, 'HTML');
@@ -549,27 +499,27 @@ $params = [
 			// Mention 문자열 생성
 			//$_mention_mb = "@" . implode("@", $postData['target_mb_idx']);
 
-		$insertData = [
-			'mode' => $postData['mode'] ?? null,
-			'kind' => 'S',
-			'tidx' => $postData['tidx'] ?? null,
-			'comment' => $postData['comment'] ?? null,
-			'mb_idx' => AuthAdmin::getSession('sess_idx'),
-			'reg' => json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE) ?? null,
-			'mention_mb' => $_mention_mb ?? null,
-			'is_reply' => $_is_reply,
-			'reply_data' => $_reply_data ?? null,
-			'grpno' => '0',
-			'grpord' => '0',
-			'depth' => '0',
-			'ancestor' => '0',
-		];
+			$insertData = [
+				'mode' => $postData['mode'] ?? null,
+				'kind' => 'S',
+				'tidx' => $postData['tidx'] ?? null,
+				'comment' => $postData['comment'] ?? null,
+				'mb_idx' => AuthAdmin::getSession('sess_idx'),
+				'reg' => json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE) ?? null,
+				'mention_mb' => $_mention_mb ?? null,
+				'is_reply' => $_is_reply,
+				'reply_data' => $_reply_data ?? null,
+				'grpno' => '0',
+				'grpord' => '0',
+				'depth' => '0',
+				'ancestor' => '0',
+			];
 
 			$CommentModel = new CommentModel();
 			$CommentInsertResult = $CommentModel->insert($insertData);
 
 			//주문서 댓글
-			if( $postData['mode'] == "orderSheet" ){
+			if ($postData['mode'] == "orderSheet") {
 
 				$incrementResults = $this->queryBuilder
 					->table('ona_order')
@@ -577,7 +527,7 @@ $params = [
 					->increment('comment_count', 1);
 
 			// 업무게시판 댓글
-			}elseif( $postData['mode'] == "log" ){
+			} elseif ($postData['mode'] == "log") {
 
 				$workLogModel = new WorkLogModel();
 				$incrementResults = $workLogModel->queryBuilder()
@@ -585,7 +535,7 @@ $params = [
 					->increment('cmt_s_count', 1);
 
 			//상품 댓글
-			}elseif( $postData['mode'] == "prd" ){
+			} elseif ($postData['mode'] == "prd") {
 
 				$incrementResults = $this->queryBuilder
 					->table('COMPARISON_DB')
@@ -593,13 +543,12 @@ $params = [
 					->increment('comment_count', 1);
 
 			// 달력 댓글
-			}elseif( $postData['mode'] == "calendar" ){
-				
+			} elseif ($postData['mode'] == "calendar") {
+
 				$CalendarModel = new CalendarModel();
 				$incrementResults = $CalendarModel->queryBuilder()
 					->where('idx', '=', $postData['tidx'])
 					->increment('comment_count', 1);
-
 			}
 
 			return [
@@ -608,20 +557,19 @@ $params = [
 				'mode' => $postData['mode'],
 				'tidx' => $postData['tidx']
 			];
-
 		} catch (\Exception $e) {
 			return ['status' => 'error', 'message' => $e->getMessage()];
 		}
-
 	}
 
 
 	/**
 	 * 코멘트 리액션
 	 */
-	public function commentReaction() {
+	public function commentReaction()
+	{
 
-		try{
+		try {
 
 			$postData = $this->postData;
 			$action_time = date('Y-m-d H:i:s');
@@ -637,12 +585,12 @@ $params = [
 			$_title_mode = $TitleInfo['title_mode'];
 			$_title_name = $TitleInfo['title_name'];
 
-		// 기존 반응 데이터 디코딩
-		$_old_reaction = json_decode($Comment['reaction'] ?? '[]', true);
+			// 기존 반응 데이터 디코딩
+			$_old_reaction = json_decode($Comment['reaction'] ?? '[]', true);
 
-		if (!is_array($_old_reaction)) {
-			$_old_reaction = [];
-		}
+			if (!is_array($_old_reaction)) {
+				$_old_reaction = [];
+			}
 
 			// 새로운 반응 데이터
 			$_new_reaction = [
@@ -670,7 +618,7 @@ $params = [
 					'reaction' => json_encode($_old_reaction, JSON_UNESCAPED_UNICODE),
 				]);
 
-				$ad = $AdminModel->find( $Comment['mb_idx'], ['ad_telegram_token']);
+				$ad = $AdminModel->find($Comment['mb_idx'], ['ad_telegram_token']);
 				$chatId = $ad['ad_telegram_token'];
 
 				$_reaction_icon['Good'] = "👍";
@@ -678,16 +626,15 @@ $params = [
 				$_reaction_icon['Clapping'] = "👏";
 				$_reaction_icon['Check'] = "✔️";
 
-				$message = $_reaction_icon[$postData['reaction_mode']]." 리액션 | ";
-				$message .= "<b>[".$postData['idx']."] ".$_title_mode." (".$_title_name.") </b>\n";
+				$message = $_reaction_icon[$postData['reaction_mode']] . " 리액션 | ";
+				$message .= "<b>[" . $postData['idx'] . "] " . $_title_mode . " (" . $_title_name . ") </b>\n";
 				$message .= "---------------------------------------------------\n";
-				$message .= "".$Comment['comment']."\n";
+				$message .= "" . $Comment['comment'] . "\n";
 				$message .= "---------------------------------------------------";
-				$message .= "\n\n( ".AuthAdmin::getSession('sess_name')." :: ".$action_time.")\n";
-				$message .= $_reaction_icon[$postData['reaction_mode']]." 리액션 했습니다.";
+				$message .= "\n\n( " . AuthAdmin::getSession('sess_name') . " :: " . $action_time . ")\n";
+				$message .= $_reaction_icon[$postData['reaction_mode']] . " 리액션 했습니다.";
 
 				$telegramResult = $telegram->sendMessage($chatId, $message, 'HTML');
-
 			}
 
 			$WorkViewCheckModel = new WorkViewCheckModel();
@@ -700,7 +647,7 @@ $params = [
 				->exists();
 
 			//부모글을 체크 안했다면 바로 체크해버린다.
-			if ( !$isViewCheck ) {
+			if (!$isViewCheck) {
 
 				$insertData = [
 					'mode' => $postData['mode'],
@@ -711,18 +658,15 @@ $params = [
 				];
 
 				$WorkViewCheckInsertResult = $WorkViewCheckModel->insert($insertData);
-
 			}
 
 			return [
 				'status' => 'success',
 				'message' => "등록완료"
 			];
-
 		} catch (\Exception $e) {
 			return ['status' => 'error', 'message' => $e->getMessage()];
 		}
-
 	}
 
 
@@ -730,11 +674,12 @@ $params = [
 	/**
 	 * 코멘트 뷰체크
 	 */
-    public function commentViewCheck() {
+	public function commentViewCheck()
+	{
 
 		$postData = $this->postData;
 		$action_time = date('Y-m-d H:i:s');
-		$return_time =date('y.m.d H:i',strtotime($action_time));
+		$return_time = date('y.m.d H:i', strtotime($action_time));
 
 		$insertData = [
 			'mode' => $postData['mode'] ?? null,
@@ -753,22 +698,22 @@ $params = [
 			'return_time' => $return_time,
 			'message' => "처리완료"
 		];
-
 	}
 
 	/**
 	 * 코멘트 뷰체크 전부 확인
 	 */
-    public function commentViewCheckAll() {
+	public function commentViewCheckAll()
+	{
 
 		$postData = $this->postData;
 
 		$action_time = date('Y-m-d H:i:s');
 
 		$ad_idx = AuthAdmin::getSession('sess_idx');
-		$_target_mb_text = "@".$ad_idx;
+		$_target_mb_text = "@" . $ad_idx;
 
-        // SQL 쿼리 작성
+		// SQL 쿼리 작성
 		$sql = "
 			SELECT A.mode, A.idx
 			FROM work_comment AS A
@@ -796,7 +741,7 @@ $params = [
 
 		$_reg = json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE);
 
-		foreach ( $results as $val ){
+		foreach ($results as $val) {
 
 			$insertData[] = [
 				'mode' => $val['mode'],
@@ -805,7 +750,6 @@ $params = [
 				'reg' =>  $_reg,
 				'reg_date' => $action_time,
 			];
-
 		}
 
 		$WorkViewCheckModel = new WorkViewCheckModel();
@@ -815,7 +759,5 @@ $params = [
 			'status' => 'success',
 			'message' => "처리완료"
 		];
-
 	}
-
 }

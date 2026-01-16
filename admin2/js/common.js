@@ -84,7 +84,7 @@ var onlyAD = function() {
 
 	//상품 창 prd_provider_info
 	function prdProviderQuick(idx, vmode){
-		if( vmode == undefined ) vmode = "comparison"; 
+		if( vmode == undefined ) vmode = "info"; 
 		window.open("/ad/ajax/prd_provider_info?prd_idx="+ idx +"&vmode="+vmode, "prdProviderQuick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 	}
 

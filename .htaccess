@@ -2,6 +2,11 @@
 RewriteEngine On
 RewriteBase /
 
+# API2 라우팅 (admin·기타 룰보다 우선)
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api2/(.*)$ /api2/router_index.php [QSA,L]
+
 # router 폴더 요청은 상위 규칙을 타지 않고 그대로 전달
 # RewriteRule ^router/ - [L]
 

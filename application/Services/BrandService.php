@@ -26,11 +26,33 @@ class BrandService
         $perPage = $criteria['per_page'] ?? 100;
         $page = $criteria['page'] ?? 1;
         $productCount = $criteria['product_count'] ?? false;
+        $sort_kind = $criteria['sort_kind'] ?? 'idx';
+        $search_value = $criteria['search_value'] ?? '';
+
+        $countSortKinds = ['have_stock_count', 'product_count', 'partner_count'];
 
         // 기본 테이블에 별칭 부여 (서브쿼리 조인 시 사용)
         $query = BrandModel::query()
             ->from('BRAND_DB as B')
-            ->orderBy('B.BD_IDX', 'desc');
+            ->when($search_value, function($query) use ($search_value) {
+                $query->where('B.BD_NAME', 'like', '%' . $search_value . '%');
+                $query->orWhere('B.BD_NAME_EN', 'like', '%' . $search_value . '%');
+            })
+            ->when($sort_kind, function($query) use ($sort_kind) {
+                // 카운트 정렬은 조인 후에 처리
+                if(in_array($sort_kind, ['have_stock_count', 'product_count', 'partner_count'])){
+                    return;
+                }
+                if($sort_kind == 'name'){
+                    $query->orderBy('B.BD_NAME', 'asc');
+                }elseif($sort_kind == 'name_en'){
+                    $query->orderBy('B.BD_NAME_EN', 'asc');
+                }elseif($sort_kind == 'updated_at'){
+                    $query->orderBy('B.updated_at', 'desc');
+                }else{
+                    $query->orderBy('B.BD_IDX', 'desc');
+                }
+            });
 
         if ($productCount) {
 
@@ -68,6 +90,20 @@ class BrandService
                     'COALESCE(PPC.partner_count, 0) as partner_count',
                     '(COALESCE(PC.product_count, 0) + COALESCE(PPC.partner_count, 0)) as total_product_count',
                 ]);
+
+            // 카운트 기반 정렬 처리
+            if ($sort_kind === 'have_stock_count') {
+                $query->orderByRaw('COALESCE(PC.have_stock_count, 0) DESC');
+            } elseif ($sort_kind === 'product_count') {
+                $query->orderByRaw('COALESCE(PC.product_count, 0) DESC');
+            } elseif ($sort_kind === 'partner_count') {
+                $query->orderByRaw('COALESCE(PPC.partner_count, 0) DESC');
+            }
+        } else {
+            // productCount가 false인데 카운트 기반 정렬을 요청한 경우 기본 정렬로 처리
+            if (in_array($sort_kind, $countSortKinds)) {
+                $query->orderBy('B.BD_IDX', 'desc');
+            }
         }
 
         $result = $paging ? $query->paginate($perPage, $page)

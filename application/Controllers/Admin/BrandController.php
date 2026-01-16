@@ -27,6 +27,8 @@ class BrandController extends BaseClass
 
             $requestData = $request->all();
             $page = $requestData['page'] ?? 1;
+            $sort_kind = $requestData['sort_kind'] ?? "";
+            $search_value = $requestData['search_value'] ?? "";
 
             $brandService = new BrandService();
 
@@ -35,6 +37,8 @@ class BrandController extends BaseClass
                 'page' => $page,
                 'per_page' => 500,
                 'product_count' => true,
+                'sort_kind' => $sort_kind,
+                'search_value' => $search_value,
             ];
 
             $brandList = $brandService->getBrandList($payload);
@@ -48,6 +52,8 @@ class BrandController extends BaseClass
             $paginationHtml = $pagination->renderLinks();
 
             $data = [
+                'sort_kind' => $sort_kind,
+                'search_value' => $search_value,
                 'brandList' => $brandList['data'] ?? [],
                 'paginationHtml' => $paginationHtml,
                 'pagination' => $pagination->toArray(),

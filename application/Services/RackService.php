@@ -1,7 +1,7 @@
 <?php
-
 namespace App\Services;
 
+use Exception;
 use App\Models\RackModel;
 use App\Models\ProductStockModel;
 

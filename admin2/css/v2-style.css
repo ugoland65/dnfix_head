@@ -3,6 +3,18 @@
 	color:#ff0000;
 }
 
+/* 결제율 낮음 표시 */
+.low-payment-rate{
+	color:#ff0000;
+	font-weight:700;
+}
+
+/* 공통 색상 유틸 */
+.text-red{ color:#ff0000 !important; }
+.text-blue{ color:#007bff !important; }
+.text-green{ color:#28a745 !important; }
+.text-bold{ font-weight:700; }
+
 .table-grid-top{ 
 	height:30px; line-height:30px; 
 	display:flex;
@@ -62,7 +74,9 @@
 }
 .table-wrap5{ width:100%; height:100%; /* height:calc(100% - 30px); */ overflow:hidden; display:table; table-layout: fixed; padding:0; }
 
-.scroll-wrap{ width:100%; height:100%; border:1px solid #555555; background:#ffffff;  box-sizing:border-box; padding:0;  overflow:scroll;   }
+.scroll-wrap{ width:100%; height:100%; border:1px solid #555555; background:#ffffff;  box-sizing:border-box; padding:0; 
+	overflow:auto; 
+}
 .scroll-wrap::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
 .scroll-wrap::-webkit-scrollbar-thumb{  background:#aaa;  }
 
@@ -286,6 +300,13 @@
 				background-color:#eee;
 			}
 
+			&.red{
+				background-color:#ffd6d6;
+			}
+			&.green{
+				background-color:#d6ffdb;
+			}
+
 		}
 		
 	}
@@ -374,12 +395,14 @@ table.table-st2 {
     padding: 0;
 }
 
+/*
 .pagination ul li.first-page,
 .pagination ul li.prev-page,
 .pagination ul li.next-page,
 .pagination ul li.last-page{
 
 }
+*/
 
 .pagination ul li a {
     display: inline-block;

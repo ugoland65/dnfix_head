@@ -23,26 +23,30 @@ $koedge_prd_kind_name['PILLOW'] = "필로우";
 $koedge_prd_kind_name['AIRDOLL'] = "에어돌";
 $koedge_prd_kind_name['UNDERWEAR'] = "속옷";
 $koedge_prd_kind_name['COSTUME'] = "코스튬";
+$koedge_prd_kind_name['SET'] = "세트상품";
+$koedge_prd_kind_name['ONLYORDER'] = "주문전용상품";
 
 //상품코드
-$koedge_prd_kind_array = array(
-	array("code"=>"ONAHOLE", "name"=>"오나홀"),
-	array("code"=>"BREAST", "name"=>"가슴장난감"),
-	array("code"=>"DILDO", "name"=>"딜도"),
-	array("code"=>"REALDOLL", "name"=>"리얼돌"),
-	array("code"=>"MAN", "name"=>"남성용품"),
-	array("code"=>"WOMAN", "name"=>"여성용품"),
-	array("code"=>"SIDE", "name"=>"보조용품"),
-	array("code"=>"GEL", "name"=>"윤활젤"),
-	array("code"=>"CONDOM", "name"=>"콘돔"),
-	array("code"=>"ANAL", "name"=>"애널"),
-	array("code"=>"NIPPLE", "name"=>"니플(유두)"),
-	array("code"=>"PERFUME", "name"=>"향수"),
-	array("code"=>"PILLOW", "name"=>"필로우"),
-	array("code"=>"AIRDOLL", "name"=>"에어돌"),
-	array("code"=>"UNDERWEAR", "name"=>"속옷"),
-	array("code"=>"COSTUME", "name"=>"코스튬")
-); 
+$koedge_prd_kind_array = [
+	["code"=>"ONAHOLE", "name"=>"오나홀"],
+	["code"=>"BREAST", "name"=>"가슴장난감"],
+	["code"=>"DILDO", "name"=>"딜도"],
+	["code"=>"REALDOLL", "name"=>"리얼돌"],
+	["code"=>"MAN", "name"=>"남성용품"],
+	["code"=>"WOMAN", "name"=>"여성용품"],
+	["code"=>"SIDE", "name"=>"보조용품"],
+	["code"=>"GEL", "name"=>"윤활젤"],
+	["code"=>"CONDOM", "name"=>"콘돔"],
+	["code"=>"ANAL", "name"=>"애널"],
+	["code"=>"NIPPLE", "name"=>"니플(유두)"],
+	["code"=>"PERFUME", "name"=>"향수"],
+	["code"=>"PILLOW", "name"=>"필로우"],
+	["code"=>"AIRDOLL", "name"=>"에어돌"],
+	["code"=>"UNDERWEAR", "name"=>"속옷"],
+	["code"=>"COSTUME", "name"=>"코스튬"],
+	["code"=>"SET", "name"=>"세트상품"],
+	["code"=>"ONLYORDER", "name"=>"주문전용상품"]
+];
 
 
 $hbtiTypes = [

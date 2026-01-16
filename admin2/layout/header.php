@@ -75,8 +75,6 @@
 	</style>
 
 <script language="JavaScript"> 
-<!-- 
-
     $(document).ready(function(){    
 
 		var wContentsWidth = $(window).width() - 210;
@@ -315,10 +313,12 @@ $gnb_lang = "ko";
 				<a href="/ad/staff/work_log/공지사항">인사/업무</a>
 			</li>
 			
-			<? /*
-			<li class="<?=$gnb_lang?> <? if($pageGroup == "product2") echo "active"; ?>"><a href="/admin2/product2/prd2_stock_excel.php">상품관리 v.2</a></li>
-            <li class="<?=$gnb_lang?> <? if($pageGroup == "showdang") echo "active"; ?>"><a href="/admin2/showdang/tag.php">쑈당몰</a></li>
-			*/ ?>
+			<?php
+				/*
+				<li class="<?=$gnb_lang?> <? if($pageGroup == "product2") echo "active"; ?>"><a href="/admin2/product2/prd2_stock_excel.php">상품관리 v.2</a></li>
+				<li class="<?=$gnb_lang?> <? if($pageGroup == "showdang") echo "active"; ?>"><a href="/admin2/showdang/tag.php">쑈당몰</a></li>
+				*/
+			?>
 
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "showdang") echo "active"; ?>"><a href="/ad/showdang/brand_group">쑈당몰</a></li>
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "onadb") echo "active"; ?>"><a href="/ad/onadb/onadb_prd_comment">오나디비</a></li>
@@ -341,7 +341,7 @@ $gnb_lang = "ko";
 			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
 				<a href="/ad/provider/prd_provider">공급사 관리</a>
 			</li>   
-            <li class="ko <? if($_pageGroup == "order") echo "active"; ?> have-sub-menu">
+            <li class="ko <?php if( $_pageGroup == "order" || $pageGroup2 == "order" ) echo "active"; ?> have-sub-menu">
 				재고/발주
 				<div class="sub-menu">
 					<ul>
@@ -352,15 +352,24 @@ $gnb_lang = "ko";
 							<a href="/ad/order/order_sheet_main">주문/발주</a>
 						</li>
 						<li>
+							<a href="/admin/order/godo_order_list">고도몰 주문가져오기</a>
+						</li>
+						<li>
 							<a href="/admin/stock/rack_list">(RACK) 랙 관리</a>
 						</li>
 					</ul>
 				</div>
 			</li>
 
-			<? /*
-			<li class="ko <? if($_pageGroup == "accounting") echo "active"; ?>"><a href="/ad/accounting/payment">회계관리</a></li>
-			*/ ?>
+			<li class="<?=$gnb_lang?> <?php if( $pageGroup2 == "cs" ) echo "active"; ?>">
+				<a href="/admin/cs/cs_list">C/S 관리</a>
+			</li>
+
+			<?php 
+				/*
+				<li class="ko <? if($_pageGroup == "accounting") echo "active"; ?>"><a href="/ad/accounting/payment">회계관리</a></li>
+				*/ 
+			?>
 
             <li class="have-sub-menu">
 				<i class="fas fa-external-link-alt" style="font-size:0.6em;"></i> 공유문서

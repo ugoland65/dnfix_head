@@ -28,16 +28,15 @@ class GodoApiService extends BaseClass {
 
     /**
      * 고도몰 주문서 조회
-     * @param array $requestData 요청 데이터
+     * 
+     * @param array $criteria 요청 데이터
      * @return array
      */
-    public function getOrderList($requestData) 
+    public function getOrderList($criteria) 
     {
 
-        /**
-         * 주문상태 단계
-         */
         /*
+        주문상태 단계
         const ORDER_STATUS = [
             'o'=>'미입금',
             'p'=>'입금',
@@ -51,19 +50,20 @@ class GodoApiService extends BaseClass {
         ];
         */
 
-        $mode = $requestData['mode'] ?? 'b';
-        $start_date = $requestData['start_date'] ?? date('Y-m-d');
-        $end_date = $requestData['end_date'] ?? date('Y-m-d');
+        $mode = $criteria['mode'] ?? 'b';
+        $start_date = $criteria['start_date'] ?? date('Y-m-d');
+        $end_date = $criteria['end_date'] ?? date('Y-m-d');
 
         $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
         $response = HttpClient::getData($apiUrl);
-        
+
         $apiData = json_decode($response, true);
 
         $errorGoodsList = []; // 오류 데이터 저장
         $numericGoodsList = [];
         $setGoodsList = [];
         $otherGoodsList = [];
+        $otherGoodNos = []; // 공급사 상품 번호 저장
         $packageRemoveList = []; // 패키지 제거 여부 카운트를 저장할 배열
         
         $errorList = []; // 오류 데이터 저장
@@ -100,7 +100,8 @@ class GodoApiService extends BaseClass {
             */
 
             foreach ($apiData['data'] as &$order) {
-    
+                    //dd($order);
+
                 $orderMargin[$i]['orderNo'] = $order['orderNo'];
                 $orderMargin[$i]['orderDate'] = $order['regDt'];
                 $orderMargin[$i]['paymentDt'] = $order['paymentDt']; //결제일
@@ -109,12 +110,21 @@ class GodoApiService extends BaseClass {
                 $orderMargin[$i]['refundPrice'] = $order['refundPrice']; // 환불금액
                 $orderMargin[$i]['totalGoodsPrice'] = $order['totalGoodsPrice']; // 총상품금액
                 $orderMargin[$i]['orderGoodsCnt'] = $order['orderGoodsCnt']; // 총상품개수
+                $orderMargin[$i]['totalDcPrice'] = $order['dc_info']['totalDcPrice'] ?? 0; // 총할인금액
+                $orderMargin[$i]['useMileage'] = $order['useMileage']; // 부가결제
+
+                // 결제율: 총주문금액 / 총상품금액 * 100
+                $orderMargin[$i]['paymentRate'] = ($order['totalGoodsPrice'] > 0)
+                    ? round(($order['settlePrice'] / $order['totalGoodsPrice']) * 100, 2)
+                    : 0;
 
                 $orderMargin[$i]['goods'] = []; // 각 주문의 상품 코드를 저장할 배열
                 $orderMargin[$i]['totalCost'] = 0; // 주문의 총 원가를 저장할 변수
     
                 $orderMargin[$i]['scm_my'] = 0; // 보유상품
                 $orderMargin[$i]['scm_not_my'] = 0; // 미보유상품
+                $orderMargin[$i]['non_sale'] = 0; // 비판매상품
+
 
                 $package_remove = false;
 
@@ -152,15 +162,24 @@ class GodoApiService extends BaseClass {
                     18 => ['name' => '랜덤박스', 'partner_key' => null, 'display'=>'none'],
                     19 => ['name' => '예비1', 'partner_key' => null, 'display'=>'none'],
                     20 => ['name' => '예비2', 'partner_key' => null, 'display'=>'none'],
+                    21 => ['name' => '예비3', 'partner_key' => null, 'display'=>'none'],
+                    22 => ['name' => '텐가', 'partner_key' => null, 'display'=>'none'],
+                    23 => ['name' => '로마', 'partner_key' => null, 'display'=>'none'],
+                    24 => ['name' => '기획세트 (트릭박스)', 'partner_key' => null, 'display'=>'none'],
+                    25 => ['name' => '기획세트 (대형)', 'partner_key' => null, 'display'=>'none'],
                 ];
                 */
 
                 $goodsInfo= [];
 
+                //dd($order['orderGoods']);
+
                 foreach ($order['orderGoods'] as &$goods) {
     
-                    //공급사가 쑈당몰인지 값이 1일경우 쑈당몰
-                    if( $goods['scmNo'] == 1 || $goods['scmNo'] == 7 || $goods['scmNo'] == 16 || $goods['scmNo'] == 17 || $goods['scmNo'] == 18 || $goods['scmNo'] == 19 || $goods['scmNo'] == 20 ){
+                    //공급사가 쑈당몰인지
+                    $myScmNos = [1,7,16,17,18,19,20,24,25];
+                    if( in_array($goods['scmNo'], $myScmNos) ){
+                    //if( $goods['scmNo'] == 1 || $goods['scmNo'] == 7 || $goods['scmNo'] == 16 || $goods['scmNo'] == 17 || $goods['scmNo'] == 18 || $goods['scmNo'] == 19 || $goods['scmNo'] == 20 ){
                         $orderMargin[$i]['scm_my']++;
                         $goods['scm'] = "my";
                     }else{
@@ -168,6 +187,7 @@ class GodoApiService extends BaseClass {
                         $goods['scm'] = "not";
                     }
 
+                    $goodsNo = $goods['goodsNo'];
                     $goodsCd = $goods['goodsCd'];
                     $optionCodes = []; // 옵션에서 추출한 상품 코드들을 저장할 배열
                     $setCodes= []; // 세트상품에서 추출한 상품 코드들을 저장할 배열
@@ -186,6 +206,7 @@ class GodoApiService extends BaseClass {
                                             $optionCodes[] = $splitCode;
                                             //$orderMargin[$i]['goods'][] = $splitCode; // 주문별 상품 코드 추가
                                             $goodsInfo[] = [
+                                                'item_type' => 'option',
                                                 'code' => $splitCode,
                                                 'qty' => $goods['goodsCnt'],
                                                 'scm' => $goods['scm'],
@@ -193,11 +214,26 @@ class GodoApiService extends BaseClass {
                                         }
                                     }
                                 } 
+
+                                //수량 옵션일경우
+                                elseif (strpos($code, '@') !== false) {
+
+                                    $splitCodes = explode('@', $code);
+                                    $optionCodes[] = $splitCodes[0];
+                                    $goodsInfo[] = [
+                                        'code' => $splitCodes[0],
+                                        'qty' => $splitCodes[1],
+                                        'scm' => $goods['scm'],
+                                    ];
+
+                                }
+
                                 // 단일 코드 처리
                                 else if (ctype_digit($code)) {
                                     $optionCodes[] = $code;
                                     //$orderMargin[$i]['goods'][] = $code; // 주문별 상품 코드 추가
                                     $goodsInfo[] = [
+                                        'item_type' => 'main',
                                         'code' => $code,
                                         'qty' => $goods['goodsCnt'],
                                         'scm' => $goods['scm'],
@@ -214,10 +250,15 @@ class GodoApiService extends BaseClass {
                             if (!isset($packageRemoveList[$code])) {
                                 $packageRemoveList[$code] = 0;
                             }
-                            $packageRemoveList[$code]++;
+                            //$packageRemoveList[$code]++;
+                            $packageRemoveList[$code] += (int)$goods['goodsCnt'];
                         }
                     }
     
+                    if( $goodsCd == '결제명 상품' ){
+                        $orderMargin[$i]['non_sale']++;
+                    }
+
                     // goodsCd 값에 한글이 포함되어 있는지 검사
                     if (preg_match('/[가-힣]/u', $goodsCd)) {
                         $goods['match'] = "error";
@@ -240,6 +281,8 @@ class GodoApiService extends BaseClass {
                             'code' => $goodsCd,
                             'qty' => $goods['goodsCnt'],
                             'scm' => $goods['scm'],
+                            'scmNo' => $goods['scmNo'],
+                            'goodsNo' => $goods['goodsNo'],
                         ];
                         
                         if($package_remove) {
@@ -253,8 +296,38 @@ class GodoApiService extends BaseClass {
                     
                     }
                     
+                    // one 단어가 포함된 goodsCd
+                    elseif (stripos($goodsCd, 'one') !== false) {
+
+                        $_ary_prdCode1 = explode("@", $goodsCd);
+						$_ary_prdCode2 = explode("/", $_ary_prdCode1[1]);
+
+                        foreach ($_ary_prdCode2 as $prdCode) {
+                            $numericGoodsList[] = $prdCode;
+                            $goodsInfo[] = [
+                                'code' => $prdCode,
+                                'qty' => $goods['goodsCnt'],
+                                'scm' => $goods['scm'],
+                                'scmNo' => $goods['scmNo'],
+                                'goodsNo' => $goods['goodsNo'],
+                            ];
+                        }
+
+                        /*
+                        if( $order['orderNo'] == '2601111820000061' ){
+                            dd($goodsInfo);
+                        }
+                            */
+
+                        $goods['match'] = "set";
+                        $setGoodsList[] = $goodsCd;
+                        if($package_remove) {
+                            $goods['package_remove'] = true;
+                        }
+                    }
+
                     // set ,qty, one 단어가 포함된 goodsCd
-                    elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false || stripos($goodsCd, 'one') !== false) {
+                    elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false ) {
                     //elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false ) {
                         $goods['match'] = "set";
                         $setGoodsList[] = $goodsCd;
@@ -265,14 +338,18 @@ class GodoApiService extends BaseClass {
 
                     // 기타 (한글은 없지만 숫자가 아닌 다른 문자 포함)
                     else {
+
                         $goods['match'] = "scm";
                         $otherGoodsList[] = $goodsCd;
+                        $otherGoodNos[] = $goodsNo;
 
                         $goodsInfo[] = [
                             'code' => $goodsCd,
                             'qty' => $goods['goodsCnt'],
                             'scm' => $goods['scm'],
                             'scmNo' => $goods['scmNo'],
+                            'goodsNo' => $goods['goodsNo'],
+                            'goods_name' => $goods['goodsNm'],
                         ];
 
                         if($package_remove) {
@@ -287,185 +364,239 @@ class GodoApiService extends BaseClass {
                 $i++;
     
             }
-        }
-    
-        $numericGoodsListOriginal = $numericGoodsList;
-    
-        // 중복 제거 및 인덱스 재정렬
-        $numericGoodsList = array_values(array_unique($numericGoodsList));
-        $setGoodsList = array_values(array_unique($setGoodsList));
-        $otherGoodsList = array_values(array_unique($otherGoodsList));
-    
-        $productStockService = new ProductStockService();
-        $productData = $productStockService->getProductStockWhereIn($numericGoodsList);
-    
-        // 공급사 제공 상품 데이터 가져오기
-        $productPartnerService = new ProductPartnerService();
-        $productPartnerData = [];
-        if (!empty($otherGoodsList)) {
-            $productPartnerData = $productPartnerService->getProductPartnerWhereInCode($otherGoodsList);
-        }
         
-        // 매칭되지 않는 상품 찾기
-        $unmatchedGoodsList = [];
-        foreach ($otherGoodsList as $code) {
-            if (!isset($productPartnerData[$code])) {
-                $unmatchedGoodsList[] = $code;
+    
+            $numericGoodsListOriginal = $numericGoodsList;
+        
+            // 중복 제거 및 인덱스 재정렬
+            $numericGoodsList = array_values(array_unique($numericGoodsList));
+            $setGoodsList = array_values(array_unique($setGoodsList));
+            $otherGoodsList = array_values(array_unique($otherGoodsList));
+            $otherGoodNos = array_values(array_unique($otherGoodNos)); // 공급사 상품 번호 중복 제거
+        
+            $productStockService = new ProductStockService();
+            $productData = $productStockService->getProductStockWhereIn($numericGoodsList);
+        
+            // 공급사 제공 상품 데이터 가져오기
+            $productPartnerService = new ProductPartnerService();
+            $productPartnerData = [];
+            /*
+            if (!empty($otherGoodsList)) {
+                $productPartnerData = $productPartnerService->getProductPartnerWhereInCode($otherGoodsList);
+            }
+            */
+            if (!empty($otherGoodNos)) {
+                $productPartnerData = $productPartnerService->getProductPartnerWhereInGodoGoodsNo($otherGoodNos);
+            }
+            
+            // 매칭되지 않는 상품 찾기
+            $unmatchedGoodsList = [];
 
-                // 해당 코드를 가진 주문 상품 찾기
-                foreach ($apiData['data'] as $order) {
-                    foreach ($order['orderGoods'] as $goods) {
-                        if ($goods['goodsCd'] === $code) {
-                            $errorList[] = [
-                                'error_code' => 'scm_code_not_match',
-                                'code' => $code,
-                                'orderNo' => $order['orderNo'],
-                                'orderGoods' => $goods
-                            ];
-                            break 2; // 주문과 상품을 찾았으면 루프 종료
+            /*
+            foreach ($otherGoodsList as $code) {
+                if (!isset($productPartnerData[$code])) {
+                    $unmatchedGoodsList[] = $code;
+
+                    // 해당 코드를 가진 주문 상품 찾기
+                    foreach ($apiData['data'] as $order) {
+                        foreach ($order['orderGoods'] as $goods) {
+                            if ($goods['goodsCd'] === $code) {
+                                $errorList[] = [
+                                    'orderDate' => $order['orderDate'],
+                                    'paymentDt' => $order['paymentDt'],
+                                    'error_code' => 'scm_code_not_match',
+                                    'code' => $code,
+                                    'orderNo' => $order['orderNo'],
+                                    'orderGoods' => $goods
+                                ];
+                                break 2; // 주문과 상품을 찾았으면 루프 종료
+                            }
                         }
                     }
                 }
             }
-        }
-    
-        $test = $orderMargin;
+            */
+            if (!empty($otherGoodNos)) {
+                foreach ($otherGoodNos as $goodsNo) {
+                    if (!isset($productPartnerData[$goodsNo])) {
+                        $unmatchedGoodsList[] = $goodsNo;
 
-        /*
-        echo "<pre>";
-        print_r($test);
-        echo "</pre>";
-        */
-
-        // 상품 데이터를 이용하여 $orderMargin의 원가 정보 업데이트
-        foreach ($orderMargin as &$order) {
-            
-            $order['totalCost'] = 0;
-            $costGoodsCount = 0;
-            
-            foreach ($order['goods'] as &$goodsInfo) {
-
-                $goodsCode = $goodsInfo['code'];
-                $qty = $goodsInfo['qty'];
-                $scm = $goodsInfo['scm'];
-                $scmNo = $goodsInfo['scmNo'] ?? null;
-                $goodsStockCode = $goodsCode;
-
-                $dbGoods = null; // 초기화
-
-                if( $scm == "my" ){
-
-                    if (isset($productData[$goodsCode])) {
-
-                        $costPrice = $productData[$goodsCode]['cd_cost_price'];
-                        $idx = $productData[$goodsCode]['CD_IDX'];
-
-                        $dbGoods = [
-                            'goods_name' => $productData[$goodsCode]['CD_NAME'],
-                            'cost_price' => $productData[$goodsCode]['cd_cost_price']
-                        ];
-
-                        if( $costPrice > 0 ){
-                            $order['totalCost'] += ($costPrice * $qty);
-                            $costGoodsCount += 1;
+                        // 해당 코드를 가진 주문 상품 찾기
+                        foreach ($apiData['data'] as $order) {
+                            foreach ($order['orderGoods'] as $goods) {
+                                if ($goods['goodsNo'] === $goodsNo) {
+                                    $errorList[] = [
+                                        'orderDate' => $order['orderDate'],
+                                        'paymentDt' => $order['paymentDt'],
+                                        'error_code' => 'scm_code_not_match',
+                                        'goodsNo' => $goodsNo,
+                                        'orderNo' => $order['orderNo'],
+                                        'orderGoods' => $goods
+                                    ];
+                                    break 2; // 주문과 상품을 찾았으면 루프 종료
+                                }
+                            }
                         }
-                        // 원가가 없는 경우 에러 리스트에 추가
-                        else{
-                            $errorList[] = [
-                                'error_code' => 'cost_price_not_found',
-                                'mode' => 'stock',
-                                'code' => $goodsStockCode,
-                                'idx' => $idx,
-                                'scmNo' => $scmNo,
-                                'orderNo' => $order['orderNo'],
-                                'dbGoods' => $dbGoods
-                            ];
-                        }
-                        
- 
-                        
-                        $goodsInfo = [
-                            'code' => $goodsCode,
-                            'qty' => $qty,
-                            'cost_price' => $costPrice
-                        ];
 
-                    } else {
-                        $goodsInfo = [
-                            'code' => $goodsCode,
-                            'qty' => $qty,
-                            'cost_price' => 0
-                        ];
-                        // 상품 데이터가 없는 경우 에러 리스트에 추가
-                        $errorList[] = [
-                            'error_code' => 'product_data_not_found',
-                            'code' => $goodsStockCode,
-                            'orderNo' => $order['orderNo'],
-                            'dbGoods' => null
-                        ];
                     }
+                }
+            }
+        
+            // 상품 데이터를 이용하여 $orderMargin의 원가 정보 업데이트
+            foreach ($orderMargin as &$order) {
+                
+                $order['totalCost'] = 0;
+                $costGoodsCount = 0;
+                
+                foreach ($order['goods'] as &$goodsInfo) {
 
-                }else{
+                    $goodsCode = $goodsInfo['code'];
+                    $qty = $goodsInfo['qty'];
+                    $scm = $goodsInfo['scm'];
+                    $scmNo = $goodsInfo['scmNo'] ?? null;
+                    $goodsNo = $goodsInfo['goodsNo'] ?? null;
+                    $goodsStockCode = $goodsCode;
 
-                    if( isset($productPartnerData[$goodsCode]) ){
+                    $dbGoods = null; // 초기화
 
-                        $costPrice = $productPartnerData[$goodsCode]['cost_price'];
-                        $idx = $productPartnerData[$goodsCode]['idx'];
+                    if( $scm == "my" ){
 
-                        $dbGoods = [
-                            'goods_name' => $productPartnerData[$goodsCode]['name'],
-                            'cost_price' => $productPartnerData[$goodsCode]['cost_price']
-                        ];
+                        if (isset($productData[$goodsCode])) {
 
-                        if( $costPrice > 0 ){
-                            $order['totalCost'] += ($costPrice * $qty);
-                            $costGoodsCount += 1;
-                        }
-                        // 원가가 없는 경우 에러 리스트에 추가
-                        else{
-                            $errorList[] = [
-                                'error_code' => 'cost_price_not_found',
-                                'mode' => 'partner',
+                            $costPrice = $productData[$goodsCode]['cd_cost_price'];
+                            $costPriceSum = $costPrice * $qty;
+                            $idx = $productData[$goodsCode]['CD_IDX'];
+
+                            $dbGoods = [
+                                'goods_name' => $productData[$goodsCode]['CD_NAME'],
+                                'cost_price' => $productData[$goodsCode]['cd_cost_price']
+                            ];
+
+                            if( $costPrice > 0 ){
+                                $order['totalCost'] += $costPriceSum;
+                                $costGoodsCount += 1;
+                            }
+                            // 원가가 없는 경우 에러 리스트에 추가
+                            else{
+                                $errorList[] = [
+                                    'orderDate' => $order['orderDate'],
+                                    'paymentDt' => $order['paymentDt'],
+                                    'error_code' => 'cost_price_not_found',
+                                    'mode' => 'stock',
+                                    'code' => $goodsStockCode,
+                                    'idx' => $idx,
+                                    'scmNo' => $scmNo,
+                                    'orderNo' => $order['orderNo'],
+                                    'dbGoods' => $dbGoods
+                                ];
+                            }
+                            
+    
+                            /*
+                            $goodsInfo = [
                                 'code' => $goodsCode,
-                                'idx' => $idx,
-                                'scmNo' => $scmNo,
+                                'qty' => $qty,
+                                'cost_price' => $costPrice
+                            ];
+                            */
+                            $goodsInfo['is_owned'] = true;
+                            $goodsInfo['cost_price'] = $costPrice;
+                            $goodsInfo['cost_price_sum'] = $costPriceSum;
+                            $goodsInfo['goods_name'] = $dbGoods['goods_name'] ?? null;
+                            $goodsInfo['cd_idx'] = $idx;
+
+
+                        } else {
+
+                            /*
+                            $goodsInfo = [
+                                'code' => $goodsCode,
+                                'qty' => $qty,
+                                'cost_price' => 0
+                            ];
+                            */
+                            $goodsInfo['cost_price'] = 0;
+                            //$goodsInfo['goods_name'] = null;
+
+                            // 상품 데이터가 없는 경우 에러 리스트에 추가
+                            $errorList[] = [
+                                'error_code' => 'product_data_not_found',
+                                'code' => $goodsStockCode,
                                 'orderNo' => $order['orderNo'],
-                                'dbGoods' => $dbGoods
+                                'dbGoods' => null
                             ];
                         }
 
+                    }else{
+
+                        if( isset($productPartnerData[$goodsNo]) ){
+
+                            $costPrice = $productPartnerData[$goodsNo]['cost_price'];
+                            $costPriceSum = $costPrice * $qty;
+                            $idx = $productPartnerData[$goodsNo]['idx'];
+
+                            $dbGoods = [
+                                'goods_name' => $productPartnerData[$goodsNo]['name'],
+                                'cost_price' => $productPartnerData[$goodsNo]['cost_price']
+                            ];
+
+                            if( $costPrice > 0 ){
+                                $order['totalCost'] += $costPriceSum;
+                                $costGoodsCount += 1;
+                            }
+                            // 원가가 없는 경우 에러 리스트에 추가
+                            else{
+                                $errorList[] = [
+                                    'error_code' => 'cost_price_not_found',
+                                    'mode' => 'partner',
+                                    'code' => $goodsNo,
+                                    'idx' => $idx,
+                                    'scmNo' => $scmNo,
+                                    'orderNo' => $order['orderNo'],
+                                    'dbGoods' => $dbGoods
+                                ];
+                            }
+
+                            $goodsInfo['is_owned'] = false;
+                            $goodsInfo['cost_price'] = $costPrice;
+                            $goodsInfo['cost_price_sum'] = $costPriceSum;
+                            $goodsInfo['goods_name'] = $dbGoods['goods_name'] ?? null;
+                            $goodsInfo['pp_idx'] = $idx;
+
+                        }
+
                     }
-
                 }
+                unset($goodsInfo);
+        
+                $order['costGoodsCount'] = $costGoodsCount;
+
+                // 마진 금액과 마진율 계산
+                $finalPrice = $order['salePrice'] - $order['refundPrice'];
+                $order['finalPrice'] = $finalPrice; //정산금액
+                $order['marginAmount'] = $finalPrice - $order['totalCost'];
+                $order['marginRate'] = $finalPrice > 0 ? 
+                    round(($order['marginAmount'] / $finalPrice) * 100, 2) : 0;
+
             }
-    
-            $order['costGoodsCount'] = $costGoodsCount;
-
-            // 마진 금액과 마진율 계산
-            $finalPrice = $order['salePrice'] - $order['refundPrice'];
-            $order['finalPrice'] = $finalPrice; //정산금액
-            $order['marginAmount'] = $finalPrice - $order['totalCost'];
-            $order['marginRate'] = $order['totalCost'] > 0 ? 
-                round(($order['marginAmount'] / $finalPrice) * 100, 2) : 0;
-
+        
+            $productStockData = $this->calculateGoodsQuantity($numericGoodsListOriginal, $productData, $packageRemoveList);
+        
         }
-    
-        $productStockData = $this->calculateGoodsQuantity($numericGoodsListOriginal, $productData, $packageRemoveList);
-    
+
         $result = [
-            'test' => $test,
             'start_date' => $start_date,
             'end_date' => $end_date,
             'errorList' => $errorList,
-            'otherGoodsList' => $otherGoodsList,
-            'productPartnerData' => $productPartnerData,
-            'unmatchedGoodsList' => $unmatchedGoodsList,
-            'orderMargin' => $orderMargin,
-            'errorGoodsList' => $errorGoodsList,
-            'numericGoodsList' => $numericGoodsList,
-            'setGoodsList' => $setGoodsList,
-            'productStockData' => $productStockData,
-            'orderData' => $apiData,
+            'otherGoodsList' => $otherGoodsList ?? [],
+            'productPartnerData' => $productPartnerData ?? [],
+            'unmatchedGoodsList' => $unmatchedGoodsList ?? [],
+            'orderMargin' => $orderMargin ?? [],
+            'errorGoodsList' => $errorGoodsList ?? [],
+            'numericGoodsList' => $numericGoodsList ?? [],
+            'setGoodsList' => $setGoodsList ?? [],
+            'productStockData' => $productStockData ?? [],
+            'orderData' => $apiData ?? [],
         ];
     
         return $result;

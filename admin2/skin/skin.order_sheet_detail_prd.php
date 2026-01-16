@@ -170,8 +170,6 @@
 			</button>
 			<? //} ?>
 
-
-
 		</ul>
 	</div>
 </div>
@@ -186,11 +184,11 @@
 */
 ?>
 
-
 <table class="table-list">
+	<thead>
 	<tr>
-		<th></th>
-		<th>IDX<br>재고코드</th>
+		<th style="width:40px;"></th>
+		<th style="width:60px;">IDX<br>재고코드</th>
 		<th>주문코드</th>
 		<th>이미지</th>
 		<th>상품명</th>
@@ -200,9 +198,11 @@
 		<th>주문수량</th>
 		<th>합가격</th>
 		<th>재고</th>
+		<th>최슨 입/출고</th>
 		<th>비고</th>
 		<th>무게</th>
 	</tr>
+	</thead>
 <?
 // 배열 검증 후 count
 $_oop_jsondata_count = is_array($_oop_jsondata) ? count($_oop_jsondata) : 0;
@@ -236,7 +236,7 @@ for ($z=0; $z<$_oop_jsondata_count; $z++){
 			CD_SUPPLY_PRICE_1, CD_SUPPLY_PRICE_2, CD_SUPPLY_PRICE_3, CD_SUPPLY_PRICE_4, CD_SUPPLY_PRICE_5, CD_SUPPLY_PRICE_6, CD_SUPPLY_PRICE_7, CD_SUPPLY_PRICE_8, CD_SUPPLY_PRICE_9, 
 			CD_WEIGHT, CD_WEIGHT2, CD_WEIGHT3, cd_code_fn, cd_weight_fn, cd_price_fn, cd_memo3";
 
-		$_query = "select A.*, B.ps_idx, B.ps_stock, B.ps_cafe24_sms
+		$_query = "select *
 			from "._DB_COMPARISON." A
 			left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX  ) 
 			where CD_IDX = '".$_idx."' ";
@@ -339,7 +339,7 @@ for ($z=0; $z<$_oop_jsondata_count; $z++){
 	<!-- 상품 고유번호 -->
 	<td>
 		<?=$_idx?><br>
-		<b style="font-size:13px; color:#2525fa;"><?=$_ps_idx?></b>
+		<b style="color:#2525fa;"><?=$_ps_idx?></b>
 	</td>
 
 	<!-- 상품 코드 -->
@@ -456,7 +456,6 @@ for ($z=0; $z<$_oop_jsondata_count; $z++){
 		<input type='text' name='cd_code2' id="unit_qty_<?=$_idx?>" style="width:100%; font-size:15px; font-weight:bold; color:<? if( isset(${"_false_idx_".$_idx}) && ${"_false_idx_".$_idx} == "ok" ){ echo "#999"; }else{ echo "#021aff"; } ?>;" value="<?=$save_qty[$_idx] ?? 0?>" onkeyUP="orderSheetDetail.qtyGogo('<?=$_idx?>', '<?=$_oop_idx ?? ''?>');">
 	</td>
 
-
 	<!-- 상품 주문 총 가격 -->
 	<td class="text-right width-60">
 		<input type="hidden" name="" id="unit_price_sum_<?=$_idx?>" class="unit-price-sum-data" value="<?=$unit_price_sum?>">
@@ -467,12 +466,20 @@ for ($z=0; $z<$_oop_jsondata_count; $z++){
 		<? } ?>
 	</td>
 
-
 	<!-- 상품재고 -->
 	<td style="width:30px;">
 		<b onclick="onlyAD.prdView('<?=$_idx ?? ''?>','stock');" style="cursor:pointer; <? if( ($prd_data['ps_stock'] ?? 0) == 0 ) echo "color:#aaa;"; ?>"><?=$prd_data['ps_stock'] ?? 0?></b>
 	</td>
 
+	<!-- 주문수량 -->
+	<td>
+		<?php
+			$inDate  = ($prd_data['ps_in_date']  && $prd_data['ps_in_date']  !== '0000-00-00 00:00:00')  ? date("Y.m.d", strtotime($prd_data['ps_in_date']))   : '-';
+			$outDate = ($prd_data['ps_last_date'] && $prd_data['ps_last_date'] !== '0000-00-00 00:00:00') ? date("Y.m.d", strtotime($prd_data['ps_last_date'])) : '-';
+		?>
+		<div>입고 : <?= $inDate ?></div>
+		<div>출고 : <?= $outDate ?></div>
+	</td>
 
 	<!-- 마지막 입고일 -->
 	<td class="text-left" style="width:100px; font-size:11px;">
@@ -530,8 +537,7 @@ for ($z=0; $z<$_oop_jsondata_count; $z++){
 ?>
 </table>
 
-<script type="text/javascript"> 
-<!-- 
+<script> 
 function selectGo(){
 
 <? 
@@ -951,5 +957,4 @@ $(function(){
 			}
 	});
 });
-//--> 
 </script> 

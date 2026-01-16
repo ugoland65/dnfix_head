@@ -62,6 +62,7 @@ class ProductPartnerService extends BaseClass
         if( $s_keyword ){
             $query->where('prd_partner.name', 'like', '%'.$s_keyword.'%');
             $query->orWhere('prd_partner.name_p', 'like', '%'.$s_keyword.'%');
+            $query->orWhere('prd_partner.idx', 'like', '%'.$s_keyword.'%');
         }
         
         if( !empty($s_brand) ){
@@ -200,9 +201,9 @@ class ProductPartnerService extends BaseClass
     }
 
     /**
-     * 상품 공급사 Where In 조회
+     * 상품 공급사 code Where In 조회
      * 
-     * @param array $idxs
+     * @param array $codes
      * @return array
      */
     public function getProductPartnerWhereInCode($codes) {
@@ -213,5 +214,34 @@ class ProductPartnerService extends BaseClass
             ->toArray();
 
     }
+
+    /**
+     * 상품 공급사 godo_goodsNo Where In 조회
+     * 
+     * @param array $codes
+     * @return array
+     */
+    public function getProductPartnerWhereInGodoGoodsNo($goodsNos) {
+
+        return ProductPartnerModel::whereIn('godo_goodsNo', $goodsNos)
+            ->get()
+            ->keyBy('godo_goodsNo')
+            ->toArray();
+
+    }
+
+    /**
+     * 상품 공급사 idx Where In 조회
+     * 
+     * @param array $idxs
+     * @return array
+     */
+    public function getProductPartnerWhereInIdx($idxs) {
+        return ProductPartnerModel::whereIn('idx', $idxs)
+            ->get()
+            ->keyBy('idx')
+            ->toArray();
+    }
+
 
 }

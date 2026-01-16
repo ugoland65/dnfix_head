@@ -60,6 +60,10 @@ $supplierData = [
         'name' => '도라도라',
         'idx' => 6,
     ],
+    'bunny' => [
+        'name' => '바니컴퍼니',
+        'idx' => 8,
+    ],
 ];
 
 if( $site ){
@@ -161,6 +165,7 @@ echo "</pre>";
                         <option value="mobe" <?=$site == 'mobe' ? 'selected' : ''?>>mobe (모브)</option>
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
                         <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
+                        <option value="bunny" <?=$site == 'bunny' ? 'selected' : ''?>>bunny (바니컴퍼니)</option>
 					</select>
 				</ul>
                 <ul>
@@ -242,8 +247,19 @@ echo "</pre>";
                             <td><input type="checkbox" name="" value="<?php echo $row['db1_idx']; ?>"></td>
                             <td class="text-center"><?=$row['db1_idx']?></td>
                             <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-xs" 
-                                    onclick="goGodoMall(<?=$row['prd_data']['godo_goodsNo']?>);" >#<?=$row['prd_data']['godo_goodsNo']?></button>
+                                <?php if (!empty($row['prd_data']['godo_goodsNo'])) { ?>
+                                    <div style="font-size: 12px;">
+                                        #<?=$row['prd_data']['godo_goodsNo']?>
+                                    </div>
+                                    <div class="m-t-3">
+                                        <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?=$row['prd_data']['godo_goodsNo']?>');">쑈당몰 상품보기</button>
+                                    </div>
+                                    <div class="m-t-5">
+                                        <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?=$row['prd_data']['godo_goodsNo']?>');">관리자 상품보기</button>
+                                    </div>
+                                <?php } else { ?>
+                                    -
+                                <?php } ?>
                             </td>
                             <td class="text-right"><?=number_format($row['prd_data']['sale_price'])?></td>
                             <td class="text-center">
@@ -291,8 +307,19 @@ echo "</pre>";
                             </td>
                             <td><?=$matchData['site'] ?? ''?></td>
                             <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-xs" 
-                                    onclick="goSupplierProduct('<?=$matchData['site'] ?? ''?>', '<?=$matchData['prd_pk'] ?? ''?>');" >#<?=$matchData['prd_pk'] ?? ''?></button>
+                                <?php
+                                    if (!empty($matchData['prd_pk'])) {
+                                ?>
+                                    <div style="font-size: 12px;">
+                                        #<?= $matchData['prd_pk'] ?>
+                                    </div>
+                                    <div class="m-t-3">
+                                        <button type="button" class="btnstyle1 btnstyle1-xs"
+                                            onclick="goSupplierProduct('<?= $matchData['site'] ?>', '<?= $matchData['prd_pk'] ?>');">공급사 사이트</button>
+                                    </div>
+                                <?php } else { ?>
+                                    -
+                                <?php } ?>
                             </td>
                             <td><?=$matchData['supplier'] ?? ''?></td>
                             <td class="text-right">
@@ -345,10 +372,10 @@ echo "</pre>";
                                         -
                                 <?php } ?>
                             </td>
-                            <td>
+                            <td class="text-center">
                                 
                                 <?php if( ($row['prd_data']['godo_is_option'] ?? 'N') == "Y" ): ?>
-                            옵션있는 상품
+                                    옵션있는 상품
                                 <?php else: ?>
 
                                     <?php
@@ -384,7 +411,7 @@ echo "</pre>";
                                 <?php endif; ?>
 
                             </td>
-                            <td>
+                            <td class="text-center">
                                 <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn-one" 
                                     data-db1-idx="<?=$row['db1_idx']?>" 
                                     data-db2-idx="<?=$matchData['idx'] ?? ''?>"

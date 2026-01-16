@@ -314,6 +314,7 @@ if( $_a_mode == "day_stock" ){
 	$stock_code = [];
 	$stock_set_code = [];
 	$_ary_st_show = [];
+	$packageOutTotal = 0;
 
 
 	//while ($row = fgetcsv($fp, 2000, ',')) { 
@@ -488,6 +489,8 @@ if( $_a_mode == "day_stock" ){
 
 					}
 
+				//결제명 상품 패스처리
+				}elseif(strpos($_prdCode, "결제명 상품") !== false) {
 				}else{
 					$_error[] = "[".$count."] ".$_name." / ".$_phone." |  (".$_prdCode.") 코드 확인";
 				}
@@ -509,6 +512,8 @@ if( $_a_mode == "day_stock" ){
 	}	
 
 	$order_num = array_values(array_unique($order_num));
+
+	dump($order_num);
 
 	$_ary_st = [];
 	for ($i=0; $i<count($stock_all_code); $i++){
@@ -550,6 +555,7 @@ if( $_a_mode == "day_stock" ){
 		
 		$_sum_qty = $_stock_qty + $_stock_set_qty;
 		$_package_out = $_packageOut + $_packageOut_set;
+		$packageOutTotal += $_package_out;
 
 		$_ary_st_show[] = array(
 			'o_ps_idx' => $_ps_idx,
@@ -578,10 +584,11 @@ if( $_a_mode == "day_stock" ){
 
 	$_st_data = json_encode($_ary_st, JSON_UNESCAPED_UNICODE);
 
-	$_ary_info = array(
+	$_ary_info = [
 		'order_count' => count($order_num),
-		'pd_count' => count($stock_all_code)
-	);
+		'pd_count' => count($stock_all_code),
+		'package_out' => $packageOutTotal
+	];
 
 	$_info_data = json_encode($_ary_info, JSON_UNESCAPED_UNICODE);
 

@@ -7,10 +7,56 @@ use App\Models\ProductStockHistoryModel;
 use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
+use App\Models\AdminModel;
+
 use App\Services\ProductService;
 
 class ProductStockHistoryService
 {
+
+    /**
+     * 상품 재고 이력 조회
+     * 
+     * @param int $idx
+     * @return array
+     */
+    public function getProductStockHistoryList($criteria)
+    {
+
+        $start_date = $criteria['start_date'] ?? date('Y-m-d');
+        $end_date = $criteria['end_date'] ?? date('Y-m-d');
+        // 동일한 날짜 범위도 포함되도록 하루의 시작~끝까지 범위를 확장
+        $startDateTime = $start_date . ' 00:00:00';
+        $endDateTime = $end_date . ' 23:59:59';
+
+        $admin_query = AdminModel::query()
+            ->select(['idx', 'ad_id', 'ad_name', 'ad_nick'])
+            ->get()
+            ->toArray();
+
+        $adminMap = [];
+        foreach ($admin_query as $row) {
+            $adminMap[$row['ad_id']] = $row['ad_name'] ?? '';
+        }
+
+        $query = ProductStockHistoryModel::query()
+            ->select(['uid', 'file_name', 'reg_time', 'end_time', 'reg_id', 'step', 'info', 'error'])
+            ->whereBetween('reg_time', [$startDateTime, $endDateTime])
+            ->orderBy('uid', 'desc')
+            ->get()
+            ->toArray();
+
+        foreach ($query as &$row) {
+            $row['info'] = json_decode($row['info'] ?? '{}', true);
+            $row['error'] = json_decode($row['error'] ?? '{}', true);
+            $row['reg_name'] = $adminMap[$row['reg_id']] ?? '';
+        }
+        unset($row);
+
+        return $query;
+
+    }
+
 
     /**
      * 피킹리스트 조회

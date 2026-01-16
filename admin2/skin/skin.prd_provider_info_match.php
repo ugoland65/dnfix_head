@@ -43,9 +43,20 @@ $supplierData = [
         'idx' => 10,
         'code' => 'byedam',
     ],
+    '6' => [
+        'name' => '도라도라',
+        'idx' => 6,
+        'code' => 'doradora',
+    ],
+    '8' => [
+        'name' => '바니컴퍼니',
+        'idx' => 8,
+        'code' => 'bunny',
+    ],
 ];
 
-$site = $supplierData[$prdData['partner_idx']]['code'];
+$partnerIdx = $prdData['partner_idx'] ?? null;
+$site = $supplierData[$partnerIdx]['code'] ?? ($prdData['site'] ?? 'mobe');
 
 // API URL 구성
 $url = "https://dnetc01.mycafe24.com/api/SupplierProduct?site=".$site."&match_status=unmatched";

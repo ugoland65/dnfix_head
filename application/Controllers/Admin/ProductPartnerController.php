@@ -2,7 +2,7 @@
 
 namespace App\Controllers\Admin;
 
-
+use Throwable;
 use App\Core\AuthAdmin;
 use App\Core\BaseClass;
 use App\Utils\HttpClient; 
@@ -34,7 +34,7 @@ class ProductPartnerController extends BaseClass
             $s_partner = $requestData['s_partner'] ?? null; // 공급사
             $s_godo_match = $requestData['s_godo_match'] ?? null; // 고도몰 매칭
             $s_supplier_match = $requestData['s_supplier_match'] ?? null; // 공급사 매칭
-            $s_text = $requestData['s_text'] ?? null; // 상품명 검색
+            $s_keyword = $requestData['s_keyword'] ?? null; // 상품명 검색
             $s_brand = $requestData['s_brand'] ?? null; // 브랜드
             $sort_mode = $requestData['sort_mode'] ?? 'idx'; // 정렬 모드
 
@@ -45,7 +45,7 @@ class ProductPartnerController extends BaseClass
                 's_partner' => $s_partner,
                 's_godo_match' => $s_godo_match,
                 's_supplier_match' => $s_supplier_match,
-                's_text' => $s_text,
+                's_keyword' => $s_keyword,
                 's_brand' => $s_brand,
                 'sort_mode' => $sort_mode,
             ];
@@ -74,7 +74,7 @@ class ProductPartnerController extends BaseClass
                 's_partner' => $s_partner,
                 's_godo_match' => $s_godo_match,
                 's_supplier_match' => $s_supplier_match,
-                's_text' => $s_text,
+                's_keyword' => $s_keyword,
                 's_brand' => $s_brand,
                 'sort_mode' => $sort_mode,
                 'pagination' => $paginationArray,

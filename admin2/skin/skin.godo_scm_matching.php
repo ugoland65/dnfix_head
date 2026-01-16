@@ -8,6 +8,7 @@ use App\Utils\HttpClient;
 
 if( empty($_pagegodo) ) $_pagegodo = 1;
 if( empty($_scm) ) $_scm = 0;
+if( empty($_show_mode) ) $_show_mode = "all";
 
 $scmMapping = [
     0  => ['name' => '오류', 'partner_key' => null, 'display'=>'none' ],
@@ -117,17 +118,7 @@ if( !empty($_scm) ){
 
 }
 ?>
-
-<div id="contents_head">
-	<h1>고도몰 등록 공급사 상품</h1>
-	<h3>고도몰에 등록된 공급사 상품입니다.</h3>
-    <div id="head_write_btn">
-	</div>
-</div>
-<div id="contents_body">
-	<div id="contents_body_wrap">
-	
-	<style>
+<style>
     /* 버튼 스타일 */
     button.pagebtn {
         padding: 3px 5px;
@@ -145,29 +136,43 @@ if( !empty($_scm) ){
     }
 </style>
 
+<div id="contents_head">
+	<h1>고도몰 등록 공급사 상품</h1>
+	<h3>고도몰에 등록된 공급사 상품입니다.</h3>
+    <div id="head_write_btn">
+	</div>
+</div>
+<div id="contents_body">
+	<div id="contents_body_wrap">
 		<div id="list_new_wrap" >
 
 			<div class="table-top">
 				<ul class="total">
-					Total : <b><?=$responseData['total'] ?? 0?></b>
+					Total : <b><?=number_format($responseData['total'] ?? 0)?></b>
 				</ul>
-				<ul>
+				<ul class="m-l-20">
 				<?php
-				foreach( $scmMapping as $key => $value ){
-					
-					$activeClass = ($_scm == $key) ? 'on' : '';
-					$name = isset($value['name']) ? $value['name'] : '이름없음';
-					
-					if( empty($value['display'] ) ){
-						echo '<button type="button" class="pagebtn ' . $activeClass . '" onclick="location.href=\'/ad/provider/godo_scm_matching/?scm=' . $key . '\'">' . $name . '</button>' . PHP_EOL;
+					foreach( $scmMapping as $key => $value ){
+						
+						$activeClass = ($_scm == $key) ? 'on' : '';
+						$name = isset($value['name']) ? $value['name'] : '이름없음';
+						
+						if( empty($value['display'] ) ){
+							echo '<button type="button" class="pagebtn ' . $activeClass . '" onclick="location.href=\'/ad/provider/godo_scm_matching/?scm=' . $key . '&show_mode=' . $_show_mode . '\'">' . $name . '</button>' . PHP_EOL;
+						}
 					}
-				}
 				?>
+				</ul>
+				<ul class="m-l-10">
+					<select name="show_mode" id="show_mode">
+						<option value="">전체보기</option>
+						<option value="1">에러만 보기</option>
+					</select>
 				</ul>
 			</div>
 
-			<div id="" class="table-wrap5" class="m-t-5">
-				<div class=" scroll-wrap">
+			<div class="table-wrap5" class="m-t-10">
+				<div class="scroll-wrap">
 
 					<table class="table-st1">
 						<thead>
@@ -176,10 +181,11 @@ if( !empty($_scm) ){
 							<th class="">고도몰 상품코드</th>
 							<th class="">고도몰 이미지</th>
 							<th class="">고도몰 상품명</th>
-							<th class="">고도몰 자체코드</th>		
+							<th class="" style="width:100px;">
+								고도몰 자체코드
+							</th>		
 							<th class="">고도몰 옵션</th>
 							<th class="">고도몰 공급사</th>
-
 							<th class="">고도몰 브랜드코드</th>
 							<th class="">고도몰 판매가</th>
 							<th class="">인트라넷 브랜드</th>
@@ -188,7 +194,7 @@ if( !empty($_scm) ){
 						</tr>
 						</thead>
 						<tbody>
-						<?
+						<?php
 							$insertCount = 0;
 							$count = 0;
 							foreach ( $responseData['data'] ?? [] as $product ) {
@@ -207,11 +213,15 @@ if( !empty($_scm) ){
 									//$_tr_class = "status_clx";
 								}
 								
+								$line_show = true;
+								$this_line_status = "";
 								$_errors = [];
 								
+								/*
 								if( empty($product['goodsCd']) ){
 									$_errors[] = "고도몰 자체코드가 없음";
 								}
+								*/
 								
 								if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
 									$_errors[] = "재고코드가 있는것으로 의심됨";
@@ -232,6 +242,10 @@ if( !empty($_scm) ){
 								if( empty( $brandMapping[$cateNmNoSpace] ) ){
 									$_errors[] = "브랜드 매칭 안됨 (인트라넷에 브랜드 존재하는지 확인)";
 								}
+
+								if( count($_errors) > 0 ){
+									$this_line_status = "errors";
+								}
 								
 								$matchedIdx = null;
 								
@@ -247,7 +261,6 @@ if( !empty($_scm) ){
 										}
 									}
 								}
-
 								
 								if ( count($_errors) > 0 ) {
 									$_tr_class = "status_bl";
@@ -306,6 +319,11 @@ if( !empty($_scm) ){
 									}
 								}
 									
+								if( $_show_mode == "errors" && $this_line_status != "errors" ){
+									$line_show = false;
+								}
+
+								if( $line_show ){
 						?>
 						<tr id="trid_<?=$ps_idx?>" class="<?=$_tr_class?>">
 							<td class="list-idx"><?=$count?></td>
@@ -360,7 +378,7 @@ if( !empty($_scm) ){
 								</div>
 							</td>
 						</tr>
-						<? }  ?>
+						<?php }  } ?>
 						</tbody>
 					</table>
 				</div>

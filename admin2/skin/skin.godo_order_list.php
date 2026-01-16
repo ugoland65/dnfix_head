@@ -94,6 +94,8 @@ $scmMapping = [
 		<button type="button" id="search_btn" class="btnstyle1 btnstyle1-success">조회</button>
 	</div>
 </div>
+
+
 <div id="contents_body">
 	<div id="contents_body_wrap">
 	
