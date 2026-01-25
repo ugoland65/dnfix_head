@@ -4,6 +4,7 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 use App\Controllers\Admin\CommentController;
+use App\Services\CommentService;
 
 $Comment = new CommentController(); 
 
@@ -26,6 +27,11 @@ $_reaction_icon['Good'] = "👍";
 $_reaction_icon['Heart'] = "❤️";
 $_reaction_icon['Clapping'] = "👏";
 $_reaction_icon['Check'] = "✔️";
+
+$CommentService = new CommentService();
+$mentionTarget = $CommentService->getMentionTarget();
+
+
 ?>
 
 <style type="text/css">
@@ -53,6 +59,20 @@ $_reaction_icon['Check'] = "✔️";
   animation: l1 1s infinite;
 }
 @keyframes l1 {to{transform: rotate(.5turn)}}
+
+.mention-list-wrap .mention-selected-remove{
+	font-size: 10px;
+	width: 16px;
+	height: 16px;
+	line-height: 1;
+	padding: 0;
+	margin-left: 1px;
+	color: #d93025;
+	border: 1px solid #ddd;
+	border-radius: 50%;
+	background: #fff;
+	cursor: pointer;
+}
 </style>
 
 <div class="comment-loading">
@@ -65,15 +85,22 @@ $_reaction_icon['Check'] = "✔️";
 </div>
 
 <div class="chat-title">
-	<ul>
-		<span><?=$result['title']['mode']?> | <?=$_mode?>-<?=$_tidx?></span>
-		<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="window.open('/ad/staff/work_log_view/<?=$_tidx?>','_blank');" >게시물보기</button>
-	</ul>
-	<ul class="m-t-2"><b><?=$result['title']['name']?></b></ul>
+
+	<div>
+		<ul>
+			<span><?=$result['title']['mode']?> | <?=$_mode?>-<?=$_tidx?></span>
+			<? if( $result['title']['mode'] == "log" ){ ?>
+				<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="window.open('/ad/staff/work_log_view/<?=$_tidx?>','_blank');" >게시물보기</button>
+			<? } ?>
+		</ul>
+		<ul class="m-t-4"><b><?=$result['title']['name']?></b></ul>
+	</div>
+
 	<div class="chat-title-menu">
 		<button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="commentMain.commentViewCheckAll('<?=$_mode?>','<?=$_tidx?>');" >댓글전부확인</button>
 		<button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="commentMain.chatLoad('<?=$_mode?>','<?=$_tidx?>');" ><i class="fas fa-redo"></i> 새로고침</button>
 	</div>
+
 </div>
 <div class="chat-wrap" >
 
@@ -200,17 +227,17 @@ $_reaction_icon['Check'] = "✔️";
 	</div>
 
 	<div class="mention-list">
+		<button type="button" class="mention-close" aria-label="멘션 목록 닫기">&times;</button>
 		<?
-			$_where = "";
-			$_query = "select idx, ad_name from admin ".$_where." ORDER BY idx DESC";
-			$_result = sql_query_error($_query);
-			while($_list = sql_fetch_array($_result)){
+			foreach ($mentionTarget as $member) {
 		?>
-			<label><input type="checkbox" name="target_mb_idx[]" value="<?=$_list['idx']?>" > <?=$_list['ad_name']?></label>
+			<label><input type="checkbox" name="target_mb_idx[]" value="<?=$member['idx']?>" > <?=$member['ad_name']?></label>
 		<? } ?>
 	</div>
 
 </div>
+
+<div id="mention_list" class="mention-list-wrap"></div>
 <div class="write-wrap">
 	<ul><textarea name="comment" id="comment" style="width:100%; height:70px;" placeholder="댓글입력"></textarea></ul>
 	<ul>
@@ -270,16 +297,84 @@ $(function(){
 
     const $mentionBtn = $('#mentionBtn');
     const $mentionList = $('.mention-list');
+    const $mentionClose = $('.mention-close');
+    const $mentionSelectedList = $('#mention_list');
     let isVisible = false;
 
-    $mentionBtn.click(function() {
-        if (!isVisible) {
+    function renderMentionSelected() {
+        const items = [];
+        $mentionList.find('input[name="target_mb_idx[]"]:checked').each(function () {
+            const $input = $(this);
+            const mbIdx = $input.val();
+            const name = $.trim($input.closest('label').text());
+            items.push({ mbIdx, name });
+        });
+
+        $mentionSelectedList.empty();
+        if (!items.length) {
+            return;
+        }
+
+        items.forEach(({ mbIdx, name }) => {
+            const $li = $('<li>')
+                .addClass('mention-selected-item')
+                .attr('data-mb-idx', mbIdx)
+                .text('@' + name + ' ');
+            const $remove = $('<button>')
+                .attr('type', 'button')
+                .addClass('mention-selected-remove')
+                .attr('aria-label', name + ' 멘션 삭제')
+                .html('&times;');
+            $li.append($remove);
+            $mentionSelectedList.append($li);
+        });
+    }
+
+    function setMentionVisible(visible) {
+        if (visible) {
             $mentionList.css('display', 'grid').addClass('active');
         } else {
             $mentionList.removeClass('active');
             $mentionList.css('display', 'none');
         }
-        isVisible = !isVisible;
+        isVisible = visible;
+    }
+
+    $mentionBtn.click(function() {
+        setMentionVisible(!isVisible);
+    });
+
+    $mentionClose.click(function() {
+        setMentionVisible(false);
+    });
+
+    $mentionList.on('change', 'input[name="target_mb_idx[]"]', function () {
+        renderMentionSelected();
+    });
+
+    $mentionSelectedList.on('click', '.mention-selected-remove', function () {
+        const mbIdx = $(this).closest('li').data('mb-idx');
+        $mentionList
+            .find('input[name="target_mb_idx[]"][value="' + mbIdx + '"]')
+            .prop('checked', false);
+        renderMentionSelected();
+    });
+
+    $(document).on('click', function(event) {
+        if (!isVisible) {
+            return;
+        }
+        const $target = $(event.target);
+        if ($target.closest('.mention-list').length || $target.closest('#mentionBtn').length) {
+            return;
+        }
+        setMentionVisible(false);
+    });
+
+    $(document).on('keydown', function(event) {
+        if (isVisible && event.key === 'Escape') {
+            setMentionVisible(false);
+        }
     });
 
 });

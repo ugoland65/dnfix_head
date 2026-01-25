@@ -99,28 +99,26 @@ if( $_prd_idx ){
 <input type="hidden" name="idx" value="<?=$_prd_idx?>">
 <table class="table-style border01 width-full">
 	<tr>
-		<th style="width:140px;">수입국가</th>
+		<th style="width:140px;">수입/사입 형태</th>
 		<td >
 
-		<?
-		if (!isset($_arr_national)) {
-			$_arr_national = [];
-		}
-		for ($i=0; $i<count($_arr_national); $i++){
-			if (!is_array($_arr_national[$i])) continue;
-		?>
-		<label><input type="radio" name="cd_national" value="<?=$_arr_national[$i]['code'] ?? ''?>" <? if( ($prd_data['cd_national'] ?? '') == ($_arr_national[$i]['code'] ?? '') ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> <?=$_arr_national[$i]['name'] ?? ''?>(<?=$_arr_national[$i]['code'] ?? ''?>)</label>
-		<? } ?>
-
-			<?
+			<?php
 			/*
-			<label><input type="radio" name="cd_national" value="jp" <? if( $prd_data['cd_national'] == "jp" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> 일본</label>
-			<label><input type="radio" name="cd_national" value="cn" <? if( $prd_data['cd_national'] == "cn" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> 중국</label>
-			<label><input type="radio" name="cd_national" value="kr" <? if( $prd_data['cd_national'] == "kr" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()">  한국</label>
-			<label><input type="radio" name="cd_national" value="dollar" <? if( $prd_data['cd_national'] == "dollar" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()">  달러</label>
+			if (!isset($_arr_national)) {
+				$_arr_national = [];
+			}
+			for ($i=0; $i<count($_arr_national); $i++){
+				if (!is_array($_arr_national[$i])) continue;
+			?>
+			<label><input type="radio" name="cd_national" value="<?=$_arr_national[$i]['code'] ?? ''?>" <? if( ($prd_data['cd_national'] ?? '') == ($_arr_national[$i]['code'] ?? '') ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> <?=$_arr_national[$i]['name'] ?? ''?>(<?=$_arr_national[$i]['code'] ?? ''?>)</label>
+			<?php } 
 			*/
 			?>
 
+			<label><input type="radio" name="cd_national" value="jp" <? if( $prd_data['cd_national'] == "jp" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> 일본수입</label>
+			<label class="m-l-10"><input type="radio" name="cd_national" value="cn" <? if( $prd_data['cd_national'] == "cn" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> 중국수입</label>
+			<label class="m-l-10"><input type="radio" name="cd_national" value="dollar" <? if( $prd_data['cd_national'] == "dollar" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()"> 달러</label>
+			<label class="m-l-10"><input type="radio" name="cd_national" value="kr" <? if( $prd_data['cd_national'] == "kr" ) echo "checked"; ?> onclick="prdInfoPrice.costCalculation()">  한국사입</label>
 		</td>
 	</tr>
 	<tr>
@@ -339,7 +337,6 @@ if( $_prd_idx ){
 
 
 <script type="text/javascript"> 
-<!-- 
 var prdInfoPrice = function() {
 
 	var yen = <?=$yen ?? 1000?>;
@@ -354,7 +351,6 @@ var prdInfoPrice = function() {
 	return {
 
 		init : function() {
-
 		},
 		
 		changeValue : function(mode,v) { //prdInfoPrice.changeValue
@@ -770,9 +766,7 @@ var prdInfoPrice = function() {
 
 }();
 
-
 prdInfoPrice.costCalculation();
-
 
 <?
 	if( ($_cd_cost_price_info_data['주문종류'] ?? '') && ($_cd_cost_price_info_data['주문가'] ?? '') && ($_cd_cost_price_info_data['적용환율'] ?? '') ){

@@ -23,7 +23,7 @@
 						<?
 						foreach ($partnerForSelect as $partner) {
 						?>
-							<option value="<?= $partner['idx'] ?>" <? if ($partner['idx'] == ($_s_partner ?? '')) echo "selected"; ?>><?= $partner['name'] ?></option>
+							<option value="<?= $partner['idx'] ?>" <? if ($partner['idx'] == ($s_partner ?? '')) echo "selected"; ?>><?= $partner['name'] ?></option>
 						<? } ?>
 					</select>
 				</ul>

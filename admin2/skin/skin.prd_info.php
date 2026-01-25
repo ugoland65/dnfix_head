@@ -14,7 +14,7 @@ if( !$_prd_idx ){
 }
 
 if( $_prd_idx ){
-	$_colum = "A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count";
+	$_colum = "A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code";
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code";
 	$_colum .= ", C.BD_NAME";
 
@@ -73,6 +73,12 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<ul class="prd-name"><b><?=$prd_data['CD_NAME'] ?? ''?></b></ul>
 		<!-- <ul class="prd-name-en"><?=$prd_data['CD_NAME_OG'] ?? ''?></ul> -->
 
+		<?php if( !empty($prd_data['cd_godo_code']) ){ ?>
+		<ul>
+			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?=$prd_data['cd_godo_code'] ?? ''?>');">쑈당몰 상품보기</button>
+		</ul>
+		<?php } ?>
+
 		<? if( !empty($prd_data['ps_idx']) ){ ?>
 			<ul class="prd-stock-code">
 				<b><?=$prd_data['ps_idx']?></b>
@@ -83,7 +89,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<? } ?>
 
 		<ul>
-			<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('prd','<?=$_prd_idx?>')" >
+			<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-xs" onclick="footerGlobal.comment('prd','<?=$_prd_idx?>')" >
 				댓글
 				<? if( ($prd_data['comment_count'] ?? 0) > 0 ) { ?> : <b><?=$prd_data['comment_count']?></b><? } ?>
 			</button>

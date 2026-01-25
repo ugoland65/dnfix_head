@@ -19,6 +19,12 @@ class CsRequestModel extends BaseModel {
         'reg_id',
         'reg_pk',
         'reg_name',
+        'comment_count',
+        'processor_id',
+        'processor_pk',
+        'processor_name',
+        'process_action',
+        'processor_date',
     ];
 
 }

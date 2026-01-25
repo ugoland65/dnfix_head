@@ -17,6 +17,10 @@ try {
 
     $router = new Router('/admin');  // 라우터 인스턴스 생성
 
+
+    //코멘트
+
+    
     $router->get('/staff/list', StaffController::class, 'staffList'); //직원목록
     $router->get('/staff/reg', StaffController::class, 'staffReg'); //신규 직원등록
     $router->get('/staff/info', StaffController::class, 'staffInfo'); //직원 상세
@@ -33,6 +37,7 @@ try {
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
+    $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
     $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
 
     // 상품 처리
@@ -55,7 +60,9 @@ try {
 
     // C/S 관리
     $router->get('/cs/cs_list', CsRequestController::class, 'csList'); //C/S 목록
+    $router->get('/cs/cs_detail/{idx}', CsRequestController::class, 'csDetail'); //C/S 상세
     $router->post('/cs/cs_request', CsRequestController::class, 'createCsRequest'); //C/S 처리 요청
+    $router->post('/cs/update_cs_status', CsRequestController::class, 'updateCsStatus'); //C/S 상태변경
 
     // 라우트 처리
     $router->dispatch();

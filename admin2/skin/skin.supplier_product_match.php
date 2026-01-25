@@ -64,6 +64,10 @@ $supplierData = [
         'name' => '바니컴퍼니',
         'idx' => 8,
     ],
+    'allcon' => [
+        'name' => '올컨코리아',
+        'idx' => 7,
+    ],
 ];
 
 if( $site ){
@@ -166,6 +170,7 @@ echo "</pre>";
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
                         <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
                         <option value="bunny" <?=$site == 'bunny' ? 'selected' : ''?>>bunny (바니컴퍼니)</option>
+                        <option value="allcon" <?=$site == 'allcon' ? 'selected' : ''?>>allcon (올컨코리아)</option>
 					</select>
 				</ul>
                 <ul>

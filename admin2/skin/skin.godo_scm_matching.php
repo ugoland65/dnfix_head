@@ -32,6 +32,11 @@ $scmMapping = [
     18 => ['name' => '랜덤박스', 'partner_key' => null, 'display'=>'none'],
     19 => ['name' => '예비1', 'partner_key' => null, 'display'=>'none'],
     20 => ['name' => '예비2', 'partner_key' => null, 'display'=>'none'],
+	21 => ['name' => '예비3', 'partner_key' => null, 'display'=>'none'],
+	22 => ['name' => '텐가', 'partner_key' => 15, ],
+	23 => ['name' => '로마', 'partner_key' => 2, ],
+	24 => ['name' => '기획세트 (트릭박스)', 'partner_key' => null, 'display'=>'none'],
+	25 => ['name' => '기획세트 (대형)', 'partner_key' => null, 'display'=>'none'],
     
 ];
 
@@ -100,9 +105,9 @@ if( !empty($_scm) ){
 
 
     $sql = "
-    SELECT idx, godo_goodsNo 
-    FROM prd_partner  
-    WHERE partner_idx = :partner_key
+		SELECT idx, godo_goodsNo 
+		FROM prd_partner  
+		WHERE partner_idx = :partner_key
 	";
 
 	$stmt = $db->prepare($sql);
@@ -114,7 +119,6 @@ if( !empty($_scm) ){
 	foreach ($matchedData as $row) {
 		$matchedGoodsNos[$row['godo_goodsNo']] = $row['idx'];
 	}
-
 
 }
 ?>
@@ -235,9 +239,11 @@ if( !empty($_scm) ){
 									$_errors[] = "세트코드 제외";
 								}
 								
+								/*
 								if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
 									$_errors[] = "toy 코드 제외";
 								}
+								*/
 								
 								if( empty( $brandMapping[$cateNmNoSpace] ) ){
 									$_errors[] = "브랜드 매칭 안됨 (인트라넷에 브랜드 존재하는지 확인)";

@@ -51,7 +51,7 @@ class PartnersService extends BaseClass {
             ->orderBy('name', 'asc');
 
         if( $extraData['showMode'] == 'WHOLE_SUPPLIER' ){
-            $query->where('category', '성인용품공급');
+            $query->whereIn('category', ['성인용품공급', '성인용품도매']);
         }
 
         /*

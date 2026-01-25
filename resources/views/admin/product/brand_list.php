@@ -77,6 +77,8 @@
                         <th class="">보유<br>상품수</th>
                         <th class="">수정일<br>등록일</th>
                         <th class="">쑈당몰 활성</th>
+                        <th class="">매칭 카테고리</th>
+                        <th class="">매칭 브랜드</th>
                         <th class="">노출로고<br>PC</th>
                         <th class="">노출로고<br>모바일</th>
                         <th class="">브랜드소개</th>
@@ -134,7 +136,21 @@
                            </td>
                            <td>
                               <?php if ($brand['bd_showdang_active'] == 'Y') { ?>
-                                 <button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="window.open('https://showdang.co.kr/goods/brand_list.php?cateCd=<?= $brand['bd_matching_cate'] ?>', '_blank');">노출중 #<?= $brand['bd_matching_cate'] ?></button>
+                                 <button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="window.open('https://showdang.co.kr/goods/brand_list.php?cateCd=<?= $brand['bd_matching_cate'] ?>', '_blank');">노출중 사이트보기</button>
+                              <?php } ?>
+                           </td>
+                           <td>
+                              <?php if ($brand['bd_matching_cate']) { ?>
+                                 <a href="http://gdadmin.dnfix202439.godomall.com/goods/category_tree.php?cateCd=<?= $brand['bd_matching_cate'] ?>" target="_blank">
+                                    <button type="button" id="" class="btnstyle1 btnstyle1-xs">#<?= $brand['bd_matching_cate'] ?></button>
+                                 </a>
+                              <?php } ?>
+                           </td>
+                           <td>
+                              <?php if ($brand['bd_matching_brand']) { ?>
+                                 <a href="http://gdadmin.dnfix202439.godomall.com/goods/category_tree.php?cateType=brand&cateCd=<?= $brand['bd_matching_brand'] ?>" target="_blank">
+                                    <button type="button" id="" class="btnstyle1 btnstyle1-xs">#<?= $brand['bd_matching_brand'] ?></button>
+                                 </a>
                               <?php } ?>
                            </td>
                            <td>

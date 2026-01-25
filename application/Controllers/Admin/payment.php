@@ -87,7 +87,7 @@ class payment extends BaseClass {
 			}elseif( $mode == "payment" ){
 
 				$BasecodeModel = new BasecodeModel();
-				$kind_result = $BasecodeModel->queryBuilder()
+				$kind_result = BasecodeModel::query()
 					->select(['idx', 'name'])
 					->where('cate', '=', 'Payment')
 					->orderBy('sort_order', 'ASC')
@@ -120,7 +120,7 @@ class payment extends BaseClass {
 			if( $postData['mode'] == "payment" ){
 
 				$BasecodeModel = new BasecodeModel();
-				$basecode_result = $BasecodeModel->queryBuilder()
+				$basecode_result = BasecodeModel::query()
 					->select(['name'])
 					->find($postData['target_idx']);
 
@@ -203,7 +203,7 @@ class payment extends BaseClass {
 
 			$PaymentModel = new PaymentModel();
 
-			$payment_result = $PaymentModel->queryBuilder()
+			$payment_result = PaymentModel::query()
 				->select(['reg'])
 				->find($_idx);
 

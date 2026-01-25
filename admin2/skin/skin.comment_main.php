@@ -167,8 +167,11 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 		position: relative;
 		width: 100%;
 		height: 49px;
+		display: flex;
+		align-items: center;
+		justify-content: space-between;
 		border-bottom: 1px solid #bbb;
-		padding: 6px 0 0 15px;
+		padding: 0 0 0 10px;
 		box-sizing: border-box;
 	}
 
@@ -204,10 +207,10 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 
 	.write-wrap {
 		width: 100%;
-		height: 110px;
+		height: 90px;
 		display: flex;
 		gap: 7px;
-		padding: 25px 15px 0;
+		padding: 5px 15px 0;
 		background-color: #ddd;
 	}
 
@@ -494,6 +497,19 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 		width: 100%;
 		text-align: center;
 		padding: 200px 0;
+	}
+
+	.mention-list-wrap{
+		display: flex;
+		align-items: center;
+		gap: 5px;
+		height:25px;
+		background-color: #ddd;
+		padding: 0 0 0 15px;
+		box-sizing: border-box;
+		li{
+			font-size: 11px;
+		}
 	}
 </style>
 <div class="cm-wrap">

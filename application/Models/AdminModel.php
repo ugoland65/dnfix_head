@@ -29,6 +29,7 @@ class AdminModel extends BaseModel
         'ad_image',
         'ad_line_token',
         'ad_telegram_token',
+        'is_mention', // 멘션 가능 여부
 		'active',
         'AD_REG_DATE', // 등록일
         'AD_UP_DATE', // 수정일

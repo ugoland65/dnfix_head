@@ -3,6 +3,9 @@ namespace App\Services;
 
 use App\Models\CsRequestModel;
 use App\Auth\AdminAuth;
+use App\Services\AdminServices;
+use App\Models\AdminModel;
+use App\Utils\TelegramUtils;
 
 class CsRequestService
 {
@@ -15,12 +18,42 @@ class CsRequestService
     public function getCsRequestList()
     {
         
-        $query = CsRequestModel::query();
-        $query->orderBy('order_date', 'desc');
-        $result = $query->get()->toArray();
+        $query = CsRequestModel::query()
+            ->orderBy('idx', 'desc')
+            ->get();
+
+        $result = $query->toArray();
+
+        $adminMap = AdminModel::query()
+            ->select(['idx', 'ad_id', 'ad_name', 'ad_nick'])
+            ->get()
+            ->keyBy('idx')
+            ->toArray();
+         
+        foreach($result as &$row){
+            $row['reg_name'] = $adminMap[$row['reg_pk']]['ad_name'] ?? '';
+        }
+        unset($row);
+
         return $result;
+    }
+
+
+    /**
+     * C/S 상세 조회
+     * 
+     * @param int $idx C/S 고유번호
+     * @return array
+     */
+    public function getCsRequestDetail($idx)
+    {
+        $query = CsRequestModel::find($idx)
+            ->toArray();
+
+        return $query;
 
     }
+
 
     /**
      * C/S 처리 요청
@@ -34,12 +67,12 @@ class CsRequestService
         $admin = AdminAuth::user();
 
         // 필수 값 기본 가드
-        $orderNo   = $data['orderNo']   ?? '';
+        $orderNo   = $data['orderNo'] ?? '';
         $orderDate = $data['orderDate'] ?? '';
-        $memNo     = $data['memNo']     ?? '';
-        $memId     = $data['memId']     ?? '';
-        $groupNm   = $data['groupNm']   ?? '';
-        $csBody    = $data['csBody']    ?? '';
+        $memNo = $data['memNo'] ?? '';
+        $memId = $data['memId'] ?? '';
+        $groupNm = $data['groupNm'] ?? '';
+        $csBody = $data['csBody'] ?? '';
 
         // 빈 필수값이 있으면 예외 반환
         if (!$orderNo || !$orderDate || !$memNo || !$memId || !$groupNm) {
@@ -48,6 +81,9 @@ class CsRequestService
 
         $regId = $admin["sess_id"] ?? null;
         $regPk = $admin["sess_idx"] ?? null;
+
+        $adminServices = new AdminServices();
+        $adminData = $adminServices->getAdmin(['idx' => $regPk]);
 
         $inputData = [
             'order_no' => $orderNo,
@@ -62,6 +98,58 @@ class CsRequestService
         ];
 
         $csRequest = CsRequestModel::insert($inputData);
+
+        $telegram_chat_id = config('admin.telegram_chat_id');
+        $chat_room_id = $telegram_chat_id['chat_room_ids']['cs']['chat_id'];
+
+        //dd($chat_room_id);
+
+        $telegram = new TelegramUtils();
+
+        $message = "🟣 패킹 리스트 C/S 요청\n";
+        $message .= "주문번호 : " .  $orderNo . " \n";
+        $message .= "주문일시 : " . date('Y-m-d H:i:s', strtotime($orderDate)) . "\n";
+        $message .= "---------------------------------------------------\n";
+        $message .= $csBody . "\n";
+        $message .= "---------------------------------------------------\n";
+        $message .= "요청일 : " . date('Y-m-d H:i:s') . "\n";
+        $message .= "등록자 : " . $adminData['ad_name'] . "\n";
+        $message .= "---------------------------------------------------\n";
+
+        $telegramResult = $telegram->sendMessage($chat_room_id, $message, 'HTML');
+        //dd($telegramResult);
+
+        return $csRequest;
+
+    }
+
+
+    /**
+     * C/S 상태변경
+     * 
+     * @param array $requestData 요청 데이터
+     * @return array
+     */
+    public function updateCsStatus($data)
+    {
+        $query = CsRequestModel::find($data['idx']);
+
+        $admin = AdminAuth::user();
+
+        $processor_id = $admin["sess_id"] ?? null;
+        $processor_pk = $admin["sess_idx"] ?? null;
+        $processor_name = $admin["sess_name"] ?? null;
+
+        $update_data = [
+            'cs_status' => $data['cs_status'],
+            'processor_id' => $processor_id,
+            'processor_pk' => $processor_pk,
+            'processor_name' => $processor_name,
+            'process_action' => $data['process_action'] ?? null,
+            'processor_date' => date('Y-m-d H:i:s'),
+        ];
+
+        $csRequest = CsRequestModel::update(['idx' => $data['idx']], $update_data);
 
         return $csRequest;
 

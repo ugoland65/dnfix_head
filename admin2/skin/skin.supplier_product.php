@@ -17,11 +17,13 @@ $s_match_status = $requestData['s_match_status'] ?? 'unmatched';
 $site = $requestData['s_site'] ?? null;
 $s_keyword = $requestData['s_keyword'] ?? '';
 $page = $requestData['page'] ?? 1;
+$s_status = $requestData['s_status'] ?? '';
 
 if( $site ){
 
     $url = "https://dnetc01.mycafe24.com/api/SupplierProduct";
     $url .= "?site=".$site;
+    $url .= "&status=".$s_status;
     $url .= "&match_status=".$s_match_status;
     $url .= "&keyword=".urlencode($s_keyword);
     $url .= "&page=".$page;
@@ -91,11 +93,12 @@ $supplierCodeData = [
         'idx' => 6,
         'code' => 'doradora',
     ],
-    'bunny' => [
-        'name' => '바니컴퍼니',
-        'idx' => 8,
-        'code' => 'bunny',
+    'allcon' => [
+        'name' => '올컨코리아',
+        'idx' => 7,
+        'code' => 'allcon',
     ],
+
 ];
 ?>
 <div id="contents_head">
@@ -119,6 +122,16 @@ $supplierCodeData = [
                         <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
                         <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
                         <option value="bunny" <?=$site == 'bunny' ? 'selected' : ''?>>bunny (바니컴퍼니)</option>
+                        <option value="allcon" <?=$site == 'allcon' ? 'selected' : ''?>>allcon (올컨코리아)</option>
+					</select>
+				</ul>
+                <ul>
+					<select name="s_status" id="s_status" >
+						<option value="" >판매상태</option>
+                        <option value="판매중" <?=$s_status == '판매중' ? 'selected' : ''?>>판매중</option>
+                        <option value="일시품절" <?=$s_status == '일시품절' ? 'selected' : ''?>>일시품절</option>
+                        <option value="품절" <?=$s_status == '품절' ? 'selected' : ''?>>품절</option>
+                        <option value="판매중단" <?=$s_status == '판매중단' ? 'selected' : ''?>>판매중단</option>
 					</select>
 				</ul>
                 <ul>
@@ -152,6 +165,7 @@ $supplierCodeData = [
                             <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                             <th class="list-idx">고유번호</th>
                             <th class="">공급사<br>사이트</th>
+                            <th class="">판매상태</th>
                             <th class="list-idx">사이트<br>고유번호</th>
                             <th class="">이미지</th>
                             <th class="">사이트<br>카테고리</th>
@@ -170,6 +184,7 @@ $supplierCodeData = [
                             <th>최저판매가</th>
                             <th>최저가 마진율</th>
                             <th>수정일<br>등록일</th>
+                            <th>품절처리일</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -192,7 +207,8 @@ $supplierCodeData = [
                         <tr id="trid_<?=$row['idx']?>" >
                             <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="><?=$row['idx']?>" ></td>	
                             <td class="list-idx"><?=$row['idx']?></td>
-                            <td class="list-idx"><?=$row['site']?></td>
+                            <td class=""><?=$row['site']?></td>
+                            <td class="text-center"><?=$row['status'] ?? ''?></td>
                             <td class="list-idx">
                                 <div style="font-size: 12px;">
                                     #<?= $row['prd_pk'] ?>
@@ -267,6 +283,13 @@ $supplierCodeData = [
                                 <?=date('Y.m.d H:i', strtotime($row['updated_at']))?><br>
                                 <?=date('Y.m.d H:i', strtotime($row['created_at']))?>
                             </td>
+                            <td class="text-center">
+                                <?php if( $row['sold_out_date'] ): ?>
+                                    <?=date('Y.m.d H:i', strtotime($row['sold_out_date']))?>
+                                <?php else: ?>
+                                    -
+                                <?php endif; ?>
+                            </td>
                         </tr>
                         <?php } ?>
                         </tbody>
@@ -305,6 +328,7 @@ $(function(){
             's_site': $("#s_site").val(),
             's_match_status': $("#s_match_status").val(),
             's_keyword': $("#s_keyword").val(),
+            's_status': $("#s_status").val(),
         };
 
         // 유효한 값만 params에 추가

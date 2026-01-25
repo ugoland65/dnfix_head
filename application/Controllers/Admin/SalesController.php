@@ -9,6 +9,7 @@ use App\Classes\Request;
 use App\Classes\DB;
 use App\Services\ProductStockHistoryService;
 use App\Services\GodoApiService;
+use App\Services\SaleService;
 
 class SalesController extends BaseClass 
 {
@@ -104,12 +105,53 @@ class SalesController extends BaseClass
                 ->extends('admin.layout.popup_layout', ['headTitle' => '패킹리스트']);
 
         } catch (Exception $e) {
-
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
-
         }
+    }
+
+
+    /**
+     * 매출 일별 집계 조회
+     * 
+     * @param Request $request
+     * @return view
+     */
+    public function salesRankingByPeriod(Request $request)
+    {
+        
+        try{
+
+            $requestData = $request->all();
+
+            // 기본값: 시작일은 당월 1일, 종료일은 오늘
+            $s_date = $requestData['s_date'] ?? date('Y-m-01');
+            $e_date = $requestData['e_date'] ?? date('Y-m-d');
+
+            $salesService = new SaleService();
+            $payload = [
+                's_date' => $s_date,
+                'e_date' => $e_date,
+            ];
+            $salesDaily = $salesService->getSalesRankingByPeriod($payload);
+
+            $data = [
+                's_date' => $s_date,
+                'e_date' => $e_date,
+                'salesDaily' => $salesDaily,
+            ];
+
+            //dump($salesDaily);
+
+            return view('admin.order.sales_ranking_by_period', $data)
+                ->extends('admin.layout.layout',['pageGroup2' => 'order', 'pageNameCode' => 'sales_ranking_by_period']);
+
+        } catch (Exception $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }            
     }
 
 }

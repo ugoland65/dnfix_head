@@ -16,7 +16,7 @@ class Basecode extends BaseClass {
 
 		$BasecodeModel = new BasecodeModel();
 
-		$maincode_result = $BasecodeModel->queryBuilder()
+		$maincode_result = BasecodeModel::query()
 			->where('cate', '=', 'BASECODE')
 			->orderBy('sort_order', 'ASC')
 			->get()
@@ -25,7 +25,7 @@ class Basecode extends BaseClass {
 		$cate = $getData['cate'] ?? null;
 
 		if ($cate) {
-			$data_result = $BasecodeModel->queryBuilder()
+			$data_result = BasecodeModel::query()
 				->where('cate', '=', $cate)
 				->orderBy('sort_order', 'ASC')
 				->get()

@@ -1202,10 +1202,21 @@ class QueryBuilder
 	 */
     public function groupBy(...$columns)
     {
-		// 컬럼명을 백틱으로 보호
-		$escapedColumns = array_map(function($column) {
-			return $this->escapeColumnName($column);
-		}, $columns);
+        // 단일 배열 인자 지원
+        $flat = [];
+        foreach ($columns as $col) {
+            if (is_array($col)) {
+                $flat = array_merge($flat, $col);
+            } else {
+                $flat[] = $col;
+            }
+        }
+
+        // 컬럼명을 백틱으로 보호
+        $escapedColumns = array_map(function($column) {
+            return $this->escapeColumnName($column);
+        }, $flat);
+
         $this->groupBy = array_merge($this->groupBy, $escapedColumns);
         return $this;
     }

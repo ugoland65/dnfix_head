@@ -350,6 +350,36 @@
 
 <script>
     function goSubmit() {
-        document.getElementById('brand_form').submit();
+        const form = document.getElementById('brand_form');
+        fetch(form.action, {
+            method: form.method || 'POST',
+            headers: {
+                'X-Requested-With': 'XMLHttpRequest',
+                'Accept': 'application/json'
+            },
+            body: new FormData(form),
+        })
+        .then(async (res) => {
+            const contentType = res.headers.get('content-type') || '';
+            if (res.ok && contentType.includes('application/json')) {
+                return res.json();
+            }
+            // JSON이 아니거나 리다이렉트된 경우도 성공으로 간주
+            if (res.ok) {
+                return { success: true };
+            }
+            throw new Error('요청이 실패했습니다. (' + res.status + ')');
+        })
+        .then((data) => {
+            if (data && data.success) {
+                alert('브랜드 수정 완료');
+                window.location.reload();
+            } else {
+                alert((data && data.message) ? data.message : '수정에 실패했습니다.');
+            }
+        })
+        .catch((err) => {
+            alert(err.message || '수정 요청 중 오류가 발생했습니다.');
+        });
     }
 </script>

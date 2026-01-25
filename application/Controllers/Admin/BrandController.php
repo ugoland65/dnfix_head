@@ -117,9 +117,25 @@ class BrandController extends BaseClass
             $brandService = new BrandService();
             $brandInfo = $brandService->saveBrandInfo($payload, $files);
 
+            // AJAX 요청이면 JSON, 그렇지 않으면 기존 리다이렉트
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => true,
+                    'message' => '브랜드 수정 완료',
+                    'data' => $brandInfo ?? []
+                ]);
+            }
+
             return redirect()->back()->with('success', '브랜드 수정 완료');
 
         } catch (Throwable $e) {
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json([
+                    'success' => false,
+                    'message' => $e->getMessage(),
+                ], 400);
+            }
+
             return redirect()->back()->with('error', $e->getMessage());
         }
     }

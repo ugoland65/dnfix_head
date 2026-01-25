@@ -207,24 +207,18 @@ if( $pageGroup != "login" ){
 		array( "name" => "생활" ),
 	);
 
-	$_arr_national = array(
-		array( "name" => "일본", "code" => "jp" ),
-		array( "name" => "중국", "code" => "cn" ),
-		array( "name" => "한국", "code" => "kr" ),
-		array( "name" => "달러", "code" => "dollar" )
-	);
-
-
+	$_arr_national = [
+		[ "name" => "일본", "code" => "jp" ],
+		[ "name" => "중국", "code" => "cn" ],
+		[ "name" => "한국", "code" => "kr" ],
+		[ "name" => "달러", "code" => "dollar" ]
+	];
 
 	//게시판 변수
 	$_bo_gv_mode['IG'] = "가상";
 	$_bo_gv_mode['IG2'] = "가상(비)";
 	$_bo_gv_mode['BS'] = "일반";
 	$_bo_gv_mode['NT'] = "공지";
-
-
-
-
 
 //################################################################################
 // 어드민 GNB 경로

@@ -132,6 +132,8 @@ function goSupplierProduct(site, code){
 		window.open('https://doradora.kr/product/detail.html?product_no='+code, '_blank');
 	}else if(site == 'bunny'){
 		window.open('https://bunnycompany.co.kr/product/detail.html?product_no='+code, '_blank');
+	}else if(site == 'allcon'){
+		window.open('https://allcon.co.kr/product/detail.html?product_no='+code, '_blank');
 	}
 }
 

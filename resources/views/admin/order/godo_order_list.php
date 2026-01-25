@@ -138,6 +138,7 @@
                             $totalRefundPrice = 0;
                             $totalFinalPrice = 0;
                             $totalNonSale = 0;
+                            $totalNotMy = 0;
                             $totalCost = 0;
                             $totalMargin = 0;
                             $totalMarginRate = 0;
@@ -154,6 +155,7 @@
                                 $totalFinalPrice += $order['finalPrice'] ?? 0;
                                 $totalCost += $order['totalCost'] ?? 0;
                                 $totalNonSale += $order['non_sale'] ?? 0;
+                                $totalNotMy += $order['scm_not_my'] ?? 0;
                                 $totalMargin += $order['marginAmount'] ?? 0;
                                 $totalMarginRate += $order['marginRate'] ?? 0;
 
@@ -247,6 +249,7 @@
                                         <?php } ?>
                                     </td>
 
+                                    <!-- 미보유 -->
                                     <td class="text-center">
                                         <?php if (($order['scm_not_my'] ?? 0) > 0) { ?>
                                             <?= $order['scm_not_my'] ?>
@@ -364,7 +367,8 @@
                                 <th class="text-center"></th>
                                 <!-- 비매품 -->
                                 <th class="text-center"><?= $totalNonSale ?></th>
-                                <th class="text-center"> </th>
+                                <!-- 미보유 -->
+                                <th class="text-center"> <?= $totalNotMy ?></th>
                                 <th class="text-center"></th>
                             </tr>
                         </tfoot>
@@ -434,12 +438,12 @@
 											$scmNo = $orderGoods['scmNo'] ?? '';
 											$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";
 											
-											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
-                                                <br>주문일 : ".($error['orderDate'] ?? '')."
-												<br>상품명 : ".($orderGoods['goodsNm'] ?? "상품명 없음")."
-												<br>상품코드 : ".($orderGoods['goodsCd'] ?? "상품코드 없음")."
-												<br>공급사번호 : ".($orderGoods['scmNo'] ?? "공급사번호 없음")."
-												<br>공급사이름 : ".$scmName;	
+											$errorDetail = "주문번호 : <a href='http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=" . ($error['orderNo'] ?? '') . "' target='_blank'>" . ($error['orderNo'] ?? '') . "</a>"
+                                                . "<br>주문일 : " . ($error['orderDate'] ?? '')
+												. "<br>상품명 : " . ($orderGoods['goodsNm'] ?? "상품명 없음")
+												. "<br>상품코드 : " . ($orderGoods['goodsCd'] ?? "상품코드 없음")
+												. "<br>공급사번호 : " . ($orderGoods['scmNo'] ?? "공급사번호 없음")
+												. "<br>공급사이름 : " . $scmName;	
 			
 										
 										}elseif( ($error['error_code'] ?? '') == 'scm_code_not_match' ){
@@ -453,12 +457,12 @@
 											$scmNo = $orderGoods['scmNo'] ?? '';
 											$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";
 											
-											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
-                                                <br>주문일 : ".($error['orderDate'] ?? '')."
-												<br>상품명 : ".($orderGoods['goodsNm'] ?? '')."
-												<br>상품코드 : ".($orderGoods['goodsCd'] ?? '')."
-												<br>공급사번호 : ".($orderGoods['scmNo'] ?? '')."
-												<br>공급사이름 : ".$scmName;
+											$errorDetail = "주문번호 : <a href='http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=" . ($error['orderNo'] ?? '') . "' target='_blank'>" . ($error['orderNo'] ?? '') . "</a>"
+                                                . "<br>주문일 : " . ($error['orderDate'] ?? '')
+												. "<br>상품명 : " . ($orderGoods['goodsNm'] ?? "상품명 없음")
+												. "<br>상품코드 : " . ($orderGoods['goodsCd'] ?? "상품코드 없음")
+												. "<br>공급사번호 : " . ($orderGoods['scmNo'] ?? "공급사번호 없음")
+												. "<br>공급사이름 : " . $scmName;	
 										
 										}elseif( ($error['error_code'] ?? '') == 'cost_price_not_found' ){
 											
@@ -473,10 +477,10 @@
 											$goodsCd = $error['code'] ?? "상품코드 없음";
 											$scmNo = $error['scmNo'] ?? null;
 
-											$errorDetail = "주문번호 : ".($error['orderNo'] ?? '')."
-                                                <br>주문일 : ".($error['orderDate'] ?? '')."
-												<br>상품명 : <b>".$goodsNm."</b>	
-												<br>재고코드 : ".$goodsCd;
+											$errorDetail = "주문번호 : <a href='http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=" . ($error['orderNo'] ?? '') . "' target='_blank'>" . ($error['orderNo'] ?? '') . "</a>"
+                                                . "<br>주문일 : " . ($error['orderDate'] ?? '')
+												. "<br>상품명 : " . $goodsNm
+												. "<br>재고코드 : " . $goodsCd;
 
 											if( !empty($scmNo) ){
 												$scmName = isset($scmMapping[$scmNo]['name']) ? $scmMapping[$scmNo]['name'] : "공급사이름 없음";

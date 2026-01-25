@@ -61,7 +61,20 @@ include ($docRoot."/admin2/layout/header_popup.php");
         ?>
         <ul class="prd-sale-price"><b><?=number_format($prd_data['sale_price'])?></b></ul>
         <?php } ?>
+
+        <?php if( !empty($prd_data['godo_goodsNo']) ){ ?>
+		<ul>
+			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?=$prd_data['godo_goodsNo'] ?? ''?>');">쑈당몰 상품보기</button>
+		</ul>
+		<?php } ?>
         <ul class="prd-memo m-t-10"><?=$prd_data['memo'] ?? ''?></ul>
+
+		<?php if( !empty($prd_data['godo_goodsNo']) ){ ?>
+		<ul>
+			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?=$prd_data['godo_goodsNo'] ?? ''?>');">쑈당몰 상품보기</button>
+		</ul>
+		<?php } ?>
+
     </div>
 
     <?php
@@ -86,6 +99,9 @@ include ($docRoot."/admin2/layout/header_popup.php");
         <?php
             }
         ?>
+        <ul>
+			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goSupplierProduct('<?=$prd_data['supplier_site'] ?? ''?>', '<?=$prd_data['supplier_prd_pk'] ?? ''?>');">공급사 사이트 상품보기</button>
+		</ul>
         <ul>
             <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-sm cancel-match-btn"
                 data-db1-idx="<?=$prd_idx?>" 

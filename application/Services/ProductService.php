@@ -253,6 +253,7 @@ class ProductService extends BaseClass
      */
     private function processProductData($product, $prdKindName, $nationalText)
     {
+        
         $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
         if (!is_array($product['cd_size_fn'])) {
             $product['cd_size_fn'] = [];

@@ -33,6 +33,13 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 </div>
 
 <div class="left-menu-mid-title">
+	<ul>판매 관리</ul>
+</div>
+<div class="left-menu-wrap">
+	<ul <? if( $pageNameCode == "sales_ranking_by_period") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/sales/sales_ranking_by_period'"><li>기간별 판매 조회</li></ul>
+</div>
+
+<div class="left-menu-mid-title">
 	<ul>재고 관리</ul>
 </div>
 <div class="left-menu-wrap">
@@ -40,11 +47,4 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul <? if( $_page == "rack") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/stock/rack_list'"><li>(RACK) 랙 관리</li></ul>
 	<ul onclick='window.open("/admin2/product2/popup.brand_stock.php", "brand_stock", "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");'><li>브랜드별 재고 파일</li></ul>
 	<ul <? if( $_page == "stock_excel") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/stock_excel'"><li>일일 재고관리 (엑셀) </li></ul>
-</div>
-
-<div class="left-menu-mid-title">
-	<ul>거래처 관리</ul>
-</div>
-<div class="left-menu-wrap">
-	<ul <? if( $_page == "partners") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/partners'"><li>거래처 목록</li></ul>
 </div>

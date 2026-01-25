@@ -22,7 +22,7 @@ class ProductPartner extends BaseClass {
 
         $ProductPartnerModel = new ProductPartnerModel();
 
-        $productPartnerList = $ProductPartnerModel->queryBuilder()
+        $productPartnerList = ProductPartnerModel::query()
             ->table('prd_partner AS A')
             ->select([
                 'A.*',

@@ -2,8 +2,14 @@
 
 namespace App\Controllers\Admin;
 
+use Exception;
+use Throwable;
 use App\Core\AuthAdmin;
 use App\Core\BaseClass;
+use App\Classes\Request;
+
+use App\Services\CommentService;
+
 use App\Models\AdminModel;
 use App\Models\CommentModel;
 use App\Models\OrderSheetModel;
@@ -11,6 +17,7 @@ use App\Models\WorkViewCheckModel;
 use App\Models\WorkLogModel;
 use App\Models\ProductModel;
 use App\Models\CalendarModel;
+use App\Models\CsRequestModel;
 use App\Utils\Pagination;
 use App\Utils\TelegramUtils;
 
@@ -41,6 +48,11 @@ class CommentController extends BaseClass
 				'model' => CalendarModel::class,
 				'field' => 'subject',
 				'title' => '캘린더',
+			],
+			'cs' => [
+				'model' => CsRequestModel::class,
+				'field' => 'order_no',
+				'title' => 'C/S',
 			],
 		];
 
@@ -83,7 +95,7 @@ class CommentController extends BaseClass
 
 			$CalendarModel = new CalendarModel();
 
-			$isCalendar = $CalendarModel->queryBuilder()
+			$isCalendar = CalendarModel::query()
 				->where('mode', '=', 'comment')
 				->where('date_s', '=', $_date_s)
 				->exists();
@@ -93,7 +105,7 @@ class CommentController extends BaseClass
 			//자식이 존재할 경우
 			if ($isCalendar) {
 
-				$CalendarInsertResult = $CalendarModel->queryBuilder()
+				$CalendarInsertResult = CalendarModel::query()
 					->select('idx')
 					->where('mode', '=', 'comment')
 					->where('date_s', '=', $_date_s)
@@ -129,22 +141,22 @@ class CommentController extends BaseClass
 		$_target_mb_text = "@" . $ad_idx;
 
 		/*
-$sql = "
-SELECT A.*,C.ad_name, C.ad_image
-FROM work_comment AS A
-			LEFT JOIN admin AS C
-				ON C.idx = A.mb_idx 
-WHERE A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')
-  AND NOT EXISTS (
-      SELECT 1
-      FROM work_view_check AS B
-      WHERE B.mode = A.mode
-        AND B.tidx = A.idx
-        AND B.mb_idx = :ad_idx
-  )
-ORDER BY A.idx DESC
-";
-*/
+			$sql = "
+			SELECT A.*,C.ad_name, C.ad_image
+			FROM work_comment AS A
+						LEFT JOIN admin AS C
+							ON C.idx = A.mb_idx 
+			WHERE A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')
+			AND NOT EXISTS (
+				SELECT 1
+				FROM work_view_check AS B
+				WHERE B.mode = A.mode
+					AND B.tidx = A.idx
+					AND B.mb_idx = :ad_idx
+			)
+			ORDER BY A.idx DESC
+			";
+			*/
 
 		$sql = "
 			SELECT
@@ -233,6 +245,8 @@ ORDER BY A.idx DESC
 	}
 
 	/**
+	 * @deprecated 2026-01-22
+	 * 
 	 * 코멘트 쳇 - 화면
 	 */
 	public function commentChatIndex()
@@ -393,6 +407,32 @@ ORDER BY A.idx DESC
 
 
 	/**
+	 * 코멘트 챗화면
+	 */
+	public function commentChat(Request $request) {
+
+		try{
+
+			$requestData = $request->all();
+
+			$payload = [
+				'mode' => $requestData['mode'],
+				'tidx' => $requestData['tidx'],
+			];
+
+			$commentService = new CommentService();
+			$commentList = $commentService->getCommentChat($payload);
+
+			return view('admin.comment.comment_chat', $commentList);
+
+		} catch (Throwable $e) {
+			return view('admin.errors.404', [
+				'message' => $e->getMessage(),
+			])->response(404);
+		}
+	}
+
+	/**
 	 * 코멘트 등록
 	 */
 	public function createComment()
@@ -439,7 +479,7 @@ ORDER BY A.idx DESC
 				$WorkViewCheckModel = new WorkViewCheckModel();
 
 				//부모글을 내가 체크했나 안했나 확인해보자.
-				$isViewCheck = $WorkViewCheckModel->queryBuilder()
+				$isViewCheck = WorkViewCheckModel::query()
 					->where('mode', '=', $postData['mode'])
 					->where('tidx', '=', $postData['reply_idx'])
 					->where('mb_idx', '=', AuthAdmin::getSession('sess_idx'))
@@ -495,11 +535,14 @@ ORDER BY A.idx DESC
 				}
 			} //foreach END
 
-
 			// Mention 문자열 생성
-			//$_mention_mb = "@" . implode("@", $postData['target_mb_idx']);
+			// $_mention_mb = "@" . implode("@", $postData['target_mb_idx']);
+
+			$maxIdx = CommentModel::query()->getMax('idx');
+			$nextIdx = $maxIdx ? ((int)$maxIdx + 1) : 1;
 
 			$insertData = [
+				'idx' => $nextIdx,
 				'mode' => $postData['mode'] ?? null,
 				'kind' => 'S',
 				'tidx' => $postData['tidx'] ?? null,
@@ -519,7 +562,7 @@ ORDER BY A.idx DESC
 			$CommentInsertResult = $CommentModel->insert($insertData);
 
 			//주문서 댓글
-			if ($postData['mode'] == "orderSheet") {
+			if ( $postData['mode'] == "orderSheet" ) {
 
 				$incrementResults = $this->queryBuilder
 					->table('ona_order')
@@ -527,15 +570,15 @@ ORDER BY A.idx DESC
 					->increment('comment_count', 1);
 
 			// 업무게시판 댓글
-			} elseif ($postData['mode'] == "log") {
+			} elseif ( $postData['mode'] == "log" ) {
 
 				$workLogModel = new WorkLogModel();
-				$incrementResults = $workLogModel->queryBuilder()
+				$incrementResults = WorkLogModel::query()
 					->where('idx', '=', $postData['tidx'])
 					->increment('cmt_s_count', 1);
 
 			//상품 댓글
-			} elseif ($postData['mode'] == "prd") {
+			} elseif ( $postData['mode'] == "prd" ) {
 
 				$incrementResults = $this->queryBuilder
 					->table('COMPARISON_DB')
@@ -543,12 +586,21 @@ ORDER BY A.idx DESC
 					->increment('comment_count', 1);
 
 			// 달력 댓글
-			} elseif ($postData['mode'] == "calendar") {
+			} elseif ( $postData['mode'] == "calendar" ) {
 
 				$CalendarModel = new CalendarModel();
-				$incrementResults = $CalendarModel->queryBuilder()
+				$incrementResults = CalendarModel::query()
 					->where('idx', '=', $postData['tidx'])
 					->increment('comment_count', 1);
+
+			// C/S
+			} elseif ( $postData['mode'] == "cs" ) {
+
+				$CsRequestModel = new CsRequestModel();
+				$incrementResults = CsRequestModel::query()
+					->where('idx', '=', $postData['tidx'])
+					->increment('comment_count', 1);					
+
 			}
 
 			return [
@@ -557,9 +609,11 @@ ORDER BY A.idx DESC
 				'mode' => $postData['mode'],
 				'tidx' => $postData['tidx']
 			];
+
 		} catch (\Exception $e) {
 			return ['status' => 'error', 'message' => $e->getMessage()];
 		}
+
 	}
 
 
@@ -640,7 +694,7 @@ ORDER BY A.idx DESC
 			$WorkViewCheckModel = new WorkViewCheckModel();
 
 			//부모글을 내가 체크했나 안했나 확인해보자.
-			$isViewCheck = $WorkViewCheckModel->queryBuilder()
+			$isViewCheck = WorkViewCheckModel::query()
 				->where('mode', '=', $postData['mode'])
 				->where('tidx', '=', $postData['idx'])
 				->where('mb_idx', '=', AuthAdmin::getSession('sess_idx'))
