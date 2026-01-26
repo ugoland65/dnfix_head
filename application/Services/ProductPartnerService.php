@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
+use App\Services\AdminActionLogService;
 
 class ProductPartnerService extends BaseClass
 {
@@ -200,6 +201,7 @@ class ProductPartnerService extends BaseClass
 
     }
 
+
     /**
      * 상품 공급사 code Where In 조회
      * 
@@ -215,6 +217,7 @@ class ProductPartnerService extends BaseClass
 
     }
 
+    
     /**
      * 상품 공급사 godo_goodsNo Where In 조회
      * 
@@ -230,6 +233,7 @@ class ProductPartnerService extends BaseClass
 
     }
 
+
     /**
      * 상품 공급사 idx Where In 조회
      * 
@@ -243,5 +247,44 @@ class ProductPartnerService extends BaseClass
             ->toArray();
     }
 
+
+    /**
+     * 상품 공급사 품절처리 로그 남기기
+     * 
+     * @return array
+     */
+    public function soldOutPrdPartner( $data ) 
+    {
+        $idx = $data['idx'] ?? null;
+        $action_url = $data['action_url'] ?? null;
+
+        if( !empty($idx) ){
+            $productPartner = ProductPartnerModel::find($idx);
+
+            if( !empty($productPartner) ){
+
+                $beforeMini = ['status' => $productPartner['status']];
+                $afterMini  = ['status' => '품절'];
+
+                $productPartner->update([
+                    'status' => '품절',
+                    'sold_out_date' => date('Y-m-d H:i:s'),
+                ]);
+
+                $adminActionLogService = new AdminActionLogService();
+                $payload = [
+                    'target_type' => 'prd_partner',
+                    'target_table' => 'prd_partner',
+                    'target_pk' => $idx,
+                    'action_mode' => 'sold_out',
+                    'action_summary' => '파트너 상품 품절처리',
+                    'before_json' => $beforeMini,
+                    'after_json' => $afterMini,
+                    'action_url' => $action_url,
+                ];
+                $adminActionLogService->log($payload);
+            }
+        }
+    }
 
 }

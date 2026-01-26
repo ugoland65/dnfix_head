@@ -55,7 +55,12 @@ include ($docRoot."/admin2/layout/header_popup.php");
             }
         */
         ?>
-        <ul class="m-t-10"><?=$prd_data['status'] ?? ''?></ul>
+        <ul class="m-t-10">
+            <?=$prd_data['status'] ?? ''?>
+            <?php if( $prd_data['status'] == '품절' ){ ?>
+                <br><span class="text-danger">처리일 : <?=date('y.m.d H:i', strtotime($prd_data['sold_out_date'])) ?? ''?></span>
+            <?php } ?>
+        </ul>
         <?php
             if( $prd_data['sale_price'] > 0 ){
         ?>

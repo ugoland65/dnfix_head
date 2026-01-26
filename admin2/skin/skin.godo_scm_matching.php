@@ -4,72 +4,71 @@ ini_set('display_startup_errors', 1);
 error_reporting(E_ALL);
 
 use App\Classes\Database;
-use App\Utils\HttpClient; 
+use App\Utils\HttpClient;
 
-if( empty($_pagegodo) ) $_pagegodo = 1;
-if( empty($_scm) ) $_scm = 0;
-if( empty($_show_mode) ) $_show_mode = "all";
+use App\Services\ProductPartnerService;
+$productPartnerService = new ProductPartnerService();
+
+if (empty($_pagegodo)) $_pagegodo = 1;
+if (empty($_scm)) $_scm = 0;
+if (empty($_show_mode)) $_show_mode = "all";
 
 $scmMapping = [
-    0  => ['name' => '오류', 'partner_key' => null, 'display'=>'none' ],
-    1  => ['name' => '주식회사 디엔픽스', 'partner_key' => null, 'display'=>'none' ],
-    2  => ['name' => '모브X', 'partner_key' => null, 'display'=>'none' ],
-    3  => ['name' => '모브', 'partner_key' => 3],
-    4  => ['name' => '공급사사입', 'partner_key' => null, 'display'=>'none'],
-    5  => ['name' => '바니컴퍼니', 'partner_key' => 8],
-    6  => ['name' => '바이담', 'partner_key' => 10],
-    7  => ['name' => '해외직구', 'partner_key' => null, 'display'=>'none'],
-    8  => ['name' => '그린쉘프', 'partner_key' => 12],
-    9  => ['name' => '울컨코리아', 'partner_key' => 7],
-    10 => ['name' => '모노프로', 'partner_key' => 11],
-    11 => ['name' => '핑크에그', 'partner_key' => 9],
-    12 => ['name' => '리퍼브', 'partner_key' => null, 'display'=>'none'],
-    13 => ['name' => 'MSHb2b', 'partner_key' => 5],
-    14 => ['name' => 'JPDOLL', 'partner_key' => 14],
-    15 => ['name' => '도라토이', 'partner_key' => 6],
-    16 => ['name' => '대형', 'partner_key' => null, 'display'=>'none'],
-    17 => ['name' => '리퍼브', 'partner_key' => null, 'display'=>'none'],
-    18 => ['name' => '랜덤박스', 'partner_key' => null, 'display'=>'none'],
-    19 => ['name' => '예비1', 'partner_key' => null, 'display'=>'none'],
-    20 => ['name' => '예비2', 'partner_key' => null, 'display'=>'none'],
-	21 => ['name' => '예비3', 'partner_key' => null, 'display'=>'none'],
-	22 => ['name' => '텐가', 'partner_key' => 15, ],
-	23 => ['name' => '로마', 'partner_key' => 2, ],
-	24 => ['name' => '기획세트 (트릭박스)', 'partner_key' => null, 'display'=>'none'],
-	25 => ['name' => '기획세트 (대형)', 'partner_key' => null, 'display'=>'none'],
-    
+	0  => ['name' => '오류', 'partner_key' => null, 'display' => 'none'],
+	1  => ['name' => '주식회사 디엔픽스', 'partner_key' => null, 'display' => 'none'],
+	2  => ['name' => '모브X', 'partner_key' => null, 'display' => 'none'],
+	3  => ['name' => '모브', 'partner_key' => 3],
+	4  => ['name' => '공급사사입', 'partner_key' => null, 'display' => 'none'],
+	5  => ['name' => '바니컴퍼니', 'partner_key' => 8],
+	6  => ['name' => '바이담', 'partner_key' => 10],
+	7  => ['name' => '해외직구', 'partner_key' => null, 'display' => 'none'],
+	8  => ['name' => '그린쉘프', 'partner_key' => 12],
+	9  => ['name' => '울컨코리아', 'partner_key' => 7],
+	10 => ['name' => '모노프로', 'partner_key' => 11],
+	11 => ['name' => '핑크에그', 'partner_key' => 9],
+	12 => ['name' => '리퍼브', 'partner_key' => null, 'display' => 'none'],
+	13 => ['name' => 'MSHb2b', 'partner_key' => 5],
+	14 => ['name' => 'JPDOLL', 'partner_key' => 14],
+	15 => ['name' => '도라토이', 'partner_key' => 6],
+	16 => ['name' => '대형', 'partner_key' => null, 'display' => 'none'],
+	17 => ['name' => '리퍼브', 'partner_key' => null, 'display' => 'none'],
+	18 => ['name' => '랜덤박스', 'partner_key' => null, 'display' => 'none'],
+	19 => ['name' => '예비1', 'partner_key' => null, 'display' => 'none'],
+	20 => ['name' => '예비2', 'partner_key' => null, 'display' => 'none'],
+	21 => ['name' => '예비3', 'partner_key' => null, 'display' => 'none'],
+	22 => ['name' => '텐가', 'partner_key' => 15,],
+	23 => ['name' => '로마', 'partner_key' => 2,],
+	24 => ['name' => '기획세트 (트릭박스)', 'partner_key' => null, 'display' => 'none'],
+	25 => ['name' => '기획세트 (대형)', 'partner_key' => null, 'display' => 'none'],
+
 ];
 
 
-if( !empty($_scm) ){
-        
-    $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=SCM&scm='.$_scm.'&page='.$_pagegodo;
-    $response = HttpClient::getData($apiUrl);
+if (!empty($_scm)) {
 
-    $responseData = json_decode($response, true);
+	$apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=SCM&scm=' . $_scm . '&page=' . $_pagegodo;
+	$response = HttpClient::getData($apiUrl);
 
-/*
-	echo "<pre>";
-	print_r($responseData);
-	echo "</pre>";
-*/
+	$responseData = json_decode($response, true);
 
-    $db = Database::getInstance()->getConnection();
+	//dump($responseData);
 
-    $goodsCdList = array_column($responseData['data'] ?? [], 'cateNm');
-	
+	$db = Database::getInstance()->getConnection();
+
+	$goodsCdList = array_column($responseData['data'] ?? [], 'cateNm');
+
 	// 공백 제거 (모든 공백 문자 제거)
-	$goodsCdListNoSpaces = array_map(function($v) {
+	$goodsCdListNoSpaces = array_map(function ($v) {
 		// 모든 공백 문자(\s)를 제거
 		return preg_replace('/\s+/', '', $v);
 	}, $goodsCdList);
-	
+
 	// 중복 제거
 	$goodsCdListNoSpaces = array_unique($goodsCdListNoSpaces);
-	
+
 	// ★ 키 재인덱싱 (중요!)
 	$goodsCdListNoSpaces = array_values($goodsCdListNoSpaces);
-	
+
 	if (empty($goodsCdListNoSpaces)) {
 		// 배열이 비어있으면 쿼리 자체를 실행하지 않음
 		$brandResults = [];
@@ -80,12 +79,11 @@ if( !empty($_scm) ){
 			FROM BRAND_DB
 			WHERE REPLACE(BD_NAME, ' ', '') IN ($placeholders)
 		";
-		
+
 		$stmt = $db->prepare($sql);
 		$stmt->execute($goodsCdListNoSpaces);
 		$brandResults = $stmt->fetchAll(PDO::FETCH_ASSOC);
 	}
-
 
 	$brandMapping = [];
 	$brandMapping2 = [];
@@ -103,9 +101,8 @@ if( !empty($_scm) ){
 		];
 	}
 
-
-    $sql = "
-		SELECT idx, godo_goodsNo 
+	$sql = "
+		SELECT idx, status, godo_goodsNo 
 		FROM prd_partner  
 		WHERE partner_idx = :partner_key
 	";
@@ -117,55 +114,198 @@ if( !empty($_scm) ){
 
 	$matchedGoodsNos = [];
 	foreach ($matchedData as $row) {
-		$matchedGoodsNos[$row['godo_goodsNo']] = $row['idx'];
+
+		if( !empty( $row['godo_goodsNo'] ) ){
+			$matchedGoodsNos[$row['godo_goodsNo']] = [
+				'idx' => $row['idx'],
+				'status' => $row['status'],
+			];
+		}
+	}
+}
+
+$line_products = [];
+
+if( !empty($_scm) ){
+
+	$insertCount = 0;
+	$count = 0;
+
+	foreach ($responseData['data'] ?? [] as $product) {
+
+		$count++;
+		$scmNo = $product['scmNo'] ?? '0';
+		$cateNmNoSpace = preg_replace('/\s+/', '', $product['cateNm']);
+		$goodsNo = $product['goodsNo'];
+
+		$_errors = [];
+		$is_error = false;
+		$error_message = '';
+		$error_type = '';
+
+		/*
+		if( empty($product['goodsCd']) ){
+			$is_error = true;
+			$_errors[] = "고도몰 자체코드가 없음";
+		}
+		*/
+
+		if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
+			$is_error = true;
+			$_errors[] = [
+				'code' => 'have_stock_code',
+				'message' => '재고코드가 있는것으로 의심됨',
+			];
+		}
+
+		if (!empty($product['goodsCd']) && preg_match('/[^a-zA-Z0-9\-_]/', $product['goodsCd'])) {
+			$is_error = true;
+			$_errors[] = [
+				'code' => 'bad_code',
+				'message' => '코드불량',
+			];
+		}
+
+		if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'set') !== false) {
+			$is_error = true;
+			$_errors[] = [
+				'code' => 'set_code',
+				'message' => '세트코드 제외',
+			];
+		}
+
+		/*
+		if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
+			$is_error = true;
+			$_errors[] = "toy 코드 제외";
+		}
+		*/
+
+		if (empty($brandMapping[$cateNmNoSpace])) {
+			$is_error = true;
+			$_errors[] = [
+				'code' => 'brand_not_matched',
+				'message' => '브랜드 매칭 안됨 <br>(인트라넷에 브랜드 존재하는지 확인)<br>브랜드명 : <b>'.$product['cateNm'].'</b>'	,
+			];
+			$brandName = "-";
+			$brandIdx = null;
+		} else {
+			$brandName = $brandMapping2[$brandMapping[$cateNmNoSpace]['IDX']]['name'];
+			$brandIdx = $brandMapping[$cateNmNoSpace]['IDX'];
+		}
+
+		if( $is_error ){
+
+			$line_products[] = [
+				'line_status' => 'errors',
+				'status_text' => $_errors,
+				'goodsNo' => $goodsNo,
+				'thumbImageUrl' => $product['thumbImageUrl'] ?? '',
+				'goodsNm' => $product['goodsNm'] ?? '',
+				'goodsCd' => $product['goodsCd'] ?? '',
+				'soldOutFl' => $product['soldOutFl'] ?? '',
+				'scmNo' => $scmNo,
+				'scmName' => $scmMapping[$scmNo]['name'] ?? '',
+				'brandCd' => $product['brandCd'] ?? '',
+				'brandName' => $brandName,
+				'brandIdx' => $brandIdx,
+				'cateNm' => $product['cateNm'] ?? '',
+				'goodsPrice' => $product['goodsPrice'] ?? '',
+			];
+
+		}
+
+		// 등록된 상품인지 확인
+		if (isset($matchedGoodsNos[$goodsNo])) {
+
+			$idx = $matchedGoodsNos[$goodsNo]['idx'];
+			$status = $matchedGoodsNos[$goodsNo]['status'] ?? '';
+
+			if( $status != '품절' && $product['soldOutFl'] == 'y' ){
+
+				$productPartnerService->soldOutPrdPartner([
+					'idx' => $idx,
+					'action_url' => $_SERVER['REQUEST_URI'],
+				]);
+				
+				$status_text = [];
+				$status_text[] = [
+					'code' => 'sold_out',
+					'message' => '이상품을 품절처리 했습니다',
+				];
+
+				$line_products[] = [
+					'line_status' => 'sold_out',
+					'status_text' => $status_text,
+					'goodsNo' => $goodsNo,
+					'thumbImageUrl' => $product['thumbImageUrl'] ?? '',
+					'goodsNm' => $product['goodsNm'] ?? '',
+					'goodsCd' => $product['goodsCd'] ?? '',
+					'soldOutFl' => $product['soldOutFl'] ?? '',
+					'scmNo' => $scmNo,
+					'scmName' => $scmMapping[$scmNo]['name'] ?? '',
+					'brandCd' => $product['brandCd'] ?? '',
+					'brandName' => $brandName,
+					'brandIdx' => $brandIdx,
+					'cateNm' => $product['cateNm'] ?? '',
+					'goodsPrice' => $product['goodsPrice'] ?? '',
+					'matched_idx' => $idx,
+				];
+
+			}
+
+		} else {
+			// 신규
+		}
+
 	}
 
 }
 ?>
 <style>
-    /* 버튼 스타일 */
-    button.pagebtn {
-        padding: 3px 5px;
-        /* margin: 5px; */
-        border: 1px solid #ccc;
-        background-color: #f5f5f5;
-        cursor: pointer;
-    }
+	/* 버튼 스타일 */
+	button.pagebtn {
+		padding: 3px 5px;
+		/* margin: 5px; */
+		border: 1px solid #ccc;
+		background-color: #f5f5f5;
+		cursor: pointer;
+	}
 
-    /* 활성화된 버튼 */
-    button.pagebtn.on {
-        background-color: #007BFF;
-        color: white;
-        border-color: #0056b3;
-    }
+	/* 활성화된 버튼 */
+	button.pagebtn.on {
+		background-color: #007BFF;
+		color: white;
+		border-color: #0056b3;
+	}
 </style>
 
 <div id="contents_head">
 	<h1>고도몰 등록 공급사 상품</h1>
 	<h3>고도몰에 등록된 공급사 상품입니다.</h3>
-    <div id="head_write_btn">
+	<div id="head_write_btn">
 	</div>
 </div>
 <div id="contents_body">
 	<div id="contents_body_wrap">
-		<div id="list_new_wrap" >
+		<div id="list_new_wrap">
 
 			<div class="table-top">
 				<ul class="total">
-					Total : <b><?=number_format($responseData['total'] ?? 0)?></b>
+					Total : <b><?= number_format($responseData['total'] ?? 0) ?></b>
 				</ul>
 				<ul class="m-l-20">
-				<?php
-					foreach( $scmMapping as $key => $value ){
-						
+					<?php
+					foreach ($scmMapping as $key => $value) {
+
 						$activeClass = ($_scm == $key) ? 'on' : '';
 						$name = isset($value['name']) ? $value['name'] : '이름없음';
-						
-						if( empty($value['display'] ) ){
+
+						if (empty($value['display'])) {
 							echo '<button type="button" class="pagebtn ' . $activeClass . '" onclick="location.href=\'/ad/provider/godo_scm_matching/?scm=' . $key . '&show_mode=' . $_show_mode . '\'">' . $name . '</button>' . PHP_EOL;
 						}
 					}
-				?>
+					?>
 				</ul>
 				<ul class="m-l-10">
 					<select name="show_mode" id="show_mode">
@@ -180,101 +320,168 @@ if( !empty($_scm) ){
 
 					<table class="table-st1">
 						<thead>
-						<tr>
-							<th class="list-idx">count</th>
-							<th class="">고도몰 상품코드</th>
-							<th class="">고도몰 이미지</th>
-							<th class="">고도몰 상품명</th>
-							<th class="" style="width:100px;">
-								고도몰 자체코드
-							</th>		
-							<th class="">고도몰 옵션</th>
-							<th class="">고도몰 공급사</th>
-							<th class="">고도몰 브랜드코드</th>
-							<th class="">고도몰 판매가</th>
-							<th class="">인트라넷 브랜드</th>
-							<th>매칭 상태</th>
-							<th>메모</th>
-						</tr>
+							<tr>
+								<th class="list-idx">count</th>
+								<th class="">상태</th>
+								<th class="">상태 메세지</th>
+								<th class="">고도몰 상품코드</th>
+								<th class="">고도몰 이미지</th>
+								<th class="">고도몰 상품명</th>
+								<th class="" style="width:100px;">
+									고도몰 자체코드
+								</th>
+								<th class="">고도몰 판매상태</th>
+								<th class="">고도몰 옵션</th>
+								<th class="">고도몰 공급사</th>
+								<th class="">고도몰 브랜드코드</th>
+								<th class="">고도몰 판매가</th>
+								<th class="">인트라넷 브랜드</th>
+								<th>매칭 상태</th>
+								<th>메모</th>
+							</tr>
 						</thead>
 						<tbody>
-						<?php
+							<?php
+							$count = 0;
+
+							$status_text['errors'] = '에러';
+							$status_text['sold_out'] = '품절 처리';
+
+							foreach ($line_products as $product) {
+								$count++;
+							?>
+							<tr>
+								<td class="text-center"><?= $count ?></td>
+								<td class="text-center"><?= $status_text[$product['line_status']] ?></td>
+								<td class="text-left">
+									<div>
+										<?php
+											if ( is_array($product['status_text']) && count($product['status_text']) > 0) {
+												foreach ($product['status_text'] as $text) {
+										?>
+											<ul>
+												<?= $text['message'] ?>
+												<?php if( $text['code'] == 'have_stock_code' ){ ?>
+													<br><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
+														onclick="onlyAD.prdView('<?=$product['goodsCd'] ?? ''?>','info','stock');" >상품정보</button>
+												<?php }elseif( $text['code'] == 'sold_out' ){ ?>
+													<br><button type="button" id="" class="btnstyle1 btnstyle1-warning btnstyle1-xs" 
+														onclick="onlyAD.prdProviderQuick('<?=$product['matched_idx'] ?? ''?>','info');" >공급사상품</button>
+												<?php } ?>
+											</ul>
+										<?php 
+												}
+											} elseif( !empty($product['status_text']) ){
+												?>
+												<ul>
+													<?= $product['status_text'] ?>
+												</ul>
+												<?php
+											}
+										?>
+									</div>
+								</td>
+								<td class="text-center">
+									<div style="font-size: 12px;">
+										#<?= $product['goodsNo'] ?>
+									</div>
+									<div class="m-t-3">
+										<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $product['goodsNo'] ?>);">쑈당몰 상품보기</button>
+									</div>
+									<div class="m-t-5">
+										<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $product['goodsNo'] ?>);">관리자 상품보기</button>
+									</div>
+								</td>
+								<td class="">
+									<img src="<?= $product['thumbImageUrl'] ?>" style="height:70px; border:1px solid #eee !important;">
+								</td>
+								<td><?= $product['goodsNm'] ?></td>
+								<td><?= $product['goodsCd'] ?></td>
+								<td class="text-center"><?= $product['soldOutFl'] == 'y' ? '품절' : '판매중' ?></td>
+								<td class=""></td>
+								<td class=""><?= $product['scmNo'] ?> | <?= $scmMapping[$scmNo]['name'] ?></td>
+								<td class=""><?= $product['brandCd'] ?> | <?= $product['cateNm'] ?></td>
+								<td class="text-right"><?= number_format($product['goodsPrice']) ?></td>
+								<td class=""><?= $product['brandName'] ?></td>
+							</tr>
+							<?php } ?>
+							<?php
+
+							/*
 							$insertCount = 0;
 							$count = 0;
-							foreach ( $responseData['data'] ?? [] as $product ) {
-								
+							foreach ($responseData['data'] ?? [] as $product) {
+
 								$count++;
 								$scmNo = $product['scmNo'] ?? '0';
 								$cateNmNoSpace = preg_replace('/\s+/', '', $product['cateNm']);
 								$goodsNo = $product['goodsNo'];
-								
-								/*
-									17 = 리퍼브
-								*/
+
+
 								$_tr_class = "l";
-								
-								if( empty( $brandMapping[$cateNmNoSpace] ) ){
+
+								if (empty($brandMapping[$cateNmNoSpace])) {
 									//$_tr_class = "status_clx";
 								}
-								
+
 								$line_show = true;
 								$this_line_status = "";
 								$_errors = [];
-								
-								/*
+
+							
 								if( empty($product['goodsCd']) ){
 									$_errors[] = "고도몰 자체코드가 없음";
 								}
-								*/
 								
+
 								if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
 									$_errors[] = "재고코드가 있는것으로 의심됨";
 								}
-								
+
 								if (!empty($product['goodsCd']) && preg_match('/[^a-zA-Z0-9\-_]/', $product['goodsCd'])) {
 									$_errors[] = "코드불량";
 								}
-								
+
 								if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'set') !== false) {
 									$_errors[] = "세트코드 제외";
 								}
+
 								
-								/*
 								if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
 									$_errors[] = "toy 코드 제외";
 								}
-								*/
 								
-								if( empty( $brandMapping[$cateNmNoSpace] ) ){
+
+								if (empty($brandMapping[$cateNmNoSpace])) {
 									$_errors[] = "브랜드 매칭 안됨 (인트라넷에 브랜드 존재하는지 확인)";
 								}
 
-								if( count($_errors) > 0 ){
+								if (count($_errors) > 0) {
 									$this_line_status = "errors";
 								}
-								
+
 								$matchedIdx = null;
-								
+
 								$ud = "";
 
 								$options = json_decode($product['options'] ?? '', true);
 
 								$goodsOption = [];
 								if (is_array($options)) {
-									foreach( $options as $option ){
-										if( !empty($option['optionValue1'])){
+									foreach ($options as $option) {
+										if (!empty($option['optionValue1'])) {
 											$goodsOption[] = $option;
 										}
 									}
 								}
-								
-								if ( count($_errors) > 0 ) {
+
+								if (count($_errors) > 0) {
 									$_tr_class = "status_bl";
-								}else{
+								} else {
 									if (array_key_exists($goodsNo, $matchedGoodsNos)) {
 										$matchedIdx = $matchedGoodsNos[$goodsNo];
-									}else{
-										
+									} else {
+
 										// 필수 NOT NULL 컬럼 기본값 처리
 										$brandIdx = isset($brandMapping[$cateNmNoSpace]['IDX']) ? $brandMapping[$cateNmNoSpace]['IDX'] : 0; // 없으면 0
 										$partnerKey = isset($scmMapping[$scmNo]['partner_key']) ? $scmMapping[$scmNo]['partner_key'] : 0; // 없으면 0
@@ -320,76 +527,77 @@ if( !empty($_scm) ){
 										} catch (PDOException $e) {
 											echo "DB Error: " . $e->getMessage();
 										}
-
-									
 									}
 								}
-									
-								if( $_show_mode == "errors" && $this_line_status != "errors" ){
+
+								if ($_show_mode == "errors" && $this_line_status != "errors") {
 									$line_show = false;
 								}
 
-								if( $line_show ){
-						?>
-						<tr id="trid_<?=$ps_idx?>" class="<?=$_tr_class?>">
-							<td class="list-idx"><?=$count?></td>
-							<td class="text-center">
-								<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-									onclick="goGodoMall(<?=$product['goodsNo']?>);" >#<?=$product['goodsNo']?></button>
-							</td>
-							<td class=""><img src="<?=$product['thumbImageUrl']?>" style="height:70px; border:1px solid #eee !important;"></td>
-							<td class=""><?=$product['goodsNm']?></td>
-							<td class=""><?=$product['goodsCd']?></td>
-							<td class="">
-								<?php
-									/*
-									echo "<pre>";
-									print_r($options);
-									echo "</pre>";
+								if ($line_show) {
+							?>
+									<tr id="trid_<?= $ps_idx ?>" class="<?= $_tr_class ?>">
+										<td class="list-idx"><?= $count ?></td>
+										<td class="text-center">
+											<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs"
+												onclick="goGodoMall(<?= $product['goodsNo'] ?>);">#<?= $product['goodsNo'] ?></button>
+										</td>
+										<td class=""><img src="<?= $product['thumbImageUrl'] ?>" style="height:70px; border:1px solid #eee !important;"></td>
+										<td class=""><?= $product['goodsNm'] ?></td>
+										<td class=""><?= $product['goodsCd'] ?></td>
+										<td class="">
+											<?php
+											
+												echo "<pre>";
+												print_r($options);
+												echo "</pre>";
 
-									echo "<pre>";
-									print_r($goodsOption);
-									echo "</pre>";
-									*/
-								?>
-							</td>
-							<td class=""><?=$product['scmNo']?> | <?=$scmMapping[$scmNo]['name']?></td>
-							<td class=""><?=$product['brandCd']?> | <?=$product['cateNm']?></td>
-							<td class="text-right"><?=number_format($product['goodsPrice'])?></td>
-							<td class="">
-								<? if( empty( $brandMapping[$cateNmNoSpace] ) ){ ?>
-									매칭 X
-								<? }else{ ?>
-									<?=$brandMapping[$cateNmNoSpace]['IDX']?><br>
-									<?=$brandMapping2[$brandMapping[$cateNmNoSpace]['IDX']]['name']?>
-								<? } ?>
-							</td>
-							<td class="">
-								<? if( $matchedIdx == null ){ ?>
-									매칭X<br>
-								<? }else{ ?>
-									<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs" 
-										onclick="prdProviderQuick('<?=$matchedIdx?>');" >#<?=$matchedIdx?></button>	
-								<? } ?>
-								<?=$ud?>
-							</td>
-							<td class="text-left">
-								<div>
-								<? 
-								if ( count($_errors) > 0 ) { 
-									foreach ( $_errors as $er ) {
-								?>
-									<ul><?=$er?></ul>
-								<? } } ?>
-								</div>
-							</td>
-						</tr>
-						<?php }  } ?>
+												echo "<pre>";
+												print_r($goodsOption);
+												echo "</pre>";
+											
+											?>
+										</td>
+										<td class=""><?= $product['scmNo'] ?> | <?= $scmMapping[$scmNo]['name'] ?></td>
+										<td class=""><?= $product['brandCd'] ?> | <?= $product['cateNm'] ?></td>
+										<td class="text-right"><?= number_format($product['goodsPrice']) ?></td>
+										<td class="">
+											<? if (empty($brandMapping[$cateNmNoSpace])) { ?>
+												매칭 X
+											<? } else { ?>
+												<?= $brandMapping[$cateNmNoSpace]['IDX'] ?><br>
+												<?= $brandMapping2[$brandMapping[$cateNmNoSpace]['IDX']]['name'] ?>
+											<? } ?>
+										</td>
+										<td class="">
+											<? if ($matchedIdx == null) { ?>
+												매칭X<br>
+											<? } else { ?>
+												<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-xs"
+													onclick="prdProviderQuick('<?= $matchedIdx ?>');">#<?= $matchedIdx ?></button>
+											<? } ?>
+											<?= $ud ?>
+										</td>
+										<td class="text-left">
+											<div>
+												<?
+												if (count($_errors) > 0) {
+													foreach ($_errors as $er) {
+												?>
+														<ul><?= $er ?></ul>
+												<? }
+												} ?>
+											</div>
+										</td>
+									</tr>
+							<?php }
+							} 
+							*/ ?>
 						</tbody>
 					</table>
 				</div>
 			</div>
-		
+
 		</div>
 
 		<div id="contents_body_bottom_padding"></div>
@@ -399,8 +607,8 @@ if( !empty($_scm) ){
 	<div class="pageing-wrap" id="pageing_ajax_show"></div>
 </div>
 
-<script type="text/javascript"> 
-<!-- 
-
-//--> 
-</script>	
+<script type="text/javascript">
+	<!-- 
+	//
+	-->
+</script>

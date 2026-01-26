@@ -210,6 +210,15 @@ $prd_data = $viewData['productPartnerInfo'];
             <td><input type='text' name='godo_goodsNo'  size='10' value="<?=$prd_data['godo_goodsNo']?>" style="width:150px;"></td>
         </tr>
         <tr>
+            <th>고도몰 등록상태</th>
+            <td>
+                <?=$prd_data['status'] ?? ''?>
+                <?php if( $prd_data['status'] == '품절' ){ ?>
+                    <br><span class="text-danger">처리일 : <?=$prd_data['sold_out_date'] ?? ''?></span>
+                <?php } ?>
+            </td>
+        </tr>
+        <tr>
             <th>공급사 매칭코드</th>
             <td><input type='text' name='matching_code'  size='10' value="<?=$prd_data['matching_code']?>" style="width:150px;"></td>
         </tr>

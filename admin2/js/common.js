@@ -96,8 +96,13 @@ var onlyAD = function() {
 		prdProviderQuick,
 
 		// 상품 상세 보기
-		prdView : function( idx, vmode ) {
-			window.open("/ad/ajax/prd_info/"+ idx, "prd_quick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		prdView : function( idx, vmode = 'info', prd_mode = "basic" ) {
+
+			var url = "/ad/ajax/prd_info/"+ idx +"?vmode="+vmode;
+			if( prd_mode == "stock" ) {
+				url = "/ad/ajax/prd_info/"+ idx +"?vmode="+vmode+"&prd_mode=stock";
+			}
+			window.open(url, "prd_quick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 		},
 
 		// 상품 상세 테스트

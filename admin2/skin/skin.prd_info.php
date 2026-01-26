@@ -7,6 +7,8 @@ $_prd_idx = $_get1 ?? "";
 $prd_data = [];
 $img_path = "";
 
+$prd_mode = $_GET['prd_mode'] ?? "basic";
+
 // 디버깅: $_prd_idx 값 확인
 if( !$_prd_idx ){
 	echo "오류: 상품 IDX가 없습니다. _get1 = " . ($_get1 ?? 'undefined');
@@ -14,14 +16,34 @@ if( !$_prd_idx ){
 }
 
 if( $_prd_idx ){
-	$_colum = "A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code";
+
+	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code";
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code";
 	$_colum .= ", C.BD_NAME";
 
+	if( $prd_mode == "basic" ){
+
+		$_query = "select ".$_colum." from "._DB_COMPARISON." A
+			left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX) 
+			left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
+			where A.CD_IDX = '".$_prd_idx."' ";
+
+	}else{
+
+		$_query = "select ".$_colum." from  prd_stock B
+			left join "._DB_COMPARISON." A ON (B.ps_prd_idx = A.CD_IDX) 
+			left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
+			where B.ps_idx = '".$_prd_idx."' ";
+
+	}
+	
+	/*
 	$_query = "select ".$_colum." from "._DB_COMPARISON." A
 		left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX) 
 		left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
 		where A.CD_IDX = '".$_prd_idx."' ";
+	*/
+
 
 	// 디버깅: 쿼리 확인
 	// echo "<pre>쿼리: " . $_query . "</pre>";
@@ -132,7 +154,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 <!-- 
 var prdInfo = function() {
 
-	var prd_idx = "<?=$_prd_idx?>";
+	var prd_idx = "<?=$prd_data['CD_IDX'] ?? ''?>";
 	var ps_idx = "<?=$prd_data['ps_idx'] ?? ''?>";
 	var stockModifyWindow;
 
