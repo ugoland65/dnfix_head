@@ -564,6 +564,11 @@ class CommentController extends BaseClass
 			//주문서 댓글
 			if ( $postData['mode'] == "orderSheet" ) {
 
+				$this->queryBuilder
+					->table('ona_order')
+					->where('oo_idx', '=', $postData['tidx'])
+					->whereNull('comment_count')
+					->update(['comment_count' => 0]);
 				$incrementResults = $this->queryBuilder
 					->table('ona_order')
 					->where('oo_idx', '=', $postData['tidx'])
@@ -573,6 +578,11 @@ class CommentController extends BaseClass
 			} elseif ( $postData['mode'] == "log" ) {
 
 				$workLogModel = new WorkLogModel();
+				WorkLogModel::query()
+					->where('idx', '=', $postData['tidx'])
+					->whereNull('cmt_s_count')
+					->update(['cmt_s_count' => 0]);
+					
 				$incrementResults = WorkLogModel::query()
 					->where('idx', '=', $postData['tidx'])
 					->increment('cmt_s_count', 1);
@@ -580,6 +590,11 @@ class CommentController extends BaseClass
 			//상품 댓글
 			} elseif ( $postData['mode'] == "prd" ) {
 
+				$this->queryBuilder
+					->table('COMPARISON_DB')
+					->where('CD_IDX', '=', $postData['tidx'])
+					->whereNull('comment_count')
+					->update(['comment_count' => 0]);
 				$incrementResults = $this->queryBuilder
 					->table('COMPARISON_DB')
 					->where('CD_IDX', '=', $postData['tidx'])
@@ -589,6 +604,10 @@ class CommentController extends BaseClass
 			} elseif ( $postData['mode'] == "calendar" ) {
 
 				$CalendarModel = new CalendarModel();
+				CalendarModel::query()
+					->where('idx', '=', $postData['tidx'])
+					->whereNull('comment_count')
+					->update(['comment_count' => 0]);
 				$incrementResults = CalendarModel::query()
 					->where('idx', '=', $postData['tidx'])
 					->increment('comment_count', 1);
@@ -597,6 +616,10 @@ class CommentController extends BaseClass
 			} elseif ( $postData['mode'] == "cs" ) {
 
 				$CsRequestModel = new CsRequestModel();
+				CsRequestModel::query()
+					->where('idx', '=', $postData['tidx'])
+					->whereNull('comment_count')
+					->update(['comment_count' => 0]);
 				$incrementResults = CsRequestModel::query()
 					->where('idx', '=', $postData['tidx'])
 					->increment('comment_count', 1);					

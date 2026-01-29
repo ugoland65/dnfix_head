@@ -1,3 +1,93 @@
+
+/* 공통 배지 */
+.grade-badge{
+	display:inline-block;
+	padding:2px 8px;
+	color:#fff;
+	font-weight:700;
+	border-radius:3px;
+	line-height:1.2;
+	font-size:12px;
+  }
+  
+  /* 등급별 색상 */
+  .grade-A{ background-color:#28a745; } /* 초록 */
+  .grade-B{ background-color:#20c997; } /* 연두 */
+  .grade-C{ background-color:#17a2b8; } /* 청록 */
+  .grade-D{ background-color:#0dcaf0; } /* 하늘 */
+  .grade-E{ background-color:#ffc107; } /* 노랑 */
+  .grade-F{ background-color:#fd7e14; } /* 오렌지 */
+  .grade-G{ background-color:#dc3545; } /* 빨강 */
+  .grade-H{ background-color:#d63384; } /* 진한 빨강 */
+  .grade-I{ background-color:#6c757d; } /* 회색 */
+
+.form-group{
+	display:flex;
+	align-items: center;
+	gap:5px;
+}
+
+/* 업무 로그 작성자 프로필 */
+.work-log-mb-profile,
+.work-log-list-mb-profile{ display:inline-block; width:20px; height:20px; vertical-align:middle; border:1px solid #eee; overflow:hidden; border-radius:50%; }
+.work-log-mb-profile img,
+.work-log-list-mb-profile img{ width:100%; }
+
+.target-list-wrap{
+	display:flex;
+	align-items: center;
+	gap:2px;
+}
+
+.mb-profile-box{
+	display:inline-flex;
+	align-items: center;
+	justify-content: center;
+	border:1px solid #eee;
+	overflow:hidden;
+	border-radius:5px;
+	padding:1px 3px;
+	gap:2px;
+
+	&:hover{
+		background-color:#f5f5f5;
+		cursor:pointer;
+	}
+
+	> .profile-img{
+		width:18px;
+		height:18px;
+		line-height:20px;
+		overflow:hidden;
+		border-radius:3px;
+		text-align:center;
+		vertical-align:middle;
+		img{
+			width:100%;
+		}
+		i{
+			font-size:14px;
+			color:#bbb;
+		}
+	}
+	.profile-name{
+		font-size:12px;
+	}
+
+	&.md{
+		.profile-img{
+			width:20px;
+			height:20px;
+		}
+		.profile-name{
+			font-size:12px;
+		}
+	}
+
+}
+
+
+
 .list-memo-text{
 	font-size:12px;
 	color:#ff0000;
@@ -296,15 +386,19 @@
 			}
 
 			/* end */
-			&.status_end{
-				background-color:#eee;
-			}
+			&.status_end{ background-color:#eee; }
+			&.status_end2{ background-color:#f5f5f5; }
 
 			&.red{
 				background-color:#ffd6d6;
 			}
 			&.green{
 				background-color:#d6ffdb;
+			}
+
+			/* 마우스 오버시 배경색 변경 */
+			&:hover{
+				background-color:#f5f5f5;
 			}
 
 		}

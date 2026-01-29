@@ -12,15 +12,24 @@ use App\Controllers\Admin\BrandController;
 use App\Controllers\Admin\ProductStockHistoryController;
 use App\Controllers\Admin\GodoApiController;
 use App\Controllers\Admin\CsRequestController;
+use App\Controllers\Admin\WorkController;
 
 try {
 
     $router = new Router('/admin');  // 라우터 인스턴스 생성
 
 
+    // 인사/업무
+    $router->get('/work/TaskRequest', WorkController::class, 'taskRequest'); //업무 로그
+    $router->get('/work/TaskRequestDetail/{idx}', WorkController::class, 'taskRequestDetail'); //업무 로그 상세
+    $router->get('/work/TaskRequest/create', WorkController::class, 'taskRequestCreate'); //업무 로그 신규생성 페이지
+    $router->get('/work/TaskRequest/modify/{idx}', WorkController::class, 'taskRequestModify'); //업무 수정페이지
+    $router->post('/work/TaskRequest/save', WorkController::class, 'saveTaskRequest'); //업무 로그 신규생성 저장
+    $router->post('/work/TaskRequest/action', WorkController::class, 'taskRequestAction'); //업무 로그 액션
+    //$router->post('/work/TaskRequestCheck', WorkController::class, 'taskRequestCheck'); //업무 로그 체크
+
     //코멘트
 
-    
     $router->get('/staff/list', StaffController::class, 'staffList'); //직원목록
     $router->get('/staff/reg', StaffController::class, 'staffReg'); //신규 직원등록
     $router->get('/staff/info', StaffController::class, 'staffInfo'); //직원 상세

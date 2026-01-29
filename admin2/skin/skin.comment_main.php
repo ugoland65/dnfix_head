@@ -1,29 +1,28 @@
 <?php
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
+	ini_set('display_errors', 1);
+	ini_set('display_startup_errors', 1);
+	error_reporting(E_ALL);
 
-use App\Controllers\Admin\CommentController;
+	use App\Controllers\Admin\CommentController;
 
-$Comment = new CommentController();
+	$Comment = new CommentController();
 
-$result = $Comment->commentMainIndex();
+	$result = $Comment->commentMainIndex();
 
-// GET/POST 파라미터 초기화
-$_mode = $_REQUEST['mode'] ?? '';
-$_idx = $_REQUEST['idx'] ?? '';
+	// GET/POST 파라미터 초기화
+	$_mode = $_REQUEST['mode'] ?? '';
+	$_idx = $_REQUEST['idx'] ?? '';
 
-/*
-	echo "<pre>";
-	print_r($result);
-	echo "</pre>";
-*/
+	/*
+		echo "<pre>";
+		print_r($result);
+		echo "</pre>";
+	*/
 
-//달력 데이터를 생성했다면 idx를 생성한 idx로 대체해준다
-if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
-	$_idx = $result['CalendarInsert']['idx'];
-}
-
+	//달력 데이터를 생성했다면 idx를 생성한 idx로 대체해준다
+	if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
+		$_idx = $result['CalendarInsert']['idx'];
+	}
 
 ?>
 <style type="text/css">
@@ -558,15 +557,12 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 		const _tidx = '<?= $_idx ?>';
 
 		return {
-
 			// 초기화
 			init() {
 				console.log('wishList module initialized.');
 			},
-
 			//쳇 리스트 로드
 			chatListLoad(mode, tidx) {
-
 				ajaxRequest("/ad/ajax/comment_list", {
 						mode,
 						tidx
@@ -579,11 +575,8 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 					.catch((error) => {
 						dnAlert('Error', '에러', 'red');
 					});
-
 			},
-
 			chatLoad(mode, tidx) {
-
 				ajaxRequest("/ad/ajax/comment_chat", {
 						mode,
 						tidx
@@ -596,11 +589,8 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 					.catch((error) => {
 						dnAlert('Error', '에러', 'red');
 					});
-
 			},
-
 			commentviewCheck(mode, tidx) {
-
 				ajaxRequest(API_ENDPOINTS.commentViewCheck, {
 						mode,
 						tidx
@@ -620,11 +610,8 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 						dnAlert('Error', '상태 변경 실패', 'red');
 						throw new Error('AJAX 요청 실패');
 					});
-
 			},
-
 			commentViewCheckAll(mode, tidx) {
-
 				ajaxRequest(API_ENDPOINTS.commentViewCheckAll, {
 						mode,
 						tidx
@@ -641,19 +628,14 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 						dnAlert('Error', '상태 변경 실패', 'red');
 						throw new Error('AJAX 요청 실패');
 					});
-
 			},
 
 			createComment() {
-
 				$('.comment-loading').css({
 					"display": "flex"
 				});
-
 				var form = $('#form_comment')[0];
 				var formData = new FormData(form);
-
-
 				ajaxRequest(API_ENDPOINTS.createComment, formData, {
 						processData: false,
 						contentType: false
@@ -678,9 +660,7 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 						});
 					});
 			},
-
 			commentReaction(mode, tidx, idx, reaction_mode) {
-
 				ajaxRequest(API_ENDPOINTS.commentReaction, {
 						mode,
 						tidx,
@@ -699,12 +679,8 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 						dnAlert('Error', '상태 변경 실패', 'red');
 						throw new Error('AJAX 요청 실패');
 					});
-
 			}
-
-
 		}
-
 	})();
 
 	commentMain.chatListLoad('<?= $_mode ?>', '<?= $_idx ?>');

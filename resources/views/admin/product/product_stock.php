@@ -274,7 +274,7 @@
                                     <td class="text-right"><b><?=$_margin_per?>%</b></td>
                                     <td class="text-center">
                                         <?php if (!empty($grade)) { ?>
-                                            <span style="display:inline-block; padding:2px 8px; background-color:<?=$gradeColor?>; color:white; font-weight:bold; border-radius:3px;">
+                                            <span class="grade-badge grade-<?=$grade?>">
                                                 <?=$grade?>
                                             </span>
                                         <?php } else { ?>
@@ -379,9 +379,7 @@
     }
 </style>
 
-<script type="text/javascript">
-<!--
-
+<script>
     $(function(){
         $(".dn-select2").select2();
         
@@ -541,5 +539,5 @@
             }
         });
     });
-//--> 
+
 </script>

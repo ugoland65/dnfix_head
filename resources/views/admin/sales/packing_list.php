@@ -548,7 +548,9 @@
                     class="cs-note-text" 
                     rows="3" 
                     style="width:100%; height:100px; box-sizing:border-box; resize:vertical; font-size:15px;" 
-                    placeholder="예: 고객 요청사항, 환불/교환 메모 등"></textarea>
+                    placeholder="예: 고객 요청사항, 환불/교환 메모 등">사유:
+내용:
+처리방안:</textarea>
                 <div class="cs-note-preview" style="margin-top:6px; min-height:32px; white-space:pre-wrap; border:1px solid #eee; padding:8px; background:#fafafa; font-size:15px;"></div>
             </div>
         </div>

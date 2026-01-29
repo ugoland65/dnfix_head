@@ -175,11 +175,15 @@ if( $pageGroup != "login" ){
 		["name" => "기타" ],
 	];
 
+	/*
+	@deprecated 2026-01-27 :: 업무 로그 분류 사용 안함
+	array( "name" => "업무요청" ),
+	*/
 	$_work_log_cate = array(
 		array( "name" => "업무일지" ),
 		array( "name" => "프로젝트" ),
 		array( "name" => "기획안" ),
-		array( "name" => "업무요청" ),
+		
 		array( "name" => "공지사항" )
 	);
 

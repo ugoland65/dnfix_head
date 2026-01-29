@@ -30,6 +30,7 @@ class ProductPartnerService extends BaseClass
         $match_status = $payloadData['match_status'] ?? null;
         $s_brand = $payloadData['s_brand'] ?? null;
         $sort_mode = $payloadData['sort_mode'] ?? 'idx';
+        $s_godo_sale_status = $payloadData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
 
         $page = $payloadData['page'] ?? null;
         $perPage = $payloadData['per_page'] ?? null;
@@ -51,6 +52,11 @@ class ProductPartnerService extends BaseClass
         //매칭 pk가 없는 것만 조회  
         if( $match_status == 'unmatched'  ){
             $query->where('prd_partner.supplier_prd_idx','=', 0);
+        }
+
+        // 고도몰 판매상태
+        if( !empty($s_godo_sale_status) ){
+            $query->where('prd_partner.status', $s_godo_sale_status);
         }
 
 

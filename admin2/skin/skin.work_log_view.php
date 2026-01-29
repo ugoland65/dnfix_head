@@ -80,7 +80,7 @@ if( $_idx ){
 <div id="contents_head">
 	<h1>업무 게시판 - (<?=$data['category']?>) <?=$data['subject']?></h1>
 </div>
-<div id="contents_body" class="partition-body">
+<div id="contents_body">
 	<div id="contents_body_wrap">
 
 		<div class="partition-wrap work-log-view-partition">
@@ -246,19 +246,19 @@ if( $_idx ){
 					</table>
 
 
-<? if( $data['cmt_b_count'] > 0 ){ ?>
+					<? if( $data['cmt_b_count'] > 0 ){ ?>
 
-<style type="text/css">
-.reply-title{ font-size:20px; font-weight:600; margin-top:20px; padding:0 0 6px 5px; }
+					<style type="text/css">
+					.reply-title{ font-size:20px; font-weight:600; margin-top:20px; padding:0 0 6px 5px; }
 
-.reply-wrap{ background-color:#fff; border:1px solid #bbb; padding:10px; margin-bottom:5px; border-radius:5px;  }
+					.reply-wrap{ background-color:#fff; border:1px solid #bbb; padding:10px; margin-bottom:5px; border-radius:5px;  }
 
-.reply-box{ display:table; }
-.reply-box > ul{ display:table-cell; vertical-align:top; }
-.reply-box > ul.left{ width:70px; }
-.comment-mb-profile{ display:inline-block; width:60px; height:60px; border:1px solid #999; overflow:hidden; border-radius:50%; }
-.comment-mb-profile img{ width:100%; }
-</style>
+					.reply-box{ display:table; }
+					.reply-box > ul{ display:table-cell; vertical-align:top; }
+					.reply-box > ul.left{ width:70px; }
+					.comment-mb-profile{ display:inline-block; width:60px; height:60px; border:1px solid #999; overflow:hidden; border-radius:50%; }
+					.comment-mb-profile img{ width:100%; }
+					</style>
 					<div class="reply-title">답변</div>
 					<div>
 					<?

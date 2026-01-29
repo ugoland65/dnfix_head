@@ -151,6 +151,8 @@ $_result = sql_query_error($_query);
 			<? if( $my_count_2['my_ing_count3'] ){ ?><ul onclick="location.href='/ad/staff/work_log/cate=기획안:call_mode=call:check=ing'">참여 처리중 <b><?=$my_count_2['my_ing_count3']?></b></ul><? } ?>
 		</div>
 	</ul>
+
+
 	<ul>
 		<div>
 			<ul class="title">나의 업무요청</ul>
@@ -160,6 +162,8 @@ $_result = sql_query_error($_query);
 			<? if( $my_count_2['my_ing_count4'] ){ ?><ul onclick="location.href='/ad/staff/work_log/cate=업무요청:call_mode=call:check=ing'">참여 처리중 <b><?=$my_count_2['my_ing_count4']?></b></ul><? } ?>
 		</div>
 	</ul>
+
+
 </div>
 
 <div class="total">Total : <span><b><?=number_format($total_count)?></b></span> &nbsp; | &nbsp;  <span><b><?=$_pn?></b></span> / <?=$total_page?> page</div>

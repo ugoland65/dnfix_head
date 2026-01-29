@@ -28,6 +28,14 @@
 					</select>
 				</ul>
 				<ul>
+					<select name="s_godo_sale_status" id="s_godo_sale_status">
+						<option value="">등록상태</option>
+						<option value="등록대기" <? if ($s_status == '등록대기') echo "selected"; ?>>등록대기</option>
+						<option value="등록완료" <? if ($s_status == '등록완료') echo "selected"; ?>>등록완료</option>
+						<option value="품절" <? if ($s_status == '품절') echo "selected"; ?>>품절</option>
+					</select>
+				</ul>
+				<ul>
 					<select name="s_godo_match" id="s_godo_match">
 						<option value="">고도몰 매칭</option>
 						<option value="matched" <? if ($s_godo_match == 'matched') echo "selected"; ?>>매칭완료</option>
@@ -75,7 +83,7 @@
 							<tr>
 								<th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
 								<th class="list-idx">고유번호</th>
-								<th class="">상태</th>
+								<th class="">등록상태</th>
 								<th class="" style="width:80px;">이미지</th>
 								<th class="" style="width:50px;">분류</th>
 								<th class="prd-name">이름</th>
@@ -90,7 +98,8 @@
 								<th class="">공급사<br>이미지</th>
 								<th class="prd-name">공급사<br>상품명</th>
 								<th class="">공급매칭</th>
-								<th class="">공급<br>상품코드</th>
+								<th class="">공급사<br>상품코드</th>
+								<th class="">공급사<br>판매상태</th>
 								<th class="">공급<br>사이트</th>
 								<th class="">공급 2차</th>
 								<th class="" style="width:80px;">매칭취소</th>
@@ -100,11 +109,25 @@
 						<tbody>
 							<?php
 								foreach ($productPartnerList as $item) {
+
+									if( $item['status'] == '품절' ){
+										$tr_class = 'status_end2';
+
+									}elseif( $item['status'] == '등록대기' ){
+											$tr_class = 'status_bl';
+									}else{
+										$tr_class = '';
+									}
 							?>
-								<tr>
+								<tr class="<?= $tr_class ?>">
 									<td><input type="checkbox" name="check_idx[]" value="<?= $item['idx'] ?>"></td>
 									<td class="text-center"><?= $item['idx'] ?></td>
-									<td class="text-center"><?= $item['status'] ?></td>
+									<td class="text-center">
+										<?= $item['status'] ?>
+										<?php if( $item['status'] == '품절' ){ ?>
+											<br><span class="text-red"><?=date('Y.m.d', strtotime($item['sold_out_date'])) ?? ''?></span>
+										<?php } ?>
+									</td>
 									<td>
 										<img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
 									</td>
@@ -197,14 +220,15 @@
 									<!-- 공급매칭 -->
 									<td class="text-center">
 										<?php
-										if (!empty($item['supplier_prd_idx'])) {
+										if ( !empty($item['supplier_prd_idx'] )) {
 										?>
-											<?= $item['supplier_prd_idx'] ?>
+											#<?= $item['supplier_prd_idx'] ?>
 										<?php } else { ?>
 											비매칭
 										<?php } ?>
 									</td>
 
+									<!-- 공급사 상품코드 -->
 									<td class="text-center">
 										<?php
 											if (!empty($item['supplier_prd_idx'])) {
@@ -220,6 +244,21 @@
 											-
 										<?php } ?>
 									</td>
+
+									<!-- 공급사 판매상태 -->
+									<td class="text-center">
+										<?php
+										if (!empty($item['supplier_prd_idx'])) {
+										?>
+											<?= $supplierProductMap[$item['supplier_prd_idx']]['status'] ?? '-' ?>
+											<?php if( ($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절' ){ ?>
+												<br><span class="text-red"><?=date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? ''?></span>
+											<?php } ?>
+										<?php } else { ?>
+											-
+										<?php } ?>
+									</td>
+
 									<td class="text-center"><?= $item['supplier_site'] ?? '-' ?></td>
 									<td class="text-center"><?= $item['supplier_2nd_name'] ?? '-' ?></td>
 									<td class="text-center">
@@ -301,6 +340,7 @@
 			's_keyword': $("#s_keyword").val(),
 			's_brand': $("#s_brand").val(),
 			'sort_mode': $("#sort_kind").val(),
+			's_godo_sale_status': $("#s_godo_sale_status").val(),
 		};
 
 		// 추가 파라미터가 있으면 병합

@@ -336,8 +336,6 @@ if( !empty($_scm) ){
 								<th class="">고도몰 브랜드코드</th>
 								<th class="">고도몰 판매가</th>
 								<th class="">인트라넷 브랜드</th>
-								<th>매칭 상태</th>
-								<th>메모</th>
 							</tr>
 						</thead>
 						<tbody>

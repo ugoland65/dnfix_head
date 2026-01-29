@@ -90,5 +90,33 @@ class AdminAuth extends BaseAuth
         }
     }
 
+    public static function getIp()
+    {
+        if (!empty($_SERVER['HTTP_CLIENT_IP'])) {
+            return $_SERVER['HTTP_CLIENT_IP'];
+        } elseif (!empty($_SERVER['HTTP_X_FORWARDED_FOR'])) {
+            return explode(',', $_SERVER['HTTP_X_FORWARDED_FOR'])[0];
+        }
+        return $_SERVER['REMOTE_ADDR'] ?? 'UNKNOWN';
+    }
+
+    public static function getDomain()
+    {
+        return $_SERVER['HTTP_HOST'] ?? 'UNKNOWN';
+    }
+
+    public static function getDevice()
+    {
+        $userAgent = $_SERVER['HTTP_USER_AGENT'] ?? '';
+        if (strpos($userAgent, 'iPhone') !== false || strpos($userAgent, 'iPad') !== false) {
+            return 'Mobile';
+        } elseif (strpos($userAgent, 'Android') !== false) {
+            return 'Mobile';
+        } elseif (strpos($userAgent, 'Windows Phone') !== false) {
+            return 'Mobile';
+        } else {
+            return 'PC';
+        }
+    }
 }
 ?>

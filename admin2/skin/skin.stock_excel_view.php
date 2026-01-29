@@ -205,6 +205,7 @@
 
 			<tbody>
 				<?php
+				$prd_count = 0;
 				$_notice_count1 = 0;
 				$_notice_count2 = 0;
 
@@ -223,6 +224,7 @@
 					if (!is_array($val)) {
 						continue;
 					}
+					$prd_count++;
 
 					$total_packageOut += ($val['packageOut'] ?? 0);
 					$total_one_qty += ($val['one_qty'] ?? 0);
@@ -290,7 +292,7 @@
 			</tbody>
 			<tfoot>
 				<tr>
-					<th colspan="2" class="text-center">합계</th>
+					<th colspan="2" class="text-center">합계 - 상품 : <b><?= $prd_count ?></b>개</th>
 					<th><?= $total_packageOut ?></th>
 					<th><?= $total_one_qty ?></th>
 					<th><?= $total_set_qty ?></th>

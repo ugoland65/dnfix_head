@@ -13,9 +13,7 @@
 		<li>공급사 상품관리</li>
 	</ul>
 	*/ ?>
-	<ul <?php if( $pageNameCode == "prd_provider" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/provider_product/list'">
-		<li>공급사 상품관리</li>
-	</ul>
+	
 
 	<ul <?php if( $_pageN == "supplier_product" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/provider/supplier_product'"><li>공급사 사이트 상품DB</li></ul>
 	<ul <?php if( $_pageN == "supplier_product_match" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/provider/supplier_product_match'"><li>공급사 상품 매칭</li></ul>

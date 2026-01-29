@@ -32,6 +32,22 @@ class BrandModel extends BaseModel
         'bd_onadb_sort_num',
         'bd_memo',
         'BD_SORT',
+        'brand_eval_json',
+        'brand_eval_profit_score',
+        'brand_eval_product_score',
+        'brand_eval_risk_score',
+        'brand_eval_ops_score',
+        'brand_eval_growth_score',
+        'brand_eval_total_score',
+        'brand_grade_computed',
+        'brand_grade_final',
+        'brand_grade_forced',
+        'brand_grade_forced_reason',
+        'brand_grade_forced_by',
+        'brand_grade_forced_at',
+        'brand_eval_version',
+        'brand_eval_by',
+        'brand_eval_at',
     ];
 
 }

@@ -5,23 +5,23 @@ error_reporting(E_ALL);
 ?>
 
 <style type="text/css">
-#contents_body_wrap{ padding:5px !important; }
-.main-wrap{ width:100%; display:table; }
-.main-wrap > ul{ display:table-cell; vertical-align:top; }
-.main-wrap > ul.report{ width:400px; padding:20px 20px 0 10px; }
-.main-wrap > ul.calendar-menu{ width:170px; padding-top:50px; }
-.main-wrap > ul.calendal-wrap{ padding:10px 10px 0 0; }
-.calendar-menu-wrap{ width:160px; background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:10px 0 10px 7px; }
-.calendar-menu-wrap > ul{}
-.calendar-menu-wrap > ul > li{ padding: 5px 3px 5px 8px; }
-.calendar-menu-wrap > ul > li i{ width:18px; text-align:center; }
-.calendar-menu-wrap > ul > li label{ margin:0 !important; font-weight: 500 !important; cursor:pointer; }
+	#contents_body_wrap{ padding:5px !important; }
+	.main-wrap{ width:100%; display:table; }
+	.main-wrap > ul{ display:table-cell; vertical-align:top; }
+	.main-wrap > ul.report{ width:400px; padding:20px 20px 0 10px; }
+	.main-wrap > ul.calendar-menu{ width:170px; padding-top:50px; }
+	.main-wrap > ul.calendal-wrap{ padding:10px 10px 0 0; }
+	.calendar-menu-wrap{ width:160px; background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:10px 0 10px 7px; }
+	.calendar-menu-wrap > ul{}
+	.calendar-menu-wrap > ul > li{ padding: 5px 3px 5px 8px; }
+	.calendar-menu-wrap > ul > li i{ width:18px; text-align:center; }
+	.calendar-menu-wrap > ul > li label{ margin:0 !important; font-weight: 500 !important; cursor:pointer; }
 
-.main-notice-wrap{ background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:5px 10px; margin-bottom:4px; }
+	.main-notice-wrap{ background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:5px 10px; margin-bottom:4px; }
 
-.my-schedule-box{ background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:5px 10px; margin-bottom:4px; }
-.main-target-mb-profile{ display:inline-block; width:20px; height:20px; border:1px solid #999; overflow:hidden; border-radius:50%; }
-.main-target-mb-profile img{ width:100%; }
+	.my-schedule-box{ background-color:#fff; border:1px solid #bbb; box-sizing:border-box; border-radius:5px; padding:5px 10px; margin-bottom:4px; }
+	.main-target-mb-profile{ display:inline-block; width:20px; height:20px; border:1px solid #999; overflow:hidden; border-radius:50%; }
+	.main-target-mb-profile img{ width:100%; }
 </style>
 
 <div id="contents_head">
@@ -31,8 +31,7 @@ error_reporting(E_ALL);
 	<div id="contents_body_wrap">
 		<div class="main-wrap">
 			<ul class="report">
-				
-
+			
 				<div id="my_count">
 				</div>
 

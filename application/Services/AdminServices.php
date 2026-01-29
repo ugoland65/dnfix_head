@@ -38,7 +38,6 @@ class AdminServices
 
     }
 
-
     /**
      * 직원 상세 조회
      * 
@@ -247,4 +246,42 @@ class AdminServices
         return $admin;
     }
 
+
+    /**
+     * 멘션 맵핑 데이터 조회
+     * 
+     * @return array
+     */
+    public function getMentionMappingData()
+    {
+
+        $query = AdminModel::query()
+            ->select(['idx', 'ad_nick', 'ad_name', 'ad_image'])
+            ->get()
+            ->keyBy('idx');
+
+        $result = $query->toArray();
+
+        return $result;
+    }
+
+
+    /**
+     * 멘션타겟 텔레그램 아이디 수집
+     * 
+     * @param array $target_mb_idxs 멘션타겟 아이디 배열
+     * @return array
+     */
+    public function getMentionTargetTelegramId($target_mb_idxs)
+    {
+        $query = AdminModel::query()
+            ->select(['idx', 'ad_telegram_token'])
+            ->whereIn('idx', $target_mb_idxs)
+            ->get()
+            ->toArray();
+
+        return $query;
+
+    }
+    
 }

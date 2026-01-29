@@ -1,3 +1,33 @@
+<?php
+
+$brandEval = $brandInfo['brand_eval_json'] ?? [];
+if (is_string($brandEval)) {
+    $decoded = json_decode($brandEval, true);
+    $brandEval = is_array($decoded) ? $decoded : [];
+} elseif (!is_array($brandEval)) {
+    $brandEval = [];
+}
+
+$ev = function ($key, $default = null) use ($brandEval) {
+    return $brandEval[$key] ?? $default;
+};
+
+$isChecked = function ($key, $value) use ($ev) {
+    return ((string)$ev($key, '') === (string)$value) ? 'checked' : '';
+};
+
+$isCheckedY = function ($key) use ($ev) {
+    return ($ev($key, 'n') === 'y') ? 'checked' : '';
+};
+
+$hasFlag = function ($value) use ($ev) {
+    $flags = $ev('hard_flags', []);
+    if (!is_array($flags)) $flags = [];
+    return in_array($value, $flags, true) ? 'checked' : '';
+};
+
+?>
+
 <STYLE TYPE="text/css">
     .table-wrap {
         width: 800px;
@@ -52,7 +82,7 @@
                         <select name="bd_name_group" id="bd_name_group" style="width:60px;">
                             <?php
                             // 초성: 단일 자음만 노출 (쌍자음 제외)
-                            $koreanInitials = ['', 'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ'];
+                            $koreanInitials = ['', 'ㄱ', 'ㄴ', 'ㄷ', 'ㄹ', 'ㅁ', 'ㅂ', 'ㅅ', 'ㅇ', 'ㅈ', 'ㅊ', 'ㅋ', 'ㅌ', 'ㅍ', 'ㅎ','#'];
                             foreach ($koreanInitials as $initial) {
                                 $selected = ($brandInfo['BD_NAME_GROUP'] ?? '') === $initial ? 'selected' : '';
                                 echo "<option value=\"{$initial}\" {$selected}>{$initial}</option>";
@@ -64,7 +94,7 @@
                         알파벳 초성 :
                         <select name="bd_name_en_group" id="bd_name_en_group" style="width:70px;">
                             <?php
-                            $englishInitials = array_merge([''], range('A', 'Z'));
+                            $englishInitials = array_merge([''], range('A', 'Z'), ['@']);
                             foreach ($englishInitials as $initial) {
                                 $selected = ($brandInfo['BD_NAME_EN_GROUP'] ?? '') === $initial ? 'selected' : '';
                                 echo "<option value=\"{$initial}\" {$selected}>{$initial}</option>";
@@ -336,6 +366,143 @@
 
                 </td>
             </tr>
+
+            <tr>
+    <th class="tds1">브랜드 내부평가표</th>
+    <td class="tds2">
+
+        <!-- (추가) 가격정책/공급라인 입력 -->
+        <table class="table-style" style="margin-bottom:12px;">
+            <tr>
+                <th class="tds1">가격 정책(가격 억제력)</th>
+                <td class="tds2">
+                    <label><input type="radio" name="brand_eval[price_policy_level]" value="3" <?= $isChecked('price_policy_level', 3) ?>> (강함) 권장소비자가/최저가 정책 있고 덤핑 제재/유통 통제</label><br>
+                    <label><input type="radio" name="brand_eval[price_policy_level]" value="2" <?= $isChecked('price_policy_level', 2) ?>> (중간) 정책은 있으나 관리가 약함(가끔 방치)</label><br>
+                    <label><input type="radio" name="brand_eval[price_policy_level]" value="1" <?= $isChecked('price_policy_level', 1) ?>> (약함) 사실상 방임(가격이 제각각)</label><br>
+                    <label><input type="radio" name="brand_eval[price_policy_level]" value="0" <?= $isChecked('price_policy_level', 0) ?>> (없음) 정책 없음/덤핑 상시</label>
+                    <div style="margin-top:8px;">
+                        <label style="margin-right:12px;"><input type="checkbox" name="brand_eval[msrp_exists]" value="y" <?= $isCheckedY('msrp_exists') ?>> 권장소비자가(MSRP) 있음</label>
+                        <label><input type="checkbox" name="brand_eval[map_exists]" value="y" <?= $isCheckedY('map_exists') ?>> 최저가/최저광고가(MAP) 정책 있음</label>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <th class="tds1">공급 라인(제조사/총판)</th>
+                <td class="tds2">
+                    <label><input type="radio" name="brand_eval[supply_type]" value="manufacturer" <?= $isChecked('supply_type', 'manufacturer') ?>> 제조사 직거래</label>
+                    <label style="margin-left:12px;"><input type="radio" name="brand_eval[supply_type]" value="distributor" <?= $isChecked('supply_type', 'distributor') ?>> 총판/도매</label>
+                    <label style="margin-left:12px;"><input type="radio" name="brand_eval[supply_type]" value="mixed" <?= $isChecked('supply_type', 'mixed') ?>> 혼합</label>
+
+                    <div style="margin-top:10px;">
+                        <label style="display:inline-block; margin-right:14px;">
+                            MPQ(제조사 연결 최소 수량)
+                            <input type="number" name="brand_eval[mpq_threshold]" value="<?= htmlspecialchars((string)$ev('mpq_threshold',''), ENT_QUOTES, 'UTF-8') ?>" min="0" style="width:120px; margin-left:6px;">
+                        </label>
+
+                        <label style="display:inline-block; margin-right:14px;">
+                            현재 평균 주문 수량(월/분기)
+                            <input type="number" name="brand_eval[mpq_current]" value="<?= htmlspecialchars((string)$ev('mpq_current',''), ENT_QUOTES, 'UTF-8') ?>" min="0" style="width:120px; margin-left:6px;">
+                        </label>
+
+                        <label style="display:inline-block;">
+                            <input type="checkbox" name="brand_eval[manufacturer_contactable]" value="y" <?= $isCheckedY('manufacturer_contactable') ?>>
+                            MPQ 충족 시 제조사 직연결 가능
+                        </label>
+                    </div>
+                </td>
+            </tr>
+        </table>
+
+        <!-- 내부평가(축 5개) -->
+        <table class="table-style">
+            <!-- A. 수익성 (35점) -->
+            <tr>
+                <th class="tds1">A. 수익성 (35점)</th>
+                <td class="tds2">
+                    <label><input type="radio" name="brand_eval[profit_score]" value="5" <?= $isChecked('profit_score', 5) ?>> (5점) 기여이익률 매우 좋고(예: 25%↑) 할인해도 남음</label><br>
+                    <label><input type="radio" name="brand_eval[profit_score]" value="4" <?= $isChecked('profit_score', 4) ?>> (4점) 안정적으로 남음(예: 18~25%)</label><br>
+                    <label><input type="radio" name="brand_eval[profit_score]" value="3" <?= $isChecked('profit_score', 3) ?>> (3점) 간당간당(예: 12~18%)</label><br>
+                    <label><input type="radio" name="brand_eval[profit_score]" value="2" <?= $isChecked('profit_score', 2) ?>> (2점) 낮음(예: 8~12%)</label><br>
+                    <label><input type="radio" name="brand_eval[profit_score]" value="1" <?= $isChecked('profit_score', 1) ?>> (1점) 거의 안 남음(예: 0~8%)</label><br>
+                    <label><input type="radio" name="brand_eval[profit_score]" value="0" <?= $isChecked('profit_score', 0) ?>> (0점) 손해/정산 오류 등으로 운영 부적합</label>
+                </td>
+            </tr>
+
+            <!-- B. 상품력·차별성 (브랜드 인지도·선호도 포함) (20점) -->
+            <tr>
+                <th class="tds1">B. 상품력·차별성 (브랜드 인지도·선호도 포함) (20점)</th>
+                <td class="tds2">
+                    <div style="margin-bottom:6px; color:#666;">상품 경쟁력 + 고객 인지도/선호도(브랜드 파워) 포함</div>
+                    <label><input type="radio" name="brand_eval[product_score]" value="5" <?= $isChecked('product_score', 5) ?>> (5점) 대표 히트 SKU 보유 + 대체 어려움 + 리뷰/재구매 강함 + 브랜드 지명도/팬층 확실</label><br>
+                    <label><input type="radio" name="brand_eval[product_score]" value="4" <?= $isChecked('product_score', 4) ?>> (4점) 만족도 높고 라인업 안정적, 경쟁 대비 강점 뚜렷 + 브랜드 선호도 높은 편</label><br>
+                    <label><input type="radio" name="brand_eval[product_score]" value="3" <?= $isChecked('product_score', 3) ?>> (3점) 무난한 상품력(평균 수준), 대체 가능 + 인지도 보통</label><br>
+                    <label><input type="radio" name="brand_eval[product_score]" value="2" <?= $isChecked('product_score', 2) ?>> (2점) 차별성 약함, 성과가 특정 SKU에만 편중 + 인지도 낮아 설득 비용 큼</label><br>
+                    <label><input type="radio" name="brand_eval[product_score]" value="1" <?= $isChecked('product_score', 1) ?>> (1점) 만족도 낮음/후기 불만 잦음/불량 체감 큼 + 선호도 낮음</label><br>
+                    <label><input type="radio" name="brand_eval[product_score]" value="0" <?= $isChecked('product_score', 0) ?>> (0점) 상품 경쟁력 매우 낮아 유지 사유 없음 + 브랜드 가치 없음/부정 인식</label>
+                </td>
+            </tr>
+
+            <!-- C. 고객 리스크 (15점) -->
+            <tr>
+                <th class="tds1">C. 고객 리스크 (15점)</th>
+                <td class="tds2">
+                    <div style="margin-bottom:6px; color:#666;">점수 높을수록 리스크 낮음 (반품/CS/분쟁 적음)</div>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="5" <?= $isChecked('risk_score', 5) ?>> (5점) 반품/CS 매우 낮고 분쟁 거의 없음</label><br>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="4" <?= $isChecked('risk_score', 4) ?>> (4점) 낮은 편(문제 발생 시 처리도 빠름)</label><br>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="3" <?= $isChecked('risk_score', 3) ?>> (3점) 평균 수준</label><br>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="2" <?= $isChecked('risk_score', 2) ?>> (2점) 반품/클레임 잦음, CS 부담 체감</label><br>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="1" <?= $isChecked('risk_score', 1) ?>> (1점) 분쟁/민원 리스크 높음(환불 분쟁, 후기 이슈 등)</label><br>
+                    <label><input type="radio" name="brand_eval[risk_score]" value="0" <?= $isChecked('risk_score', 0) ?>> (0점) 플랫폼 제재/법적 리스크 등으로 운영 부적합</label>
+                </td>
+            </tr>
+
+            <!-- D. 운영·공급 안정성 (20점) - 재고 포함 -->
+            <tr>
+                <th class="tds1">D. 운영·공급 안정성 (20점)</th>
+                <td class="tds2">
+                    <div style="margin-bottom:6px; color:#666;">납기/품절/커뮤니케이션/옵션 난이도 + 재고 적정성(커버리지 주수) 포함</div>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="5" <?= $isChecked('ops_score', 5) ?>> (5점) 매우 안정(재고 커버리지 2~6주, 품절 거의 없음, 납기/응대 우수)</label><br>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="4" <?= $isChecked('ops_score', 4) ?>> (4점) 안정(커버리지 1~2주 또는 6~8주, 이슈 발생해도 빠르게 해결)</label><br>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="3" <?= $isChecked('ops_score', 3) ?>> (3점) 보통(커버리지 0.5~1주 또는 8~12주, 가끔 품절/납기 흔들림)</label><br>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="2" <?= $isChecked('ops_score', 2) ?>> (2점) 불안(커버리지 0~0.5주 또는 12~20주, 품절/리드타임 문제 반복)</label><br>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="1" <?= $isChecked('ops_score', 1) ?>> (1점) 문제 큼(장기 품절 반복 또는 20주↑ 과재고, 운영 부담 큼)</label><br>
+                    <label><input type="radio" name="brand_eval[ops_score]" value="0" <?= $isChecked('ops_score', 0) ?>> (0점) 장기 품절/장기 과재고 + 개선 없음(공급/운영 부적합)</label>
+                </td>
+            </tr>
+
+            <!-- E. 파트너십·성장성 (10점) - 가격정책 포함 -->
+            <tr>
+                <th class="tds1">E. 파트너십·성장성 (10점)</th>
+                <td class="tds2">
+                    <div style="margin-bottom:6px; color:#666;">가격정책/가격 억제력(권장소비가·MAP·덤핑관리) + 협조/성장성 포함</div>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="5" <?= $isChecked('growth_score', 5) ?>> (5점) 가격정책 강함(권장소비가/MAP + 덤핑 제재/유통 통제) + 공동마케팅/단독런칭 가능</label><br>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="4" <?= $isChecked('growth_score', 4) ?>> (4점) 가격정책 있음(대체로 가격 안정) + 협조 양호/신제품·콘텐츠 꾸준</label><br>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="3" <?= $isChecked('growth_score', 3) ?>> (3점) 보통(정책은 있으나 느슨/상황 따라 다름) + 협조 평균</label><br>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="2" <?= $isChecked('growth_score', 2) ?>> (2점) 약함(가격 흔들림/덤핑 방치) + 지원 제한적</label><br>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="1" <?= $isChecked('growth_score', 1) ?>> (1점) 방임(가격 통제 거의 없음/가격붕괴 위험) + 파트너십 낮음</label><br>
+                    <label><input type="radio" name="brand_eval[growth_score]" value="0" <?= $isChecked('growth_score', 0) ?>> (0점) 가격/유통 리스크 심각(지속 운영 어려움)</label>
+                </td>
+            </tr>
+
+            <!-- 하드룰(선택) -->
+            <tr>
+                <th class="tds1">하드룰(선택)</th>
+                <td class="tds2">
+                    <label><input type="checkbox" name="brand_eval[hard_flags][]" value="stockout" <?= $hasFlag('stockout') ?>> 장기 품절/품절 반복</label><br>
+                    <label><input type="checkbox" name="brand_eval[hard_flags][]" value="claim" <?= $hasFlag('claim') ?>> 분쟁/민원/패널티 리스크</label><br>
+                    <label><input type="checkbox" name="brand_eval[hard_flags][]" value="settlement" <?= $hasFlag('settlement') ?>> 정산/계약 리스크</label><br>
+                    <label><input type="checkbox" name="brand_eval[hard_flags][]" value="quality" <?= $hasFlag('quality') ?>> 불량률 과다</label>
+                </td>
+            </tr>
+        </table>
+
+    </td>
+</tr>
+
+
+
+
         </table>
     </form>
 

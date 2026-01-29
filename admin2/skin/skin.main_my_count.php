@@ -137,6 +137,8 @@
 
 		}else{
 
+			$link_url = "/ad/staff/work_log_view";
+
 			if( $_cmode == "notice" ){ 
 				
 				$_where = " WHERE category = '공지사항' ";
@@ -144,6 +146,8 @@
 			
 			}elseif( $_cmode == "request" ){
 				
+				$link_url = "/admin/work/TaskRequestDetail";
+
 				$_where = " WHERE category = '업무요청' AND reg_idx != '".$_ad_idx."' AND state IN ('대기','확인') AND INSTR(target_mb, '".$_target_mb_text."') ";
 				$_query = "select * from work_log ".$_where." ORDER BY idx desc";
 
@@ -162,27 +166,26 @@
 			$_result = sql_query_error($_query);
 			while($_list = sql_fetch_array($_result)){
 
-			$work_view_check_data = sql_fetch_array(sql_query_error("select idx from work_view_check WHERE tidx = '".$_list['idx']."' AND mb_idx = '".$_ad_idx."' "));
-			
-			if (!is_array($work_view_check_data)) {
-				$work_view_check_data = [];
-			}
-			
-			$_row_class = "";
-			$_check_state = "";
-			if( empty($work_view_check_data['idx']) ){
-				$_row_class = "not-check";
-				$_check_state = " | <span class='not-check-text'>미확인</span>";
-			}
-
-				$_state_text = "";
-				if( $_cmode == "request" ){ 
-					$_state_text = " | <span class='state-text'>".$_list['state']."</span>";
+				$work_view_check_data = sql_fetch_array(sql_query_error("select idx from work_view_check WHERE tidx = '".$_list['idx']."' AND mb_idx = '".$_ad_idx."' "));
+				
+				if (!is_array($work_view_check_data)) {
+					$work_view_check_data = [];
+				}
+				
+				$_row_class = "";
+				$_check_state = "";
+				if( empty($work_view_check_data['idx']) ){
+					$_row_class = "not-check";
+					$_check_state = " | <span class='not-check-text'>미확인</span>";
 				}
 
+					$_state_text = "";
+					if( $_cmode == "request" ){ 
+						$_state_text = " | <span class='state-text'>".$_list['state']."</span>";
+					}
 				
 		?>
-		<div class="main-count-row_wrap <?=$_row_class?>" onclick="location.href='/ad/staff/work_log_view/<?=$_list['idx']?>'">
+		<div class="main-count-row_wrap <?=$_row_class?>" onclick="location.href='<?=$link_url?>/<?=$_list['idx']?>'">
 			<ul style="font-size:11px;"><b><?=date("y.m.d", strtotime($_list['reg_date']))?></b><?=$_state_text?><?=$_check_state?></ul>
 			<ul class="m-t-3"><?=$_list['subject']?></ul>
 		</div>

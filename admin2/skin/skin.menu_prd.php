@@ -7,11 +7,9 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>상품관리 v.3</ul>
 </div>
 
-<!-- 
 <div class="left-menu-mid-title">
-	<ul>상품관리</ul>
-</div> 
--->
+	<ul>상품 목록</ul>
+</div>
 <div class="left-menu-wrap">
 	<ul <? if( $_pageN == "prd_reg") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_reg'"><li>상품 등록</li></ul>
 	<ul <? if( $_pageN == "prd_db") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_db'"><li>상품 DB</li></ul>
@@ -20,7 +18,15 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_main'"><li>상품 재고</li></ul>
 	*/ ?>
 
-	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>상품 재고 (보유상품)</li></ul>
+	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>보유상품 관리</li></ul>
+	<ul <?php if( $pageNameCode == "prd_provider" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/provider_product/list'">
+		<li>공급사 상품관리</li>
+	</ul>
+</div>
+<div class="left-menu-mid-title">
+	<ul>상품 관리</ul>
+</div>
+<div class="left-menu-wrap">
 	<ul <? if( $_pageN == "prd_grouping" || $_pageN == "prd_grouping_view" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_grouping'"><li>상품 그룹핑</li></ul>
 	<ul <? if( $_pageN == "set_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/set_prd'"><li>세트 상품</li></ul>
 	<ul <? if( $_pageN == "hbti_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/hbti_prd'"><li>HBTI 상품/관리</li></ul>

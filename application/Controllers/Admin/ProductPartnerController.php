@@ -3,6 +3,7 @@
 namespace App\Controllers\Admin;
 
 use Throwable;
+use Exception;
 use App\Core\AuthAdmin;
 use App\Core\BaseClass;
 use App\Utils\HttpClient; 
@@ -37,6 +38,7 @@ class ProductPartnerController extends BaseClass
             $s_keyword = $requestData['s_keyword'] ?? null; // 상품명 검색
             $s_brand = $requestData['s_brand'] ?? null; // 브랜드
             $sort_mode = $requestData['sort_mode'] ?? 'idx'; // 정렬 모드
+            $s_godo_sale_status = $requestData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
 
             $payload = [
                 'paging' => true,
@@ -48,6 +50,7 @@ class ProductPartnerController extends BaseClass
                 's_keyword' => $s_keyword,
                 's_brand' => $s_brand,
                 'sort_mode' => $sort_mode,
+                's_godo_sale_status' => $s_godo_sale_status,
             ];
 
             $productPartnerService = new ProductPartnerService();
@@ -70,6 +73,62 @@ class ProductPartnerController extends BaseClass
             $brandService = new BrandService();
             $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
 
+            //공급매칭 pks 수집
+            $supplier_prd_idxs = [];
+            foreach( $productPartnerList['data'] as $item ){
+                $supplier_prd_idx = $item['supplier_prd_idx'] ?? 0;
+                if( $supplier_prd_idx > 0 ){
+                    $supplier_prd_idxs[] = $supplier_prd_idx;
+                }
+            }
+
+            $supplier_prd_idxs = array_unique($supplier_prd_idxs);
+
+
+            $url = 'https://dnetc01.mycafe24.com/api/SupplierProductPksList';
+
+            $payload = [
+                'pks' => $supplier_prd_idxs,
+            ];
+
+            $ch = curl_init($url);
+            curl_setopt_array($ch, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_POST => true,
+                CURLOPT_HTTPHEADER => [
+                    'Content-Type: application/json',
+                    'X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f',
+                ],
+                CURLOPT_POSTFIELDS => json_encode($payload, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                CURLOPT_TIMEOUT => 15,
+            ]);
+
+            $raw = curl_exec($ch);
+            if ($raw === false) {
+                $err = curl_error($ch);
+                curl_close($ch);
+                throw new Exception("B API 호출 실패: {$err}");
+            }
+
+            $http = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            curl_close($ch);
+
+            if ($http < 200 || $http >= 300) {
+                throw new Exception("B API HTTP 오류: {$http}, 응답: {$raw}");
+            }
+
+            $apiResponse = json_decode($raw, true);
+
+            //dd($apiResponse);
+
+            $supplierProductMap =[];
+
+            foreach( $apiResponse['data'] ?? [] as $item ){
+                $supplierProductMap[$item['idx']] = $item;
+            }
+
+            //dd($supplierProductMap);
+
             $data = [
                 's_partner' => $s_partner,
                 's_godo_match' => $s_godo_match,
@@ -82,11 +141,12 @@ class ProductPartnerController extends BaseClass
                 'productPartnerList' => $productPartnerList['data'],
                 'partnerForSelect' => $partnerForSelect,
                 'brandForSelect' => $brandForSelect,
+                'supplierProductMap' => $supplierProductMap,
             ];
 
             return view('admin.provider.provider_product', $data)
                 ->extends('admin.layout.layout',[
-                    'pageGroup2' => 'provider',
+                    'pageGroup2' => 'prd',
                     'pageNameCode' => 'prd_provider'
                 ]);
 

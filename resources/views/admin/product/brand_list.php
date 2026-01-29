@@ -82,6 +82,13 @@
                         <th class="">노출로고<br>PC</th>
                         <th class="">노출로고<br>모바일</th>
                         <th class="">브랜드소개</th>
+                        <th class="">평가등급</th>
+                        <th class="">종합점수</th>
+                        <th class="">수익성</th>
+                        <th class="">상품력·차별성</th>
+                        <th class="">고객 리스크</th>
+                        <th class="">운영·공급 안정성</th>
+                        <th class="">성장성</th>
                      </tr>
                   </thead>
                   <tbody>
@@ -165,6 +172,7 @@
                                  </div>
                               <?php } ?>
                            </td>
+
                            <td>
                               <?php if ( !empty($brand['bd_api_introduce']) ) { ?>
                                  <div style="max-width:300px; overflow:hidden; display:-webkit-box; -webkit-line-clamp:2; -webkit-box-orient:vertical; line-height:1.4; max-height:2.8em; white-space:normal;">
@@ -172,6 +180,24 @@
                                  </div>
                               <?php } ?>
                            </td>
+
+                           <td class="text-center">
+                              <?php if (!empty($brand['brand_grade_computed'])) { ?>
+                                 <span class="grade-badge grade-<?=$brand['brand_grade_computed']?>">
+                                    <?=$brand['brand_grade_computed']?>
+                                 </span>
+                              <?php } else { ?>
+                                 -
+                              <?php } ?>
+                           </td>
+
+                           <td class="text-center"><?= $brand['brand_eval_total_score'] ?></td>
+                           <td class="text-center"><?= $brand['brand_eval_profit_score'] ?></td>
+                           <td class="text-center"><?= $brand['brand_eval_product_score'] ?></td>
+                           <td class="text-center"><?= $brand['brand_eval_risk_score'] ?></td>
+                           <td class="text-center"><?= $brand['brand_eval_ops_score'] ?></td>
+                           <td class="text-center"><?= $brand['brand_eval_growth_score'] ?></td>
+                           
                         </tr>
                      <?php } /* endforeach */ ?>
                   </tbody>
@@ -247,6 +273,13 @@
 
       // 페이지 이동
       navigateWithParams(params);
+   });
+
+   $("#search_value").on('keydown', function(event) {
+      if (event.key === 'Enter') {
+         event.preventDefault();
+         $("#searchBtn").trigger('click');
+      }
    });
 
    var brandLlist = function() {

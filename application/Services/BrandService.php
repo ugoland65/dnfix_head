@@ -8,6 +8,8 @@ use App\Models\BrandModel;
 use App\Models\ProductModel;
 use App\Models\ProductPartnerModel;
 use App\Classes\UploadedFile;
+use App\Auth\AdminAuth;
+use App\Services\AdminActionLogService;
 
 class BrandService
 {
@@ -188,6 +190,11 @@ class BrandService
             $brandInfo['bd_kind'] = [];
         }
 
+        $brandInfo['brand_eval_json'] = json_decode($brandInfo['brand_eval_json'], true);
+        if (!is_array($brandInfo['brand_eval_json'])) {
+            $brandInfo['brand_eval_json'] = [];
+        }
+
         return $brandInfo;
 
     }
@@ -227,6 +234,19 @@ class BrandService
             $bdOnadbActive = $data['bd_onadb_active'] ?? '';
             $bdOnadbSortNum = $data['bd_onadb_sort_num'] ?? 0;
             $bdMemo = $data['bd_memo'] ?? '';
+
+            $now = date('Y-m-d H:i:s');
+
+            $auth = AdminAuth::user();
+            $adminIdx = $auth['sess_idx'];
+
+            $beforeBrandInfo = [];
+            if (!empty($idx)) {
+                $beforeBrandInfo = BrandModel::query()
+                    ->where('BD_IDX', $idx)
+                    ->first()
+                    ->toArray();
+            }
 
             // 로고 업로드 처리 (새 파일이 없으면 기존 값 유지)
             $bdLogo = $modifyBdLogo;
@@ -290,34 +310,183 @@ class BrandService
 
             $bdApiInfo = json_encode($api_info_ary, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
 
-            //dd($bdApiInfo);
+        
+            /*
+            |------------------------------------------------------------
+            | 브랜드 내부평가표 처리
+            |------------------------------------------------------------
+            | 입력: $data['brand_eval'][...]
+            | 저장: brand_eval_json + 요약 점수 컬럼 + 등급(산출/강제/최종)
+            */
+            $brandEval = $data['brand_eval'] ?? [];
+
+            $toIntScore = function ($v) {
+                $v = is_numeric($v) ? (int)$v : null;
+                if ($v === null) return null;
+                if ($v < 0) $v = 0;
+                if ($v > 5) $v = 5;
+                return $v;
+            };
+
+            $profitScore = $toIntScore($brandEval['profit_score'] ?? null);
+            $productScore = $toIntScore($brandEval['product_score'] ?? null);
+            $riskScore = $toIntScore($brandEval['risk_score'] ?? null);
+            $opsScore = $toIntScore($brandEval['ops_score'] ?? null);
+            $growthScore = $toIntScore($brandEval['growth_score'] ?? null);
+
+            // 하드룰: 체크박스 배열로 들어옴
+            $hardFlags = $brandEval['hard_flags'] ?? [];
+            if (!is_array($hardFlags)) {
+                $hardFlags = [];
+            }
+
+            // 체크박스(y) 처리: 없으면 n으로 저장되게 정규화(원본 JSON도 일관성 유지)
+            $brandEval['msrp_exists'] = ($brandEval['msrp_exists'] ?? '') === 'y' ? 'y' : 'n';
+            $brandEval['map_exists'] = ($brandEval['map_exists'] ?? '') === 'y' ? 'y' : 'n';
+            $brandEval['manufacturer_contactable'] = ($brandEval['manufacturer_contactable'] ?? '') === 'y' ? 'y' : 'n';
+            $brandEval['hard_flags'] = $hardFlags;
+
+            // 총점(0~100) 가중치 계산: A35/B20/C15/D20/E10
+            // 각 축은 0~5를 (score/5)*weight로 환산
+            $calcWeighted = function ($score, $weight) {
+                if ($score === null) return null;
+                return ($score / 5) * $weight;
+            };
+
+            $weights = [
+                'profit' => 35,
+                'product' => 20,
+                'risk' => 15,
+                'ops' => 20,
+                'growth' => 10,
+            ];
+
+            $total = 0;
+            $hasAnyScore = false;
+    
+            $w1 = $calcWeighted($profitScore, $weights['profit']);   if ($w1 !== null) { $total += $w1; $hasAnyScore = true; }
+            $w2 = $calcWeighted($productScore, $weights['product']); if ($w2 !== null) { $total += $w2; $hasAnyScore = true; }
+            $w3 = $calcWeighted($riskScore, $weights['risk']);       if ($w3 !== null) { $total += $w3; $hasAnyScore = true; }
+            $w4 = $calcWeighted($opsScore, $weights['ops']);         if ($w4 !== null) { $total += $w4; $hasAnyScore = true; }
+            $w5 = $calcWeighted($growthScore, $weights['growth']);   if ($w5 !== null) { $total += $w5; $hasAnyScore = true; }
+    
+            $totalScore = $hasAnyScore ? (int)round($total) : null;
+    
+            // 등급 산출 규칙(A~D) 기본안
+            // 필요하면 컷라인만 조정하면 됨
+            $gradeByScore = function ($score) {
+                if ($score === null) return null;
+                if ($score >= 85) return 'A';
+                if ($score >= 70) return 'B';
+                if ($score >= 55) return 'C';
+                return 'D';
+            };
+
+
+            $computedGrade = $gradeByScore($totalScore);
+
+            // 하드룰 패널티(운영 정책 예시)
+            // - claim/settlement 있으면 최종 산출등급 상한 C
+            // - quality 있으면 최종 산출등급 상한 C
+            // - stockout만 있으면 상한 B (필요없으면 이 블록 삭제)
+            $capGrade = function ($grade, $cap) {
+                if ($grade === null) return null;
+                $order = ['A' => 4, 'B' => 3, 'C' => 2, 'D' => 1];
+                if (!isset($order[$grade]) || !isset($order[$cap])) return $grade;
+                return ($order[$grade] > $order[$cap]) ? $cap : $grade;
+            };
+    
+            if (!empty($hardFlags)) {
+                if (in_array('claim', $hardFlags, true) || in_array('settlement', $hardFlags, true) || in_array('quality', $hardFlags, true)) {
+                    $computedGrade = $capGrade($computedGrade, 'C');
+                } elseif (in_array('stockout', $hardFlags, true)) {
+                    $computedGrade = $capGrade($computedGrade, 'B');
+                }
+            }
+
+            // 강제등급 입력(별도 컬럼)
+            // 폼에서 따로 name="brand_grade_forced" 같은 값으로 받는 걸 추천
+            $forcedGrade = $data['brand_grade_forced'] ?? null;
+            $forcedGrade = in_array($forcedGrade, ['A','B','C','D'], true) ? $forcedGrade : null;
+
+            $finalGrade = $forcedGrade ?: $computedGrade;
+
+            // 원본 JSON 저장
+            $brandEvalJson = null;
+            if (!empty($brandEval)) {
+                $brandEvalJson = json_encode($brandEval, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG);
+            }
+
+            // 업데이트 데이터 구성
+            $updateData = [
+                'BD_NAME' => $bdName,
+                'BD_NAME_EN' => $bdNameEn,
+                'BD_NAME_GROUP' => $bdNameGroup,
+                'BD_NAME_EN_GROUP' => $bdNameEnGroup,
+                'BD_ACTIVE' => $bdActive,
+                'BD_LIST_ACTIVE' => $bdListActive,
+                'BD_LOGO' => $bdLogo,
+                'BD_DOMAIN' => $bdDomain,
+                'BD_INTRODUCE' => $bdIntroduce,
+                'BD_CODE' => $bdCode,
+                'BD_KIND_CODE' => $bdKindCode,
+                'bd_kind' => $bdKind,
+                'bd_showdang_active' => $bdApiActive,
+                'bd_cate_no' => $bdCateNo,
+                'bd_matching_cate' => $bdMatchingCate,
+                'bd_matching_brand' => $bdMatchingBrand,
+                'bd_api_info' => $bdApiInfo,
+                'bd_api_introduce' => $bdApiIntroduce,
+                'bd_onadb_active' => $bdOnadbActive,
+                'bd_onadb_sort_num' => $bdOnadbSortNum,
+                'bd_memo' => $bdMemo,
+
+                // 평가표 저장 컬럼(추가한 컬럼명에 맞춰야 함)
+                'brand_eval_json' => $brandEvalJson,
+                'brand_eval_profit_score' => $profitScore,
+                'brand_eval_product_score' => $productScore,
+                'brand_eval_risk_score' => $riskScore,
+                'brand_eval_ops_score' => $opsScore,
+                'brand_eval_growth_score' => $growthScore,
+                'brand_eval_total_score' => $totalScore,
+
+                'brand_grade_computed' => $computedGrade,
+                'brand_grade_final' => $finalGrade,
+
+                'brand_eval_version' => 'v1',
+                'brand_eval_by' => $adminIdx ?: null,
+                'brand_eval_at' => $now,
+            ];
+
+            // 강제등급 관련 컬럼은 "입력값이 있을 때만" 덮어쓰기(기존 강제등급 유지 목적)
+            // 강제등급을 해제(null)까지 지원하려면 별도 플래그(예: brand_grade_forced_clear='y')를 두는 걸 추천
+            if ($forcedGrade !== null) {
+                $updateData['brand_grade_forced'] = $forcedGrade;
+                $updateData['brand_grade_forced_reason'] = $data['brand_grade_forced_reason'] ?? null;
+                $updateData['brand_grade_forced_by'] = $adminIdx ?: null;
+                $updateData['brand_grade_forced_at'] = $now;
+            }
 
             $brandInfo = BrandModel::updateOrCreate(
                 ['BD_IDX' => $idx],
-                [
-                    'BD_NAME' => $bdName,
-                    'BD_NAME_EN' => $bdNameEn,
-                    'BD_NAME_GROUP' => $bdNameGroup,
-                    'BD_NAME_EN_GROUP' => $bdNameEnGroup,
-                    'BD_ACTIVE' => $bdActive,
-                    'BD_LIST_ACTIVE' => $bdListActive,
-                    'BD_LOGO' => $bdLogo,
-                    'BD_DOMAIN' => $bdDomain,
-                    'BD_INTRODUCE' => $bdIntroduce,
-                    'BD_CODE' => $bdCode,
-                    'BD_KIND_CODE' => $bdKindCode,
-                    'bd_kind' => $bdKind,
-                    'bd_showdang_active' => $bdApiActive,
-                    'bd_cate_no' => $bdCateNo,
-                    'bd_matching_cate' => $bdMatchingCate,
-                    'bd_matching_brand' => $bdMatchingBrand,
-                    'bd_api_info' => $bdApiInfo,
-                    'bd_api_introduce' => $bdApiIntroduce,
-                    'bd_onadb_active' => $bdOnadbActive,
-                    'bd_onadb_sort_num' => $bdOnadbSortNum,
-                    'bd_memo' => $bdMemo,
-                ]
+                $updateData
             );
+
+            $afterBrandInfo = array_merge($beforeBrandInfo, $updateData);
+            $adminActionLogService = new AdminActionLogService();
+            $diff = $adminActionLogService->buildDiff($beforeBrandInfo, $afterBrandInfo);
+
+            $adminActionLogService->log([
+                'target_type' => 'brand',
+                'target_table' => 'BRAND_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => '브랜드 수정',
+                'before_json' => $beforeBrandInfo,
+                'after_json' => $afterBrandInfo,
+                'diff_json' => $diff,
+                'is_success' => 1,
+            ]);
 
             //dd($brandInfo);
 
@@ -327,7 +496,6 @@ class BrandService
             throw new Exception($e->getMessage());
         }
 
-        
     }
 
     /**

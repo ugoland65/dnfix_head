@@ -73,6 +73,12 @@
 		cursor:pointer;
 	}
 	</style>
+	
+<?php if ($_SESSION['_flash']['success']): ?>
+<script>
+  alert('<?=$_SESSION['_flash']['success']?>');
+</script>
+<?php endif; ?>
 
 <script language="JavaScript"> 
     $(document).ready(function(){    
@@ -203,7 +209,7 @@ $(function () {
   $('[data-toggle="tooltip"]').tooltip()
 })
 //--> 
-</script> 
+</script>
 
 </head>
 <body id="basic">
@@ -309,8 +315,24 @@ $gnb_lang = "ko";
 	<div id="gnb">
 		<ul>
             <li class="<?=$gnb_lang?> <? if($pageGroup == "1") echo "active"; ?>"><a href="<?=_A_PATH_MAIN?>">DASHBOARD</a></li><!-- 통계/현황표 -->
-            <li class="<?=$gnb_lang?> <?php if( $_pageGroup == "staff" || $pageGroup2 == "staff" ) echo "active"; ?>">
-				<a href="/ad/staff/work_log/공지사항">인사/업무</a>
+            <li class="<?=$gnb_lang?> <?php if( $_pageGroup == "staff" || $pageGroup2 == "staff" ) echo "active"; ?> have-sub-menu">
+				인사/업무
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/admin/work/TaskRequest?category=업무요청">업무요청</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=프로젝트">프로젝트</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=기획안">기획안</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=공지사항">공지사항</a>
+						</li>
+					</ul>
+				</div>
 			</li>
 			
 			<?php
@@ -330,7 +352,10 @@ $gnb_lang = "ko";
 							<a href="/ad/prd/prd_db">상품 DB</a>
 						</li>
 						<li>
-							<a href="/admin/product/product_stock">상품재고 (보유상품)</a>
+							<a href="/admin/product/product_stock">보유상품 관리</a>
+						</li>
+						<li>
+							<a href="/admin/provider_product/list">공급사 상품관리</a>
 						</li>
 						<li>
 							<a href="/admin/brand/list">브랜드 관리</a>
@@ -339,7 +364,7 @@ $gnb_lang = "ko";
 				</div>
 			</li>    
 			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
-				<a href="/ad/provider/prd_provider">공급사 관리</a>
+				<a href="/ad/provider/supplier_product">공급사 관리</a>
 			</li>   
             <li class="ko <?php if( $_pageGroup == "order" || $pageGroup2 == "order" ) echo "active"; ?> have-sub-menu">
 				재고/발주

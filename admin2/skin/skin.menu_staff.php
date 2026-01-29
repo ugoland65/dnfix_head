@@ -35,14 +35,28 @@ $_get1 = $_get1 ?? '';
 	<ul>업무 게시판</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && ( !$_get1 || $_get1 == "all" ) ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log'"><li>전체보기</li></ul>
+	<ul <? if( $pageNameCode == "work_board" && $category == "공지사항" ) echo "class='leftMenuNow' "; ?> 
+		onclick="location.href='/admin/work/TaskRequest?category=공지사항'">
+		<li>공지사항</li>
+	</ul>
+	<ul <? if( $pageNameCode == "work_board" && $category == "업무요청" ) echo "class='leftMenuNow' "; ?> 
+		onclick="location.href='/admin/work/TaskRequest'">
+		<li>업무요청</li>
+	</ul>
+	<ul <? if( $pageNameCode == "work_board" && $category == "프로젝트" ) echo "class='leftMenuNow' "; ?> 
+		onclick="location.href='/admin/work/TaskRequest?category=프로젝트'">
+		<li>프로젝트</li>
+	</ul>
+	<ul <? if( $pageNameCode == "work_board" && $category == "기획안" ) echo "class='leftMenuNow' "; ?> 
+		onclick="location.href='/admin/work/TaskRequest?category=기획안'">
+		<li>기획안</li>
+	</ul>
+	<? /*
 	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && $_get1 == "업무일지" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log/업무일지'"><li>업무 일지</li></ul>
-	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && $_get1 == "프로젝트" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log/프로젝트'"><li>프로젝트</li></ul>
-	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && $_get1 == "기획안" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log/기획안'"><li>기획안</li></ul>
-	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && $_get1 == "업무요청" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log/업무요청'"><li>업무요청</li></ul>
-	<ul <? if( ( $_page == "work_log" || $_page == "work_log_reg" || $_page == "work_log_view" ) && $_get1 == "공지사항" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_log/공지사항'"><li>공지사항</li></ul>
+	*/ ?>
 </div>
 
+<? /*
 <div class="left-menu-mid-title">
 	<ul>테스트</ul>
 </div>
@@ -52,4 +66,4 @@ $_get1 = $_get1 ?? '';
 	<ul <? if( $_page == "work") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work'"><li>업무 리스트</li></ul>
 	<ul <? if( $_page == "work_unit") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/staff/work_unit'"><li>업무 항목 관리</li></ul>
 </div>
-
+*/ ?>

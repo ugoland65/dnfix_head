@@ -40,6 +40,7 @@ class ViewServiceProvider
             $admin = AdminModel::find($_SESSION['sess_idx']);
             if( $admin ){
                 $auth['ad_id'] = $admin->ad_id;
+                $auth['ad_idx'] = $admin->idx;
                 $auth['ad_name'] = $admin->ad_name;
                 $auth['ad_nick'] = $admin->ad_nick;
                 $auth['ad_level'] = $admin->ad_level;

@@ -206,6 +206,7 @@ echo "</pre>";
                             <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                             <th class="list-idx">고유번호</th>
                             <th class="">고도몰<br>상품번호</th>
+                            <th class="">고도몰<br>등록상태</th>
                             <th class="">고도몰<br>판매가</th>
                             <th class="" style="width:100px;">브랜드</th>
                             <th class="list-">상품명</th>
@@ -217,6 +218,7 @@ echo "</pre>";
                             <th>공급사<br>매칭번호</th>
                             <th>공급사<br>사이트</th>
                             <th>공급사<br>상품번호</th>
+                            <th>공급사<br>판매상태</th>
                             <th>공급<br>입점사</th>
                             <th>공급가격</th>
                             <th style="width:80px;">배송비</th>
@@ -264,6 +266,12 @@ echo "</pre>";
                                     </div>
                                 <?php } else { ?>
                                     -
+                                <?php } ?>
+                            </td>
+                            <td class="text-center">
+                                <?=$row['prd_data']['status'] ?? ''?>
+                                <?php if( $row['prd_data']['status'] == '품절' ){ ?>
+                                    <br><span class="text-red"><?=date('Y.m.d', strtotime($row['prd_data']['sold_out_date'])) ?? ''?></span>
                                 <?php } ?>
                             </td>
                             <td class="text-right"><?=number_format($row['prd_data']['sale_price'])?></td>
@@ -326,6 +334,17 @@ echo "</pre>";
                                     -
                                 <?php } ?>
                             </td>
+
+                            <!-- 공급사 판매상태 -->
+                            <td class="text-center">
+                                <?php $matchStatus = $matchData['status'] ?? ''; ?>
+                                <?=$matchStatus?>
+                                <?php if ($matchStatus === '품절') { ?>
+                                    <br><span class="text-red"><?=date('Y.m.d', strtotime($matchData['sold_out_date'] ?? ''))?></span>
+                                <?php } ?>
+                            </td>
+
+                            <!-- 공급 입점사 -->
                             <td><?=$matchData['supplier'] ?? ''?></td>
                             <td class="text-right">
                                 <?php
