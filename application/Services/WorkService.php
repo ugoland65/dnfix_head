@@ -154,6 +154,7 @@ class WorkService
         }
 
         $result['view_check'] = json_decode($result['view_check'] ?? '[]', true);
+        $result['link'] = json_decode($result['link'] ?? '[]', true);
 
         return $result;
     }
@@ -176,6 +177,7 @@ class WorkService
         $body = $data['body'] ?? '';
         $category = $data['category'] ?? '';
         $work_log_file = $data['work_log_file'] ?? [];
+        $link = $data['link'] ?? [];
         $target_mb_idx = $data['target_mb_idx'] ?? [];
 
         if (!is_array($target_mb_idx)) {
@@ -278,12 +280,15 @@ class WorkService
             }, $target_mb_idx));
         }
 
+        $link_json = json_encode($link, JSON_UNESCAPED_UNICODE);
+
         $updateData = [
             'subject' => $subject,
             'state' => $state,
             'body' => $body,
             'category' => $category,
             'target_mb' => $target_mb,
+            'link' => $link_json,
         ];
 
         $auth = AdminAuth::user();
@@ -386,12 +391,14 @@ class WorkService
                 'state' => $existingWorkInfo['state'] ?? '',
                 'category' => $existingWorkInfo['category'] ?? '',
                 'target_mb' => $existingWorkInfo['target_mb'] ?? '',
+                'link' => $existingWorkInfo['link'] ?? '',
             ];
             $after_json_data = [
                 'subject' => $subject,
                 'state' => $state,
                 'category' => $category,
                 'target_mb' => $target_mb,
+                'link' => $link_json,
             ];
             $diff_json_data = [];
             $changed_fields = [];
@@ -401,6 +408,7 @@ class WorkService
                 'state' => '상태',
                 'category' => '분류',
                 'target_mb' => '참여자',
+                'link' => '링크',
             ];
 
             foreach ($compareMap as $key => $label) {

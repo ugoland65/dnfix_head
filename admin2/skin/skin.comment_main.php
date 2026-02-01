@@ -1,28 +1,28 @@
 <?php
-	ini_set('display_errors', 1);
-	ini_set('display_startup_errors', 1);
-	error_reporting(E_ALL);
+ini_set('display_errors', 1);
+ini_set('display_startup_errors', 1);
+error_reporting(E_ALL);
 
-	use App\Controllers\Admin\CommentController;
+use App\Controllers\Admin\CommentController;
 
-	$Comment = new CommentController();
+$Comment = new CommentController();
 
-	$result = $Comment->commentMainIndex();
+$result = $Comment->commentMainIndex();
 
-	// GET/POST 파라미터 초기화
-	$_mode = $_REQUEST['mode'] ?? '';
-	$_idx = $_REQUEST['idx'] ?? '';
+// GET/POST 파라미터 초기화
+$_mode = $_REQUEST['mode'] ?? '';
+$_idx = $_REQUEST['idx'] ?? '';
 
-	/*
+/*
 		echo "<pre>";
 		print_r($result);
 		echo "</pre>";
 	*/
 
-	//달력 데이터를 생성했다면 idx를 생성한 idx로 대체해준다
-	if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
-		$_idx = $result['CalendarInsert']['idx'];
-	}
+//달력 데이터를 생성했다면 idx를 생성한 idx로 대체해준다
+if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
+	$_idx = $result['CalendarInsert']['idx'];
+}
 
 ?>
 <style type="text/css">
@@ -50,6 +50,8 @@
 	.chat-my-list-title {
 		height: 49px;
 		border-bottom: 1px solid #bbb;
+		padding: 10px 0  0 10px;
+		box-sizing: border-box;
 	}
 
 	.chat-my-list-wrap {
@@ -498,25 +500,57 @@
 		padding: 200px 0;
 	}
 
-	.mention-list-wrap{
+	.mention-list-wrap {
 		display: flex;
 		align-items: center;
 		gap: 5px;
-		height:25px;
+		height: 25px;
 		background-color: #ddd;
 		padding: 0 0 0 15px;
 		box-sizing: border-box;
-		li{
+
+		li {
 			font-size: 11px;
 		}
+	}
+
+	.chat-my-list-tab ul {
+		display: flex;
+		gap: 6px;
+		padding: 0;
+		margin: 0;
+		list-style: none;
+	}
+
+	.chat-my-list-tab li {
+		padding: 6px 10px;
+		font-size: 12px;
+		color: #555;
+		border: 1px solid #ddd;
+		border-radius: 6px;
+		background: #f7f7f7;
+		cursor: pointer;
+		user-select: none;
+	}
+
+	.chat-my-list-tab li.active {
+		color: #1d4ed8;
+		background: #eaf2ff;
+		border-color: #bcd1ff;
+		font-weight: 600;
 	}
 </style>
 <div class="cm-wrap">
 	<ul>
 		<div class="chat-my-list-title">
+			<div class="chat-my-list-tab">
+				<ul>
+					<li class="active" data-mode="unchecked">미체크 댓글</li>
+					<li data-mode="checked">체크 댓글</li>
+				</ul>
+			</div>
 		</div>
 		<div class="chat-my-list-wrap" id="chat_my_list_wrap">
-
 		</div>
 	</ul>
 	<ul id="chat_body">
@@ -537,10 +571,15 @@
 ?>
 
 <script type="text/javascript">
-
 	var chatWrap = document.querySelector('.chat-wrap');
 
 	function scrollToBottom() {
+		if (!chatWrap) {
+			chatWrap = document.querySelector('.chat-wrap');
+		}
+		if (!chatWrap) {
+			return;
+		}
 		chatWrap.scrollTop = chatWrap.scrollHeight;
 	}
 
@@ -561,12 +600,13 @@
 			init() {
 				console.log('wishList module initialized.');
 			},
+
 			//쳇 리스트 로드
-			chatListLoad(mode, tidx) {
-				ajaxRequest("/ad/ajax/comment_list", {
+			chatListLoad(mode = 'unchecked') {
+				ajaxRequest("/admin/comment/list", {
 						mode,
-						tidx
 					}, {
+						method: 'GET',
 						dataType: 'html'
 					})
 					.then((getdata) => {
@@ -576,6 +616,7 @@
 						dnAlert('Error', '에러', 'red');
 					});
 			},
+			
 			chatLoad(mode, tidx) {
 				ajaxRequest("/ad/ajax/comment_chat", {
 						mode,
@@ -619,7 +660,7 @@
 					.done(res => {
 						if (res.status === "success") {
 							this.chatLoad(mode, tidx);
-							this.chatListLoad(mode, tidx);
+							this.chatListLoad();
 						} else {
 							dnAlert('Error', res.message || '상태 변경 실패', 'red'); // 실패 시 메시지 표시
 						}
@@ -643,7 +684,7 @@
 					.done(res => {
 						if (res.status === "success") {
 							this.chatLoad(res.mode, res.tidx);
-							this.chatListLoad(res.mode, res.tidx);
+							this.chatListLoad();
 							$('#comment').val(''); // 내용 초기화
 							scrollToBottom();
 						} else {
@@ -670,7 +711,7 @@
 					.done(res => {
 						if (res.status === "success") {
 							this.chatLoad(mode, tidx);
-							this.chatListLoad(mode, tidx);
+							this.chatListLoad();
 						} else {
 							dnAlert('Error', res.message || '상태 변경 실패', 'red'); // 실패 시 메시지 표시
 						}
@@ -683,7 +724,7 @@
 		}
 	})();
 
-	commentMain.chatListLoad('<?= $_mode ?>', '<?= $_idx ?>');
+commentMain.chatListLoad('<?= $_mode ?>');
 
 	<? if (!empty($_mode) && !empty($_idx)) { ?>
 		commentMain.chatLoad('<?= $_mode ?>', '<?= $_idx ?>');
@@ -692,6 +733,16 @@
 	$(function() {
 
 		scrollToBottom();
+		
+		$('.chat-my-list-tab li').on('click', function() {
+			const $tab = $(this);
+			const mode = $tab.data('mode') || 'unchecked';
+
+			$('.chat-my-list-tab li').removeClass('active');
+			$tab.addClass('active');
+
+			commentMain.chatListLoad(mode);
+		});
 
 		const $mentionBtn = $('#mentionBtn');
 		const $mentionList = $('.mention-list');
@@ -708,5 +759,4 @@
 		});
 
 	});
-
 </script>

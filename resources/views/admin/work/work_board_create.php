@@ -20,6 +20,20 @@
         border: 1px solid #ddd;
         border-radius: 5px;
     }
+
+    .link-list-wrap{
+        display:flex;
+        flex-direction: column;
+        gap: 5px;
+    }
+    .link-list{
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        input[type="text"]{
+            width: 700px;
+        }
+    }
 </style>
 <div id="contents_head">
     <h1><?= $title ?? '업무 게시판 등록' ?></h1>
@@ -31,6 +45,7 @@
 
             <?php if( $mode == 'modify' ){ ?>
                 <input type="hidden" name="idx" value="<?= $workInfo['idx'] ?? '' ?>" >
+                <input type="hidden" name="old_link" value="<?= $workInfo['link'] ?? '' ?>" >
             <?php } ?>
             <input type="hidden" name="mode" value="<?= $mode ?? 'create' ?>" >
 
@@ -87,6 +102,8 @@
                         </select>
                     </td>
                 </tr>
+
+                <?php /*
                 <tr>
                     <th>첨부파일</th>
                     <td>
@@ -100,6 +117,34 @@
                         </div>
                     </td>
                 </tr>
+                */ ?>
+
+                <tr>
+                    <th>참조 링크</th>
+                    <td>
+                        <div class="link-list-wrap" id="link_list_wrap">
+
+                            <?php if( !empty($workInfo['link']) ){ ?>
+                                <?php foreach($workInfo['link'] as $l){ ?>
+                                    <div class="link-list">
+                                        <input name="link[]" type="text" value="<?= $l ?>" >
+                                        <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>
+                                    </div>
+                                <?php } ?>
+                            <?php }else{ ?>
+                                <div class="link-list">
+                                    <input name="link[]" type="text"  >
+                                    <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>
+                                </div>
+                            <?php } ?>
+                            
+                        </div>
+                        <div class="m-t-5">
+                            <button type="button" id="addLinkBtn" class="btnstyle1 btnstyle1-success btnstyle1-sm">링크 추가</button>
+                        </div>
+                    </td>
+                </tr>
+                
                 <tr>
                     <th>내용</th>
                     <td>
@@ -187,6 +232,25 @@
             + '<input name="work_log_file[]" type="file">'
             + '</div>';
         $('#file_list_wrap').append(shtml);
+    });
+
+    //링크 추가
+    $('#addLinkBtn').on('click', function() {
+        var shtml = '<div class="link-list">'
+            + '<input name="link[]" type="text">'
+            + '<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>'
+            + '</div>';
+        $('#link_list_wrap').append(shtml);
+    });
+
+    //링크 삭제 (마지막 1개는 값만 초기화)
+    $(document).on('click', '.link-remove', function() {
+        var $list = $(this).closest('.link-list');
+        if ($('#link_list_wrap .link-list').length <= 1) {
+            $list.find('input[name="link[]"]').val('');
+            return;
+        }
+        $list.remove();
     });
 
     //저장

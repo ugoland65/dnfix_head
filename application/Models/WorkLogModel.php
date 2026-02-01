@@ -18,6 +18,7 @@ class WorkLogModel extends BaseModel {
 		'reg',
 		'reg_date',
 		'file',
+		'link',
 		'view_check',
 		'cmt_s_count',
 		'cmt_b_count',

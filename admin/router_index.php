@@ -13,6 +13,7 @@ use App\Controllers\Admin\ProductStockHistoryController;
 use App\Controllers\Admin\GodoApiController;
 use App\Controllers\Admin\CsRequestController;
 use App\Controllers\Admin\WorkController;
+use App\Controllers\Admin\CommentController;
 
 try {
 
@@ -29,6 +30,7 @@ try {
     //$router->post('/work/TaskRequestCheck', WorkController::class, 'taskRequestCheck'); //업무 로그 체크
 
     //코멘트
+    $router->get('/comment/list', CommentController::class, 'commentList'); //코멘트 리스트
 
     $router->get('/staff/list', StaffController::class, 'staffList'); //직원목록
     $router->get('/staff/reg', StaffController::class, 'staffReg'); //신규 직원등록

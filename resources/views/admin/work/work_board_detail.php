@@ -201,6 +201,19 @@
                             </td>
                         </tr>
 
+                        <?php if( !empty($workLog['link']) ){ ?>
+                        <tr>
+                            <th>참조 링크</th>
+                            <td>
+                                <div>
+                                    <?php foreach($workLog['link'] as $link){ ?>
+                                        <ul><a href="<?= $link ?>" target="_blank"><?= $link ?></a></ul>
+                                    <?php } ?>
+                                </div>
+                            </td>
+                        </tr>
+                        <?php } ?>
+
                         <tr>
                             <td colspan="2" class="bo_body_wrap p-30">
                                 <?= html_entity_decode($workLog['body'] ?? '', ENT_QUOTES | ENT_HTML5, 'UTF-8') ?>

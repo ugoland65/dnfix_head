@@ -153,7 +153,15 @@ $mentionTarget = $CommentService->getMentionTarget();
 							<span style="font-size:11px;"><?= date("y.m.d H:i", strtotime($comment['reg_date'])) ?> | <?= $comment['state'] ?></span>
 						</div>
 						<div class="m-t-5 comment-body" id='comment_body_<?= $comment['idx'] ?>'>
-							<?= nl2br($comment['comment']) ?>
+							<?php
+								$commentText = nl2br(htmlspecialchars($comment['comment'] ?? '', ENT_QUOTES, 'UTF-8'));
+								$commentText = preg_replace(
+									'~(https?://[^\s<]+)~i',
+									'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+									$commentText
+								);
+							?>
+							<?= $commentText ?>
 						</div>
 
 						<? if (!empty($comment['mention'])) { ?>

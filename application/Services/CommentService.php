@@ -19,6 +19,164 @@ class CommentService
     /**
      * 코멘트 챗 데이터 조회
      */
+    public function getCommentList($payload)
+    {
+
+		$ad_idx = $payload['ad_idx'] ?? null;
+		if (empty($ad_idx)) {
+			throw new Exception('ad_idx는 필수입니다.');
+		}
+
+        $mode = $payload['mode'] ?? 'unchecked';
+        $paging = $payload['paging'] ?? false;
+        $page = $payload['page'] ?? 1;
+        $perPage = $payload['per_page'] ?? 50;
+
+		$_target_mb_text = "@" . $ad_idx;
+		$ad_idx_int = (int) $ad_idx;
+
+		$viewSub = WorkViewCheckModel::query()
+			->select(['tidx', 'mode'])
+			->whereRaw("mb_idx = {$ad_idx_int}")
+			->groupBy('tidx')
+			->groupBy('mode');
+
+		$query = CommentModel::query()
+			->from('work_comment AS A')
+			->select([
+				'A.idx',
+				'A.mode',
+				'A.tidx',
+				'A.mb_idx',
+				'A.comment',
+				'A.reg_date',
+				'C.ad_name',
+				'C.ad_image',
+			])
+			->join('admin AS C', 'C.idx', '=', 'A.mb_idx', 'LEFT')
+			->joinSub($viewSub, 'B', function ($join) {
+				$join->on('B.tidx', '=', 'A.idx');
+				$join->on('B.mode', '=', 'A.mode');
+			}, 'LEFT')
+			->whereRaw("A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')", ['target_mb_text' => $_target_mb_text])
+			->when($mode === 'checked', function ($query) {
+				$query->whereNotNull('B.tidx');
+			}, function ($query) {
+				$query->whereNull('B.tidx');
+			})
+			->orderBy('A.idx', 'DESC');
+ 
+        if ($paging) {
+            $results = $query->paginate($perPage, $page);
+            $rows = $results['data'] ?? [];
+        } else {
+            $rows = $query->limit($perPage)->get()->toArray();
+            $results = [
+                'data' => $rows,
+            ];
+        }
+
+		// 모드별 제목 정보 배치 조회 (N+1 방지)
+		$titleMap = $this->getTitleInfoBatch($rows);
+		foreach ($rows as &$list) {
+			$modeKey = $list['mode'] ?? '';
+			$tidxKey = $list['tidx'] ?? '';
+			$TitleInfo = $titleMap[$modeKey][$tidxKey] ?? ['title_mode' => '', 'title_name' => ''];
+			$list['target']['mode_text'] = $TitleInfo['title_mode'];
+			$list['target']['subject'] = $TitleInfo['title_name'];
+		}
+
+		return [
+			'list' => $rows,
+            'pagination' => $paging ? $results : null,
+		];
+
+    }
+
+    /**
+     * 타이틀 정보 배치 조회 (N+1 방지)
+     *
+     * @param array $rows
+     * @return array
+     */
+    protected function getTitleInfoBatch(array $rows): array
+    {
+        $modes = [
+            'orderSheet' => [
+                'model' => OrderSheetModel::class,
+                'field' => 'oo_name',
+                'title' => '주문서',
+            ],
+            'log' => [
+                'model' => WorkLogModel::class,
+                'field' => 'subject',
+                'title' => '업무 게시판',
+            ],
+            'prd' => [
+                'model' => ProductModel::class,
+                'field' => 'CD_NAME',
+                'title' => '상품',
+            ],
+            'calendar' => [
+                'model' => CalendarModel::class,
+                'field' => 'subject',
+                'title' => '캘린더',
+            ],
+            'cs' => [
+                'model' => CsRequestModel::class,
+                'field' => 'order_no',
+                'title' => 'C/S',
+            ],
+        ];
+
+        $modeGroups = [];
+        foreach ($rows as $row) {
+            $rowMode = $row['mode'] ?? '';
+            $rowTidx = $row['tidx'] ?? null;
+            if (!$rowMode || $rowTidx === null) {
+                continue;
+            }
+            $modeGroups[$rowMode][] = $rowTidx;
+        }
+
+        $titleMap = [];
+        foreach ($modeGroups as $rowMode => $tidxs) {
+            if (!isset($modes[$rowMode])) {
+                continue;
+            }
+
+            $modelClass = $modes[$rowMode]['model'];
+            $modelInstance = new $modelClass();
+            $field = $modes[$rowMode]['field'];
+            $title = $modes[$rowMode]['title'];
+            $primaryKey = $modelInstance->getPrimaryKey();
+
+            $uniqueTidxs = array_values(array_unique($tidxs));
+            $rowsData = $modelClass::query()
+                ->select([$primaryKey, $field])
+                ->whereIn($primaryKey, $uniqueTidxs)
+                ->get()
+                ->toArray();
+
+            foreach ($rowsData as $dataRow) {
+                $pkValue = $dataRow[$primaryKey] ?? null;
+                if ($pkValue === null) {
+                    continue;
+                }
+                $titleMap[$rowMode][$pkValue] = [
+                    'title_mode' => $title,
+                    'title_name' => $dataRow[$field] ?? '',
+                ];
+            }
+        }
+
+        return $titleMap;
+    }
+
+
+    /**
+     * 코멘트 챗 데이터 조회
+     */
     public function getCommentChat(array $payload): array
     {
         $mode = $payload['mode'] ?? null;
@@ -137,6 +295,7 @@ class CommentService
             'comment' => $commentRows,
         ];
     }
+
 
     /**
      * 타이틀 정보 조회 (모드별)

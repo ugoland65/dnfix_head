@@ -137,27 +137,30 @@
 
 		}else{
 
-			$link_url = "/ad/staff/work_log_view";
+			//$link_url = "/ad/staff/work_log_view";
+			$link_url = "/admin/work/TaskRequestDetail";
 
 			if( $_cmode == "notice" ){ 
 				
+				$category = "공지사항";
 				$_where = " WHERE category = '공지사항' ";
 				$_query = "select * from work_log ".$_where." ORDER BY idx desc limit 0, 5";
 			
 			}elseif( $_cmode == "request" ){
 				
-				$link_url = "/admin/work/TaskRequestDetail";
-
+				$category = "업무요청";
 				$_where = " WHERE category = '업무요청' AND reg_idx != '".$_ad_idx."' AND state IN ('대기','확인') AND INSTR(target_mb, '".$_target_mb_text."') ";
 				$_query = "select * from work_log ".$_where." ORDER BY idx desc";
 
 			}elseif( $_cmode == "project" ){
 				
+				$category = "프로젝트";
 				$_where = " WHERE category = '프로젝트' AND reg_idx != '".$_ad_idx."' AND state IN ('대기','확인') AND INSTR(target_mb, '".$_target_mb_text."') ";
 				$_query = "select * from work_log ".$_where." ORDER BY idx desc";
 
 			}elseif( $_cmode == "plan" ){
 				
+				$category = "기획안";
 				$_where = " WHERE category = '기획안' AND reg_idx != '".$_ad_idx."' AND state IN ('대기','확인') AND INSTR(target_mb, '".$_target_mb_text."') ";
 				$_query = "select * from work_log ".$_where." ORDER BY idx desc";
 			
@@ -185,7 +188,7 @@
 					}
 				
 		?>
-		<div class="main-count-row_wrap <?=$_row_class?>" onclick="location.href='<?=$link_url?>/<?=$_list['idx']?>'">
+		<div class="main-count-row_wrap <?=$_row_class?>" onclick="location.href='<?=$link_url?>/<?=$_list['idx']?>?category=<?=$category?>'">
 			<ul style="font-size:11px;"><b><?=date("y.m.d", strtotime($_list['reg_date']))?></b><?=$_state_text?><?=$_check_state?></ul>
 			<ul class="m-t-3"><?=$_list['subject']?></ul>
 		</div>

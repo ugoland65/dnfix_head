@@ -24,7 +24,6 @@ use App\Utils\TelegramUtils;
 class CommentController extends BaseClass
 {
 
-
 	public function getTitleInfo($mode, $tidx)
 	{
 
@@ -132,31 +131,13 @@ class CommentController extends BaseClass
 
 
 	/**
-	 * 코멘트 쳇 리스트 - 화면
+	 * 코멘트 쳇 리스트 - 구버전
 	 */
 	public function commentListIndex()
 	{
 
 		$ad_idx = AuthAdmin::getSession('sess_idx');
 		$_target_mb_text = "@" . $ad_idx;
-
-		/*
-			$sql = "
-			SELECT A.*,C.ad_name, C.ad_image
-			FROM work_comment AS A
-						LEFT JOIN admin AS C
-							ON C.idx = A.mb_idx 
-			WHERE A.mention_mb LIKE CONCAT('%', :target_mb_text, '%')
-			AND NOT EXISTS (
-				SELECT 1
-				FROM work_view_check AS B
-				WHERE B.mode = A.mode
-					AND B.tidx = A.idx
-					AND B.mb_idx = :ad_idx
-			)
-			ORDER BY A.idx DESC
-			";
-			*/
 
 		$sql = "
 			SELECT
@@ -201,48 +182,45 @@ class CommentController extends BaseClass
 			$list['target']['mode_text'] = $TitleInfo['title_mode'];
 			$list['target']['subject'] = $TitleInfo['title_name'];
 
-			/*
-			// 주문서 댓글
-			if ( $list['mode'] == "orderSheet" ) {
-				$orderSheetModel = new OrderSheetModel();
-				$orderSheet = $orderSheetModel->find($list['tidx'], ['oo_name']);
-
-				$list['target']['mode_text'] = "주문서";
-				$list['target']['subject'] = $orderSheet['oo_name'];
-
-			// 업무게시판 댓글
-			} elseif ( $list['mode'] == "log" ) {
-				$workLogModel = new WorkLogModel();
-				$workLog = $workLogModel->find( $list['tidx'], ['subject']);
-
-				$list['target']['mode_text'] = "업무 게시판";
-				$list['target']['subject'] = $workLog['subject'];
-
-			//상품 댓글
-			}elseif( $list['mode'] == "prd" ){
-				$ProductModel = new ProductModel();
-				$product = $ProductModel->find( $list['tidx'], ['CD_NAME']);
-
-				$list['target']['mode_text'] = "상품정보";
-				$list['target']['subject'] = $product['CD_NAME'];
-
-			// 달력 댓글
-			}elseif( $list['mode'] == "calendar" ){
-				$CalendarModel = new CalendarModel();
-				$Calendar = $CalendarModel->find( $list['tidx'], ['subject']);
-
-				$list['target']['mode_text'] = "캘린더";
-				$list['target']['subject'] = $Calendar['subject'];
-
-			}
-			*/
 		}
-
 
 		return [
 			'list' => $results,
 		];
 	}
+
+
+	/**
+	 * 코멘트 쳇 리스트 
+	 */
+	public function commentList(Request $request)
+	{
+
+		$requestData = $request->all();
+		$mode = $requestData['mode'] ?? 'unchecked';
+		$page = $requestData['page'] ?? 1;
+		$perPage = $requestData['per_page'] ?? 50;
+		$ad_idx = AuthAdmin::getSession('sess_idx');
+		$payload = [
+			'mode' => $mode,
+			'page' => $page,
+			'per_page' => $perPage,
+			'ad_idx' => $ad_idx,
+		];
+		$commentService = new CommentService();
+		$commentList = $commentService->getCommentList($payload);
+
+		//dd($payload);
+
+		$data = [
+			'commentList' => $commentList['list'],
+			'pagination' => $commentList['pagination'],
+		];
+
+		return view('admin.comment.comment_list', $data);
+
+	}
+
 
 	/**
 	 * @deprecated 2026-01-22
@@ -409,7 +387,8 @@ class CommentController extends BaseClass
 	/**
 	 * 코멘트 챗화면
 	 */
-	public function commentChat(Request $request) {
+	public function commentChat(Request $request)
+	{
 
 		try{
 
