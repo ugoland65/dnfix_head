@@ -2,10 +2,11 @@
 
 namespace App\Services;
 
+use Exception;
 use App\Core\BaseClass;
 use App\Models\ProductStockModel;
 use App\Services\ProductService;
-
+use App\Core\AuthAdmin;
 class ProductStockService extends BaseClass 
 {
 
@@ -59,6 +60,136 @@ class ProductStockService extends BaseClass
         return $prdStockList;
     }
 
+    /**
+     * 상품 세일 설정
+     * @param array $requestData
+     * @return array
+     */
+    public function setProductSale($data)
+    {
+        $ps_idx = $data['ps_idx'] ?? null;
+        $mode = $data['mode'] ?? null;
 
+        if( empty($ps_idx) || empty($mode) ){
+            throw new Exception('필수 값이 누락되었습니다.');
+        }
+
+        $query = ProductStockModel::find($ps_idx);
+        
+        if( empty($query) ){
+            throw new Exception('상품 재고가 존재하지 않습니다.');
+        }
+
+        $productStock = $query->toArray();
+
+        $updateData = [];
+        $message = '처리가 완료되었습니다.';
+
+        $sale_data = json_decode($productStock['ps_sale_data'] ?? '{}', true);
+        if (!is_array($sale_data)) {
+            $sale_data = [];
+        }
+
+        $isMonthly = !empty($productStock['is_sale_month']);
+        $isSpecial = !empty($productStock['is_sale_special']);
+
+        if( $mode == 'monthly' ){
+            if ($isSpecial) {
+                $updateData['is_sale_special'] = 0;
+                $sale_data['special']['off'] = [
+                    'date' => date('Y-m-d'),
+                    'reg' => AuthAdmin::getConnectionInfo()
+                ];
+                $message = '이미 특가할인중입니다. 특가할인을 해제하고 월간할인으로 지정합니다.';
+            }
+            $updateData['is_sale_month'] = 1;
+        }
+
+        if( $mode == 'special' ){
+            if ($isMonthly) {
+                $updateData['is_sale_month'] = 0;
+                $sale_data['monthly']['off'] = [
+                    'date' => date('Y-m-d'),
+                    'reg' => AuthAdmin::getConnectionInfo()
+                ];
+                $message = '이미 월간할인중입니다. 월간할인을 해제하고 특가할인으로 지정합니다.';
+            }
+            $updateData['is_sale_special'] = 1;
+        }
+
+        $sale_data[$mode]['on'] = [
+            'date' => date('Y-m-d'),
+            'reg' => AuthAdmin::getConnectionInfo()
+        ];
+        $ps_sale_data = json_encode($sale_data, JSON_UNESCAPED_UNICODE);
+
+        $updateData['ps_sale_data'] = $ps_sale_data;
+
+        $result = ProductStockModel::where('ps_idx', $ps_idx)->update($updateData);
+
+        return [
+            'success' => (bool)$result,
+            'message' => $message,
+        ];
+
+
+    }
+
+
+    /**
+     * 상품 세일 해제
+     * 
+     * @param array $requestData
+     * @return array
+     */
+    public function unsetProductSale($data)
+    {
+        $ps_idx = $data['ps_idx'] ?? null;
+        $mode = $data['mode'] ?? null;
+
+        if( empty($ps_idx) || empty($mode) ){
+            throw new Exception('필수 값이 누락되었습니다.');
+        }
+
+        $query = ProductStockModel::find($ps_idx);
+        
+        if( empty($query) ){
+            throw new Exception('상품 재고가 존재하지 않습니다.');
+        }
+
+        $productStock = $query->toArray();
+
+        $updateData = [];
+        if( $mode == 'monthly' ){
+            $updateData['is_sale_month'] = 0;
+        }
+
+        if( $mode == 'special' ){
+            $updateData['is_sale_special'] = 0;
+        }
+
+        $sale_data = json_decode($productStock['ps_sale_data'] ?? '{}', true);
+        if (!is_array($sale_data)) {
+            $sale_data = [];
+        }
+
+        if (!isset($sale_data[$mode]) || !is_array($sale_data[$mode])) {
+            $sale_data[$mode] = [];
+        }
+
+        $sale_data[$mode]['off'] = [
+            'date' => date('Y-m-d'),
+            'reg' => AuthAdmin::getConnectionInfo()
+        ];
+
+        $updateData['ps_sale_data'] = json_encode($sale_data, JSON_UNESCAPED_UNICODE);
+
+        $result = ProductStockModel::where('ps_idx', $ps_idx)->update($updateData);
+
+        return [
+            'success' => (bool)$result,
+            'message' => '처리가 완료되었습니다.',
+        ];
+    }
 
 }

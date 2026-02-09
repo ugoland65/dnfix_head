@@ -132,7 +132,6 @@
 
 	}//while
 
-
 function calendarContents( $dcode ){ 
 	global $_staff_holiday, $_calendar;
 	

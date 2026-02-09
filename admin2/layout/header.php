@@ -461,6 +461,16 @@ $gnb_lang = "ko";
 								<i class="fas fa-external-link-alt"></i> 오나디비
 							</a>
 						</li>
+						<li>
+							<a href="https://ssdm.kr" target="_blank">
+								<i class="fas fa-external-link-alt"></i> 쑈당몰 블로그 SSDM
+							</a>
+						</li>
+						<li>
+							<a href="https://ssdm.kr/hbti" target="_blank">
+								<i class="fas fa-external-link-alt"></i> HBTI
+							</a>
+						</li>
 					</ul>
 				</div>
 

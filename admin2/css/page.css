@@ -18,8 +18,15 @@
 .table-list tr td { padding:6px; color:#222222; box-sizing:border-box; text-align:center; }
 .table-list tr th,
 .table-list tr td {
-	border:1px solid #9096a3;
+	border:1px solid #aaa;
 	font-size:12px;
+}
+
+.table-list{
+    thead tr {
+        position:sticky;
+        top:0;
+    }
 }
 
 .tl-check{ width:25px; }

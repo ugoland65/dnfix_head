@@ -98,7 +98,11 @@ $supplierCodeData = [
         'idx' => 7,
         'code' => 'allcon',
     ],
-
+    'bunny' => [
+        'name' => '바니컴퍼니',
+        'idx' => 8,
+        'code' => 'bunny',
+    ],
 ];
 ?>
 <div id="contents_head">

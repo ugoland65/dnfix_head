@@ -333,6 +333,26 @@ echo "</pre>";
 		<td colspan="2" class="none-bg" style="height:6px;"></td>
 	</tr>
 
+	<?php if( !empty($prd_data['ps_idx']) ){ ?>
+	<tr>
+		<th>할인중 설정</th>
+		<td>
+			<?php if( $prd_data['is_sale_month'] ){ ?>
+				<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdRegForm.unsetProductSale('<?= $prd_data['ps_idx'] ?? '' ?>', 'monthly')">월간할인 해제</button>
+			<?php }else{ ?>
+				<button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdRegForm.setProductSale('<?= $prd_data['ps_idx'] ?? '' ?>', 'monthly')">월간할인 지정</button>
+			<?php } ?>
+
+			<?php if( $prd_data['is_sale_special'] ){ ?>
+				<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdRegForm.unsetProductSale('<?= $prd_data['ps_idx'] ?? '' ?>', 'special')">특가할인 해제</button>
+			<?php }else{ ?>
+				<button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdRegForm.setProductSale('<?= $prd_data['ps_idx'] ?? '' ?>', 'special')">특가할인 지정</button>
+			<?php } ?>
+			
+		</td>
+	</tr>
+	<?php } ?>
+
 	<tr>
 		<th>리스트 메모</th>
 		<td>
@@ -744,20 +764,71 @@ echo "</pre>";
 </div>
 <? } ?>
 
-<script type="text/javascript"> 
-<!--
+<script> 
 var prdRegForm = function() {
 
-	var B;
+	/**
+	 * 상품 세일 설정
+	 * 
+	 * @param int $ps_idx 재고 인덱스
+	 * @param string $mode 모드 (monthly, special)
+	 */
+	function setProductSale(ps_idx, mode) {
+		
+        var payload = {
+            action_mode: 'set_product_sale',
+            ps_idx: ps_idx,
+			mode: mode
+        };
 
-	var C = function() {
-	};
+        ajaxRequest('/admin/product/stock/action', payload)
+            .done(function(res) {
+                if (res && res.success) {
+                    alert(res.message || '처리가 완료되었습니다.');
+                    location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '처리 실패');
+                }
+            })
+            .fail(function(res) {
+                alert(res && res.message ? res.message : '에러');
+            });
+
+	}
+
+	/**
+	 * 상품 세일 해제
+	 * 
+	 * @param int $ps_idx 재고 인덱스
+	 * @param string $mode 모드 (monthly, special)
+	 */
+	function unsetProductSale(ps_idx, mode) {
+		
+		var payload = {
+			action_mode: 'unset_product_sale',
+            ps_idx: ps_idx,
+			mode: mode
+        };
+
+        ajaxRequest('/admin/product/stock/action', payload)
+            .done(function(res) {
+                if (res && res.success) {
+                    alert(res.message || '처리가 완료되었습니다.');
+                    location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '처리 실패');
+                }
+            })
+            .fail(function(res) {
+                alert(res && res.message ? res.message : '에러');
+            });
+
+	}
 
 	return {
 		init : function() {
 
 		},
-
 		save : function() {
 
 			var form = $('#prd_form')[0];
@@ -795,7 +866,9 @@ var prdRegForm = function() {
 				}
 			});	
 
-		}
+		},
+		setProductSale,
+		unsetProductSale
 	};
 
 }();
@@ -809,5 +882,4 @@ $(function(){
 	}
 
 });
-//-->
 </script>

@@ -18,7 +18,7 @@ if( !$_prd_idx ){
 if( $_prd_idx ){
 
 	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code";
-	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code";
+	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special";
 	$_colum .= ", C.BD_NAME";
 
 	if( $prd_mode == "basic" ){
@@ -82,6 +82,17 @@ include ($docRoot."/admin2/layout/header_popup.php");
 ?>
 <div class="prd-quick-left">
 	
+	<?php if( $prd_data['is_sale_month'] || $prd_data['is_sale_special'] ){ ?>
+		<div class="on_sale_label_wrap">
+			<?php if( $prd_data['is_sale_month'] ){ ?>
+				<label class="on_sale_label xs monthly">월간할인</label>
+			<?php } ?>
+			<?php if( $prd_data['is_sale_special'] ){ ?>
+				<label class="on_sale_label xs special">특가할인</label>
+			<?php } ?>
+		</div>
+	<?php } ?>
+
 	<div class="prd-img">
 		<? if($img_path){ ?>
 			<img src="<?=$img_path?>" style="height:150px; border:1px solid #eee !important;">
@@ -104,8 +115,14 @@ include ($docRoot."/admin2/layout/header_popup.php");
 		<? if( !empty($prd_data['ps_idx']) ){ ?>
 			<ul class="prd-stock-code">
 				<b><?=$prd_data['ps_idx']?></b>
-				<? if( !empty($prd_data['ps_rack_code']) ){ ?> ( <b><?=$prd_data['ps_rack_code']?></b> )<? } ?>
 			</ul>
+
+			<?php if( !empty($prd_data['ps_rack_code']) ){ ?>
+				<ul>
+					( <b><?=$prd_data['ps_rack_code']?></b> )
+				</ul>
+			<?php } ?>
+
 		<? }else{ ?>
 			<ul class="prd-stock-code-make"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.makePsIdx()"> <i class="fas fa-plus-circle"></i> 재고 코드 생성</button></ul>
 		<? } ?>

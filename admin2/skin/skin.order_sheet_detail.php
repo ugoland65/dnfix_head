@@ -61,32 +61,6 @@
 	}
 
 ?>
-<style type="text/css">
-.order_sheet_detail{ display:table; width:100%; height:100%; background-color:#fff; border-spacing:0; border-collapse:collapse; }
-.order_sheet_detail > ul { display:table-cell; vertical-align:top; height:100%; box-sizing:border-box;  }
-.order_sheet_detail > ul.left{ width:180px;  background-color:#dddddd; border-right:1px solid #888; }
-.order_sheet_detail > ul.right{ position:relative;  }
-
-.overflow-y { width:100%; height:100%; overflow-y:scroll;  box-sizing:border-box; padding:5px; }
-.overflow-y::-webkit-scrollbar{ width:7px; background:#ccc; border-left:solid 1px rgba(255,255,255,.1)}
-.overflow-y::-webkit-scrollbar-thumb{background:linear-gradient(#0860d5,#2077ea);border:solid 1px #444; border-radius:3px; }
-
-.ost-big{ width:100%; border:1px solid #ccc; background-color:#eee; padding:8px 10px; margin-bottom:3px; border-radius:6px; box-sizing:border-box; cursor:pointer; }
-.ost-big.inorder{ background-color:#fff; }
-.ost-big.active{ background-color:#ffde00; }
-
-.ospl-wrap{ position:absolute; top:0; left:0; width:calc(100% - 7px); height:70px; background-color:#fff; box-sizing:border-box; 
-	border-left:1px solid #777; border-right:1px solid #777; border-bottom:2px solid #777;
-}
-
-.ospl-top{ width:100%; height:100%;  display:table; }
-.ospl-top > ul{ display:table-cell; box-sizing:border-box;  padding:6px; }
-.ospl-top > ul.btn{ width:160px; display:flex; }
-.ospl-top > ul.btn button{ height:100% !important; }
-
-.group-side-allsum-price{ font-weight:bold !important; }
-</style>
-
 <script type="text/javascript"> 
 <!-- 
 var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
@@ -170,7 +144,7 @@ var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
 		</div>
 	</ul>
 	<ul class="right">
-		<div id="order_sheet_detail_prd_list" class="scroll-wrap">
+		<div id="order_sheet_detail_prd_list" class="order-sheet-detail-prd-list">
 		</div>
 	</ul>
 </div>

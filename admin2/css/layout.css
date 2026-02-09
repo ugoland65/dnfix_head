@@ -72,7 +72,7 @@
 #logo{ width:264px; height:50px; }
 #logo img{ height:50px; }
 
-#gnb{ height:50px; z-index:999999999999999999999999; }
+#gnb{ height:50px; z-index:90000000; }
 #gnb > ul{ height:50px; display:flex; align-items: center; }
 #gnb > ul > li{ height:50px; line-height:50px; font-size:15px; box-sizing:border-box; padding:0 13px; }
 #gnb > ul > li a{ color:#ffffff; text-decoration:none; }

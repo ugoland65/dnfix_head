@@ -194,8 +194,19 @@ if( !empty($_scm) ){
 			$brandIdx = $brandMapping[$cateNmNoSpace]['IDX'];
 		}
 
+		/*
+		$show = false;
+		$line_status = '';
+		$status_text = [];
+		*/
 		if( $is_error ){
 
+			/*
+			$show = true;
+			$line_status = 'errors';
+			$status_text = $_errors;
+			*/
+		
 			$line_products[] = [
 				'line_status' => 'errors',
 				'status_text' => $_errors,
@@ -249,14 +260,61 @@ if( !empty($_scm) ){
 					'brandIdx' => $brandIdx,
 					'cateNm' => $product['cateNm'] ?? '',
 					'goodsPrice' => $product['goodsPrice'] ?? '',
-					'matched_idx' => $idx,
+					'matched_idx' => $idx ?? null,
 				];
 
 			}
 
 		} else {
-			// 신규
+
+			if( !$is_error){
+
+				$result = $productPartnerService->saveProductPartner([
+					'status' => '등록완료',
+					'brand_idx' => $brandIdx,
+					'partner_idx' => $scmMapping[$scmNo]['partner_key'],
+					'name' => $product['goodsNm'] ?? '',
+					'sale_price' => $product['goodsPrice'] ?? '',
+					'code' => $product['goodsCd'] ?? '',
+					'img_mode' => 'out',
+					'img_src' => $product['thumbImageUrl'] ?? '',
+					'godo_goodsNo' => $goodsNo,
+					'matching_code' => $scmNo,
+					'action_url' => $_SERVER['REQUEST_URI'],
+					'action_summary' => '고도몰 등록 공급사 상품으로 신규저장',
+				]);
+
+				//dd($result);
+
+				$status_text = [];
+				$status_text[] = [
+					'code' => 'new',
+					'message' => '신규 상품으로 등록됨',
+				];
+
+				// 신규
+				$line_products[] = [
+					'line_status' => 'new',
+					'status_text' => $status_text,
+					'goodsNo' => $goodsNo,
+					'thumbImageUrl' => $product['thumbImageUrl'] ?? '',
+					'goodsNm' => $product['goodsNm'] ?? '',
+					'goodsCd' => $product['goodsCd'] ?? '',
+					'soldOutFl' => $product['soldOutFl'] ?? '',
+					'scmNo' => $scmNo,
+					'scmName' => $scmMapping[$scmNo]['name'] ?? '',
+					'brandCd' => $product['brandCd'] ?? '',
+					'brandName' => $brandName,
+					'brandIdx' => $brandIdx,
+					'cateNm' => $product['cateNm'] ?? '',
+					'goodsPrice' => $product['goodsPrice'] ?? '',
+					'matched_idx' => $idx ?? null,
+				];
+			}
+
 		}
+
+
 
 	}
 
@@ -344,6 +402,7 @@ if( !empty($_scm) ){
 
 							$status_text['errors'] = '에러';
 							$status_text['sold_out'] = '품절 처리';
+							$status_text['new'] = '신규 등록';
 
 							foreach ($line_products as $product) {
 								$count++;

@@ -104,6 +104,7 @@ class ProductService extends BaseClass
         $s_importing_country = $criteria['s_importing_country'] ?? null;
         $s_margin_group = $criteria['s_margin_group'] ?? null;
         $search_value = $criteria['search_value'] ?? null;
+        $s_sale_mode = $criteria['s_sale_mode'] ?? null;
 
         $since = $criteria['since'] ?? null;
 
@@ -194,6 +195,20 @@ class ProductService extends BaseClass
                 $query->where('D.ps_rack_code', $rack_code);
             }
 
+            // 할인모드 검색
+            if ( !empty($s_sale_mode) ) {
+        
+                if( $s_sale_mode == 'monthly' ){
+                    $query->where('D.is_sale_month', 1);
+                }elseif( $s_sale_mode == 'special' ){
+                    $query->where('D.is_sale_special', 1);
+                }elseif( $s_sale_mode == 'sale_all' ){
+                    $query->where('D.is_sale_month', 1);
+                    $query->orWhere('D.is_sale_special', 1);
+                }
+                
+            }
+
             // 검색어 처리
             if( $search_value ){
                 $query->orWhere('D.ps_idx', $search_value);
@@ -203,6 +218,8 @@ class ProductService extends BaseClass
                 $query->where('D.ps_stock', '>', 0);
             }elseif( $in_stock == 'no' ){
                 $query->where('D.ps_stock', 0);
+            }elseif( $in_stock == 'have_with_no' ){
+                
             }
 
             $sort_mode = $criteria['sort_mode'] ?? 'stock';
@@ -880,7 +897,7 @@ class ProductService extends BaseClass
         $productData = ProductModel::query()
             ->select([
                 'COMPARISON_DB.*',
-                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count',
+                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
                 'BRAND_DB.BD_NAME'
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')

@@ -1940,6 +1940,19 @@ class QueryBuilder
 	}
 
 	/**
+	 * 데이터 삽입 후 insert id 반환
+	 * @param array $data
+	 * @return int
+	 */
+	public function insertGetId($data) {
+		$result = $this->insert($data);
+		if (!$result) {
+			return 0;
+		}
+		return (int)$this->db->lastInsertId();
+	}
+
+	/**
 	 * 단일 행 삽입
 	 * @param array $data
 	 * @return bool

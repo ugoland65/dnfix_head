@@ -108,8 +108,10 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 
 .checkbox-td{ width:25px; }
 
-.prd-quick-left{ width:200px; height:100%; background-color:#fff; border-right:1px solid #9c9fae;  position:fixed; }
-.prd-img{ text-align:center; padding-top:20px; }
+.prd-quick-left{ width:200px; height:100%; background-color:#fff; border-right:1px solid #9c9fae;  
+	position:fixed; padding-top:20px; }
+.on_sale_label_wrap{ text-align:center; padding:0 0 5px 0; }
+.prd-img{ text-align:center; }
 
 .prd-quick-info{ margin:0; padding:0; }
 .prd-quick-info > ul{ margin:0; padding:3px 0; box-sizing:border-box;text-align:center; }

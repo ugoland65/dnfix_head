@@ -14,6 +14,8 @@ use App\Controllers\Admin\GodoApiController;
 use App\Controllers\Admin\CsRequestController;
 use App\Controllers\Admin\WorkController;
 use App\Controllers\Admin\CommentController;
+use App\Controllers\Admin\OrderSheetController;
+use App\Controllers\Admin\ProductStockController;
 
 try {
 
@@ -45,6 +47,8 @@ try {
     $router->post('/brand/create', BrandController::class, 'createBrand'); //브랜드 신규생성
     $router->post('/brand/save', BrandController::class, 'saveBrand'); //브랜드 수정
 
+    //상품 관리
+    $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
@@ -52,6 +56,7 @@ try {
     $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
 
     // 상품 처리
+    $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
 
     //공급사
@@ -60,6 +65,12 @@ try {
     $router->post('/provider_product/proc/cancel_match_provider_product', ProductPartnerController::class, 'cancelMatchProviderProduct'); //공급사 상품 매칭 취소
 
     // 재고/발주 관리
+    $router->get('/order/sheet/list', OrderSheetController::class, 'orderSheetList'); //주문서 목록
+    $router->get('/order/sheet/create', OrderSheetController::class, 'orderSheetCreate'); //주문서 생성
+    $router->get('/order/sheet_info/{idx}', OrderSheetController::class, 'orderSheetInfo'); //주문서 상세
+    $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
+    $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
+
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록
     $router->get('/stock/rack_info', RackController::class, 'rackCreate'); //랙신규등록

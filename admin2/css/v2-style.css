@@ -1,3 +1,32 @@
+.on_sale_label{
+	display:inline-block;
+	padding:5px;
+	color:#fff;
+	border-radius:3px;
+	line-height:1.2;
+	font-size:12px;
+  }
+
+.on_sale_label.xs{
+	font-size:11px !important;
+	padding:2px 4px !important;
+}
+.on_sale_label.sm{
+	font-size:12px !important;
+}
+.on_sale_label.md{
+	font-size:14px;
+}
+.on_sale_label.lg{
+	font-size:16px;
+}
+
+.on_sale_label.monthly{
+	background-color:#dc3545;
+}
+.on_sale_label.special{
+	background-color:#28a745;
+}
 
 /* 공통 배지 */
 .grade-badge{

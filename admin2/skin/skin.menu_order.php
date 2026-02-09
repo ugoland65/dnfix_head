@@ -11,8 +11,10 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>발주 관리</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( $_page == "order_sheet_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/order_sheet_main'"><li>주문서 리스트</li></ul>
-
+	<ul <? if( $_page == "order_sheet_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/order_sheet_main'"><li>주문서 리스트 (구)</li></ul>
+	<ul <? if( $pageNameCode == "order_sheet_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/sheet/list'">
+		<li>주문서 리스트 (작업중)</li>
+	</ul>
 	<? /*
 	<ul <? if( $_page == "order_sheet") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/order_sheet'"><li>주문서 v.4</li></ul>
 	*/ ?>
@@ -24,9 +26,13 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>고도몰 연동</ul>
 </div>
 <div class="left-menu-wrap">
+	<?php /*
+	@deprecated 2026-02-05
 	<ul <? if( $_page == "godo_order_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/godo_order_list?mode=ds'">
 		<li>주문 가져오기 (구)</li>
 	</ul>
+	*/ ?>
+
 	<ul <? if( $pageNameCode == "godo_order_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_list'">
 		<li>주문 가져오기</li>
 	</ul>

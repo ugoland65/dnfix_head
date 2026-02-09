@@ -50,7 +50,9 @@ class ProductController extends BaseClass
             $s_margin_group = $requestData['s_margin_group'] ?? null;
             $search_value = $requestData['search_value'] ?? null;
             $rack_code = $requestData['rack_code'] ?? null;
+            $s_sale_mode = $requestData['s_sale_mode'] ?? null;
 
+            //서비스로 넘겨주는 값
             $payload = [
                 'paging' => true,
                 'page' => $page,
@@ -64,6 +66,7 @@ class ProductController extends BaseClass
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
+                's_sale_mode' => $s_sale_mode,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -91,6 +94,7 @@ class ProductController extends BaseClass
                 's_prd_kind' => $s_prd_kind,
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
+                's_sale_mode' => $s_sale_mode,
                 'rack_code' => $rack_code,
                 'in_stock' => $in_stock,
                 'search_value' => $search_value,
@@ -152,6 +156,27 @@ class ProductController extends BaseClass
             'brandForSelect' => $brandForSelect
         ];
 
+    }
+
+
+    /**
+     * 상품 디테일 (가격정보)
+     */
+    public function prdDetailPricePage(Request $request)
+    {
+        try{
+
+            $data = [
+            ];
+
+            return view('admin.product.prd_detail_price', $data);
+
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+        
     }
 
 

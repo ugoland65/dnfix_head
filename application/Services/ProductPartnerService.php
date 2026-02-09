@@ -134,12 +134,18 @@ class ProductPartnerService extends BaseClass
 
         try {
 
+            $status = $postData['status'] ?? '등록대기'; // 상품 상태
             $sale_price = (int)preg_replace('/[,\s]/', '', $postData['sale_price'] ?? 0); // 판매가
             $cost_price = (int)preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
             $order_price = (int)preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
+            $code = $postData['code'] ?? ''; // 상품 코드
             $delivery_fee = (int)preg_replace('/[,\s]/', '', $postData['delivery_fee'] ?? 0); // 배송비
             $is_vat = $postData['is_vat'] ?? 'Y'; // 부가세
             //$vat = preg_replace('/[,\s]/', '', $postData['vat'] ?? 10); // 부가세
+
+            $action_url = $postData['action_url'] ?? ''; //로그용 변수
+            $action_summary = $postData['action_summary'] ?? ''; //로그용 변수
+
 
             // 원가가 없고 주문가와 배송비가 있으면 원가 계산
             /*
@@ -152,7 +158,7 @@ class ProductPartnerService extends BaseClass
             // cost_price에 vat 값을 더함 (모든 경우)
             //$cost_price = $cost_price + $vat;
 
-            if($is_vat == 'N'){
+            if( $is_vat == 'N' ){
                 $vat = $cost_price * 0.1;
                 $cost_price_save = $cost_price;
             }else{
@@ -170,6 +176,7 @@ class ProductPartnerService extends BaseClass
             $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
 
             $inputData = [
+                'status' => $status, // 상품 상태
                 'kind' => $postData['kind'] ?? '', // 상품 구분 (상품 카테고리 코드)
                 'brand_idx' => $postData['brand_idx'] ?? '', // 브랜드 인덱스 (BRAND_DB 테이블의 BD_IDX)
                 'partner_idx' => $postData['partner_idx'] ?? '', // 공급사 인덱스 (partners 테이블의 idx)
@@ -179,6 +186,7 @@ class ProductPartnerService extends BaseClass
                 'cost_price' => $cost_price, // 원가 (vat 포함)
                 'order_price' => $order_price, // 주문가
                 'price_data' => $price_data, // 가격 데이터
+                'code' => $code, // 상품 코드
                 'img_mode' => $postData['img_mode'] ?? '', // 이미지 모드 (out: 외부 이미지, this: 서버에 등록)
                 'img_src' => $postData['img_src'] ?? '', // 이미지 URL 또는 경로
                 'hbti_type' => $postData['hbti_type'] ?? '', // HBTI 타입 정보
@@ -187,16 +195,44 @@ class ProductPartnerService extends BaseClass
                 'memo' => $postData['memo'] ?? '', // 메모
             ];
 
+            $beforeData = [];
+            $actionMode = 'create';
+            $targetPk = null;
+
             if(empty($postData['prd_idx'])){
                 // prd_idx가 없으면 새 레코드 삽입
                 $result = ProductPartnerModel::insert($inputData);
             }else{
+                $actionMode = 'update';
+                $targetPk = $postData['prd_idx'];
+                $beforeData = ProductPartnerModel::find($postData['prd_idx'])->toArray() ?? [];
                 // prd_idx가 있으면 기존 레코드 업데이트
                 $result = ProductPartnerModel::find($postData['prd_idx'])->update($inputData);
             }
 
-            if($result){
+            if( $result ){
+
+                if(empty($action_summary)){
+                    $action_summary = $actionMode === 'create' ? '파트너 상품 등록' : '파트너 상품 수정';
+                }
+
+                $afterData = array_merge($beforeData, $inputData);
+                $adminActionLogService = new AdminActionLogService();
+                $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
+                $adminActionLogService->log([
+                    'target_type' => 'prd_partner',
+                    'target_table' => 'prd_partner',
+                    'target_pk' => (string)($targetPk ?? ''),
+                    'action_mode' => $actionMode,
+                    'action_summary' => $action_summary,
+                    'before_json' => $beforeData,
+                    'after_json' => $afterData,
+                    'diff_json' => $diff,
+                    'action_url' => $action_url ?? null,
+                ]);
+
                 return ['status' => 'success', 'message' => '저장되었습니다.'];
+
             }else{
                 throw new \Exception('상품 공급사 저장에 실패했습니다.');
             }

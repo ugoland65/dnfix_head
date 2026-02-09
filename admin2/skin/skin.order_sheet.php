@@ -50,26 +50,8 @@ if( !empty($_idx) ){
 $_oop_idx = $_GET['oop_idx'] ?? $_POST['oop_idx'] ?? "";
 
 ?>
-<style type="text/css">
-#contents_body{   }
-#contents_body_wrap{ padding: 0 15px 15px !important;  }
-.ost-head{ height:40px; line-height:40px; font-size:18px; font-weight:600; padding-left:180px;  }
-.ost-wrap{ display:table; width:100%; height:calc(100% - 40px); background-color:#fff; border-spacing:0; border-collapse:collapse; }
-.ost-wrap > ul { display:table-cell; vertical-align:top; height:100%; box-sizing:border-box; border:1px solid #888; }
-.ost-wrap > ul.ul2{ position:relative; }
-.ost-wrap > ul.ul3{ width:310px; padding:10px; }
 
-#order_sheet_detail{ width:100%; height:100%; }
-
-.tabmenu-line{ height:42px;border-bottom:solid 2px #006edc; }
-.tabmenu-line > *{ float:left; width:25%; }
-.tabmenu-line > * span{ display:block; margin:0 0 0 -1px; height:40px; font-weight:600; color:#676767;text-align:center;line-height:40px;border:solid 1px #cdcdcd; border-bottom:0;background:#eee;box-sizing:border-box}
-.tabmenu-line > *:first-child span{margin:0}
-.tabmenu-line > .active span{position:relative;height:42px; color:#006edc; border-color:#006edc; background:#fff }
-
-.order-sheet-info-wrap{ margin-top:10px; padding:15px; border:1px solid #ddd; }
-.order-sheet-info-wrap > ul.name{ font-size:15px; }
-</style>
+<link rel="stylesheet" href="/admin2/css/order_sheet.css?ver=<?=time()?>">
 
 <div id="contents_head">
 	<h1>주문서 v.4 - ( <?=$_os_state_text[$oo_data['oo_state'] ?? ''] ?? ''?> ) <?=$oo_data['oo_name'] ?? ''?> </h1>

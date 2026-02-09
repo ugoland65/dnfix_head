@@ -53,6 +53,8 @@ class ProductApi extends BaseClass
                 's_margin_group' => $request->input('s_margin_group'),
                 'search_value' => $request->input('search_value'),
 
+                'in_stock' => $request->input('in_stock'),
+
                 // 증분 동기화용 (서비스에서 처리하도록 확장 필요)
                 'since' => $request->input('since'),
             ];

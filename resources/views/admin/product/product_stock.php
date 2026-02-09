@@ -50,6 +50,14 @@
                 </select>
             </ul>
             <ul>
+                <select name="s_sale_mode" id="s_sale_mode" >
+                    <option value="">할인모드</option>
+                    <option value="monthly" <? if( $s_sale_mode == 'monthly' ) echo "selected";?> >월간할인</option>
+                    <option value="special" <? if( $s_sale_mode == 'special' ) echo "selected";?> >특가할인</option>
+                    <option value="sale_all" <? if( $s_sale_mode == 'sale_all' ) echo "selected";?> >할인전체</option>
+                </select>
+            </ul>
+            <ul>
                 <select name="s_margin_group" id="s_margin_group" >
                     <option value="">마진그룹 </option>
                     <?
@@ -124,6 +132,7 @@
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
                                 <th>수입국</th>
+                                <th>할인모드</th>
                                 <th>판매가</th>
                                 <th>책정원가</th>
                                 <th>마진율</th>
@@ -213,6 +222,13 @@
                                     </td>
                                     <td class="text-center"><?=$product['prd_kind_name']?></td>
                                     <td>
+                                        <?php if( $product['is_sale_month'] ){ ?>
+                                            <label class="on_sale_label xs monthly">월간할인</label>
+                                        <?php } ?>
+                                        <?php if( $product['is_sale_special'] ){ ?>
+                                            <label class="on_sale_label xs special">특가할인</label>
+                                        <?php } ?>
+
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
                                         <?php if( !empty($product['cd_memo2']) ){ ?>
                                             <div class="m-t-3" style="color:#ff0000"><span class="prd-memo">- <?=$product['cd_memo2']?></span></div>
@@ -269,6 +285,9 @@
                                         ?>
                                     </td>
                                     <td class="text-center"><?=$_national_text[$product['cd_national']]?></td>
+                                    <td class="text-center">
+                                        <?=$product['is_sale_month'] ? '월간할인' : ($product['is_sale_special'] ? '특가할인' : '할인전체')?>
+                                    </td>
                                     <td class="text-right"><?=number_format($product['cd_sale_price'])?></td>
                                     <td class="text-right"><?=number_format($product['cd_cost_price'])?></td>
                                     <td class="text-right"><b><?=$_margin_per?>%</b></td>
@@ -417,6 +436,7 @@
             'rack_code': $("#rack_code").val(),
             'in_stock': $("#in_stock").val(),
             'search_value': $("#search_value").val(),
+            's_sale_mode': $("#s_sale_mode").val(),
         };
 
         // 추가 파라미터가 있으면 병합
