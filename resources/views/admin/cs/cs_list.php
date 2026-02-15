@@ -1,10 +1,55 @@
 <div id="contents_head">
 	<h1>C/S 관리</h1>
 	<h3>C/S 목록입니다.</h3>
+
+    <div class="head-count-tap-wrap m-l-20">
+        <ul>
+            <li>
+                <span>전체</span>
+            </li>
+
+            <?php foreach ($csRequestCount as $row) { ?>
+            <li>
+                <span><?= $row['cs_status'] ?></span>
+                <b><?= number_format($row['count']) ?></b>
+            </li>
+            <?php } ?>
+
+            <li>
+                <span>처리완료</span>
+            </li>
+        </ul>
+    </div>
+
 </div>
 <div id="contents_body">
 	<div id="contents_body_wrap">
 		<div id="list_new_wrap">
+
+            <div class="table-top">
+                <ul class="total">
+                    Total : <span><b><?= number_format($pagination['total']) ?></b></span> &nbsp; | &nbsp;
+                    <span><b><?= $pagination['current_page'] ?></b></span> / <?= $pagination['last_page'] ?> page
+                </ul>
+
+				<ul>
+					<select name="s_cs_status" id="s_cs_status">
+						<option value="">처리상태</option>
+						<option value="요청" <? if ($s_cs_status == '요청') echo "selected"; ?>>요청</option>
+						<option value="처리중" <? if ($s_cs_status == '처리중') echo "selected"; ?>>처리중</option>
+                        <option value="요청+처리중" <? if ($s_cs_status == '요청+처리중') echo "selected"; ?>>요청+처리중</option>
+						<option value="처리완료" <? if ($s_cs_status == '처리완료') echo "selected"; ?>>처리완료</option>
+					</select>
+				</ul>
+				<ul>
+					<input type="text" name="s_keyword" id="s_keyword" placeholder="회원 ID, 주문번호" value="<?= $s_keyword ?? '' ?>">
+				</ul>
+				<ul>
+					<button type="button" id="searchBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm">
+						<i class="fas fa-search"></i> 검색
+					</button>
+				</ul>
+            </div>
             <div class="table-wrap5 m-t-5">
 				<div class="scroll-wrap">
 
@@ -30,8 +75,21 @@
 						<tbody>
                         <?php
                             foreach ($csRequestList as $row) {
+
+                                if( $row['cs_status'] == '처리완료' ){
+                                    $tr_class = 'status_end2';
+
+                                }elseif( $row['cs_status'] == '처리중' ){
+                                    $tr_class = 'status_bl';
+
+                                }elseif( $row['cs_status'] == '요청' ){
+                                        $tr_class = 'status_bl';
+                                }else{
+                                    $tr_class = '';
+                                }
+
                         ?>
-                            <tr>
+                            <tr class="<?= $tr_class ?>">
                                 <td><input type="checkbox" name="check_idx[]" value="<?= $row['idx'] ?>"></td>
                                 <td class="list-idx"><?= $row['idx'] ?></td>
                                 <td><?= $row['cs_status'] ?></td>
@@ -67,6 +125,17 @@
         </div>
 	</div>
 </div>
+<div id="contents_bottom">
+	<div class="pageing-wrap"><?= $paginationHtml ?></div>
+	<div class="m-l-20">
+
+        <?php /*
+		선택된 상품 <span id="selected_product_count">0</span>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택한 상품 업무요청하기</button>
+        */ ?>
+
+	</div>
+</div>
 <script>
     function godoMemberCrm(mem_no){
         window.open(
@@ -77,4 +146,55 @@
     function csDetail(idx){
         openDialog("/admin/cs/cs_detail/" + idx, { idx: idx }, "C/S 상세", "800px");
     }
+
+	// 검색 파라미터 수집 공통 함수
+	function getSearchParams(additionalParams) {
+		var params = {};
+
+		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
+		var fields = {
+			's_cs_status': $("#s_cs_status").val(),
+			's_keyword': $("#s_keyword").val(),
+		};
+
+		// 추가 파라미터가 있으면 병합
+		if (additionalParams) {
+			fields = Object.assign(fields, additionalParams);
+		}
+
+		// 유효한 값만 params에 추가
+		for (var key in fields) {
+			if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+				params[key] = fields[key];
+			}
+		}
+
+		return params;
+	}
+
+	// 검색 파라미터로 페이지 이동
+	function navigateWithParams(params) {
+		// URL 쿼리 문자열 생성
+		var queryString = Object.keys(params)
+			.map(function(key) {
+				return key + '=' + encodeURIComponent(params[key]);
+			})
+			.join('&');
+
+		// 페이지 이동
+		location.href = '/admin/cs/cs_list' + (queryString ? '?' + queryString : '');
+	}
+
+    $(function() {
+
+		$("#searchBtn").on('click', function() {
+			// 검색 파라미터 수집
+			var params = getSearchParams();
+
+			// 페이지 이동
+			navigateWithParams(params);
+		});
+
+    });
+
 </script>

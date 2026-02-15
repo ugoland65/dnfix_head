@@ -217,6 +217,7 @@
                                         <th class="list-idx">고유번호</th>
                                         <th class="">분류</th>
                                         <th class="">제목</th>
+                                        <th class="">참조상품</th>
                                         <th class="">상태</th>
                                         <th class="">작성자</th>
                                         <th class="">참여자</th>
@@ -238,6 +239,13 @@
                                         <td class="list-idx"><?= $row['idx'] ?></td>
                                         <td><?= $row['category'] ?></td>
                                         <td><a href="/admin/work/TaskRequestDetail/<?= $row['idx'] ?>"><span style="font-size:13px; font-weight:600;"><?= $row['subject'] ?? '제목없음'?></span></a></td>
+                                        <td class="text-center">
+                                            <?php if( $row['withdb_mode'] == "provider_product" ){ ?>
+                                                공급사상품 : <?= $row['withdb_pks_count'] ?>
+                                            <?php } else { ?>
+                                                -
+                                            <?php } ?>
+                                        </td>
                                         <td><?= $row['state'] ?></td>
                                         <td>
                                             <div class="mb-profile-box sm" data-idx="<?= $row['reg_idx'] ?>" >

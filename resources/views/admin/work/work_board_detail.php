@@ -202,16 +202,167 @@
                         </tr>
 
                         <?php if( !empty($workLog['link']) ){ ?>
-                        <tr>
-                            <th>참조 링크</th>
-                            <td>
-                                <div>
-                                    <?php foreach($workLog['link'] as $link){ ?>
-                                        <ul><a href="<?= $link ?>" target="_blank"><?= $link ?></a></ul>
+                            <tr>
+                                <th>참조 링크</th>
+                                <td>
+                                    <div>
+                                        <?php foreach($workLog['link'] as $link){ ?>
+                                            <ul><a href="<?= $link ?>" target="_blank"><?= $link ?></a></ul>
+                                        <?php } ?>
+                                    </div>
+                                </td>
+                            </tr>
+                        <?php } ?>
+
+                        <?php if( !empty($withdb) && !empty($withdbdata) ){ ?>
+                            <tr>
+                                <td colspan="2" style="padding:15px;">
+
+                                    <input type="hidden" name="withdb_mode" value="<?= $withdb ?>" >
+
+                                    <?php if( $withdb == "provider_product" ){ ?>
+                                        
+                                        <h3 style="font-size:16px; font-weight: 600; margin-bottom:5px;">공급사 상품 참조</h3>
+                                        <table class="table-style">
+                                            <thead>
+                                                <tr>
+                                                    <th class="list-idx">고유번호</th>
+                                                    <th class="">등록상태</th>
+                                                    <th class="" style="width:80px;">이미지</th>
+                                                    <th class="" style="width:50px;">분류</th>
+                                                    <th class="prd-name">이름</th>
+                                                    <th class="">브랜드</th>
+                                                    <th class="">공급사</th>
+                                                    <th class="">코드</th>
+                                                    <th class="">고도몰<br>상품코드</th>
+                                                    <th class="">고도몰<br>판매가</th>
+                                                    <th class="">상품원가<br>/주문가</th>
+                                                    <th class="">공급사<br>이미지</th>
+                                                    <th class="prd-name">공급사<br>상품명</th>
+                                                    <th class="">공급사<br>상품코드</th>
+                                                    <th class="">공급사<br>판매상태</th>
+                                                    <th class="">공급 2차</th>
+                                                    <th class="">수정일<br>등록일</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach($withdbdata as $item){ ?>
+                                                    <tr>
+                                                        <td class="text-center">
+                                                            <?= $item['idx'] ?>
+                                                            <input type="hidden" name="pks[]" value="<?= $item['idx'] ?>" >
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <?= $item['status'] ?>
+                                                            <?php if( $item['status'] == '품절' ){ ?>
+                                                                <br><span class="text-red"><?=date('Y.m.d', strtotime($item['sold_out_date'])) ?? ''?></span>
+                                                            <?php } ?>
+                                                        </td>
+                                                        <td>
+                                                            <img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
+                                                        </td>
+                                                        <td class="text-center"><?= $prd_kind_name[$item['kind']] ?? "미지정" ?></td>
+                                                        <td class="prd-name">
+                                                            <a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
+                                                            <? if (!empty($item['memo'])) { ?>
+                                                                <br><span class="prd-memo"><?= $item['memo'] ?></span>
+                                                            <? } ?>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <?php if( !empty($item['brand_idx']) ){ ?>
+                                                                <?= $item['brand_name'] ?>
+                                                            <?php } else { ?>
+                                                                <span class="text-red">미등록</span>
+                                                            <?php } ?>
+                                                        </td>
+                                                        <td class="text-center"><?= $item['partner_name'] ?></td>
+                                                        <td class="text-center"><?= $item['code'] ?></td>
+                                                        <td class="text-center">
+                                                            <?php if( !empty($item['godo_goodsNo']) ){ ?>
+                                                                <div style="font-size: 12px;">
+                                                                    #<?= $item['godo_goodsNo'] ?>
+                                                                </div>
+                                                                <div class="m-t-3">
+                                                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $item['godo_goodsNo'] ?>);">쑈당몰 상품보기</button>
+                                                                </div>
+                                                                <div class="m-t-5">
+                                                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $item['godo_goodsNo'] ?>);">관리자 상품보기</button>
+                                                                </div>
+                                                            <?php } else { ?>
+                                                                <span class="text-red">미등록</span>
+                                                            <?php } ?>
+                                                        </td>
+                                                        <td class="text-right"><?= number_format($item['sale_price']) ?></td>
+                                                        <td class="text-right">
+                                                            <?= number_format($item['cost_price']) ?>
+                                                            <br><b><?= number_format($item['order_price']) ?></b>
+                                                        </td>
+                                                        <td class="text-center">
+                                                            <?php
+                                                            if (!empty($item['supplier_img_src'])) {
+                                                            ?>
+                                                                <img src="<?= $item['supplier_img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
+                                                            <?php } else { ?>
+                                                                -
+                                                            <?php } ?>
+                                                        </td>
+                                                        <td class="prd-name text-left">
+                                                            <a href="javascript:goSupplierProductEdit('<?= $item['supplier_prd_idx'] ?>');"><?= $item['name_p'] ?? '-' ?></a>
+                                                            <?php
+                                                            if (!empty($item['matching_option'])) {
+                                                            ?>
+                                                                <br>( 옵션 : <?= $item['matching_option'] ?? '-' ?>)
+                                                            <?php
+                                                            }
+                                                            ?>
+                                                        </td>
+
+                                                        <!-- 공급사 상품코드 -->
+                                                        <td class="text-center">
+                                                            <?php
+                                                                if (!empty($item['supplier_prd_idx'])) {
+                                                            ?>
+                                                                <div style="font-size: 12px;">
+                                                                    #<?= $item['supplier_prd_pk'] ?>
+                                                                </div>
+                                                                <div class="m-t-3">
+                                                                    <button type="button" class="btnstyle1 btnstyle1-xs"
+                                                                        onclick="goSupplierProduct('<?= $item['supplier_site'] ?>', '<?= $item['supplier_prd_pk'] ?>');">공급사 사이트</button>
+                                                                </div>
+                                                            <?php } else { ?>
+                                                                -
+                                                            <?php } ?>
+                                                        </td>
+
+                                                        <!-- 공급사 판매상태 -->
+                                                        <td class="text-center">
+                                                            <?php
+                                                            if (!empty($item['supplier_prd_idx'])) {
+                                                            ?>
+                                                                <?= $supplierProductMap[$item['supplier_prd_idx']]['status'] ?? '-' ?>
+                                                                <?php if( ($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절' ){ ?>
+                                                                    <br><span class="text-red"><?=date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? ''?></span>
+                                                                <?php } ?>
+                                                            <?php } else { ?>
+                                                                -
+                                                            <?php } ?>
+                                                        </td>
+
+                                                        <td class="text-center"><?= $item['supplier_2nd_name'] ?? '-' ?></td>
+
+                                                        <td class="text-center">
+                                                            <?= date('Y.m.d H:i', strtotime($item['updated_at'])) ?? '-' ?><br>
+                                                            <?= date('Y.m.d H:i', strtotime($item['created_at'])) ?? '-' ?>
+                                                        </td>
+
+                                                    </tr>
+                                                <?php } ?>
+                                            </tbody>
+                                        </table>
                                     <?php } ?>
-                                </div>
-                            </td>
-                        </tr>
+
+                                </td>
+                            </tr>
                         <?php } ?>
 
                         <tr>

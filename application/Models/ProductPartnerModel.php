@@ -38,6 +38,7 @@ class ProductPartnerModel extends BaseModel
 		'matching_option',
 		'matching_data',
 		'memo',
+		'memo_work',
 		'sold_out_date',
 	];	
 

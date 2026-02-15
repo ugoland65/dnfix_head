@@ -167,8 +167,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 	</ul>
 </div>
 
-<script type="text/javascript"> 
-<!-- 
+<script> 
 var prdInfo = function() {
 
 	var prd_idx = "<?=$prd_data['CD_IDX'] ?? ''?>";
@@ -250,6 +249,27 @@ var prdInfo = function() {
 
 		makePsIdx : function( ) {
 
+			var payload = {
+            	action_mode: 'create_stock_code',
+				prd_idx: prd_idx
+			};
+
+			ajaxRequest('/admin/product/stock/action', payload)
+				.done(function(res) {
+					if (res && res.success) {
+						alert(res.message || '처리가 완료되었습니다.');
+						location.reload();
+					} else {
+						alert(res && res.message ? res.message : '처리 실패');
+					}
+				})
+				.fail(function(res) {
+					alert(res && res.message ? res.message : '에러');
+				});
+
+
+			/*
+			@deprecated
 			$.ajax({
 				url: "/ad/processing/prd",
 				data: { "a_mode":"new_stock_psidx", "prd_idx":prd_idx },
@@ -272,6 +292,7 @@ var prdInfo = function() {
 					//$(obj).attr('disabled', false);
 				}
 			});
+			*/
 
 		},
 
@@ -361,7 +382,6 @@ $(function(){
 	prdInfo.mode('','info');
 
 });
-//--> 
 </script>
 <?
 include ($docRoot."/admin2/layout/footer_popup.php");

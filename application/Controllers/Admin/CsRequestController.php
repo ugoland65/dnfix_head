@@ -17,9 +17,21 @@ class CsRequestController extends BaseClass
 
             $requestData = $request->all();
 
+            $cs_status = $requestData['s_cs_status'] ?? '요청+처리중';
+
             $csRequestService = new CsRequestService();
-            $csRequestList = $csRequestService->getCsRequestList();
+
+            $csRequestCount = $csRequestService->getCsRequestCount();
+
+            //dd($csRequestCount);
+
+            $payload = [
+                'cs_status' => $cs_status,
+            ];
+            $csRequestList = $csRequestService->getCsRequestList($payload);
             $data = [
+                's_cs_status' => $cs_status,
+                'csRequestCount' => $csRequestCount,
                 'csRequestList' => $csRequestList,
             ];
 

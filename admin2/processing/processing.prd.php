@@ -1020,12 +1020,12 @@ if( $_a_mode == "prd_reg" ){
 	$_op_won = $_POST['op_won'] ?? "";
 	$_cost_p = $_POST['cost_p'] ?? "";
 
-/*
-	$response = array('success' => false, 'msg' => '/'.$_cost_cal_kind.'/' );
-	header('Content-Type: application/json');
-	echo json_encode($response); 
-	exit;
-*/
+	/*
+		$response = array('success' => false, 'msg' => '/'.$_cost_cal_kind.'/' );
+		header('Content-Type: application/json');
+		echo json_encode($response); 
+		exit;
+	*/
 
 	$prd_data = sql_fetch_array(sql_query_error("select cd_size_fn  from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
 
@@ -1543,20 +1543,20 @@ if( $_a_mode == "prd_reg" ){
 
 	}
 
-/*
-	$query = "INSERT prd_stock_unit SET
-		psu_stock_idx = '".$_ps_idx."',
-		psu_day = '".$_stock_day."',
-		psu_mode = '".$_stock_mode."',
-		psu_qry = '".$_stock_qty."',
-		psu_stock = '".$_prd_stock_count."',
-		psu_kind = '".$_stock_kind."',
-		psu_memo = '".$_stock_memo."',
-		psu_id = '".$_ad_id."',
-		psu_date = '".$check_time ."',
-		reg = '".$_reg."' ";
-	sql_query_error($query);
-*/
+	/*
+		$query = "INSERT prd_stock_unit SET
+			psu_stock_idx = '".$_ps_idx."',
+			psu_day = '".$_stock_day."',
+			psu_mode = '".$_stock_mode."',
+			psu_qry = '".$_stock_qty."',
+			psu_stock = '".$_prd_stock_count."',
+			psu_kind = '".$_stock_kind."',
+			psu_memo = '".$_stock_memo."',
+			psu_id = '".$_ad_id."',
+			psu_date = '".$check_time ."',
+			reg = '".$_reg."' ";
+		sql_query_error($query);
+	*/
 
 	$response = array('success' => true, 'msg' => '완료', 'stock' => $_prd_stock_count, 'stock_hold' => $_prd_stock_hold_count );
 	
@@ -1578,7 +1578,10 @@ if( $_a_mode == "prd_reg" ){
 	$response = array('success' => true, 'msg' => '완료' );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 재고코드 생성
+/*
+@deprecated
+재고코드 생성
+*/
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "new_stock_psidx" ){
 

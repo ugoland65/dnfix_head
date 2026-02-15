@@ -40,7 +40,9 @@ class WorkService
                 'target_mb',
                 'reg_date',
                 'cmt_b_count',
-                'cmt_s_count'
+                'cmt_s_count',
+                'withdb_mode',
+                'withdb_data',
             ])
             ->when($category, function($query) use ($category) {
                 $query->where('category', $category);
@@ -96,6 +98,9 @@ class WorkService
         $mentionMappingData = $adminServices->getMentionMappingData();
 
         foreach ($result['data'] as &$row) {
+
+            $row['withdb_data'] = json_decode($row['withdb_data'] ?? '[]', true);
+            $row['withdb_pks_count'] = count($row['withdb_data']['pks'] ?? []);
             $row['reg_name'] = $mentionMappingData[$row['reg_idx']]['ad_name'] ?? '';
             $row['reg_nick'] = $mentionMappingData[$row['reg_idx']]['ad_nick'] ?? '';
             $row['reg_image'] = $mentionMappingData[$row['reg_idx']]['ad_image'] ?? '';
@@ -155,6 +160,7 @@ class WorkService
 
         $result['view_check'] = json_decode($result['view_check'] ?? '[]', true);
         $result['link'] = json_decode($result['link'] ?? '[]', true);
+        $result['withdb_data'] = json_decode($result['withdb_data'] ?? '[]', true);
 
         return $result;
     }
@@ -179,6 +185,8 @@ class WorkService
         $work_log_file = $data['work_log_file'] ?? [];
         $link = $data['link'] ?? [];
         $target_mb_idx = $data['target_mb_idx'] ?? [];
+        $withdb_mode = $data['withdb_mode'] ?? '';
+        $pks = $data['pks'] ?? [];
 
         if (!is_array($target_mb_idx)) {
             $target_mb_idx = [];
@@ -282,6 +290,13 @@ class WorkService
 
         $link_json = json_encode($link, JSON_UNESCAPED_UNICODE);
 
+        $withdb_data_json = [
+            'pks' => $pks,
+            'mode' => $withdb_mode,
+        ];
+
+        $withdb_data = json_encode($withdb_data_json, JSON_UNESCAPED_UNICODE);
+
         $updateData = [
             'subject' => $subject,
             'state' => $state,
@@ -289,6 +304,8 @@ class WorkService
             'category' => $category,
             'target_mb' => $target_mb,
             'link' => $link_json,
+            'withdb_mode' => $withdb_mode,
+            'withdb_data' => $withdb_data,
         ];
 
         $auth = AdminAuth::user();

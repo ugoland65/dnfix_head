@@ -74,7 +74,7 @@
 	}
 	</style>
 	
-<?php if ($_SESSION['_flash']['success']): ?>
+<?php if (!empty($_SESSION['_flash']['success'])): ?>
 <script>
   alert('<?=$_SESSION['_flash']['success']?>');
 </script>
@@ -334,7 +334,9 @@ $gnb_lang = "ko";
 					</ul>
 				</div>
 			</li>
-			
+
+			<li class="<?=$gnb_lang?> <? if($pageGroup == "ai") echo "active"; ?>"><a href="/admin/ai/rulebook/detail/1">AI 룰북</a></li>
+
 			<?php
 				/*
 				<li class="<?=$gnb_lang?> <? if($pageGroup == "product2") echo "active"; ?>"><a href="/admin2/product2/prd2_stock_excel.php">상품관리 v.2</a></li>
@@ -364,7 +366,7 @@ $gnb_lang = "ko";
 				</div>
 			</li>    
 			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
-				<a href="/ad/provider/supplier_product">공급사 관리</a>
+				<a href="/admin/provider_product/db">공급사 관리</a>
 			</li>   
             <li class="ko <?php if( $_pageGroup == "order" || $pageGroup2 == "order" ) echo "active"; ?> have-sub-menu">
 				재고/발주
@@ -552,7 +554,7 @@ $gnb_lang = "ko";
 							include $menu_file;
 						}
 					}
-					if( $_pageGroup ){
+					if( !empty($_pageGroup) ){
 						$menu_file2 = $_dir."/skin.menu_".$_pageGroup.".php";
 						if( file_exists($menu_file2) ){
 							include $menu_file2;

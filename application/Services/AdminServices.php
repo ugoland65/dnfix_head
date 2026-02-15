@@ -274,6 +274,22 @@ class AdminServices
      */
     public function getMentionTargetTelegramId($target_mb_idxs)
     {
+        if (empty($target_mb_idxs)) {
+            return [];
+        }
+
+        if (!is_array($target_mb_idxs)) {
+            $target_mb_idxs = [$target_mb_idxs];
+        }
+
+        $target_mb_idxs = array_values(array_unique(array_filter($target_mb_idxs, static function ($value) {
+            return $value !== null && $value !== '';
+        })));
+
+        if (empty($target_mb_idxs)) {
+            return [];
+        }
+
         $query = AdminModel::query()
             ->select(['idx', 'ad_telegram_token'])
             ->whereIn('idx', $target_mb_idxs)

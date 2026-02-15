@@ -44,10 +44,12 @@ include ($docRoot."/admin2/layout/header_popup.php");
 	<div class="prd-quick-info">
 		<ul class="prd-brand-name"><?=$prd_data['brand_name'] ?? ''?></ul>
 		<ul class="prd-name"><b><?=$prd_data['name'] ?? ''?></b></ul>
-        <ul class="prd-stock-code m-t-10"><b><?=$prd_data['code'] ?? ''?></b></ul>
 
         <?php
         /*
+
+        <ul class="prd-stock-code m-t-10"><b><?=$prd_data['code'] ?? ''?></b></ul>
+
             if( !empty($prd_data['godo_is_option']) ){
         ?>
         <ul class="prd-option m-t-10">옵션있음</ul>
@@ -67,12 +69,9 @@ include ($docRoot."/admin2/layout/header_popup.php");
         <ul class="prd-sale-price"><b><?=number_format($prd_data['sale_price'])?></b></ul>
         <?php } ?>
 
-        <?php if( !empty($prd_data['godo_goodsNo']) ){ ?>
-		<ul>
-			<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?=$prd_data['godo_goodsNo'] ?? ''?>');">쑈당몰 상품보기</button>
-		</ul>
-		<?php } ?>
+        <?php if( !empty($prd_data['memo']) ){ ?>
         <ul class="prd-memo m-t-10"><?=$prd_data['memo'] ?? ''?></ul>
+        <?php } ?>
 
 		<?php if( !empty($prd_data['godo_goodsNo']) ){ ?>
 		<ul>
@@ -85,7 +84,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
     <?php
         if( !empty($prd_data['supplier_img_src']) ){
     ?>
-    <div class="prd-img">
+    <div class="prd-img m-t-10">
 		<img src="<?=$prd_data['supplier_img_src']?>" style="height:150px; border:1px solid #eee !important;">
 	</div>
     <?php
@@ -121,8 +120,8 @@ include ($docRoot."/admin2/layout/header_popup.php");
 	<div class="crm-menu m-t-10">
 		<ul class="<? if( $requestData['vmode'] == 'info' ) echo "active" ?>" data-mode="info">상품정보</ul>
 		<ul class="<? if( $requestData['vmode'] == 'match' ) echo "active" ?>" data-mode="match">검색매칭</ul>
+        <ul class="<? if( $requestData['vmode'] == 'log' ) echo "active" ?>" data-mode="log">수정로그</ul>
 	</div>
-
 
 </div>
 
@@ -152,11 +151,14 @@ const prd_idx = '<?=$requestData['prd_idx']?>';
 const prdProviderInfo = (function(){
 
     const API_ENDPOINTS = {
-        procSave: '/ad/proc/Admin/Product/saveProductPartner',
-        info: '/ad/ajax/prd_provider_info_form',
+        //procSave: '/ad/proc/Admin/Product/saveProductPartner',
+        //info: '/ad/ajax/prd_provider_info_form',
+        procSave: '/admin/provider_product/save',
+        info: '/admin/provider_product/detail',
         match: '/ad/ajax/prd_provider_info_match',
         cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product/',
         loadGodoGoodsInfo: '/router/loadGodoGoodsInfo/',
+        log: '/admin/admin_action_log/list',
     };
 
     /**
@@ -166,15 +168,21 @@ const prdProviderInfo = (function(){
      */
     function view(mode){
 
+        var endPoint = '';
+        var payload = {};
+
         if( mode == 'info'){
             endPoint = API_ENDPOINTS.info;
+            payload = { prd_idx : prd_idx };
         }else if( mode == 'match'){
             endPoint = API_ENDPOINTS.match;
+            payload = { prd_idx : prd_idx };
+        }else if( mode == 'log'){
+            endPoint = API_ENDPOINTS.log;
+            payload = { prd_idx : prd_idx, target_type : 'prd_partner' };
         }
 
-        ajaxRequest(endPoint, {
-                prd_idx
-            }, {  method: 'GET', dataType: 'html' })
+        ajaxRequest(endPoint, payload, {  method: 'GET', dataType: 'html' })
             .then((getdata) => {
                 $('#crm_body').html(getdata);
             })

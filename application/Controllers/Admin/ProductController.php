@@ -316,6 +316,8 @@ class ProductController extends BaseClass
 
 
     /**
+     *@deprecated 사용하지 않을 예정
+
      * 상품 공급사 상세 화면
      * @skin : skin.prd_provider_info.php
      * @return array
@@ -349,6 +351,7 @@ class ProductController extends BaseClass
 
 
     /**
+     * @deprecated 사용하지 않을 예정
      * 공급사 상품 저장
      * @return array
      */

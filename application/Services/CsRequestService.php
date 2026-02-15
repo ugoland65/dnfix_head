@@ -15,10 +15,20 @@ class CsRequestService
      * 
      * @return array
      */
-    public function getCsRequestList()
+    public function getCsRequestList($criteria)
     {
         
+        $cs_status = $criteria['cs_status'] ?? '요청+처리중';
+
         $query = CsRequestModel::query()
+            ->when($cs_status, function($query) use ($cs_status) {
+                if( $cs_status == '요청+처리중' ){
+                    $query->where('cs_status', '요청');
+                    $query->orWhere('cs_status', '처리중');
+                }else{
+                    $query->where('cs_status', $cs_status);
+                }
+            })
             ->orderBy('idx', 'desc')
             ->get();
 
@@ -34,6 +44,26 @@ class CsRequestService
             $row['reg_name'] = $adminMap[$row['reg_pk']]['ad_name'] ?? '';
         }
         unset($row);
+
+        return $result;
+    }
+
+
+    /**
+     * C/S 상태별 카운트 조회
+     * 
+     * @return array
+     */
+    public function getCsRequestCount()
+    {
+        $query = CsRequestModel::query()
+            ->select(['cs_status', 'COUNT(*) as count'])
+            ->where('cs_status', '!=', '처리완료')
+            ->groupBy('cs_status')
+            ->get()
+            ->toArray();
+
+        $result = $query;
 
         return $result;
     }

@@ -7,8 +7,77 @@ use App\Core\BaseClass;
 use App\Models\ProductStockModel;
 use App\Services\ProductService;
 use App\Core\AuthAdmin;
+use App\Services\AdminActionLogService;
 class ProductStockService extends BaseClass 
 {
+
+    /**
+     * 재고코드 생성
+     * @param array $requestData
+     * @return 
+     */
+    public function createStockCode($data)
+    {
+        $prd_idx = $data['prd_idx'] ?? null;
+
+        if( empty($prd_idx) ){
+            throw new Exception('필수 값이 누락되었습니다.');
+        }
+
+        $productStock = ProductStockModel::where('ps_prd_idx', $prd_idx)->first();
+        if( !empty($productStock) ){
+            throw new Exception('이미 재고코드가 있습니다.');
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $insertData = [
+            'ps_prd_idx' => $prd_idx,
+            'ps_rack_code' => '',
+            'ps_stock' => 0,
+            'ps_stock_hold' => 0,
+            'ps_stock_all' => 0,
+            'ps_income' => null,
+            'ps_last_in' => null,
+            'ps_update_date' => $now,
+            'ps_in_date' => null,
+            'ps_last_date' => $now,
+            'ps_soldout_date' => $now,
+            'ps_sale_date' => date('Y-m-d'),
+            'ps_sale_log' => '',
+            'ps_sale_data' => '{}',
+            'ps_in_sale_s' => $now,
+            'ps_in_sale_e' => $now,
+            'ps_in_sale_data' => '',
+            'ps_stock_object' => 'Y',
+            'ps_alarm_count' => 0,
+            'ps_alarm_message' => '',
+            'ps_mode' => 'basic',
+            'ps_kind' => '',
+            'ps_name' => '',
+            'ps_set_value' => '',
+            'ps_alarm_yn' => 'N',
+            'ps_cafe24_sms' => '',
+            'is_sale_month' => 0,
+            'is_sale_special' => 0,
+        ];
+
+        ProductStockModel::create($insertData);
+
+
+
+        $adminActionLogService = new AdminActionLogService();
+        $adminActionLogService->log([
+            'target_type' => 'product',
+            'target_table' => 'COMPARISON_DB',
+            'target_pk' => (string)($prd_idx ?? ''),
+            'action_mode' => 'create_stock_code',
+            'action_summary' => '재고코드 생성',
+            'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+        ]);
+
+        return true;
+
+    }
 
     /**
      * 상품 재고 Where In 조회

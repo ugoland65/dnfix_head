@@ -11,6 +11,50 @@ class AdminActionLogService
 {
 
     /**
+     * 어드민 공용 액션 로그 목록 조회
+     * 
+     * @param array $payload
+     * @return array
+     */
+    public function getAdminActionLogList($payload)
+    {
+        $target_type = $payload['target_type'] ?? null;
+        $target_pk = $payload['target_pk'] ?? null;
+
+        if( $target_type == 'prd_partner' ){
+            $target_table = 'prd_partner';
+        }
+
+        $query = AdminActionLogModel::query()
+            ->select([
+                'idx',
+                'action_mode',
+                'action_summary',
+                'diff_json',
+                'operator_pk',
+                'operator_id',
+                'operator_name',
+                'processed_at',
+            ])
+            ->where('target_type', $target_type)
+            ->where('target_table', $target_table)
+            ->where('target_pk', $target_pk)
+            ->orderBy('idx', 'desc')
+            ->get()
+            ->toArray();
+
+        $result = $query;
+
+        foreach($result as &$row){
+            $row['diff_json'] = json_decode($row['diff_json'] ?? '{}', true);
+        }
+        unset($row);
+
+        return $result;
+
+    }
+
+    /**
      * diff 생성 (before/after 배열 기준)
      */
     public function buildDiff(array $before, array $after): array
@@ -22,8 +66,14 @@ class AdminActionLogService
             $bv = $before[$k] ?? null;
             $av = $after[$k] ?? null;
 
-            // 엄격 비교
-            if ($bv !== $av) {
+            // 숫자형 문자열/정수는 값 기준으로 동일 처리
+            $isNumericPair = is_numeric($bv) && is_numeric($av);
+            $isNullEmptyPair = ($bv === null && $av === '') || ($bv === '' && $av === null);
+            $isSameValue = $isNullEmptyPair
+                ? true
+                : ($isNumericPair ? ((string)($bv + 0) === (string)($av + 0)) : ($bv === $av));
+
+            if (!$isSameValue) {
                 $diff[$k] = [
                     'before' => $bv,
                     'after'  => $av,

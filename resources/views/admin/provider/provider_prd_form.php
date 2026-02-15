@@ -1,20 +1,3 @@
-<?php
-
-@deprecated 사용하지 않을 예정
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-use App\Controllers\Admin\ProductController;
-
-$productController = new ProductController(); 
-
-$viewData = $productController->prdProviderInfoIndex();
-
-$prd_data = $viewData['productPartnerInfo'];
-
-?>
 <form id="prd_provider_info_form">
 <input type="hidden" name="prd_idx" value="<?=$prd_data['idx']?>">
 <table class="table-style ">
@@ -33,9 +16,9 @@ $prd_data = $viewData['productPartnerInfo'];
             <td>
                 <select name="kind">
                     <option value=''>상품 구분 선택</option>
-                <? foreach($koedge_prd_kind_array as $kind){ ?>
-                    <option value="<?=$kind['code']?>" <? if($prd_data['kind'] == $kind['code'] ) echo "selected"; ?>><?=$kind['name']?></option>
-                <? } ?>
+                    <? foreach($prd_kind_name as $kind){ ?>
+                        <option value="<?=$kind?>" <? if($prd_data['kind'] == $kind ) echo "selected"; ?>><?=$kind?></option>
+                    <? } ?>
                 </select>
             </td>
         </tr>
@@ -45,7 +28,7 @@ $prd_data = $viewData['productPartnerInfo'];
                 <select name="brand_idx">
                     <option value=''>브랜드 선택</option>
                     <?
-                        foreach ($viewData['brandForSelect'] as $brand) {
+                        foreach ($brandForSelect as $brand) {
                     ?>
                     <option value='<?=$brand['BD_IDX']?>'<? if( $brand['BD_IDX'] == $prd_data['brand_idx'] ) echo "selected"; ?>><?=$brand['BD_NAME']?></option>
                     <? } ?>
@@ -58,7 +41,7 @@ $prd_data = $viewData['productPartnerInfo'];
                 <select name="partner_idx">
                     <option value=''>공급사 선택</option>
                     <?
-                        foreach ($viewData['partnerForSelect'] as $partner) {
+                        foreach ($partnerForSelect as $partner) {
                     ?>
                     <option value='<?=$partner['idx']?>'<? if( $partner['idx'] == $prd_data['partner_idx'] ) echo "selected"; ?>><?=$partner['name']?></option>
                     <? } ?>
@@ -66,12 +49,16 @@ $prd_data = $viewData['productPartnerInfo'];
             </td>
         </tr>
         <tr>
-            <th>상품코드</th>
+            <th>관리 상품코드</th>
             <td><input type='text' name='code'  size='40' value="<?=$prd_data['code']?>" style="width:150px;"></td>
         </tr>
         <tr>
             <th>판매 상품명</th>
             <td><input type='text' name='name'  size='40' value="<?=$prd_data['name']?>" ></td>
+        </tr>
+        <tr>
+            <th>원(영문,일어,중국어) 상품명</th>
+            <td><input type='text' name='name_ori'  size='40' value="<?=$prd_data['name_ori']?>" ></td>
         </tr>
         <tr>
             <th>공급사 상품명</th>
@@ -135,8 +122,15 @@ $prd_data = $viewData['productPartnerInfo'];
         </tr>
 
         <tr>
-            <th>메모</th>
-            <td><input type='text' name='memo' value="<?=$prd_data['memo']?>" ></td>
+            <th>리스트 메모</th>
+            <td><input type='text' name='memo' value="<?=$prd_data['memo'] ?? '' ?>" ></td>
+        </tr>
+
+        <tr>
+            <th>작업지시 메모</th>
+            <td>
+                <textarea name='memo_work' rows='5'><?=$prd_data['memo_work'] ?? '' ?></textarea>
+            </td>
         </tr>
     <tbody>
 
@@ -209,16 +203,23 @@ $prd_data = $viewData['productPartnerInfo'];
 
     <tbody>
         <tr>
-            <th>고도몰 상품코드</th>
+            <th>고도몰 상품번호</th>
             <td><input type='text' name='godo_goodsNo'  size='10' value="<?=$prd_data['godo_goodsNo']?>" style="width:150px;"></td>
         </tr>
         <tr>
             <th>고도몰 등록상태</th>
             <td>
-                <?=$prd_data['status'] ?? ''?>
+                
+                <select name="status">
+                    <option value="등록대기" <? if($prd_data['status'] == '등록대기' ) echo "selected"; ?>>등록대기</option>
+                    <option value="등록완료" <? if($prd_data['status'] == '등록완료' ) echo "selected"; ?>>등록완료</option>
+                    <option value="품절" <? if($prd_data['status'] == '품절' ) echo "selected"; ?>>품절</option>
+                </select>
+
                 <?php if( $prd_data['status'] == '품절' ){ ?>
-                    <br><span class="text-danger">처리일 : <?=$prd_data['sold_out_date'] ?? ''?></span>
+                    <br><span class="text-danger">품절 처리일 : <?=$prd_data['sold_out_date'] ?? ''?></span>
                 <?php } ?>
+
             </td>
         </tr>
         <tr>
@@ -359,3 +360,4 @@ $prd_data = $viewData['productPartnerInfo'];
 	<button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="prdProviderInfo.save()" >상품수정</button>
 </div>
 <? } ?>
+

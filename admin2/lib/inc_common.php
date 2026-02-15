@@ -12,22 +12,24 @@ ob_start();
 $_session_save_path = __DIR__ . "/../session";
 $_session_save_path = realpath($_session_save_path);
 
-// 세션 설정을 session_start() 전에
-ini_set("session.use_trans_sid", 0);
-ini_set("url_rewriter.tags", "");
-ini_set("session.cookie_httponly", 1);
-ini_set("session.use_only_cookies", 1);
-ini_set("session.save_handler", "files");
-//ini_set("session.cache_expire", "3600");
-//ini_set("session.gc_maxlifetime", "3600");
-//ini_set("session.cookie_domain", ".");
+// 세션 설정은 session_start() 전에만
+if (session_status() === PHP_SESSION_NONE) {
+    ini_set("session.use_trans_sid", 0);
+    ini_set("url_rewriter.tags", "");
+    ini_set("session.cookie_httponly", 1);
+    ini_set("session.use_only_cookies", 1);
+    ini_set("session.save_handler", "files");
+    //ini_set("session.cache_expire", "3600");
+    //ini_set("session.gc_maxlifetime", "3600");
+    //ini_set("session.cookie_domain", ".");
 
-// 세션 저장 경로 강제 설정
-if ($_session_save_path && is_dir($_session_save_path) && is_writable($_session_save_path)) {
-    session_save_path($_session_save_path);
-} else {
-    // 기본 시스템 임시 디렉토리 사용
-    session_save_path(sys_get_temp_dir());
+    // 세션 저장 경로 강제 설정
+    if ($_session_save_path && is_dir($_session_save_path) && is_writable($_session_save_path)) {
+        session_save_path($_session_save_path);
+    } else {
+        // 기본 시스템 임시 디렉토리 사용
+        session_save_path(sys_get_temp_dir());
+    }
 }
 
 // 세션 강제 시작

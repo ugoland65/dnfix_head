@@ -22,6 +22,8 @@ class WorkLogModel extends BaseModel {
 		'view_check',
 		'cmt_s_count',
 		'cmt_b_count',
+		'withdb_mode',
+		'withdb_data',
 	];
 
 }

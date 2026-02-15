@@ -14,6 +14,8 @@ use App\Services\CommentService;
 use App\Services\AdminServices;
 use App\Services\WorkLogHistoryService;
 use App\Services\WorkViewCheckService;
+use App\Services\ProductPartnerService;
+use App\Services\ProductPartnerApiService;
 
 class WorkController extends BaseClass
 {
@@ -104,6 +106,8 @@ class WorkController extends BaseClass
 
             $requestData = $request->all();
             $category = $requestData['category'] ?? "업무요청";
+            $withdb = $requestData['withdb'] ?? null;
+            $pks = $requestData['pks'] ?? null;
 
             $workConfig = config('admin.workConfig');
             $workLogCate = $workConfig['work_log_cate'];
@@ -111,12 +115,47 @@ class WorkController extends BaseClass
             $CommentService = new CommentService();
             $mentionTarget = $CommentService->getMentionTarget();
 
+            if( !empty($pks) ){
+                $idxs = explode(',', $pks);
+            }
+
+            $supplierProductMap = [];
+            if( $withdb == "provider_product" && !empty($idxs) ){
+
+                $productPartnerService = new ProductPartnerService();
+                $productPartnerList = $productPartnerService->getProductPartnerWhereInIdx($idxs);
+                //dd($productPartnerList);
+                $withdbdata = $productPartnerList;
+
+                //공급매칭 pks 수집
+                $supplier_prd_idxs = [];
+                foreach( $productPartnerList as $item ){
+                    $supplier_prd_idx = $item['supplier_prd_idx'] ?? 0;
+                    if( $supplier_prd_idx > 0 ){
+                        $supplier_prd_idxs[] = $supplier_prd_idx;
+                    }
+                }
+
+                $supplier_prd_idxs = array_unique($supplier_prd_idxs);
+
+                $productPartnerApiService = new ProductPartnerApiService();
+                $supplierProductMap = $productPartnerApiService->getSupplierProductIdxMap($supplier_prd_idxs);
+
+            }
+
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
             $data = [
                 'title' => '업무 게시판 등록',
                 'mode' => 'create',
+                'withdb' => $withdb,
+                'withdbdata' => $withdbdata ?? [],
                 'category' => $category,
                 'workLogCate' => $workLogCate,
                 'mentionTarget' => $mentionTarget,
+                'prd_kind_name' => $prd_kind_name,
+                'supplierProductMap' => $supplierProductMap ?? [],
             ];
 
             return view('admin.work.work_board_create', $data)
@@ -205,12 +244,46 @@ class WorkController extends BaseClass
                 'tidx' => $idx,
             ]);
 
+            $withdb = $workLog['withdb_mode'] ?? '';
+            $withdb_raw = $workLog['withdb_data'] ?? '[]';
+            $withdb_data = is_array($withdb_raw) ? $withdb_raw : json_decode($withdb_raw, true);
+            if (!is_array($withdb_data)) {
+                $withdb_data = [];
+            }
+            $pks = $withdb_data['pks'] ?? [];
+
+            $supplierProductMap = [];
+            if( $withdb == "provider_product" && !empty($pks) ){
+
+                $productPartnerService = new ProductPartnerService();
+                $productPartnerList = $productPartnerService->getProductPartnerWhereInIdx($pks);
+                $withdbdata = $productPartnerList;
+
+                //공급매칭 pks 수집
+                $supplier_prd_idxs = [];
+                foreach( $productPartnerList as $item ){
+                    $supplier_prd_idx = $item['supplier_prd_idx'] ?? 0;
+                    if( $supplier_prd_idx > 0 ){
+                        $supplier_prd_idxs[] = $supplier_prd_idx;
+                    }
+                }
+
+                $supplier_prd_idxs = array_unique($supplier_prd_idxs);
+
+                $productPartnerApiService = new ProductPartnerApiService();
+                $supplierProductMap = $productPartnerApiService->getSupplierProductIdxMap($supplier_prd_idxs);
+
+            }
+
             $data = [
                 'workLog' => $workLog,
                 'workLogHistoryList' => $workLogHistoryList,
                 'mentionTarget' => $mentionTarget,
                 'isViewCheck' => $isViewCheck,
                 'viewCheckList' => $viewCheckList ?? [],
+                'supplierProductMap' => $supplierProductMap ?? [],
+                'withdbdata' => $withdbdata ?? [],
+                'withdb' => $withdb,
             ];
 
             return view('admin.work.work_board_detail', $data)

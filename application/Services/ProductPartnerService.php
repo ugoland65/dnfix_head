@@ -31,6 +31,7 @@ class ProductPartnerService extends BaseClass
         $s_brand = $payloadData['s_brand'] ?? null;
         $sort_mode = $payloadData['sort_mode'] ?? 'idx';
         $s_godo_sale_status = $payloadData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
+        $with_api_data = $payloadData['with_api_data'] ?? false;
 
         $page = $payloadData['page'] ?? null;
         $perPage = $payloadData['per_page'] ?? null;
@@ -113,7 +114,9 @@ class ProductPartnerService extends BaseClass
             ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'prd_partner.brand_idx')
             ->leftJoin('partners', 'partners.idx', '=', 'prd_partner.partner_idx')
             ->where('prd_partner.idx', $prdIdx)
-            ->first();
+            ->first()
+            ->toArray();
+
 
         $result['price_data'] = !empty($result['price_data']) ? json_decode($result['price_data'], true) : [];
         $result['godo_option'] = !empty($result['godo_option']) ? json_decode($result['godo_option'], true) : [];
@@ -134,7 +137,32 @@ class ProductPartnerService extends BaseClass
 
         try {
 
+            $toIntOrNull = function ($value) {
+                if ($value === null) {
+                    return null;
+                }
+                $value = is_string($value) ? trim($value) : $value;
+                return $value === '' ? null : (int)$value;
+            };
+
+            $godo_goodsNo = $toIntOrNull($postData['godo_goodsNo'] ?? null); // 고도몰 상품번호
+            $brand_idx = $postData['brand_idx'] ?? null; // 브랜드 인덱스
+            $partner_idx = $postData['partner_idx'] ?? null; // 공급사 인덱스
+
+            if(empty($godo_goodsNo)){
+                $godo_goodsNo = null;
+            }
+
+            if(empty($brand_idx)){
+                $brand_idx = null;
+            }
+
+            if(empty($partner_idx)){
+                $partner_idx = 0;
+            }
+
             $status = $postData['status'] ?? '등록대기'; // 상품 상태
+
             $sale_price = (int)preg_replace('/[,\s]/', '', $postData['sale_price'] ?? 0); // 판매가
             $cost_price = (int)preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
             $order_price = (int)preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
@@ -175,39 +203,105 @@ class ProductPartnerService extends BaseClass
 
             $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
 
+            $name = $postData['name'] ?? '';
+            $name_ori = $postData['name_ori'] ?? '';
+            $name_p = $postData['name_p'] ?? '';
+            $kind = $postData['kind'] ?? '';
+            $supplier_prd_idx = $postData['supplier_prd_idx'] ?? 0;
+            $supplier_prd_pk = $postData['supplier_prd_pk'] ?? null;
+            $supplier_site = $postData['supplier_site'] ?? null;
+            $supplier_2nd_name = $postData['supplier_2nd_name'] ?? null;
+            $supplier_img_mode = $postData['supplier_img_mode'] ?? 'out';
+            $supplier_img_src = $postData['supplier_img_src'] ?? null;
+            $matching_code = $postData['matching_code'] ?? '';
+            $memo = $postData['memo'] ?? '';
+            $memo_work = $postData['memo_work'] ?? '';
+            $img_mode = $postData['img_mode'] ?? 'out';
+            $img_src = $postData['img_src'] ?? null;
+            $hbti_type = $postData['hbti_type'] ?? '';
+            $godo_goodsNo = $toIntOrNull($postData['godo_goodsNo'] ?? null);
+
             $inputData = [
+                'name' => $name, // 판매 상품명
+                'name_ori' => $name_ori, // 원(영문,일어,중국어) 상품명
+                'name_p' => $name_p, // 공급사 상품명
                 'status' => $status, // 상품 상태
-                'kind' => $postData['kind'] ?? '', // 상품 구분 (상품 카테고리 코드)
-                'brand_idx' => $postData['brand_idx'] ?? '', // 브랜드 인덱스 (BRAND_DB 테이블의 BD_IDX)
-                'partner_idx' => $postData['partner_idx'] ?? '', // 공급사 인덱스 (partners 테이블의 idx)
-                'name' => $postData['name'] ?? '', // 판매 상품명
-                'name_p' => $postData['name_p'] ?? '', // 공급사 상품명
+                'kind' => $kind, // 상품 구분 (상품 카테고리 코드)
+                'brand_idx' => $brand_idx, // 브랜드 인덱스 (BRAND_DB 테이블의 BD_IDX)
+                'partner_idx' => $partner_idx, // 공급사 인덱스 (partners 테이블의 idx)
+                'supplier_prd_idx' => $supplier_prd_idx, // 공급사 상품 인덱스 (supplier_product 테이블의 idx)
+                'supplier_prd_pk' => $supplier_prd_pk, // 공급사 상품 고유번호
+                'supplier_site' => $supplier_site, // 공급사 사이트
+                'supplier_2nd_name' => $supplier_2nd_name, // 공급사 2차공급사
+                'supplier_img_mode' => $supplier_img_mode, // 공급사 이미지 모드
+                'supplier_img_src' => $supplier_img_src, // 공급사 이미지 URL
                 'sale_price' => $sale_price, // 판매가
                 'cost_price' => $cost_price, // 원가 (vat 포함)
                 'order_price' => $order_price, // 주문가
                 'price_data' => $price_data, // 가격 데이터
                 'code' => $code, // 상품 코드
-                'img_mode' => $postData['img_mode'] ?? '', // 이미지 모드 (out: 외부 이미지, this: 서버에 등록)
-                'img_src' => $postData['img_src'] ?? '', // 이미지 URL 또는 경로
-                'hbti_type' => $postData['hbti_type'] ?? '', // HBTI 타입 정보
-                'godo_goodsNo' => $postData['godo_goodsNo'] ?? '', // 고도몰 상품코드
-                'matching_code' => $postData['matching_code'] ?? '', // 공급사 매칭코드
-                'memo' => $postData['memo'] ?? '', // 메모
+                'img_mode' => $img_mode, // 이미지 모드 (out: 외부 이미지, this: 서버에 등록)
+                'img_src' => $img_src, // 이미지 URL 또는 경로
+                'hbti_type' => $hbti_type, // HBTI 타입 정보
+                'godo_goodsNo' => $godo_goodsNo, // 고도몰 상품코드
+                'matching_code' => $matching_code, // 공급사 매칭코드
+                'memo' => $memo, // 메모
+                'memo_work' => $memo_work, // 작업지시 메모
             ];
+
+            $updateData = [];
+            $fieldMap = [
+                'name' => $name,
+                'name_ori' => $name_ori,
+                'name_p' => $name_p,
+                'status' => $status,
+                'kind' => $kind,
+                'brand_idx' => $brand_idx,
+                'partner_idx' => $partner_idx,
+                'supplier_prd_idx' => $supplier_prd_idx,
+                'supplier_prd_pk' => $supplier_prd_pk,
+                'supplier_site' => $supplier_site,
+                'supplier_2nd_name' => $supplier_2nd_name,
+                'supplier_img_mode' => $supplier_img_mode,
+                'supplier_img_src' => $supplier_img_src,
+                'sale_price' => $sale_price,
+                'cost_price' => $cost_price,
+                'order_price' => $order_price,
+                'price_data' => $price_data,
+                'code' => $code,
+                'img_mode' => $img_mode,
+                'img_src' => $img_src,
+                'hbti_type' => $hbti_type,
+                'godo_goodsNo' => $godo_goodsNo,
+                'matching_code' => $matching_code,
+                'memo' => $memo,
+                'memo_work' => $memo_work,
+            ];
+            foreach ($fieldMap as $key => $value) {
+                if (array_key_exists($key, $postData)) {
+                    $updateData[$key] = $value;
+                }
+            }
 
             $beforeData = [];
             $actionMode = 'create';
             $targetPk = null;
 
             if(empty($postData['prd_idx'])){
+
                 // prd_idx가 없으면 새 레코드 삽입
-                $result = ProductPartnerModel::insert($inputData);
+                $result = ProductPartnerModel::query()->insertGetId($inputData);
+                $targetPk = $result;
+
             }else{
+                
                 $actionMode = 'update';
                 $targetPk = $postData['prd_idx'];
-                $beforeData = ProductPartnerModel::find($postData['prd_idx'])->toArray() ?? [];
+                $beforeModel = ProductPartnerModel::find($postData['prd_idx']);
+                $beforeData = $beforeModel ? $beforeModel->toArray() : [];
                 // prd_idx가 있으면 기존 레코드 업데이트
-                $result = ProductPartnerModel::find($postData['prd_idx'])->update($inputData);
+                $result = ProductPartnerModel::find($postData['prd_idx'])->update($updateData);
+                
             }
 
             if( $result ){
@@ -216,7 +310,7 @@ class ProductPartnerService extends BaseClass
                     $action_summary = $actionMode === 'create' ? '파트너 상품 등록' : '파트너 상품 수정';
                 }
 
-                $afterData = array_merge($beforeData, $inputData);
+                $afterData = array_merge($beforeData, $actionMode === 'create' ? $inputData : $updateData);
                 $adminActionLogService = new AdminActionLogService();
                 $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
                 $adminActionLogService->log([
@@ -231,7 +325,7 @@ class ProductPartnerService extends BaseClass
                     'action_url' => $action_url ?? null,
                 ]);
 
-                return ['status' => 'success', 'message' => '저장되었습니다.'];
+                return ['status' => 'success', 'message' => '저장되었습니다.', 'idx' => $targetPk];
 
             }else{
                 throw new \Exception('상품 공급사 저장에 실패했습니다.');
@@ -283,10 +377,35 @@ class ProductPartnerService extends BaseClass
      * @return array
      */
     public function getProductPartnerWhereInIdx($idxs) {
-        return ProductPartnerModel::whereIn('idx', $idxs)
+
+        if (empty($idxs)) {
+            return [];
+        }
+
+        $idxs = array_values(array_unique($idxs));
+
+        $result = ProductPartnerModel::query()
+            ->select([
+                'prd_partner.*',
+                'BRAND_DB.BD_NAME AS brand_name',
+                'partners.name AS partner_name', 
+                'partners.idx AS partner_idx'
+            ])
+            ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'prd_partner.brand_idx')
+            ->leftJoin('partners', 'partners.idx', '=', 'prd_partner.partner_idx')
+            ->whereIn('prd_partner.idx', $idxs)
+            ->groupBy('prd_partner.idx')
             ->get()
-            ->keyBy('idx')
             ->toArray();
+
+        foreach($result as &$item){
+            $item['price_data'] = !empty($item['price_data']) ? json_decode($item['price_data'], true) : [];
+            $item['godo_option'] = !empty($item['godo_option']) ? json_decode($item['godo_option'], true) : [];
+        }
+        unset($item);
+
+        return $result;
+
     }
 
 

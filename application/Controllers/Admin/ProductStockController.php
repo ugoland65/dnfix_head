@@ -23,18 +23,22 @@ class ProductStockController extends BaseClass
 
             $requestData = $request->all();
             $actionMode = $requestData['action_mode'] ?? null;
+            $productStockService = new ProductStockService();
 
             switch ($actionMode) {
 
+                // 재고코드 생성
+                case 'create_stock_code':
+                    $result = $productStockService->createStockCode($requestData);
+                    break;
+
                 // 상품 세일 설정
                 case 'set_product_sale':
-                    $productStockService = new ProductStockService();
                     $result = $productStockService->setProductSale($requestData);
                     break;
 
                 // 상품 세일 해제
                 case 'unset_product_sale':
-                    $productStockService = new ProductStockService();
                     $result = $productStockService->unsetProductSale($requestData);
                     break;
             }

@@ -199,6 +199,27 @@
 .scroll-wrap::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
 .scroll-wrap::-webkit-scrollbar-thumb{  background:#aaa;  }
 
+
+.head-count-tap-wrap{
+	display:flex;
+	align-items: center;
+	gap:5px;
+}
+.head-count-tap-wrap ul{
+	display:flex;
+	align-items: center;
+	gap:5px;
+}
+.head-count-tap-wrap ul li{
+	display:flex;
+	align-items: center;
+	gap:5px;
+	border:1px solid #aaa;
+	background:#ffffff;
+	box-sizing:border-box;
+	padding:5px;
+	border-radius:5px;
+}
 .table-grid-wrap{
 	height:100%;
 	display:flex;
@@ -424,6 +445,11 @@
 			&.green{
 				background-color:#d6ffdb;
 			}
+
+
+			/* hover 시 기본색보다 진하게 */
+			&.status_end2:hover{ background-color:#e6e6e6; }
+			&.status_bl:hover{ background-color:#eef08e; }
 
 			/* 마우스 오버시 배경색 변경 */
 			&:hover{

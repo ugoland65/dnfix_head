@@ -11,6 +11,7 @@ use App\Classes\Request;
 use App\Models\ProductPartnerModel;
 
 use App\Services\ProductPartnerService;
+use App\Services\ProductPartnerApiService;
 use App\Services\PartnersService;
 use App\Services\BrandService;
 use App\Utils\Pagination;
@@ -84,7 +85,7 @@ class ProductPartnerController extends BaseClass
 
             $supplier_prd_idxs = array_unique($supplier_prd_idxs);
 
-
+            /*
             $url = 'https://dnetc01.mycafe24.com/api/SupplierProductPksList';
 
             $payload = [
@@ -126,8 +127,11 @@ class ProductPartnerController extends BaseClass
             foreach( $apiResponse['data'] ?? [] as $item ){
                 $supplierProductMap[$item['idx']] = $item;
             }
+            */
 
-            //dd($supplierProductMap);
+            $productPartnerApiService = new ProductPartnerApiService();
+            $supplierProductMap = $productPartnerApiService->getSupplierProductIdxMap($supplier_prd_idxs);   
+            
 
             $data = [
                 's_partner' => $s_partner,
@@ -135,6 +139,7 @@ class ProductPartnerController extends BaseClass
                 's_supplier_match' => $s_supplier_match,
                 's_keyword' => $s_keyword,
                 's_brand' => $s_brand,
+                's_status' => $s_godo_sale_status,
                 'sort_mode' => $sort_mode,
                 'pagination' => $paginationArray,
                 'paginationHtml' => $paginationHtml,
@@ -159,6 +164,259 @@ class ProductPartnerController extends BaseClass
 
     }
 
+
+    /**
+     * 공급사 사이트 상품DB 목록
+     * 
+     * @param Request $request
+     */
+    public function getSupplierProductDb( Request $request ) 
+    {
+
+        ini_set('display_errors', 1);
+        ini_set('display_startup_errors', 1);
+        error_reporting(E_ALL);
+
+        try{
+
+            $requestData = $request->all();
+
+            $s_match_status = $requestData['s_match_status'] ?? 'unmatched';
+            $site = $requestData['s_site'] ?? null;
+            $s_keyword = $requestData['s_keyword'] ?? '';
+            $page = $requestData['page'] ?? 1;
+            $s_status = $requestData['s_status'] ?? '';
+
+            if( $site ){
+
+                $url = "https://dnetc01.mycafe24.com/api/SupplierProduct";
+                $url .= "?site=".$site;
+                $url .= "&status=".$s_status;
+                $url .= "&match_status=".$s_match_status;
+                $url .= "&keyword=".urlencode($s_keyword);
+                $url .= "&page=".$page;
+                $url .= "&limit=500";
+            
+                // 보낼 API Key
+                $headers = [
+                    "Content-Type: application/json",
+                    "X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f"
+                ];
+            
+                // GET 요청
+                $response = HttpClient::getData($url, $headers);
+                $SupplierProductApiData = json_decode($response, true);
+
+                //dd($SupplierProductApiData);
+            
+                $supplierProductsMatchIdxs = [];
+                foreach ( $SupplierProductApiData['data']['supplierProducts'] ?? [] as $row ){
+                    if( !empty($row['provider_prd_idx']) ){
+                        $supplierProductsMatchIdxs[] = $row['provider_prd_idx'];
+                    }
+                }
+            
+                $supplierProductsMatchIdxs = array_unique($supplierProductsMatchIdxs);
+            
+                $productPartnerMatchData = [];
+                if (!empty($supplierProductsMatchIdxs)) {
+                    $productPartnerService = new ProductPartnerService();
+                    $productPartnerMatchData = $productPartnerService->getProductPartnerWhereInIdx($supplierProductsMatchIdxs);
+                }
+            
+
+                $pagination_total = $SupplierProductApiData['data']['pagination']['total'];
+                $pagination_per_page = $SupplierProductApiData['data']['pagination']['per_page'];
+                $pagination_current_page = $SupplierProductApiData['data']['pagination']['current_page'];
+            
+                $pagination = new Pagination($pagination_total, $pagination_per_page, $pagination_current_page, 10);
+                $paginationHtml = $pagination->renderLinks();
+            
+            }else{
+            
+                $SupplierProductApiData = [];
+                $pagination_total = 0;
+                $pagination_per_page = 0;
+                $pagination_current_page = 0;
+                $paginationHtml = '';
+            
+            }
+
+            //dd($SupplierProductApiData['data']['supplierProducts']);
+
+            $provider_data = config('admin.provider');
+            $supplier_code_data = $provider_data['supplier_code_data'];
+
+            $data = [
+                'supplier_code_data' => $supplier_code_data,
+                's_match_status' => $s_match_status,
+                'site' => $site,
+                's_keyword' => $s_keyword,
+                'page' => $page,
+                's_status' => $s_status,
+                'SupplierProductApiData' => $SupplierProductApiData,
+                'pagination_total' => $pagination_total,
+                'pagination_per_page' => $pagination_per_page,
+                'pagination_current_page' => $pagination_current_page,
+                'paginationHtml' => $paginationHtml,
+                'productPartnerMatchData' => $productPartnerMatchData,
+            ];
+
+            return view('admin.provider.supplier_product_db', $data)
+                ->extends('admin.layout.layout',[
+                    'pageGroup2' => 'provider',
+                    'pageNameCode' => 'prd_provider_db'
+                ]);
+
+        }
+        catch(Throwable $e){
+            dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+    /**
+     * 공급사 상품 상세 
+     * 
+     * @param Request $request
+     */
+    public function getProductPartnerDetail( Request $request ) 
+    {
+
+        ini_set('display_errors', 1);
+        ini_set('display_startup_errors', 1);
+        error_reporting(E_ALL);
+
+        try{
+
+            $requestData = $request->all();
+
+            $prd_idx = $requestData['prd_idx'] ?? null;
+
+            if(empty($prd_idx)){
+                throw new \Exception('prd_idx가 비어있습니다.');
+            }
+
+            $productPartnerService = new ProductPartnerService();
+            $productPartner = $productPartnerService->getProductPartnerInfo($prd_idx);
+
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
+            // 브랜드 셀렉트바
+            $extraData = ['listActive' => true];
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect($extraData);
+
+            // 공급사 셀렉트바
+            $extraData = ['showMode' => 'WHOLE_SUPPLIER'];
+            $partnersService = new PartnersService();
+            $partnerForSelect = $partnersService->getPartnersForSelect($extraData);
+
+            $data = [
+                'prd_kind_name' => $prd_kind_name,
+                'brandForSelect' => $brandForSelect,
+                'partnerForSelect' => $partnerForSelect,
+                'prd_data' => $productPartner ?? [],
+            ];
+
+            return view('admin.provider.provider_prd_form', $data);
+
+        } catch(Throwable $e){
+            dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    
+    }
+
+
+    /**
+     * 공급사 상품 상세 저장
+     * 
+     * @param Request $request
+     */
+    public function saveProductPartnerDetail( Request $request ) 
+    {
+        try{
+
+            $requestData = $request->all();
+            $prd_idx = $requestData['prd_idx'] ?? null;
+
+            if(empty($prd_idx)){
+                throw new \Exception('prd_idx가 비어있습니다.');
+            }
+
+            $productPartnerService = new ProductPartnerService();
+            $result = $productPartnerService->saveProductPartner($requestData);
+
+            if($result['status'] == 'success'){
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => '저장되었습니다.',
+                ]);
+            }else{
+                throw new \Exception($result['message']);
+            }
+
+        } catch(Throwable $e){
+            return response()->json([
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ]);
+        }
+    }
+
+
+    /**
+     * 공급사 상품 액션
+     * 
+     * @param Request $request
+     * @return array
+     */
+    public function providerProductAction( Request $request ) 
+    {
+
+        try{
+
+            $requestData = $request->all();
+            $actionMode = $requestData['action_mode'] ?? null;
+
+            if(empty($actionMode)){
+                throw new \Exception('action_mode가 비어있습니다.');
+            }
+
+            $productPartnerApiService = new ProductPartnerApiService();
+
+            // 공급사 상품 등록대기로 등록
+            if( $actionMode == 'product_standby_register' ){
+                $payload = [
+                    'pks' => $requestData['pks'] ?? [],
+                ];
+                $result = $productPartnerApiService->productStandbyRegister($payload);
+            }
+
+            if( $result ){
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => '등록대기 처리되었습니다.',
+                ]);
+            }else{
+                throw new \Exception('등록대기 처리에 실패했습니다.');
+            }
+
+        } catch(Throwable $e){
+            
+            return response()->json([
+                'status' => 'error', 
+                'message' => $e->getMessage()
+            ]);
+        }   
+    }
+        
     /**
      * 공급사 상품 매칭
      * @return array

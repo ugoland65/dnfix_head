@@ -16,10 +16,15 @@ use App\Controllers\Admin\WorkController;
 use App\Controllers\Admin\CommentController;
 use App\Controllers\Admin\OrderSheetController;
 use App\Controllers\Admin\ProductStockController;
+use App\Controllers\Admin\AdminActionLogController;
+use App\Controllers\Admin\AiRulebookController;
 
 try {
 
     $router = new Router('/admin');  // 라우터 인스턴스 생성
+
+    // 어드민 공용 액션 로그 목록 조회
+    $router->get('/admin_action_log/list', AdminActionLogController::class, 'adminActionLogList'); //어드민 공용 액션 로그 목록 조회
 
 
     // 인사/업무
@@ -30,6 +35,11 @@ try {
     $router->post('/work/TaskRequest/save', WorkController::class, 'saveTaskRequest'); //업무 로그 신규생성 저장
     $router->post('/work/TaskRequest/action', WorkController::class, 'taskRequestAction'); //업무 로그 액션
     //$router->post('/work/TaskRequestCheck', WorkController::class, 'taskRequestCheck'); //업무 로그 체크
+
+    // AI 규칙북
+    $router->get('/ai/rulebook/list', AiRulebookController::class, 'rulebookList'); //AI 규칙북 목록
+    $router->get('/ai/rulebook/detail/{idx}', AiRulebookController::class, 'rulebookDetail'); //AI 규칙북 상세
+    $router->post('/ai/rulebook/save', AiRulebookController::class, 'rulebookSave'); //AI 규칙북 저장
 
     //코멘트
     $router->get('/comment/list', CommentController::class, 'commentList'); //코멘트 리스트
@@ -63,6 +73,12 @@ try {
     $router->get('/provider_product/list', ProductPartnerController::class, 'getProductPartnerList'); //공급사 상품 목록
     $router->post('/provider_product/proc/match_provider_product', ProductPartnerController::class, 'matchProviderProduct'); //공급사 상품 매칭
     $router->post('/provider_product/proc/cancel_match_provider_product', ProductPartnerController::class, 'cancelMatchProviderProduct'); //공급사 상품 매칭 취소
+
+    $router->get('/provider_product/db', ProductPartnerController::class, 'getSupplierProductDb'); //공급사 사이트 상품DB
+    $router->post('/provider_product/action', ProductPartnerController::class, 'providerProductAction'); //공급사 상품 액션
+    $router->get('/provider_product/detail', ProductPartnerController::class, 'getProductPartnerDetail'); //공급사 상품 상세
+    $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
+
 
     // 재고/발주 관리
     $router->get('/order/sheet/list', OrderSheetController::class, 'orderSheetList'); //주문서 목록

@@ -1,115 +1,3 @@
-<?php
-
-/*
-@deprecated
-*/
-
-ini_set('display_errors', 1);
-ini_set('display_startup_errors', 1);
-error_reporting(E_ALL);
-
-use App\Classes\RequestHandler;
-use App\Utils\HttpClient; 
-use App\Services\SimpleTokenMatcher;
-use App\Services\ProductPartnerService;
-use App\Utils\Pagination;
-use App\Core\Config;
-
-$requestHandler = new RequestHandler();
-$requestData = $requestHandler->getAll();
-
-$s_match_status = $requestData['s_match_status'] ?? 'unmatched';
-$site = $requestData['s_site'] ?? null;
-$s_keyword = $requestData['s_keyword'] ?? '';
-$page = $requestData['page'] ?? 1;
-$s_status = $requestData['s_status'] ?? '';
-
-if( $site ){
-
-    $url = "https://dnetc01.mycafe24.com/api/SupplierProduct";
-    $url .= "?site=".$site;
-    $url .= "&status=".$s_status;
-    $url .= "&match_status=".$s_match_status;
-    $url .= "&keyword=".urlencode($s_keyword);
-    $url .= "&page=".$page;
-    $url .= "&limit=500";
-
-    // 보낼 API Key
-    $headers = [
-        "Content-Type: application/json",
-        "X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f"
-    ];
-
-    // GET 요청
-    $response = HttpClient::getData($url, $headers);
-    $data = json_decode($response, true);
-
-    $supplierProductsMatchIdxs = [];
-    foreach ( $data['data']['supplierProducts'] ?? [] as $row ){
-        if( !empty($row['provider_prd_idx']) ){
-            $supplierProductsMatchIdxs[] = $row['provider_prd_idx'];
-        }
-    }
-
-    $supplierProductsMatchIdxs = array_unique($supplierProductsMatchIdxs);
-
-    $productPartnerMatchData = [];
-    if (!empty($supplierProductsMatchIdxs)) {
-        $productPartnerService = new ProductPartnerService();
-        $productPartnerMatchData = $productPartnerService->getProductPartnerWhereInIdx($supplierProductsMatchIdxs);
-    }
-
-    /*
-    echo "<pre>";
-    print_r($data);
-    echo "</pre>";
-    */
-
-    $pagination_total = $data['data']['pagination']['total'];
-    $pagination_per_page = $data['data']['pagination']['per_page'];
-    $pagination_current_page = $data['data']['pagination']['current_page'];
-
-    $pagination = new Pagination($pagination_total, $pagination_per_page, $pagination_current_page, 10);
-    $paginationHtml = $pagination->renderLinks();
-
-}else{
-
-    $data = [];
-    $pagination_total = 0;
-    $pagination_per_page = 0;
-    $pagination_current_page = 0;
-    $paginationHtml = '';
-
-}
-
-$supplierCodeData = [
-    'mobe' => [
-        'name' => '모브',
-        'idx' => 3,
-        'code' => 'mobe',
-    ],
-    'byedam' => [
-        'name' => '바이담',
-        'idx' => 10,
-        'code' => 'byedam',
-    ],
-    'doradora' => [
-        'name' => '도라도라',
-        'idx' => 6,
-        'code' => 'doradora',
-    ],
-    'allcon' => [
-        'name' => '올컨코리아',
-        'idx' => 7,
-        'code' => 'allcon',
-    ],
-    'bunny' => [
-        'name' => '바니컴퍼니',
-        'idx' => 8,
-        'code' => 'bunny',
-    ],
-];
-?>
 <div id="contents_head">
 	<h1>공급사 사이트 상품DB</h1>
     <h3>공급사 사이트에서 크롤링(수집)된 상품입니다.</h3>
@@ -127,11 +15,9 @@ $supplierCodeData = [
                 <ul>
 					<select name="s_site" id="s_site" >
 						<option value="" >공급사 사이트</option>
-                        <option value="mobe" <?=$site == 'mobe' ? 'selected' : ''?>>mobe (모브)</option>
-                        <option value="byedam" <?=$site == 'byedam' ? 'selected' : ''?>>byedam (바이담)</option>
-                        <option value="doradora" <?=$site == 'doradora' ? 'selected' : ''?>>doradora (도라도라)</option>
-                        <option value="bunny" <?=$site == 'bunny' ? 'selected' : ''?>>bunny (바니컴퍼니)</option>
-                        <option value="allcon" <?=$site == 'allcon' ? 'selected' : ''?>>allcon (올컨코리아)</option>
+                        <?php foreach($supplier_code_data as $key => $value){ ?>
+                            <option value="<?=$key?>" <?=$site == $key ? 'selected' : ''?>><?=$value['name']?> (<?=$value['code']?>)</option>
+                        <?php } ?>
 					</select>
 				</ul>
                 <ul>
@@ -197,8 +83,9 @@ $supplierCodeData = [
                         </tr>
                         </thead>
                         <tbody>
+
                         <?php
-                            foreach ( $data['data']['supplierProducts'] ?? [] as $row ){
+                            foreach ( $SupplierProductApiData['data']['supplierProducts'] ?? [] as $row ){
 
                                 $cost_price = $row['price'] + $row['delivery_fee'];
                                 $margin10 = $cost_price / (1 - 0.10);
@@ -214,7 +101,7 @@ $supplierCodeData = [
 
                         ?>
                         <tr id="trid_<?=$row['idx']?>" >
-                            <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="><?=$row['idx']?>" ></td>	
+                            <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$row['idx']?>" ></td>	
                             <td class="list-idx"><?=$row['idx']?></td>
                             <td class=""><?=$row['site']?></td>
                             <td class="text-center"><?=$row['status'] ?? ''?></td>
@@ -264,7 +151,7 @@ $supplierCodeData = [
                                 <?php endif; ?>
                             </td>
                             <td>
-                                <b><?= $supplierCodeData[$row['site']]['name'] ?></b><br>
+                                <b><?= $supplier_code_data[$row['site']]['name'] ?></b><br>
                                 <?=$row['supplier']?>
                             </td>
                             <td class="text-right"><?=number_format($row['price'])?></td>
@@ -301,21 +188,100 @@ $supplierCodeData = [
                             </td>
                         </tr>
                         <?php } ?>
+
                         </tbody>
                     </table>
 
                 </div>
-            </div>    
+            </div>  
 
         </div>
     </div>
 </div>
+
 <div id="contents_bottom">
-	<div class="pageing-wrap"><?=$paginationHtml?></div>
+	<div class="pageing-wrap"><?=$paginationHtml ?? ''?></div>
+    <div class="m-l-20">
+        선택된 상품 <span id="selected_product_count">0</span>
+        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="supplierProductRegBtn">공급사상품 등록대기로 등록</button>
+    </div>
 </div>
+
+<style>
+    tr.selected-row {
+        background-color: #e3f2fd !important;
+    }
+    tr.selected-row:hover {
+        background-color: #bbdefb !important;
+    }
+</style>
+
 <script>
 
+function select_all() {
+    var checkboxes = document.getElementsByName('key_check[]');
+    var selectAll = event.target.checked;
+
+    for (var i = 0; i < checkboxes.length; i++) {
+        checkboxes[i].checked = selectAll;
+        if (selectAll) {
+            $(checkboxes[i]).closest('tr').addClass('selected-row');
+        } else {
+            $(checkboxes[i]).closest('tr').removeClass('selected-row');
+        }
+    }
+    updateSelectedCount();
+}
+
 $(function(){
+
+    // 개별 체크박스 선택 시 행 배경색 변경
+    $(document).on('change', 'input[name="key_check[]"]', function() {
+        if ($(this).is(':checked')) {
+            $(this).closest('tr').addClass('selected-row');
+        } else {
+            $(this).closest('tr').removeClass('selected-row');
+        }
+        updateSelectedCount();
+    });
+
+    // 선택된 상품 등록
+    $("#supplierProductRegBtn").on('click', function() {
+        var selectedItems = [];
+        $('input[name="key_check[]"]:checked').each(function() {
+            selectedItems.push($(this).val());
+        });
+
+        if (selectedItems.length === 0) {
+            alert('등록할 상품을 선택해주세요.');
+            return;
+        }
+
+        if (!confirm(selectedItems.length + '개 상품을 등록대기로 처리할까요?\n선택한 상품이 이미 공급사 상품으로 등록되있는지 확인을 꼼꼼하게 해주세요.')) {
+            return;
+        }
+
+        var payload = {
+            action_mode: 'product_standby_register',
+            partner_idx: '<?= $supplier_code_data[$site]['idx'] ?? '' ?>',
+            pks: selectedItems
+        };
+
+        ajaxRequest('/admin/provider_product/action', payload)
+            .done(function(res) {
+                if (res && (res.success || res.status === 'success')) {
+                    alert(res.message || '등록대기 처리되었습니다.');
+                    location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '처리 실패');
+                }
+            })
+            .fail(function(res) {
+                alert(res && res.message ? res.message : '에러');
+            });
+    });
+
+    updateSelectedCount();
 
     $("#searchBtn").on('click',function(){
 
@@ -355,7 +321,7 @@ $(function(){
             .join('&');
 
         // 페이지 이동
-        location.href = '/ad/provider/supplier_product' + (queryString ? '?' + queryString : '');
+        location.href = '/admin/provider_product/db' + (queryString ? '?' + queryString : '');
     });
 
     $("#resetBtn").on('click',function(){
@@ -363,8 +329,13 @@ $(function(){
         let s_site = $("#s_site").val();
         let s_match_status = $("#s_match_status").val();
 
-        location.href = '/ad/provider/supplier_product?s_site=' + s_site + '&s_match_status=' + s_match_status;
+        location.href = '/admin/provider_product/db?s_site=' + s_site + '&s_match_status=' + s_match_status;
     });
 
 });
+
+function updateSelectedCount() {
+    var count = $('input[name="key_check[]"]:checked').length;
+    $("#selected_product_count").text(count);
+}
 </script>   

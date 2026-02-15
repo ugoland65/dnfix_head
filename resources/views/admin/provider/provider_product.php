@@ -97,7 +97,7 @@
 								<th class="">마진율</th>
 								<th class="">공급사<br>이미지</th>
 								<th class="prd-name">공급사<br>상품명</th>
-								<th class="">공급매칭</th>
+								<th class="">API매칭</th>
 								<th class="">공급사<br>상품코드</th>
 								<th class="">공급사<br>판매상태</th>
 								<th class="">공급<br>사이트</th>
@@ -138,19 +138,29 @@
 											<br><span class="prd-memo"><?= $item['memo'] ?></span>
 										<? } ?>
 									</td>
-									<td class="text-center"><?= $item['brand_name'] ?></td>
+									<td class="text-center">
+										<?php if( !empty($item['brand_idx']) ){ ?>
+										<?= $item['brand_name'] ?>
+										<?php } else { ?>
+											<span class="text-red">미등록</span>
+										<?php } ?>
+									</td>
 									<td class="text-center"><a href="/ad/prd/prd_provider/?s_partner=<?= $item['partner_idx'] ?>"><?= $item['partner_name'] ?></a></td>
 									<td class="text-center"><?= $item['code'] ?></td>
 									<td class="text-center">
-										<div style="font-size: 12px;">
-											#<?= $item['godo_goodsNo'] ?>
-										</div>
-										<div class="m-t-3">
-											<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $item['godo_goodsNo'] ?>);">쑈당몰 상품보기</button>
-										</div>
-										<div class="m-t-5">
-											<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $item['godo_goodsNo'] ?>);">관리자 상품보기</button>
-										</div>
+										<?php if( !empty($item['godo_goodsNo']) ){ ?>
+											<div style="font-size: 12px;">
+												#<?= $item['godo_goodsNo'] ?>
+											</div>
+											<div class="m-t-3">
+												<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $item['godo_goodsNo'] ?>);">쑈당몰 상품보기</button>
+											</div>
+											<div class="m-t-5">
+												<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $item['godo_goodsNo'] ?>);">관리자 상품보기</button>
+											</div>
+										<?php } else { ?>
+											<span class="text-red">미등록</span>
+										<?php } ?>
 									</td>
 									<td class="text-right"><?= number_format($item['sale_price']) ?></td>
 									<td class="text-right">
@@ -289,7 +299,19 @@
 </div>
 <div id="contents_bottom">
 	<div class="pageing-wrap"><?= $paginationHtml ?></div>
+	<div class="m-l-20">
+		선택된 상품 <span id="selected_product_count">0</span>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택한 상품 업무요청하기</button>
+	</div>
 </div>
+<style>
+	tr.selected-row {
+		background-color: #e3f2fd !important;
+	}
+	tr.selected-row:hover {
+		background-color: #bbdefb !important;
+	}
+</style>
 <script type="text/javascript">
 	const prdProvider = (function() {
 
@@ -327,6 +349,26 @@
 		};
 
 	})();
+
+	function select_all() {
+		var checkboxes = document.getElementsByName('check_idx[]');
+		var selectAll = event.target.checked;
+
+		for (var i = 0; i < checkboxes.length; i++) {
+			checkboxes[i].checked = selectAll;
+			if (selectAll) {
+				$(checkboxes[i]).closest('tr').addClass('selected-row');
+			} else {
+				$(checkboxes[i]).closest('tr').removeClass('selected-row');
+			}
+		}
+		updateSelectedCount();
+	}
+
+	function updateSelectedCount() {
+		var count = $('input[name="check_idx[]"]:checked').length;
+		$("#selected_product_count").text(count);
+	}
 
 	// 검색 파라미터 수집 공통 함수
 	function getSearchParams(additionalParams) {
@@ -373,6 +415,34 @@
 
 
 	$(function() {
+		$(document).on('change', 'input[name="check_idx[]"]', function() {
+			if ($(this).is(':checked')) {
+				$(this).closest('tr').addClass('selected-row');
+			} else {
+				$(this).closest('tr').removeClass('selected-row');
+			}
+			updateSelectedCount();
+		});
+
+		$("#workRequestBtn").on('click', function() {
+			var selectedItems = [];
+			$('input[name="check_idx[]"]:checked').each(function() {
+				selectedItems.push($(this).val());
+			});
+
+			if (selectedItems.length === 0) {
+				alert('업무요청할 상품을 선택해주세요.');
+				return;
+			}
+
+			var pks = selectedItems.join(',');
+			var url = '/admin/work/TaskRequest/create?category=' + encodeURIComponent('업무요청')
+				+ '&withdb=' + encodeURIComponent('provider_product')
+				+ '&pks=' + encodeURIComponent(pks);
+			location.href = url;
+		});
+
+		updateSelectedCount();
 
 		$(".dn-select2").select2();
 
