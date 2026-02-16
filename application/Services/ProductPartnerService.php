@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
 use App\Services\AdminActionLogService;
+use App\Services\ProductPartnerApiService;
 
 class ProductPartnerService extends BaseClass
 {
@@ -174,6 +175,14 @@ class ProductPartnerService extends BaseClass
             $action_url = $postData['action_url'] ?? ''; //로그용 변수
             $action_summary = $postData['action_summary'] ?? ''; //로그용 변수
 
+            $supplier_status = $postData['supplier_status'] ?? '판매중'; // 공급사 판매상태
+
+            $supplier_status_date =  null; // 공급사 판매상태 처리일
+
+            if( $supplier_status != '판매중' ){
+                $supplier_status_date = date('Y-m-d H:i:s');
+            }
+
 
             // 원가가 없고 주문가와 배송비가 있으면 원가 계산
             /*
@@ -235,6 +244,8 @@ class ProductPartnerService extends BaseClass
                 'supplier_2nd_name' => $supplier_2nd_name, // 공급사 2차공급사
                 'supplier_img_mode' => $supplier_img_mode, // 공급사 이미지 모드
                 'supplier_img_src' => $supplier_img_src, // 공급사 이미지 URL
+                'supplier_status' => $supplier_status, // 공급사 판매상태
+                'supplier_status_date' => $supplier_status_date, // 공급사 판매상태 처리일
                 'sale_price' => $sale_price, // 판매가
                 'cost_price' => $cost_price, // 원가 (vat 포함)
                 'order_price' => $order_price, // 주문가
@@ -264,6 +275,8 @@ class ProductPartnerService extends BaseClass
                 'supplier_2nd_name' => $supplier_2nd_name,
                 'supplier_img_mode' => $supplier_img_mode,
                 'supplier_img_src' => $supplier_img_src,
+                'supplier_status' => $supplier_status,
+                'supplier_status_date' => $supplier_status_date,
                 'sale_price' => $sale_price,
                 'cost_price' => $cost_price,
                 'order_price' => $order_price,
@@ -281,6 +294,11 @@ class ProductPartnerService extends BaseClass
                 if (array_key_exists($key, $postData)) {
                     $updateData[$key] = $value;
                 }
+            }
+
+            // 공급사 판매상태가 '판매중'이 아니면 처리일을 강제로 갱신한다.
+            if ($supplier_status !== '판매중') {
+                $updateData['supplier_status_date'] = $supplier_status_date;
             }
 
             $beforeData = [];
@@ -306,6 +324,28 @@ class ProductPartnerService extends BaseClass
 
             if( $result ){
 
+                $supplierDbActionMessage = null;
+
+                $beforeSupplierStatus = $beforeData['supplier_status'] ?? null;
+                $isDiscontinuedTarget = in_array($supplier_status, ['판매중단', '품절'], true);
+                $shouldSyncDiscontinued = (
+                    $actionMode === 'update' &&
+                    ($beforeSupplierStatus === '판매중' || $beforeSupplierStatus === null) &&
+                    $isDiscontinuedTarget &&
+                    !empty($supplier_prd_idx)
+                );
+
+                if( $shouldSyncDiscontinued ){
+                    $productPartnerApiService = new ProductPartnerApiService();
+                    $productDiscontinued = $productPartnerApiService->productDiscontinued([
+                        'idx' => $supplier_prd_idx,
+                    ]);
+
+                    $supplierDbActionMessage = ($supplier_status === '품절')
+                        ? '공급사 DB 품절처리 완료'
+                        : '공급사 DB 판매중단 처리 완료';
+                }
+
                 if(empty($action_summary)){
                     $action_summary = $actionMode === 'create' ? '파트너 상품 등록' : '파트너 상품 수정';
                 }
@@ -313,6 +353,12 @@ class ProductPartnerService extends BaseClass
                 $afterData = array_merge($beforeData, $actionMode === 'create' ? $inputData : $updateData);
                 $adminActionLogService = new AdminActionLogService();
                 $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
+                if ($supplierDbActionMessage !== null) {
+                    $diff['supplier_db_action'] = [
+                        'before' => null,
+                        'after' => $supplierDbActionMessage,
+                    ];
+                }
                 $adminActionLogService->log([
                     'target_type' => 'prd_partner',
                     'target_table' => 'prd_partner',

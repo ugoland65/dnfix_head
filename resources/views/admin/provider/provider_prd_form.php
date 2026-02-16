@@ -20,12 +20,15 @@
                         <option value="<?=$kind?>" <? if($prd_data['kind'] == $kind ) echo "selected"; ?>><?=$kind?></option>
                     <? } ?>
                 </select>
+                <p class="text-danger">
+                    상품 구분이 지정되지 않았습니다. 상품 구분을 지정해주세요.
+                </p>
             </td>
         </tr>
         <tr>
             <th>브랜드</th>
             <td>
-                <select name="brand_idx">
+                <select name="brand_idx" class="dn-select2">
                     <option value=''>브랜드 선택</option>
                     <?
                         foreach ($brandForSelect as $brand) {
@@ -204,7 +207,7 @@
     <tbody>
         <tr>
             <th>고도몰 상품번호</th>
-            <td><input type='text' name='godo_goodsNo'  size='10' value="<?=$prd_data['godo_goodsNo']?>" style="width:150px;"></td>
+            <td><input type='text' name='godo_goodsNo'  value="<?=$prd_data['godo_goodsNo']?>" style="width:150px;"></td>
         </tr>
         <tr>
             <th>고도몰 등록상태</th>
@@ -224,7 +227,7 @@
         </tr>
         <tr>
             <th>공급사 매칭코드</th>
-            <td><input type='text' name='matching_code'  size='10' value="<?=$prd_data['matching_code']?>" style="width:150px;"></td>
+            <td><input type='text' name='matching_code'  value="<?=$prd_data['matching_code']?>" style="width:150px;"></td>
         </tr>
         <tr>
             <th>판매가 ( 고도몰 등록가격)</th>
@@ -310,27 +313,56 @@
     <tbody>
         <tr>
             <th>공급사 사이트</th>
-            <td><input type='text' name='supplier_site'  size='10' value="<?=$prd_data['supplier_site']?>" style="width:150px;"></td>
+            <td><input type='text' name='supplier_site'  value="<?=$prd_data['supplier_site']?>" style="width:150px;"></td>
+        </tr>
+        <tr>
+            <th>공급 2차</th>
+            <td><input type='text' name='supplier_2nd_name'  value="<?=$prd_data['supplier_2nd_name']?>" style="width:150px;"></td>
         </tr>
         <tr>
             <th>공급사 사이트 고유번호</th>
-            <td><input type='text' name='supplier_prd_pk'  size='10' value="<?=$prd_data['supplier_prd_pk']?>" style="width:150px;"></td>
+            <td>
+                <input type='text' name='supplier_prd_pk'  value="<?=$prd_data['supplier_prd_pk']?>" style="width:150px;">
+                <button type="button" class="btnstyle1 btnstyle1-sm" onclick="goSupplierProduct('<?=$prd_data['supplier_site'] ?? ''?>', '<?=$prd_data['supplier_prd_pk'] ?? ''?>');">공급사 사이트 상품보기</button>     
+            </td>
         </tr>
         <tr>
-            <th>공급사 매칭 번호</th>
-            <td><input type='text' name='supplier_prd_idx'  size='10' value="<?=$prd_data['supplier_prd_idx']?>" style="width:150px;"></td>
+            <th>공급사 상품DB 매칭 번호</th>
+            <td>
+                <input type='text' name='supplier_prd_idx'  value="<?=$prd_data['supplier_prd_idx']?>" style="width:150px;">
+                <button type="button" class="btnstyle1 btnstyle1-sm" onclick="goSupplierProductEdit('<?=$prd_data['supplier_prd_idx'] ?? ''?>');">공급사 상품DB 상품보기</button>     
+            </td>
         </tr>
         <tr>
             <th>상품원가 (공급사 제공가격)</th>
             <td><input type='text' name='cost_price'  size='40' value="<?=number_format($prd_data['cost_price'])?>" style="width:150px;" class="comma-input"></td>
         </tr>
+        <tr>
+            <th>공급사 판매 상태</th>
+            <td>
+                
+                <select name="supplier_status">
+                    <option value="판매중" <? if($prd_data['supplier_status'] == '판매중' ) echo "selected"; ?>>판매중</option>
+                    <option value="품절" <? if($prd_data['supplier_status'] == '품절' ) echo "selected"; ?>>품절</option>
+                    <option value="판매중단" <? if($prd_data['supplier_status'] == '판매중단' ) echo "selected"; ?>>판매중단</option>
+                </select>
 
+                <?php if( $prd_data['supplier_status'] == '품절' ){ ?>
+                    <br><span class="text-danger">품절 처리일 : <?=$prd_data['supplier_status_date'] ?? ''?></span>
+                <?php } ?>
+
+                <?php if( $prd_data['supplier_status'] == '판매중단' ){ ?>
+                    <br><span class="text-danger">판매중단 처리일 : <?=$prd_data['supplier_status_date'] ?? ''?></span>
+                <?php } ?>
+
+            </td>
+        </tr>
         <?php
             if( !empty($prd_data['matching_option']) ){
         ?>
         <tr>
             <th>공급사 매칭 옵션</th>
-            <td><input type='text' name='matching_option'  size='10' value="<?=$prd_data['matching_option']?>" style="width:300px;"></td>
+            <td><input type='text' name='matching_option'  value="<?=$prd_data['matching_option']?>" style="width:300px;"></td>
         </tr>
         <?php
             }
@@ -361,3 +393,8 @@
 </div>
 <? } ?>
 
+<script>
+    $(document).ready(function(){
+        $('.dn-select2').select2();
+    });
+</script>

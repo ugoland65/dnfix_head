@@ -133,4 +133,33 @@ class ProductPartnerApiService
 
     }
 
+
+    /**
+     * 공급사 DB 상품 판매중단 처리
+     * 
+     * @param array $data
+     * @return boolean
+     */
+    public function productDiscontinued($data)
+    {
+        $idx = $data['idx'] ?? null;
+        $url = $this->domain.'/api/SupplierProductAction';
+
+        $headers = [
+            "Content-Type: application/json",
+            "X-API-KEY: {$this->apiKey}",
+        ];          
+
+        $payload = [
+            'actionMode' => 'Discontinued',
+            'idx' => $idx,
+        ];
+
+        $response = HttpClient::postData($url, $payload, $headers);
+        $data = json_decode($response, true);
+
+        return $data;
+
+    }
+
 }

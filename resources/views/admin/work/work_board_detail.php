@@ -243,6 +243,7 @@
                                                     <th class="">공급사<br>판매상태</th>
                                                     <th class="">공급 2차</th>
                                                     <th class="">수정일<br>등록일</th>
+                                                    <th class="">처리</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -353,6 +354,10 @@
                                                         <td class="text-center">
                                                             <?= date('Y.m.d H:i', strtotime($item['updated_at'])) ?? '-' ?><br>
                                                             <?= date('Y.m.d H:i', strtotime($item['created_at'])) ?? '-' ?>
+                                                        </td>
+
+                                                        <td class="text-center">
+                                                            <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goSupplierProductEdit('<?= $item['supplier_prd_idx'] ?>');">완료</button>
                                                         </td>
 
                                                     </tr>

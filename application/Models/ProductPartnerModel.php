@@ -29,6 +29,8 @@ class ProductPartnerModel extends BaseModel
 		'supplier_2nd_name',
 		'supplier_img_mode',
 		'supplier_img_src',
+		'supplier_status',
+		'supplier_status_date',
 		'godo_goodsNo',
 		'godo_option',
 		'godo_is_option',

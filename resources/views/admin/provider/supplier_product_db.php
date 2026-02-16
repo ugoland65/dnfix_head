@@ -27,6 +27,7 @@
                         <option value="일시품절" <?=$s_status == '일시품절' ? 'selected' : ''?>>일시품절</option>
                         <option value="품절" <?=$s_status == '품절' ? 'selected' : ''?>>품절</option>
                         <option value="판매중단" <?=$s_status == '판매중단' ? 'selected' : ''?>>판매중단</option>
+                        <option value="수집실패" <?=$s_status == '수집실패' ? 'selected' : ''?>>수집실패</option>
 					</select>
 				</ul>
                 <ul>
