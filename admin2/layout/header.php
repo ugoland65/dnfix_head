@@ -214,6 +214,9 @@ $(function () {
 </head>
 <body id="basic">
 
+	<div id="toastContainer" class="toast-container position-fixed top-0 end-0" style="z-index: 1080; padding:13px 13px 0 0;">
+	</div>
+
 <?php /*
 <div class="tooltip" role="tooltip"><div class="tooltip-arrow"></div><div class="tooltip-inner"></div></div>
 */ ?>

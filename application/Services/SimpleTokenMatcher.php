@@ -278,6 +278,14 @@ class SimpleTokenMatcher
             $m = $transformedDb1Name !== null ? $this->matchOne($transformedDb1Name, $db2Index) : null;
             $matchedRow = $m && isset($m['idx']) ? $this->getRowFromDb2($m['idx'], $db2Rows) : null;
 
+            //이미 매칭이 완료된 상품일 경우
+            if( !empty($row['supplier_prd_idx']) ){
+                $score = "매칭완료";
+            }else{
+                $score = $m && isset($m['score']) ? round($m['score'], 2) : 0.0;
+            }
+
+
             $out[] = [
                 'db1_idx' => $db1Idx,
                 'db1_name' => $db1Name,
@@ -286,7 +294,7 @@ class SimpleTokenMatcher
                 'db1_brand_name' => $db1BrandName,
                 'prd_data' => $row,
                 'match_data' => $matchedRow,
-                'score' => $m && isset($m['score']) ? $m['score'] : 0.0,
+                'score' => $score,
             ];
         }
 

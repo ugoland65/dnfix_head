@@ -141,7 +141,7 @@
                                 <?php if( !empty($row['provider_prd_idx']) ): ?>
                                     #<?=$row['provider_prd_idx']?>
                                     <div class="m-t-3" style="font-size: 12px;">
-                                        <?= $productPartnerMatchData[$row['provider_prd_idx']]['name'] ?>
+                                        <?= $productPartnerMatchData[$row['provider_prd_idx']]['name'] ?? ''?>
                                     </div>
                                     <div class="m-t-3">
                                         <button type="button" class="btnstyle1 btnstyle1-xs"

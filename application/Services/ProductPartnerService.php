@@ -6,6 +6,7 @@ use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
 use App\Services\AdminActionLogService;
 use App\Services\ProductPartnerApiService;
+use App\Core\AuthAdmin;
 
 class ProductPartnerService extends BaseClass
 {
@@ -33,6 +34,7 @@ class ProductPartnerService extends BaseClass
         $sort_mode = $payloadData['sort_mode'] ?? 'idx';
         $s_godo_sale_status = $payloadData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
         $with_api_data = $payloadData['with_api_data'] ?? false;
+        $is_match_excluded = $payloadData['is_match_excluded'] ?? null;
 
         $page = $payloadData['page'] ?? null;
         $perPage = $payloadData['per_page'] ?? null;
@@ -76,6 +78,11 @@ class ProductPartnerService extends BaseClass
         
         if( !empty($s_brand) ){
             $query->where('prd_partner.brand_idx', $s_brand);
+        }
+
+        // 매칭제외 여부
+        if( !empty($is_match_excluded) ){
+            $query->where('prd_partner.is_match_excluded', $is_match_excluded);
         }
 
         if( $sort_mode == 'idx' ){
@@ -183,6 +190,8 @@ class ProductPartnerService extends BaseClass
                 $supplier_status_date = date('Y-m-d H:i:s');
             }
 
+            $is_match_excluded = $postData['is_match_excluded'] ?? 'N'; // 매칭제외 여부
+
 
             // 원가가 없고 주문가와 배송비가 있으면 원가 계산
             /*
@@ -238,6 +247,7 @@ class ProductPartnerService extends BaseClass
                 'kind' => $kind, // 상품 구분 (상품 카테고리 코드)
                 'brand_idx' => $brand_idx, // 브랜드 인덱스 (BRAND_DB 테이블의 BD_IDX)
                 'partner_idx' => $partner_idx, // 공급사 인덱스 (partners 테이블의 idx)
+                'is_match_excluded' => $is_match_excluded, // 매칭제외 여부
                 'supplier_prd_idx' => $supplier_prd_idx, // 공급사 상품 인덱스 (supplier_product 테이블의 idx)
                 'supplier_prd_pk' => $supplier_prd_pk, // 공급사 상품 고유번호
                 'supplier_site' => $supplier_site, // 공급사 사이트
@@ -269,6 +279,7 @@ class ProductPartnerService extends BaseClass
                 'kind' => $kind,
                 'brand_idx' => $brand_idx,
                 'partner_idx' => $partner_idx,
+                'is_match_excluded' => $is_match_excluded, // 매칭제외 여부
                 'supplier_prd_idx' => $supplier_prd_idx,
                 'supplier_prd_pk' => $supplier_prd_pk,
                 'supplier_site' => $supplier_site,
@@ -494,4 +505,49 @@ class ProductPartnerService extends BaseClass
         }
     }
 
+
+    /**
+     * 공급사 상품 매칭 제외
+     * 
+     * @param array $data
+     * @return array
+     */
+    public function productMatchExcluded($data) 
+    {
+        $idx = $data['idx'] ?? null;
+        $process_reason = $data['process_reason'] ?? null;
+
+        if (empty($idx)) {
+            return 0;
+        }
+
+        $model = ProductPartnerModel::find($idx);
+        if (empty($model)) {
+            return 0;
+        }
+
+        $beforeModel = $model->toArray();
+        $rawMatchingData = $beforeModel['matching_data'] ?? '';
+
+        if (is_array($rawMatchingData)) {
+            $matchingData = $rawMatchingData;
+        } elseif (is_string($rawMatchingData) && trim($rawMatchingData) !== '') {
+            $decoded = json_decode($rawMatchingData, true);
+            $matchingData = is_array($decoded) ? $decoded : [];
+        } else {
+            $matchingData = [];
+        }
+
+        $matchingData['match_excluded'] = [
+            'reason' => $process_reason,
+            'reg' => AuthAdmin::getConnectionInfo(),
+        ];
+
+        $result = ProductPartnerModel::where('idx', $idx)->update([
+            'is_match_excluded' => 'Y',
+            'matching_data' => json_encode($matchingData, JSON_UNESCAPED_UNICODE),
+        ]);
+
+        return $result;
+    }
 }

@@ -277,6 +277,7 @@ class ProductPartnerController extends BaseClass
         }
     }
 
+
     /**
      * 공급사 상품 상세 
      * 
@@ -389,20 +390,34 @@ class ProductPartnerController extends BaseClass
                 throw new \Exception('action_mode가 비어있습니다.');
             }
 
+            $productPartnerService = new ProductPartnerService();
             $productPartnerApiService = new ProductPartnerApiService();
 
             // 공급사 상품 등록대기로 등록
             if( $actionMode == 'product_standby_register' ){
+
                 $payload = [
                     'pks' => $requestData['pks'] ?? [],
                 ];
                 $result = $productPartnerApiService->productStandbyRegister($payload);
+                $message = '등록대기 처리되었습니다.';
+
+            // 공급사 상품 매칭제외로 처리
+            }elseif( $actionMode == 'product_match_excluded' ){
+                
+                $payload = [
+                    'idx' => $requestData['idx'] ?? null,
+                    'process_reason' => $requestData['process_reason'] ?? null,
+                ];
+                $result = $productPartnerService->productMatchExcluded($payload);
+                $message = '매칭제외 처리되었습니다.';
             }
+            
 
             if( $result ){
                 return response()->json([
                     'status' => 'success', 
-                    'message' => '등록대기 처리되었습니다.',
+                    'message' => $message,
                 ]);
             }else{
                 throw new \Exception('등록대기 처리에 실패했습니다.');

@@ -23,6 +23,7 @@ class ProductPartnerModel extends BaseModel
 		'code',
 		'partner_idx',
 		'brand_idx',
+		'is_match_excluded', // 매칭제외 여부
 		'supplier_prd_idx',
 		'supplier_site',
 		'supplier_prd_pk',

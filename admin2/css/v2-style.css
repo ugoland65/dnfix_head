@@ -1,3 +1,26 @@
+/* Toast -------------------------------------------------------------------- */
+.toast {
+	background-color: rgba(74, 58, 255, 0.7);
+	color: #fff;
+}
+.toast-header {
+	padding: 0.5rem 0.5rem;
+	background-color: rgba(74, 58, 255, 0.7);
+	.me-auto {
+		color: #fff;
+	}
+	.time {
+		color: #ddd;
+	}
+}
+.toast-body {
+	color: #fff;
+}
+.toast-container > :not(:last-child) {
+    margin-bottom:6px;
+}
+/* -------------------------------------------------------------------------- */
+
 .on_sale_label{
 	display:inline-block;
 	padding:5px;

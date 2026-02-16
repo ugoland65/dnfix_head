@@ -9,36 +9,6 @@ use App\Services\SimpleTokenMatcher;
 use App\Services\ProductPartnerService;
 use App\Models\BrandModel;
 
-/*
-use App\Services\CrawlerService;
-
-$crawlerService = new CrawlerService();
-
-echo "<h3>🔍 바이담 크롤링 디버그 (2단계 접근법)</h3>";
-echo "<pre>";
-
-// 1단계: 로그인만 수행
-echo "=== 1단계: 로그인 수행 ===\n";
-$loginResult = $crawlerService->loginOnly(true);
-echo "로그인 결과: " . ($loginResult ? "✅ 성공" : "❌ 실패") . "\n\n";
-
-if ($loginResult) {
-    // 2단계: 로그인된 세션으로 상품 페이지 접근
-    echo "=== 2단계: 상품 크롤링 ===\n";
-    $productInfo = $crawlerService->crawlProduct('1000001528', true);
-    
-    echo "</pre>";
-    echo "<h3>크롤링 결과:</h3>";
-    echo "<pre>";
-    print_r($productInfo);
-    echo "</pre>";
-} else {
-    echo "❌ 로그인 실패로 크롤링 중단\n";
-    echo "</pre>";
-}
-*/
-
-
 $requestHandler = new RequestHandler();
 $requestData = $requestHandler->getAll();
 
@@ -90,6 +60,7 @@ if( $site ){
         's_partner' => $supplierData[$site]['idx'],
         'match_status' =>$s_match_status,
         's_brand' => $s_brand,
+        'is_match_excluded' => 'N',
     ];
 
     $getProductPartnerList = $productPartnerService->getProductPartnerList($payLoad);
@@ -131,11 +102,7 @@ if( $site ){
 </div>
 
 <?php
-/*
-echo "<pre>";
-print_r($matchAllResult);
-echo "</pre>";
-*/
+//dd($matchAllResult);
 ?>
 
 <style>
@@ -226,6 +193,7 @@ echo "</pre>";
                             <th>마진율</th>
                             <th style="width:95px;">매칭</th>
                             <th class="" style="width:95px;">검색매칭</th>
+                            <th class="" style="width:95px;">매칭제외</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -296,7 +264,7 @@ echo "</pre>";
 
                             </td>
                             <td><img src="<?=$row['db1_img_src']?>" style="height:70px; border:1px solid #eee !important;"></td>
-                            <td class="text-center"><?=round($row['score'], 2)?></td>
+                            <td class="text-center"><?=$row['score'] ?? '-' ?></td>
                             <td><img src="<?=$matchData['image_url'] ?? ''?>" style="height:70px; border:1px solid #eee !important;"></td>
                             <td class="text-left prd-name">
                                 <a href="javascript:goSupplierProductEdit('<?=$matchData['idx'] ?? ''?>');"><?=$matchData['name'] ?? ''?></a>
@@ -396,51 +364,70 @@ echo "</pre>";
                                         -
                                 <?php } ?>
                             </td>
-                            <td class="text-center">
-                                
-                                <?php if( ($row['prd_data']['godo_is_option'] ?? 'N') == "Y" ): ?>
-                                    옵션있는 상품
-                                <?php else: ?>
 
-                                    <?php
-                                        if( !empty($row['match_data']['idx'])){
-                                            if( !empty($row['match_data']['is_option']=="N") ){
-                                    ?>
-                                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
-                                        data-db1-idx="<?=$row['db1_idx']?>" 
-                                        data-db2-idx="<?=$row['match_data']['idx']?>"
-                                        id="match_btn_<?=$row['match_data']['idx']?>"
-                                    >바로매칭</button>
-                                    <?
-                                        }else{
-                                    ?>
+                            <?php
+                                //이미 매칭이 완료된 상품일 경우
+                                if( !empty($row['prd_data']['supplier_prd_idx']) ){
+                            ?>
+                                <td class="text-center">-</td>
+                                <td class="text-center">-</td>
+                                <td class="text-center">-</td>
+                            <?php }else{ ?>
 
-                                    <select name="option_match" id="option_match_<?=$row['match_data']['idx']?>">
+                                <td class="text-center">
+                                    
+
+                                    <?php if( ($row['prd_data']['godo_is_option'] ?? 'N') == "Y" ): ?>
+                                        옵션있는 상품
+                                    <?php else: ?>
+
                                         <?php
-                                            foreach($option_data as $option){
-                                                foreach($option['items'] as $item){
-                                                    echo "<option value='".$item['value']."'>".$item['value']."</option>";
-                                                }
-                                            }
+                                            if( !empty($row['match_data']['idx'])){
+                                                if( !empty($row['match_data']['is_option']=="N") ){
                                         ?>
-                                    </select>
+                                        <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
+                                            data-db1-idx="<?=$row['db1_idx']?>" 
+                                            data-db2-idx="<?=$row['match_data']['idx']?>"
+                                            id="match_btn_<?=$row['match_data']['idx']?>"
+                                        >바로매칭</button>
+                                        <?
+                                            }else{
+                                        ?>
 
-                                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm option-match-btn" 
+                                        <select name="option_match" id="option_match_<?=$row['match_data']['idx']?>">
+                                            <?php
+                                                foreach($option_data as $option){
+                                                    foreach($option['items'] as $item){
+                                                        echo "<option value='".$item['value']."'>".$item['value']."</option>";
+                                                    }
+                                                }
+                                            ?>
+                                        </select>
+
+                                        <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm option-match-btn" 
+                                            data-db1-idx="<?=$row['db1_idx']?>" 
+                                            data-db2-idx="<?=$row['match_data']['idx']?>"
+                                            id="option_match_btn_<?=$row['match_data']['idx']?>"
+                                        >옵션매칭</button>
+                                        <?php } } ?>
+
+                                    <?php endif; ?>
+
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn-one" 
                                         data-db1-idx="<?=$row['db1_idx']?>" 
-                                        data-db2-idx="<?=$row['match_data']['idx']?>"
-                                        id="option_match_btn_<?=$row['match_data']['idx']?>"
-                                    >옵션매칭</button>
-                                    <?php } } ?>
+                                        data-db2-idx="<?=$matchData['idx'] ?? ''?>"
+                                    >검색매칭</button>
+                                </td>
+                                <td class="text-center">
+                                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-excluded-btn" 
+                                        data-db1-idx="<?=$row['db1_idx']?>" 
+                                    >매칭제외</button>
+                                </td>
 
-                                <?php endif; ?>
+                            <?php } ?>
 
-                            </td>
-                            <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn-one" 
-                                    data-db1-idx="<?=$row['db1_idx']?>" 
-                                    data-db2-idx="<?=$matchData['idx'] ?? ''?>"
-                                >검색매칭</button>
-                            </td>
                         </tr>
                         <?php
                             }
@@ -543,6 +530,71 @@ $(function(){
         const db2_idx = $(this).data('db2-idx');
         const option_match = $(`#option_match_${db2_idx}`).val();
         supplierProductMatch.matchProviderProduct('option', db1_idx, db2_idx, option_match);
+    });
+
+    $('.match-excluded-btn').on('click', function(){
+        const $btn = $(this);
+        const db1_idx = $btn.data('db1-idx');
+
+        $.confirm({
+            title: '매칭제외 처리',
+            boxWidth: '420px',
+            useBootstrap: false,
+            content: ''
+                + '<div style="text-align:left;">'
+                + '  <div style="margin-bottom:8px; color:#666;">매칭제외 사유를 입력해주세요.</div>'
+                + '  <input type="text" id="matchExcludedReasonInput" class="form-control" placeholder="처리사유 입력" />'
+                + '  <div style="margin-top:10px;">'
+                + '      <button type="button" id="quickReasonSupplierStop" class="btnstyle1 btnstyle1-gary btnstyle1-xs">공급사 판매중단</button>'
+                + '  </div>'
+                + '</div>',
+            onContentReady: function(){
+                const self = this;
+                this.$content.find('#quickReasonSupplierStop').on('click', function(){
+                    self.$content.find('#matchExcludedReasonInput').val('공급사 판매중단');
+                    self.$$submit.trigger('click');
+                });
+            },
+            buttons: {
+                cancel: {
+                    text: '취소'
+                },
+                submit: {
+                    text: '처리',
+                    btnClass: 'btn-blue',
+                    action: function(){
+                        const reason = (this.$content.find('#matchExcludedReasonInput').val() || '').trim();
+                        if (!reason) {
+                            alert('처리사유를 입력해주세요.');
+                            return false;
+                        }
+
+                        $.ajax({
+                            url: '/admin/provider_product/action',
+                            type: 'POST',
+                            dataType: 'json',
+                            data: {
+                                action_mode: 'product_match_excluded',
+                                idx: db1_idx,
+                                process_reason: reason
+                            }
+                        }).done(function(res){
+                            if (res && res.status === 'success') {
+                                const $targetRow = $(`#match_id_${db1_idx}`);
+                                $targetRow.fadeOut(150, function(){
+                                    $(this).remove();
+                                });
+                                showToast("매칭제외 처리 완료", new Date().toLocaleTimeString());
+                            } else {
+                                alert((res && res.message) ? res.message : '매칭제외 처리에 실패했습니다.');
+                            }
+                        }).fail(function(){
+                            alert('서버 통신에 실패했습니다.');
+                        });
+                    }
+                }
+            }
+        });
     });
 
     $("#searchBtn").on('click',function(){
