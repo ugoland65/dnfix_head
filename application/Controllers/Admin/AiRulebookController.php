@@ -36,12 +36,13 @@ class AiRulebookController extends BaseClass
             $rulebook = $rulebookService->getRulebookDetail($idx);
 
             $data = [
+                'idx' => $idx,
                 'rulebook' => $rulebook
             ];
 
             return view('admin.ai_rulebook.rulebook_detail', $data)
                 ->extends('admin.layout.layout',[
-                    'pageGroup2' => 'ai',
+                    'pageGroup2' => 'airulebook',
                     'pageNameCode' => 'rulebook_detail'
                 ]);
 

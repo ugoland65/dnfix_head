@@ -1,26 +1,5 @@
 <style>
-    .partition-wrap{ 
-        display:table; height:100%; overflow:hidden;
 
-        > ul{
-            display:table-cell; vertical-align:top; 
-            
-            .scroll-wrap3{ width:100%; height:100%; overflow-y:auto;  }
-            .scroll-wrap3::-webkit-scrollbar{ width:7px; height:7px; border-left:solid 1px rgba(255,255,255,.1)}
-            .scroll-wrap3::-webkit-scrollbar-thumb{  background:#aaa;  }
-            
-        }
-
-        .partition-body{
-            flex:1;
-            border-right:1px solid #555555;
-        }
-        .partition-right{
-            flex: 0 0 400px;
-            width:400px;
-        }
-
-    }
 
     .participant-modal {
         position: fixed;

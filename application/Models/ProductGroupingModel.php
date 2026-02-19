@@ -11,7 +11,9 @@ class ProductGroupingModel extends BaseModel
 
     protected $fillable = [
         'pg_subject',
+        'public',
         'pg_mode',
+        'prd_mode',
         'pg_state',
         'pg_sday',
         'pg_day',

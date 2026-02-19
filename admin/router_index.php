@@ -18,6 +18,7 @@ use App\Controllers\Admin\OrderSheetController;
 use App\Controllers\Admin\ProductStockController;
 use App\Controllers\Admin\AdminActionLogController;
 use App\Controllers\Admin\AiRulebookController;
+use App\Controllers\Admin\ProductGroupingController;
 
 try {
 
@@ -64,6 +65,13 @@ try {
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
     $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
+
+    // 상품 그룹핑
+    $router->get('/product/grouping', ProductGroupingController::class, 'productGroupingList'); //상품 그룹핑 목록
+    $router->post('/product/grouping_add', ProductGroupingController::class, 'productGroupingAdd'); //상품 그룹핑 지정 페이지
+    $router->post('/product/grouping_add_save', ProductGroupingController::class, 'productGroupingAddSave'); //상품 그룹핑 상품추가 저장
+    $router->get('/product/grouping_view/{idx}', ProductGroupingController::class, 'productGroupingView'); //상품 그룹핑 상세
+    $router->post('/product/grouping_save', ProductGroupingController::class, 'productGroupingSave'); //상품 그룹핑 저장
 
     // 상품 처리
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션

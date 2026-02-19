@@ -338,7 +338,7 @@ $gnb_lang = "ko";
 				</div>
 			</li>
 
-			<li class="<?=$gnb_lang?> <? if($pageGroup == "ai") echo "active"; ?>"><a href="/admin/ai/rulebook/detail/1">AI 룰북</a></li>
+			<li class="<?=$gnb_lang?> <? if($pageGroup2 == "airulebook") echo "active"; ?>"><a href="/admin/ai/rulebook/detail/1">AI 룰북</a></li>
 
 			<?php
 				/*
@@ -361,6 +361,9 @@ $gnb_lang = "ko";
 						</li>
 						<li>
 							<a href="/admin/provider_product/list">공급사 상품관리</a>
+						</li>
+						<li>
+							<a href="/admin/product/grouping">상품 그룹핑</a>
 						</li>
 						<li>
 							<a href="/admin/brand/list">브랜드 관리</a>

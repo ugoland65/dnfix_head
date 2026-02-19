@@ -301,7 +301,8 @@
 	<div class="pageing-wrap"><?= $paginationHtml ?></div>
 	<div class="m-l-20">
 		선택된 상품 <span id="selected_product_count">0</span>
-		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택한 상품 업무요청하기</button>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택상품 업무요청</button>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
 	</div>
 </div>
 <style>
@@ -415,6 +416,7 @@
 
 
 	$(function() {
+
 		$(document).on('change', 'input[name="check_idx[]"]', function() {
 			if ($(this).is(':checked')) {
 				$(this).closest('tr').addClass('selected-row');
@@ -424,6 +426,7 @@
 			updateSelectedCount();
 		});
 
+		// 선택상품 업무요청
 		$("#workRequestBtn").on('click', function() {
 			var selectedItems = [];
 			$('input[name="check_idx[]"]:checked').each(function() {
@@ -440,6 +443,23 @@
 				+ '&withdb=' + encodeURIComponent('provider_product')
 				+ '&pks=' + encodeURIComponent(pks);
 			location.href = url;
+		});
+
+
+		// 선택상품 그룹핑
+		$("#groupingBtn").on('click', function() {
+			var selectedItems = [];
+			$('input[name="check_idx[]"]:checked').each(function() {
+				selectedItems.push($(this).val());
+			});
+
+			if (selectedItems.length === 0) {
+				alert('그룹핑할 상품을 선택해주세요.');
+				return;
+			}
+
+			onlyAD.prdGrouping('provider', selectedItems);
+			
 		});
 
 		updateSelectedCount();
