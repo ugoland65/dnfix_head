@@ -423,6 +423,7 @@ if( $site ){
                                 <td class="text-center">
                                     <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-excluded-btn" 
                                         data-db1-idx="<?=$row['db1_idx']?>" 
+                                        data-db2-idx="<?=$matchData['idx'] ?? ''?>"
                                     >매칭제외</button>
                                 </td>
 
@@ -535,7 +536,9 @@ $(function(){
     $('.match-excluded-btn').on('click', function(){
         const $btn = $(this);
         const db1_idx = $btn.data('db1-idx');
+        const db2_idx = $btn.data('db2-idx');
 
+        /*
         $.confirm({
             title: '매칭제외 처리',
             boxWidth: '420px',
@@ -595,6 +598,9 @@ $(function(){
                 }
             }
         });
+        */
+        prdProviderMatchExcluded(db1_idx, db2_idx);
+
     });
 
     $("#searchBtn").on('click',function(){

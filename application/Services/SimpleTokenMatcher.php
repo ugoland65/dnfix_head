@@ -24,45 +24,45 @@ class SimpleTokenMatcher
             '딜도' => 'DILDO',
             "프리미엄" => "PREMIUM",
             "세트" => "SET",
-    "리얼"     => "REAL",
-    "모델"     => "MODEL",
-    "클래식"   => "CLASSIC",
-    "컬러"     => "COLOR",
-    "크리스탈" => "CRYSTAL",
-    "시크릿"   => "SECRET",
-    "퍼스트"   => "FIRST",
-    "노티"     => "NAUGHTY",
-    "볼드"     => "BOLD",
-    "베이비"   => "BABY",
-    "바디"     => "BODY",
-    "키스"     => "KISS",
-    "파워"     => "POWER",
-    "프로"     => "PRO",
-    "맥스"     => "MAX",
-    "미니"     => "MINI",
-    "플렉스"   => "FLEX",
-    "에어"     => "AIR",
-    "라이트"   => "LIGHT",
-    "블랙"     => "BLACK",
-    "화이트"   => "WHITE",
-    "핑크"     => "PINK",
-    "레드"     => "RED",
-    "블루"     => "BLUE",
-    "골드"     => "GOLD",
-    "실버"     => "SILVER",
-    "스트롱"   => "STRONG",
-    "슈퍼"     => "SUPER",
-    "울트라"   => "ULTRA",
-    "내추럴"   => "NATURAL",
-    "스킨"     => "SKIN",
-    "터치"     => "TOUCH",
-    "필"       => "FEEL",
-    "러브"     => "LOVE",
-    "핫"       => "HOT",
-    "쿨"       => "COOL",
-    "펀"       => "FUN",
-    "해피"     => "HAPPY",
-    "퀸"       => "QUEEN",
+            "리얼"     => "REAL",
+            "모델"     => "MODEL",
+            "클래식"   => "CLASSIC",
+            "컬러"     => "COLOR",
+            "크리스탈" => "CRYSTAL",
+            "시크릿"   => "SECRET",
+            "퍼스트"   => "FIRST",
+            "노티"     => "NAUGHTY",
+            "볼드"     => "BOLD",
+            "베이비"   => "BABY",
+            "바디"     => "BODY",
+            "키스"     => "KISS",
+            "파워"     => "POWER",
+            "프로"     => "PRO",
+            "맥스"     => "MAX",
+            "미니"     => "MINI",
+            "플렉스"   => "FLEX",
+            "에어"     => "AIR",
+            "라이트"   => "LIGHT",
+            "블랙"     => "BLACK",
+            "화이트"   => "WHITE",
+            "핑크"     => "PINK",
+            "레드"     => "RED",
+            "블루"     => "BLUE",
+            "골드"     => "GOLD",
+            "실버"     => "SILVER",
+            "스트롱"   => "STRONG",
+            "슈퍼"     => "SUPER",
+            "울트라"   => "ULTRA",
+            "내추럴"   => "NATURAL",
+            "스킨"     => "SKIN",
+            "터치"     => "TOUCH",
+            "필"       => "FEEL",
+            "러브"     => "LOVE",
+            "핫"       => "HOT",
+            "쿨"       => "COOL",
+            "펀"       => "FUN",
+            "해피"     => "HAPPY",
+            "퀸"       => "QUEEN",
         ],
         // 다른 사이트 규칙도 추가 가능
         'mobe' => [
@@ -194,6 +194,7 @@ class SimpleTokenMatcher
 
     /**
      * DB1 한 건 매칭
+     * 
      * @param string $db1Name
      * @param array  $db2Index buildInvertedIndex() 결과
      * @param int    $maxCandidates
@@ -265,7 +266,8 @@ class SimpleTokenMatcher
         $db2Index = $this->buildInvertedIndex($db2Rows);
         $out = [];
 
-        foreach ($db1Rows as $row) {
+        foreach ($db1Rows as $row)
+        {
 
             $db1Idx = isset($row['idx']) ? (string)$row['idx'] : null;
             $db1Name = isset($row['name']) ? (string)$row['name'] : null;
@@ -284,7 +286,6 @@ class SimpleTokenMatcher
             }else{
                 $score = $m && isset($m['score']) ? round($m['score'], 2) : 0.0;
             }
-
 
             $out[] = [
                 'db1_idx' => $db1Idx,
@@ -347,6 +348,7 @@ class SimpleTokenMatcher
 
         // 점수 높은 순으로 정렬, 동일 점수일 때는 가격 낮은 순으로 정렬
         usort($results, function ($a, $b) {
+
             // 점수 비교 (높은 순)
             $scoreCompare = $b['score'] <=> $a['score'];
             
@@ -362,6 +364,7 @@ class SimpleTokenMatcher
 
         // limit 적용
         return array_slice($results, 0, $limit);
+    
     }
 
 

@@ -1,3 +1,4 @@
+<script src="/admin2/js/admin_footer.js?ver=<?=time()?>"></script>
 <script type="text/javascript"> 
 <!-- 
 const footerGlobal = (function() {

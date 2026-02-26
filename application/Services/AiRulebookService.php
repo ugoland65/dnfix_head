@@ -132,7 +132,14 @@ class AiRulebookService
         unset($outputFormatMerged['output']['template_html']);
 
         $checksum = hash('sha256', json_encode($rulesJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
-        $versionCode = $this->makeVersionCode(($current['code'] ?? $code), $nextVersionNo);
+        $rulebookCode = (string)($current['code'] ?? $code);
+        $versionCode = $this->makeUniqueVersionCode($rulebookCode, $nextVersionNo);
+        $historyVersionCode = $this->makeHistoryVersionCode(
+            $rulebookCode,
+            (int)($current['version_no'] ?? 1),
+            (string)($current['version_code'] ?? ''),
+            $currentIdx
+        );
 
         // 3-1) 현재 최신 row를 history로 복사(스냅샷)
         AIRulebookHistoryModel::create([
@@ -143,7 +150,7 @@ class AiRulebookService
             'name' => $current['name'] ?? '',
             'description' => $current['description'] ?? '',
             'version_no' => (int)($current['version_no'] ?? 1),
-            'version_code' => $current['version_code'] ?? '',
+            'version_code' => $historyVersionCode,
             'checksum' => $current['checksum'] ?? null,
             'release_note' => $current['release_note'] ?? null,
             'tone_guideline' => $current['tone_guideline'] ?? null,
@@ -329,5 +336,52 @@ class AiRulebookService
         $ts = date('YmdHis');
         $rand = strtoupper(substr(bin2hex(random_bytes(3)), 0, 6));
         return "RB-{$safeCode}-{$ts}-" . str_pad((string)$versionNo, 4, '0', STR_PAD_LEFT) . "-{$rand}";
+    }
+
+    /**
+     * 최신 테이블에 저장할 version_code를 유일하게 생성한다.
+     *
+     * @param string $code
+     * @param int $versionNo
+     * @return string
+     * @throws Exception
+     */
+    private function makeUniqueVersionCode(string $code, int $versionNo): string
+    {
+        for ($i = 0; $i < 10; $i++) {
+            $candidate = $this->makeVersionCode($code, $versionNo);
+            $existsInCurrent = AiRulebookModel::where('version_code', $candidate)->exists();
+            $existsInHistory = AIRulebookHistoryModel::where('version_code', $candidate)->exists();
+            if (!$existsInCurrent && !$existsInHistory) {
+                return $candidate;
+            }
+            usleep(1000);
+        }
+
+        throw new Exception('version_code 생성에 실패했습니다. 잠시 후 다시 시도해주세요.');
+    }
+
+    /**
+     * 히스토리로 복사할 version_code를 충돌 없이 준비한다.
+     *
+     * @param string $code
+     * @param int $versionNo
+     * @param string $currentVersionCode
+     * @param int $currentIdx
+     * @return string
+     */
+    private function makeHistoryVersionCode(string $code, int $versionNo, string $currentVersionCode, int $currentIdx): string
+    {
+        $trimmed = trim($currentVersionCode);
+        if ($trimmed !== '' && !AIRulebookHistoryModel::where('version_code', $trimmed)->exists()) {
+            return $trimmed;
+        }
+
+        $safeCode = preg_replace('/[^a-zA-Z0-9._-]/', '_', $code);
+        if ($safeCode === '') {
+            $safeCode = 'UNKNOWN';
+        }
+
+        return "HIS-{$safeCode}-" . str_pad((string)$versionNo, 4, '0', STR_PAD_LEFT) . "-{$currentIdx}-" . date('YmdHis');
     }
 }

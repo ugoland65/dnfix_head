@@ -160,7 +160,9 @@ class WorkService
 
         $result['view_check'] = json_decode($result['view_check'] ?? '[]', true);
         $result['link'] = json_decode($result['link'] ?? '[]', true);
+        $result['old_withdb_data'] = $result['withdb_data'];
         $result['withdb_data'] = json_decode($result['withdb_data'] ?? '[]', true);
+
 
         return $result;
     }
@@ -187,6 +189,16 @@ class WorkService
         $target_mb_idx = $data['target_mb_idx'] ?? [];
         $withdb_mode = $data['withdb_mode'] ?? '';
         $pks = $data['pks'] ?? [];
+
+        $old_withdb_data = $data['old_withdb_data'] ?? null;
+        if (is_string($old_withdb_data) && trim($old_withdb_data) !== '') {
+            $old_withdb_data_raw = html_entity_decode($old_withdb_data, ENT_QUOTES, 'UTF-8');
+            $decodedOldWithdbData = json_decode($old_withdb_data_raw, true);
+            if (json_last_error() === JSON_ERROR_NONE && is_array($decodedOldWithdbData)) {
+                $old_withdb_data = $decodedOldWithdbData;
+            }
+        }
+
 
         if (!is_array($target_mb_idx)) {
             $target_mb_idx = [];
@@ -290,12 +302,22 @@ class WorkService
 
         $link_json = json_encode($link, JSON_UNESCAPED_UNICODE);
 
-        $withdb_data_json = [
-            'pks' => $pks,
-            'mode' => $withdb_mode,
-        ];
+        //수정일때 기존 withdb_data 사용
+        if( is_array($old_withdb_data) && !empty($old_withdb_data) ){
+
+            $withdb_data_json = $old_withdb_data;
+
+        }else{
+
+            $withdb_data_json = [
+                'pks' => $pks,
+                'mode' => $withdb_mode,
+            ];
+
+        }
 
         $withdb_data = json_encode($withdb_data_json, JSON_UNESCAPED_UNICODE);
+
 
         $updateData = [
             'subject' => $subject,

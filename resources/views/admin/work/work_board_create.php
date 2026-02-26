@@ -21,16 +21,18 @@
         border-radius: 5px;
     }
 
-    .link-list-wrap{
-        display:flex;
+    .link-list-wrap {
+        display: flex;
         flex-direction: column;
         gap: 5px;
     }
-    .link-list{
+
+    .link-list {
         display: flex;
         align-items: center;
         gap: 5px;
-        input[type="text"]{
+
+        input[type="text"] {
             width: 700px;
         }
     }
@@ -43,11 +45,26 @@
 
         <form id="work_board_create_form" method="post" action="/admin/work/TaskRequest/save" enctype="multipart/form-data">
 
-            <?php if( $mode == 'modify' ){ ?>
-                <input type="hidden" name="idx" value="<?= $workInfo['idx'] ?? '' ?>" >
-                <input type="hidden" name="old_link" value="<?= $workInfo['link'] ?? '' ?>" >
-            <?php } ?>
-            <input type="hidden" name="mode" value="<?= $mode ?? 'create' ?>" >
+            <?php if ($mode == 'modify') { ?>
+                <input type="hidden" name="idx" value="<?= $workInfo['idx'] ?? '' ?>">
+                <input type="hidden" name="old_link" value="<?= $workInfo['link'] ?? '' ?>">
+                <input type="hidden" name="withdb_mode" value="<?= $workInfo['withdb_mode'] ?? '' ?>">
+                <input type="hidden" name="old_withdb_data" value="<?= htmlspecialchars(is_array($workInfo['withdb_data'] ?? null) ? json_encode($workInfo['withdb_data'], JSON_UNESCAPED_UNICODE) : (string)($workInfo['withdb_data'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+
+                <?php
+                /*
+                if (is_array($workInfo['withdb_data']['pks'])) {
+                    foreach ($workInfo['withdb_data']['pks'] as $pk) {
+                ?>
+                        <input type="hidden" name="pks[]" value="<?= $pk ?>">
+                    <?php
+                    }
+                    ?>
+                <?php }  */?>
+
+            <?php }  ?>
+<?= dump($workInfo) ?>
+            <input type="hidden" name="mode" value="<?= $mode ?? 'create' ?>">
 
             <table class="table-reg th-150">
                 <tr>
@@ -55,10 +72,10 @@
                     <td>
                         <div class="form-group">
 
-                            <?php if( !empty($category) ){ ?>
-                                <input type="hidden" name="category" value="<?= $category ?>" >
+                            <?php if (!empty($category)) { ?>
+                                <input type="hidden" name="category" value="<?= $category ?>">
                                 <b style="width: 100px; text-align: center;"><?= $category ?></b>
-                            <?php } else{ ?>?>
+                                <?php } else { ?>?>
                                 <select name="category" id="category">
                                     <?php foreach ($workLogCate as $cate) { ?>
                                         <option value="<?= $cate['name'] ?>" <?= $category == $cate['name'] ? 'selected' : '' ?>><?= $cate['name'] ?></option>
@@ -76,7 +93,7 @@
 
                         <div id="target_mb_id_div" class="target-mb-id-div">
                             참여자 :
-                            <label><input type="checkbox" name="target_mb_idx_all" id="target_mb_idx_all" > 전체선택</label>
+                            <label><input type="checkbox" name="target_mb_idx_all" id="target_mb_idx_all"> 전체선택</label>
                             <?php
                             foreach ($mentionTarget as $mb) {
 
@@ -124,36 +141,36 @@
                     <td>
                         <div class="link-list-wrap" id="link_list_wrap">
 
-                            <?php if( !empty($workInfo['link']) ){ ?>
-                                <?php foreach($workInfo['link'] as $l){ ?>
+                            <?php if (!empty($workInfo['link'])) { ?>
+                                <?php foreach ($workInfo['link'] as $l) { ?>
                                     <div class="link-list">
-                                        <input name="link[]" type="text" value="<?= $l ?>" >
+                                        <input name="link[]" type="text" value="<?= $l ?>">
                                         <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>
                                     </div>
                                 <?php } ?>
-                            <?php }else{ ?>
+                            <?php } else { ?>
                                 <div class="link-list">
-                                    <input name="link[]" type="text"  >
+                                    <input name="link[]" type="text">
                                     <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>
                                 </div>
                             <?php } ?>
-                            
+
                         </div>
                         <div class="m-t-5">
                             <button type="button" id="addLinkBtn" class="btnstyle1 btnstyle1-success btnstyle1-sm">링크 추가</button>
                         </div>
                     </td>
                 </tr>
-                
-                <?php if( !empty($withdb) && !empty($withdbdata) ){ ?>
+
+                <?php if (!empty($withdb) && !empty($withdbdata)) { ?>
                     <tr>
                         <th>참조 상품</th>
                         <td style="padding:15px;">
 
-                            <input type="hidden" name="withdb_mode" value="<?= $withdb ?>" >
+                            <input type="hidden" name="withdb_mode" value="<?= $withdb ?>">
 
-                            <?php if( $withdb == "provider_product" ){ ?>
-                                
+                            <?php if ($withdb == "provider_product") { ?>
+
                                 <h3 style="font-size:16px; font-weight: 600; margin-bottom:5px;">공급사 상품 참조</h3>
                                 <table class="table-style">
                                     <thead>
@@ -178,16 +195,16 @@
                                         </tr>
                                     </thead>
                                     <tbody>
-                                        <?php foreach($withdbdata as $item){ ?>
+                                        <?php foreach ($withdbdata as $item) { ?>
                                             <tr>
                                                 <td class="text-center">
                                                     <?= $item['idx'] ?>
-                                                    <input type="hidden" name="pks[]" value="<?= $item['idx'] ?>" >
+                                                    <input type="hidden" name="pks[]" value="<?= $item['idx'] ?>">
                                                 </td>
                                                 <td class="text-center">
                                                     <?= $item['status'] ?>
-                                                    <?php if( $item['status'] == '품절' ){ ?>
-                                                        <br><span class="text-red"><?=date('Y.m.d', strtotime($item['sold_out_date'])) ?? ''?></span>
+                                                    <?php if ($item['status'] == '품절') { ?>
+                                                        <br><span class="text-red"><?= date('Y.m.d', strtotime($item['sold_out_date'])) ?? '' ?></span>
                                                     <?php } ?>
                                                 </td>
                                                 <td>
@@ -201,7 +218,7 @@
                                                     <? } ?>
                                                 </td>
                                                 <td class="text-center">
-                                                    <?php if( !empty($item['brand_idx']) ){ ?>
+                                                    <?php if (!empty($item['brand_idx'])) { ?>
                                                         <?= $item['brand_name'] ?>
                                                     <?php } else { ?>
                                                         <span class="text-red">미등록</span>
@@ -210,7 +227,7 @@
                                                 <td class="text-center"><?= $item['partner_name'] ?></td>
                                                 <td class="text-center"><?= $item['code'] ?></td>
                                                 <td class="text-center">
-                                                    <?php if( !empty($item['godo_goodsNo']) ){ ?>
+                                                    <?php if (!empty($item['godo_goodsNo'])) { ?>
                                                         <div style="font-size: 12px;">
                                                             #<?= $item['godo_goodsNo'] ?>
                                                         </div>
@@ -252,7 +269,7 @@
                                                 <!-- 공급사 상품코드 -->
                                                 <td class="text-center">
                                                     <?php
-                                                        if (!empty($item['supplier_prd_idx'])) {
+                                                    if (!empty($item['supplier_prd_idx'])) {
                                                     ?>
                                                         <div style="font-size: 12px;">
                                                             #<?= $item['supplier_prd_pk'] ?>
@@ -272,8 +289,8 @@
                                                     if (!empty($item['supplier_prd_idx'])) {
                                                     ?>
                                                         <?= $supplierProductMap[$item['supplier_prd_idx']]['status'] ?? '-' ?>
-                                                        <?php if( ($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절' ){ ?>
-                                                            <br><span class="text-red"><?=date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? ''?></span>
+                                                        <?php if (($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절') { ?>
+                                                            <br><span class="text-red"><?= date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? '' ?></span>
                                                         <?php } ?>
                                                     <?php } else { ?>
                                                         -
@@ -313,7 +330,7 @@
         <button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-md" onclick="location.href='/admin/work/TaskRequest?category=<?= $category ?? '' ?>'">
             <i class="fas fa-arrow-left"></i> 목록
         </button>
-        <button type="button" id="saveBtn" class="btnstyle1 btnstyle1-primary btnstyle1-md" >
+        <button type="button" id="saveBtn" class="btnstyle1 btnstyle1-primary btnstyle1-md">
             <i class="far fa-check-circle"></i> <?= $mode == 'create' ? '등록' : '수정' ?>
         </button>
     </div>
@@ -371,7 +388,7 @@
     });
 
     $('#target_mb_idx_all').on('change', function() {
-        if($(this).is(':checked')) {
+        if ($(this).is(':checked')) {
             $('.target-mb-id').prop('checked', true);
         } else {
             $('.target-mb-id').prop('checked', false);
@@ -380,18 +397,18 @@
 
     //첨부파일 추가
     $('#addFileBtn').on('click', function() {
-        var shtml = '<div class="file-list">'
-            + '<input name="work_log_file[]" type="file">'
-            + '</div>';
+        var shtml = '<div class="file-list">' +
+            '<input name="work_log_file[]" type="file">' +
+            '</div>';
         $('#file_list_wrap').append(shtml);
     });
 
     //링크 추가
     $('#addLinkBtn').on('click', function() {
-        var shtml = '<div class="link-list">'
-            + '<input name="link[]" type="text">'
-            + '<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>'
-            + '</div>';
+        var shtml = '<div class="link-list">' +
+            '<input name="link[]" type="text">' +
+            '<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs link-remove">삭제</button>' +
+            '</div>';
         $('#link_list_wrap').append(shtml);
     });
 
@@ -411,7 +428,7 @@
         var subject = $('#subject').val();
         var category = $('#category').val();
 
-        if(subject == '') {
+        if (subject == '') {
             alert('제목을 입력해주세요.');
             $('#subject').focus();
             return false;

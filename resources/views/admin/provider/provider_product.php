@@ -135,7 +135,7 @@
 									<td class="prd-name">
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
 										<? if (!empty($item['memo'])) { ?>
-											<br><span class="prd-memo"><?= $item['memo'] ?></span>
+											<br><span class="prd-memo text-red"><?= $item['memo'] ?></span>
 										<? } ?>
 									</td>
 									<td class="text-center">
@@ -260,10 +260,16 @@
 										<?php
 										if (!empty($item['supplier_prd_idx'])) {
 										?>
-											<?= $supplierProductMap[$item['supplier_prd_idx']]['status'] ?? '-' ?>
-											<?php if( ($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절' ){ ?>
-												<br><span class="text-red"><?=date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? ''?></span>
+											<?php if( $item['supplier_status'] == '판매중단'){ ?>
+												<span class="text-red"><?= $item['supplier_status'] ?></span>
+												<br><span class="text-red"><?=date('Y.m.d', strtotime($item['supplier_status_date'])) ?? ''?></span>
+											<?php } else { ?>
+												<?= $supplierProductMap[$item['supplier_prd_idx']]['status'] ?? '-' ?>
+												<?php if( ($supplierProductMap[$item['supplier_prd_idx']]['status'] ?: '') == '품절' ){ ?>
+													<br><span class="text-red"><?=date('Y.m.d', strtotime($supplierProductMap[$item['supplier_prd_idx']]['sold_out_date'])) ?? ''?></span>
+												<?php } ?>
 											<?php } ?>
+
 										<?php } else { ?>
 											-
 										<?php } ?>
@@ -286,6 +292,8 @@
 										<?= date('Y.m.d H:i', strtotime($item['updated_at'])) ?? '-' ?><br>
 										<?= date('Y.m.d H:i', strtotime($item['created_at'])) ?? '-' ?>
 									</td>
+
+
 								</tr>
 							<?php } ?>
 						</tbody>

@@ -435,6 +435,13 @@ class ProductPartnerService extends BaseClass
      */
     public function getProductPartnerWhereInIdx($idxs) {
 
+        if (!is_array($idxs)) {
+            $idxs = is_string($idxs) ? explode(',', $idxs) : [];
+        }
+        $idxs = array_values(array_filter($idxs, static function ($value) {
+            return $value !== null && $value !== '';
+        }));
+
         if (empty($idxs)) {
             return [];
         }
@@ -514,39 +521,49 @@ class ProductPartnerService extends BaseClass
      */
     public function productMatchExcluded($data) 
     {
-        $idx = $data['idx'] ?? null;
+        $db1_idx = $data['db1_idx'] ?? null;
+        $db2_idx = $data['db2_idx'] ?? null;
         $process_reason = $data['process_reason'] ?? null;
 
-        if (empty($idx)) {
-            return 0;
+        if (!empty($db1_idx)) {
+            
+            $model = ProductPartnerModel::find($db1_idx);
+            if (empty($model)) {
+                return 0;
+            }
+    
+            $beforeModel = $model->toArray();
+            $rawMatchingData = $beforeModel['matching_data'] ?? '';
+    
+            if (is_array($rawMatchingData)) {
+                $matchingData = $rawMatchingData;
+            } elseif (is_string($rawMatchingData) && trim($rawMatchingData) !== '') {
+                $decoded = json_decode($rawMatchingData, true);
+                $matchingData = is_array($decoded) ? $decoded : [];
+            } else {
+                $matchingData = [];
+            }
+    
+            $matchingData['match_excluded'] = [
+                'reason' => $process_reason,
+                'reg' => AuthAdmin::getConnectionInfo(),
+            ];
+    
+            $result = ProductPartnerModel::where('idx', $db1_idx)->update([
+                'is_match_excluded' => 'Y',
+                'matching_data' => json_encode($matchingData, JSON_UNESCAPED_UNICODE),
+            ]);
+
         }
 
-        $model = ProductPartnerModel::find($idx);
-        if (empty($model)) {
-            return 0;
+        if (!empty($db2_idx)) {
+
+            $productPartnerApiService = new ProductPartnerApiService();
+            $productMatchExcluded = $productPartnerApiService->productMatchExcluded([
+                'idx' => $db2_idx,
+            ]);
+
         }
-
-        $beforeModel = $model->toArray();
-        $rawMatchingData = $beforeModel['matching_data'] ?? '';
-
-        if (is_array($rawMatchingData)) {
-            $matchingData = $rawMatchingData;
-        } elseif (is_string($rawMatchingData) && trim($rawMatchingData) !== '') {
-            $decoded = json_decode($rawMatchingData, true);
-            $matchingData = is_array($decoded) ? $decoded : [];
-        } else {
-            $matchingData = [];
-        }
-
-        $matchingData['match_excluded'] = [
-            'reason' => $process_reason,
-            'reg' => AuthAdmin::getConnectionInfo(),
-        ];
-
-        $result = ProductPartnerModel::where('idx', $idx)->update([
-            'is_match_excluded' => 'Y',
-            'matching_data' => json_encode($matchingData, JSON_UNESCAPED_UNICODE),
-        ]);
 
         return $result;
     }

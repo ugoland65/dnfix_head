@@ -91,6 +91,7 @@
          * 그룹핑 등록
          */
         function addSave(obj) {
+            
             var isOldMode = $('input[name="new_grouping"]:checked').val() === 'old';
             if (!isOldMode) {
                 var pgSubject = ($('input[name="pg_subject"]').val() || '').trim();
@@ -113,8 +114,9 @@
                 data: formData,
                 success: function(response) {
                     if (response && response.status === 'success') {
+                        $('input[name="check_idx[]"]').prop('checked', false);
                         alert(response.message || '등록되었습니다.');
-                        location.reload();
+                        //location.reload();
                         return;
                     }
                     alert((response && response.message) ? response.message : '등록에 실패했습니다.');

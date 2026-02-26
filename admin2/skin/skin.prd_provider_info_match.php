@@ -8,88 +8,90 @@ use App\Utils\HttpClient;
 use App\Services\ProductPartnerService;
 use App\Services\SimpleTokenMatcher;
 
-$requestHandler = new RequestHandler();
-$requestData = $requestHandler->getAll();
+    $requestHandler = new RequestHandler();
+    $requestData = $requestHandler->getAll();
 
-$prd_idx = $requestData['prd_idx'];
-$search_name = $requestData['search_name'] ?? null;
+    $prd_idx = $requestData['prd_idx'];
+    $search_name = $requestData['search_name'] ?? null;
 
-$productPartnerService = new ProductPartnerService(); 
-$prdData = $productPartnerService->getProductPartnerInfo($prd_idx);
+    $productPartnerService = new ProductPartnerService(); 
+    $prdData = $productPartnerService->getProductPartnerInfo($prd_idx);
 
-//dump($prdData);
-$match_name = $search_name ?? $prdData['name'];
+    //dump($prdData);
+    $match_name = $search_name ?? $prdData['name'];
 
-/*
-$supplierData = [
-    'mobe' => [
-        'name' => '모브',
-        'idx' => 3,
-    ],
-    'byedam' => [
-        'name' => '바이담',
-        'idx' => 10,
-    ],
-];
-*/
-$supplierData = [
-    '3' => [
-        'name' => '모브',
-        'idx' => 3,
-        'code' => 'mobe',
-    ],
-    '10' => [
-        'name' => '바이담',
-        'idx' => 10,
-        'code' => 'byedam',
-    ],
-    '6' => [
-        'name' => '도라도라',
-        'idx' => 6,
-        'code' => 'doradora',
-    ],
-    '8' => [
-        'name' => '바니컴퍼니',
-        'idx' => 8,
-        'code' => 'bunny',
-    ],
-];
+    /*
+    $supplierData = [
+        'mobe' => [
+            'name' => '모브',
+            'idx' => 3,
+        ],
+        'byedam' => [
+            'name' => '바이담',
+            'idx' => 10,
+        ],
+    ];
+    */
+    $supplierData = [
+        '3' => [
+            'name' => '모브',
+            'idx' => 3,
+            'code' => 'mobe',
+        ],
+        '10' => [
+            'name' => '바이담',
+            'idx' => 10,
+            'code' => 'byedam',
+        ],
+        '6' => [
+            'name' => '도라도라',
+            'idx' => 6,
+            'code' => 'doradora',
+        ],
+        '8' => [
+            'name' => '바니컴퍼니',
+            'idx' => 8,
+            'code' => 'bunny',
+        ],
+    ];
 
-$partnerIdx = $prdData['partner_idx'] ?? null;
-$site = $supplierData[$partnerIdx]['code'] ?? ($prdData['site'] ?? 'mobe');
+    $partnerIdx = $prdData['partner_idx'] ?? null;
+    $site = $supplierData[$partnerIdx]['code'] ?? ($prdData['site'] ?? 'mobe');
 
-// API URL 구성
-$url = "https://dnetc01.mycafe24.com/api/SupplierProduct?site=".$site."&match_status=unmatched";
+    // API URL 구성
+    //$url = "https://dnetc01.mycafe24.com/api/SupplierProduct?site=".$site."&match_status=unmatched";
+    $url = "https://dnetc01.mycafe24.com/api/SupplierProduct?site=".$site;
 
-// 검색어가 있을 경우 검색 모드와 키워드 추가
-if (!empty($search_name)) {
-    $url .= "&search_mode=on&search_keyword=" . urlencode($search_name);
-}
-
-// 보낼 API Key
-$headers = [
-    "Content-Type: application/json",
-    "X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f"
-];
-
-// GET 요청
-$response = HttpClient::getData($url, $headers);
-$data = json_decode($response, true);
-$db2Rows = $data['data']['supplierProducts'];
-
-if (!empty($search_name)) {
-    $matchResult = [];
-    foreach($db2Rows as $row){
-        $matchResult[] = [
-            'match_data' => $row,
-            'score' => 1.0,
-        ];
+    // 검색어가 있을 경우 검색 모드와 키워드 추가
+    if (!empty($search_name)) {
+        $url .= "&search_mode=on&search_keyword=" . urlencode($search_name);
     }
 
-}else{
-    $simpleTokenMatcher = new SimpleTokenMatcher();
-    $matchResult = $simpleTokenMatcher->matchCandidates($match_name, $db2Rows, 100, $site);
-}
+    // 보낼 API Key
+    $headers = [
+        "Content-Type: application/json",
+        "X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f"
+    ];
+
+    // GET 요청
+    $response = HttpClient::getData($url, $headers);
+    $data = json_decode($response, true);
+    $db2Rows = $data['data']['supplierProducts'];
+
+    if (!empty($search_name)) {
+        
+        $matchResult = [];
+        foreach($db2Rows as $row){
+            $matchResult[] = [
+                'match_data' => $row,
+                'score' => 1.0,
+            ];
+        }
+
+    }else{
+        $simpleTokenMatcher = new SimpleTokenMatcher();
+        $matchResult = $simpleTokenMatcher->matchCandidates($match_name, $db2Rows, 100, $site);
+    }
 ?>
 <form id="prd_provider_info_match_form">
 <table class="table-style ">
@@ -148,6 +150,7 @@ if (!empty($search_name)) {
                 <th>마진율</th>
             <?php } ?>
             <th>매칭</th>
+            <th>매칭상태</th>
         </tr>
         </thead>
         <tbody>
@@ -216,7 +219,8 @@ if (!empty($search_name)) {
             <?php } ?>
             <td>
                 <?php
-                    if( $row['match_data']['is_option'] == "Y" ){
+                    if( $row['match_data']['is_matched'] == "N"){
+                        if( $row['match_data']['is_option'] == "Y" ){
                 ?>
                     <select name="option_match" id="option_match_<?=$row['match_data']['idx']?>">
                         <?php
@@ -242,11 +246,20 @@ if (!empty($search_name)) {
                     >옵션매칭</button>
                 <?php } ?>
 
-                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
-                    data-db1-idx="<?=$prd_idx?>" 
-                    data-db2-idx="<?=$row['match_data']['idx']?>"
-                >바로매칭</button>
+                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-btn" 
+                        data-db1-idx="<?=$prd_idx?>" 
+                        data-db2-idx="<?=$row['match_data']['idx']?>"
+                    >바로매칭</button>
+                <?php } ?>
 
+            </td>
+            <td>
+                <?php if( !empty($row['match_data']['provider_prd_idx']) ){ ?>
+                <button type="button" class="btnstyle1 btnstyle1-sm" 
+                    onclick="prdProviderQuick('<?=$row['match_data']['provider_prd_idx']?>');">#<?=$row['match_data']['provider_prd_idx']?></button>
+                <?php } ?>
+                <?=$row['match_data']['is_matched']?>
+                
             </td>
         </tr>
         <?php } ?>

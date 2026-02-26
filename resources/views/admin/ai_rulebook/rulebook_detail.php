@@ -2078,8 +2078,7 @@
 
                 alert(result.message || '저장 완료');
                 setDirty(false);
-                state.initialSnapshot = snapshotNow();
-                renderPreviews();
+                window.location.reload();
             } catch (error) {
                 alert(error.message || '저장 중 오류가 발생했습니다.');
             }
@@ -2089,7 +2088,7 @@
     /**
      * 초기 상태(state)를 기본값/DB값으로 채운다.
      * - output_format, glossary_json, replacements_json, forbidden_json, required_json은 DB값 우선 사용
-     * - 나머지 규칙은 샘플 기본값으로 초기화
+     * - DB 값이 없으면 목록성 규칙은 빈 배열로 초기화
      *
      * @returns {void}
      */
@@ -2097,45 +2096,13 @@
         const outputFormatData = parseOutputFormat(rulebookOutputFormatRaw);
         state.format = outputFormatData.sections.length ? outputFormatData.sections : ['템플릿 순서대로 출력'];
         const glossaryFromDb = parseGlossary(rulebookGlossaryRaw);
-        state.glossary = glossaryFromDb.length ? glossaryFromDb : [{
-            _id: uid(),
-            src: 'ローター',
-            dst: '로터',
-            note: '고정 표기',
-            scope: '*',
-            enabled: 1
-        }];
+        state.glossary = glossaryFromDb.length ? glossaryFromDb : [];
         const replacementsFromDb = parseReplacements(rulebookReplacementsRaw);
-        state.replacements = replacementsFromDb.length ? replacementsFromDb : [{
-            _id: uid(),
-            from: '국내',
-            to: '일본',
-            match: 'exact',
-            scope: 'product_description',
-            severity: 'error',
-            priority: 10,
-            enabled: 1
-        }];
+        state.replacements = replacementsFromDb.length ? replacementsFromDb : [];
         const forbiddenFromDb = parseForbidden(rulebookForbiddenRaw);
-        state.forbidden = forbiddenFromDb.length ? forbiddenFromDb : [{
-            _id: uid(),
-            term: '100% 동일',
-            match: 'contains',
-            scope: 'product_description',
-            severity: 'error',
-            message: '과장 표현 금지',
-            enabled: 1
-        }];
+        state.forbidden = forbiddenFromDb.length ? forbiddenFromDb : [];
         const requiredFromDb = parseRequired(rulebookRequiredRaw);
-        state.required = requiredFromDb.length ? requiredFromDb : [{
-            _id: uid(),
-            term: '주의사항',
-            match: 'contains',
-            scope: 'product_description',
-            severity: 'warn',
-            hint: '주의사항 섹션을 포함하세요',
-            enabled: 1
-        }];
+        state.required = requiredFromDb.length ? requiredFromDb : [];
 
         const templateHtmlFromTextarea = document.getElementById('template_html') ? document.getElementById('template_html').value : '';
         const templateHtmlFromColumn = (rulebookTemplateHtmlRaw ?? '').toString();

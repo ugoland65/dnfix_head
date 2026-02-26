@@ -57,6 +57,7 @@
                                 <th>등록일</th>
                                 <th>관리</th>
                                 <th>상품</th>
+                                <th>삭제</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -88,6 +89,10 @@
                                     </td>
                                     <td>
                                         <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" > 상품 </button>
+                                    </td>
+                                    <td>
+                                        /<?=$auth['ad_id'] ?>/<?= $auth['ad_level']?>
+                                        <button type="button" class="btn btnstyle1 btnstyle1-danger btnstyle1-sm" > 삭제 </button>
                                     </td>
                                 </tr>
                             <?php } ?>

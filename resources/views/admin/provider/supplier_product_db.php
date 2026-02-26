@@ -81,6 +81,7 @@
                             <th>최저가 마진율</th>
                             <th>수정일<br>등록일</th>
                             <th>품절처리일</th>
+                            <th>매칭제외</th>
                         </tr>
                         </thead>
                         <tbody>
@@ -186,6 +187,12 @@
                                 <?php else: ?>
                                     -
                                 <?php endif; ?>
+                            </td>
+
+                            <td class="text-center">
+                                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-excluded-btn" 
+                                    data-idx="<?=$row['idx']?>" 
+                                >매칭제외</button>
                             </td>
                         </tr>
                         <?php } ?>
@@ -331,6 +338,12 @@ $(function(){
         let s_match_status = $("#s_match_status").val();
 
         location.href = '/admin/provider_product/db?s_site=' + s_site + '&s_match_status=' + s_match_status;
+    });
+
+    // 매칭제외 버튼 클릭
+    $(".match-excluded-btn").on('click', function(){
+        const idx = $(this).data('idx');
+        prdProviderMatchExcluded(idx);
     });
 
 });
