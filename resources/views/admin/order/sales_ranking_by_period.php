@@ -36,8 +36,12 @@
                                 <th>상품명</th>
                                 <th>브랜드</th>
                                 <th>판매수량</th>
+                                <th>현재고</th>
+                                <th>마진율</th>
+                                <th>현재<br>마진등급</th>
                                 <th>최근 입고일</th>
                                 <th>최근 판매일</th>
+                                <th>최근 할인일</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -71,8 +75,41 @@
                                     <?php } ?>
                                 </td>
                                 <td class="text-center"><?= $row['sold_qty'] ?></td>
+                                <td class="text-center"><?= $row['ps_stock'] ?></td>
+                                <td class="text-right"><b><?=$row['margin_per']?>%</b></td>
+                                <td class="text-center">
+                                    <?php if (!empty($row['margin_grade'])) { ?>
+                                        <span class="grade-badge grade-<?=$row['margin_grade']?>">
+                                            <?=$row['margin_grade']?>
+                                        </span>
+                                    <?php } else { ?>
+                                        -
+                                    <?php } ?>
+                                </td>
                                 <td class="text-center"><?= date('Y-m-d', strtotime($row['ps_in_date'])) ?></td>
                                 <td class="text-center"><?= date('Y-m-d', strtotime($row['ps_last_date'])) ?></td>
+                                <td class="text-center">
+                                    <?php
+                                        $saleDate = $row['ps_sale_date'] ?? null;
+                                        if (
+                                            !empty($saleDate) &&
+                                            $saleDate !== '0000-00-00 00:00:00' &&
+                                            $saleDate !== '0000-00-00' &&
+                                            ($ts = strtotime($saleDate)) // strtotime 실패하면 false
+                                        ) {
+                                    ?>
+                                        <div>
+                                            <ul class="text-center"><?=date('y.m.d', $ts)?></ul>
+                                            <ul class="text-center m-t-5" style="font-size:12px;">총 할인수 : <?=$row['last_sale']['sale_count'] ?? 0?></ul>
+                                            <ul class="text-center" style="font-size:11px;"><?=$row['last_sale']['sale_subject'] ?? ''?></ul>
+                                            <ul class="text-center"><?=$row['last_sale']['sale_per'] ?? 0?>%</ul>
+                                        </div>
+                                    <?php
+                                        } else {
+                                            echo '-';
+                                        }
+                                    ?>
+                                </td>
                             </tr>
                         <?php } ?>
                         </tbody>

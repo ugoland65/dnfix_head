@@ -99,7 +99,7 @@ var onlyAD = function () {
 		$.alert({
 			boxWidth : width,
 			useBootstrap : false,
-			title : "신규 상품 그룹핑 생성",
+			title : "상품 그룹핑",
 			backgroundDismiss: false,
 			closeIcon: true,
 			closeIconClass: 'fas fa-times',

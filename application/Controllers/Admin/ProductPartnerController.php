@@ -393,6 +393,8 @@ class ProductPartnerController extends BaseClass
             $productPartnerService = new ProductPartnerService();
             $productPartnerApiService = new ProductPartnerApiService();
 
+            $errorMessage = '처리에 실패했습니다.';
+
             // 공급사 상품 등록대기로 등록
             if( $actionMode == 'product_standby_register' ){
 
@@ -401,16 +403,25 @@ class ProductPartnerController extends BaseClass
                 ];
                 $result = $productPartnerApiService->productStandbyRegister($payload);
                 $message = '등록대기 처리되었습니다.';
+                $errorMessage = '등록대기 처리에 실패했습니다.';
 
             // 공급사 상품 매칭제외로 처리
             }elseif( $actionMode == 'product_match_excluded' ){
                 
+                $db1_idx = $requestData['db1_idx'] ?? null;
+                $db2_idx = $requestData['db2_idx'] ?? null;
+                
                 $payload = [
-                    'idx' => $requestData['idx'] ?? null,
+                    'db1_idx' => $db1_idx,
+                    'db2_idx' => $db2_idx,
                     'process_reason' => $requestData['process_reason'] ?? null,
                 ];
-                $result = $productPartnerService->productMatchExcluded($payload);
+                $result = $productPartnerApiService->productMatchExcluded($payload);
                 $message = '매칭제외 처리되었습니다.';
+                $errorMessage = '매칭제외 처리에 실패했습니다.';
+
+            }else{
+                throw new \Exception('지원하지 않는 action_mode 입니다.');
             }
             
 
@@ -420,7 +431,7 @@ class ProductPartnerController extends BaseClass
                     'message' => $message,
                 ]);
             }else{
-                throw new \Exception('등록대기 처리에 실패했습니다.');
+                throw new \Exception($errorMessage);
             }
 
         } catch(Throwable $e){

@@ -25,9 +25,25 @@ class ProductGroupingController extends BaseClass
 
             $requestData = $request->all();
 
+            $normalizeAll = static function ($value): string {
+                $normalized = trim((string)$value);
+                $normalizedLower = strtolower($normalized);
+                if ($normalized === '' || $normalizedLower === 'all' || $normalized === '전체') {
+                    return '';
+                }
+                return $normalized;
+            };
+
+            $prd_mode = $normalizeAll($requestData['s_prd_mode'] ?? '');
+            $pg_mode = $normalizeAll($requestData['s_pg_mode'] ?? '');
+            $pg_state = $requestData['s_pg_state'] ?? '진행';
+
             $page = $requestData['page'] ?? 1;
 
             $payload = [
+                'prd_mode' => $prd_mode,
+                'pg_mode' => $pg_mode,
+                'pg_state' => $pg_state,
                 'paging' => true,
                 'page' => $page,
                 'per_page' => 100,
@@ -45,6 +61,9 @@ class ProductGroupingController extends BaseClass
             $paginationHtml = $pagination->renderLinks();
 
             $data = [
+                's_prd_mode' => $prd_mode,
+                's_pg_mode' => $pg_mode,
+                's_pg_state' => $pg_state,
                 'paginationHtml' => $paginationHtml,
                 'pagination' => $pagination->toArray(),
                 'productGroupingList' => $productGroupingList['data'] ?? [],
@@ -77,6 +96,15 @@ class ProductGroupingController extends BaseClass
             $requestData = $request->all();
 
             $mode = $requestData['mode'] ?? 'prdDB';
+
+            if( $mode == 'product_db' ){
+                $prd_mode = 'prdDB';
+            }else if( $mode == 'product_stock' ){
+                $prd_mode = 'prdDB';
+            }else{
+                $prd_mode = $mode;
+            }
+        
             $idxsRaw = $requestData['idxs'] ?? ($requestData['idxs[]'] ?? []);
             if (is_array($idxsRaw)) {
                 $idxs = $idxsRaw;
@@ -96,12 +124,22 @@ class ProductGroupingController extends BaseClass
             $productGroupingService = new ProductGroupingService();
             $payload = [
                 'pg_state' => '진행',
-                'prd_mode' => $mode,
+                'prd_mode' => $prd_mode,
             ];
             $productGroupingForSelect = $productGroupingService->getProductGroupingForSelect($payload) ?? [];
 
+            if( $mode == 'product_db' ){
+                $prd_mode_text = '상품 DB';
+            }else if( $mode == 'product_stock' ){
+                $prd_mode_text = '보유 상품';
+            }else if( $mode == 'provider' ){
+                $prd_mode_text = '공급사 상품';
+            }
+
             $data = [
                 'mode' => $mode,
+                'prd_mode' => $prd_mode,
+                'prd_mode_text' => $prd_mode_text,
                 'idxs' => $idxs,
                 'data' => [
                     'prd_count' => $prd_count,
@@ -193,7 +231,11 @@ class ProductGroupingController extends BaseClass
             $productGroupingService = new ProductGroupingService();
             $productGrouping = $productGroupingService->getProductGrouping($idx);
 
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
             $data = [
+                'prd_kind_name' => $prd_kind_name,
                 'productGrouping' => $productGrouping,
             ];
 
@@ -233,6 +275,59 @@ class ProductGroupingController extends BaseClass
         }
         catch (Throwable $e) {
             return redirect()->back()->with('error', $e->getMessage());
+        }
+    }
+
+
+    /**
+     * 그룹핑 상품 순서 변경
+     */
+    public function productGroupingProductOrderChange(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            $idx = $requestData['idx'] ?? null;
+
+            $productGroupingService = new ProductGroupingService();
+            $productGrouping = $productGroupingService->getProductGrouping($idx);
+
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
+            $data = [
+                'idx' => $idx,
+                'prd_kind_name' => $prd_kind_name,
+                'productGrouping' => $productGrouping,
+            ];
+
+            return view('admin.product.grouping_order', $data);
+
+        }
+        catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 그룹핑 상품 순서 변경 저장
+     * 
+     * @param Request $request
+     * @return array
+     */
+    public function productGroupingProductOrderChangeSave(Request $request)
+    {
+        try{
+            
+        }
+        catch (Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
         }
     }
 }

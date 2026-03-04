@@ -35,6 +35,7 @@
 						<option value="all_match" <?=$s_match_status == 'all_match' ? 'selected' : ''?>>전체매칭</option>
                         <option value="matched" <?=$s_match_status == 'matched' ? 'selected' : ''?>>매칭완료</option>
                         <option value="unmatched" <?=$s_match_status == 'unmatched' ? 'selected' : ''?>>매칭안됨</option>
+                        <option value="match_excluded" <?=$s_match_status == 'match_excluded' ? 'selected' : ''?>>매칭제외</option>
 					</select>
 				</ul>
                 <ul>
@@ -80,7 +81,7 @@
                             <th>최저판매가</th>
                             <th>최저가 마진율</th>
                             <th>수정일<br>등록일</th>
-                            <th>품절처리일</th>
+                            <th>처리일</th>
                             <th>매칭제외</th>
                         </tr>
                         </thead>
@@ -99,6 +100,13 @@
                                 $min_margin_rate = 0;
                                 if ($row['min_sale_price'] > 0 && $cost_price > 0) {
                                     $min_margin_rate = (($row['min_sale_price'] - $cost_price) / $row['min_sale_price']) * 100;
+                                }
+
+                                $matchExcludedRaw = $row['match_excluded_data'] ?? '';
+                                $match_excluded_data = [];
+                                if (is_string($matchExcludedRaw) && trim($matchExcludedRaw) !== '') {
+                                    $decodedMatchExcludedData = json_decode($matchExcludedRaw, true);
+                                    $match_excluded_data = is_array($decodedMatchExcludedData) ? $decodedMatchExcludedData : [];
                                 }
 
                         ?>
@@ -183,16 +191,31 @@
                             </td>
                             <td class="text-center">
                                 <?php if( $row['sold_out_date'] ): ?>
-                                    <?=date('Y.m.d H:i', strtotime($row['sold_out_date']))?>
-                                <?php else: ?>
-                                    -
+                                    품절처리일 : <?=date('Y.m.d H:i', strtotime($row['sold_out_date']))?>
                                 <?php endif; ?>
+
                             </td>
 
-                            <td class="text-center">
-                                <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-excluded-btn" 
-                                    data-idx="<?=$row['idx']?>" 
-                                >매칭제외</button>
+                            <td class="text-left">
+                                
+                                <?php if( $row['status'] == '매칭제외' ): ?>
+
+
+                                    <?php if( $row['match_excluded_date'] ): ?>
+                                        처리일 : <?=date('Y.m.d H:i', strtotime($row['match_excluded_date']))?><br>
+                                    <?php endif; ?>
+
+                                    사유 : <?=$row['match_excluded_memo'] ?? ''?><br>
+
+                                    <?php if (!empty($match_excluded_data['reg']['name'] ?? '')): ?>
+                                        처리자 : <?=$match_excluded_data['reg']['name']?>
+                                    <?php endif; ?>
+
+                                <?php else: ?>
+                                    <button type="button" class="btnstyle1 btnstyle1-gary btnstyle1-sm match-excluded-btn" 
+                                            data-idx="<?=$row['idx']?>" 
+                                        >매칭제외</button>
+                                <?php endif; ?>
                             </td>
                         </tr>
                         <?php } ?>
@@ -214,15 +237,6 @@
         <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="supplierProductRegBtn">공급사상품 등록대기로 등록</button>
     </div>
 </div>
-
-<style>
-    tr.selected-row {
-        background-color: #e3f2fd !important;
-    }
-    tr.selected-row:hover {
-        background-color: #bbdefb !important;
-    }
-</style>
 
 <script>
 
@@ -343,7 +357,7 @@ $(function(){
     // 매칭제외 버튼 클릭
     $(".match-excluded-btn").on('click', function(){
         const idx = $(this).data('idx');
-        prdProviderMatchExcluded(idx);
+        prdProviderMatchExcluded(null, idx);
     });
 
 });

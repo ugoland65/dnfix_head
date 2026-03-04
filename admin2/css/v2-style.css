@@ -394,7 +394,16 @@
 	}
 }
 
+/* -------------------------------------------------------------------------- */
 /* 테이블 */
+
+tr.selected-row {
+	background-color: #e3f2fd !important;
+}
+tr.selected-row:hover {
+	background-color: #bbdefb !important;
+}
+
 .table-st1{
 
 	--bs-table-bg: transparent;
@@ -535,7 +544,6 @@
     }
 
 }
-
 
 table.table-st2 {
 	width: 100%;

@@ -313,15 +313,8 @@
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
 	</div>
 </div>
-<style>
-	tr.selected-row {
-		background-color: #e3f2fd !important;
-	}
-	tr.selected-row:hover {
-		background-color: #bbdefb !important;
-	}
-</style>
 <script type="text/javascript">
+
 	const prdProvider = (function() {
 
 		const API_ENDPOINT = {
@@ -422,7 +415,6 @@
 		location.href = '/admin/provider_product/list' + (queryString ? '?' + queryString : '');
 	}
 
-
 	$(function() {
 
 		$(document).on('change', 'input[name="check_idx[]"]', function() {
@@ -518,4 +510,5 @@
 
 
 	});
+
 </script>

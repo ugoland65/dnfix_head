@@ -3,6 +3,14 @@
     <input type="hidden" name="prd_idxs" value="<?= implode(',', $idxs) ?>">
 
     <table class="table-style border01 width-full">
+        
+        <tr>
+            <th>모드</th>
+            <td>
+                <?= $prd_mode_text ?>
+            </td>
+        </tr>
+
         <tr id="new_grouping_row">
             <th>신규생성</th>
             <td>
@@ -16,6 +24,7 @@
                 </label>
             </td>
         </tr>
+
         <tr id="prd_count_row">
             <th>상품 수</th>
             <td>
@@ -52,12 +61,14 @@
                 </div>
             </td>
         </tr>
+
         <tr id="pg_subject_row">
             <th>그룹핑 제목</th>
             <td>
-                <input type='text' name='pg_subject' value="" autocomplete="off">
+                <input type='text' name='pg_subject' value="" autocomplete="off" class="width-full">
             </td>
         </tr>
+
         <tr id="pg_date_row">
             <th>진행일</th>
             <td>
@@ -65,17 +76,22 @@
                 <div class="calendar-input" style="display:inline-block;" id="pg_day_wrap"><input type="text" name="pg_day" id="pg_day" value="<?= $data['pg_day'] ?>" style="width:90px;" autocomplete="off"></div>
             </td>
         </tr>
+
         <tr id="pg_select_row">
             <th>그룹핑 선택</th>
             <td>
                 <select name="pg_select" id="pg_select">
                     <option value="">그룹핑 선택</option>
                     <?php foreach ($productGroupingForSelect as $item) { ?>
-                        <option value="<?= $item['idx'] ?>"><?= $item['pg_subject'] ?></option>
+                        <option value="<?= $item['idx'] ?>">
+                            [<?= $item['pg_mode_text'] ?>]
+                            <?= $item['pg_subject'] ?>
+                        </option>
                     <?php } ?>
                 </select>
             </td>
         </tr>
+
     </table>
 </form>
 
@@ -115,8 +131,48 @@
                 success: function(response) {
                     if (response && response.status === 'success') {
                         $('input[name="check_idx[]"]').prop('checked', false);
-                        alert(response.message || '등록되었습니다.');
-                        //location.reload();
+                        var createdIdx = response && response.data ? (response.data.idx || response.data.grouping_idx || null) : null;
+                        $.confirm({
+                            boxWidth: '420px',
+                            useBootstrap: false,
+                            title: '등록이 완료되었습니다.',
+                            content: '원하는 동작을 선택해주세요.',
+                            type: 'blue',
+                            buttons: {
+                                stay: {
+                                    text: '현재창에 남아있기',
+                                    btnClass: 'btn-blue',
+                                    action: function() {
+                                        if (window.jconfirm && Array.isArray(jconfirm.instances)) {
+                                            jconfirm.instances.forEach(function(inst) {
+                                                if (!inst || typeof inst.close !== 'function' || !inst.$content) return;
+                                                if (inst.$content.find('#form_prdGroupingReg').length > 0) {
+                                                    inst.close();
+                                                }
+                                            });
+                                        }
+                                    }
+                                },
+                                list: {
+                                    text: '그룹핑 목록으로 이동',
+                                    btnClass: 'btn-blue',
+                                    action: function() {
+                                        location.href = '/admin/product/grouping';
+                                    }
+                                },
+                                detail: {
+                                    text: '생성된 그룹핑 상세 이동',
+                                    btnClass: 'btn-blue',
+                                    action: function() {
+                                        if (!createdIdx) {
+                                            alert('생성된 그룹핑 idx를 찾을 수 없습니다.');
+                                            return false;
+                                        }
+                                        location.href = '/admin/product/grouping_view/' + createdIdx;
+                                    }
+                                }
+                            }
+                        });
                         return;
                     }
                     alert((response && response.message) ? response.message : '등록에 실패했습니다.');
@@ -177,6 +233,9 @@
         };
 
         $(function(){
+            
+            $(".calendar-input input").datepicker(clareCalendar);
+
             $('input[name="new_grouping"]').on('change', function(){
                 if ($(this).val() === 'old' && !hasGroupingForSelect) {
                     alert('진행중인 그룹핑이 없습니다. 신규로 생성해주세요');

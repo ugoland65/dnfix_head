@@ -107,11 +107,30 @@ class ProductService extends BaseClass
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
 
         $since = $criteria['since'] ?? null;
+        $idxs = $criteria['idxs'] ?? [];
+
+        if (is_string($idxs)) {
+            $idxs = array_filter(array_map('trim', explode(',', $idxs)), function($v) {
+                return $v !== '';
+            });
+        }
+        if (!is_array($idxs)) {
+            $idxs = [];
+        }
+        $idxs = array_values(array_unique(array_map('intval', $idxs)));
+        $idxs = array_values(array_filter($idxs, function($v) {
+            return $v > 0;
+        }));
 
 
         // 기본 쿼리
         $query = ProductModel::query()
             ->from('COMPARISON_DB as A');
+
+        // 특정 상품 idx 집합만 조회
+        if (!empty($idxs)) {
+            $query->whereIn('A.CD_IDX', $idxs);
+        }
 
         // 브랜드 검색
         if( $s_brand ){
@@ -183,14 +202,17 @@ class ProductService extends BaseClass
             $query->whereRaw("{$marginGradeSql} = ?", [$s_margin_group]);
         }
         
-        // prd_stock에 연결된 상품만 (재고 관련 모드)
-        if ($show_mode === 'product_stock') {
+        // 기본적으로 재고 테이블은 항상 조인한다.
+        // show_mode = product_stock 일 때만 "재고 row가 존재하는 상품"으로 제한한다.
+        $isProductStockMode = ($show_mode === 'product_stock');
+        $query->leftJoin('prd_stock as D', 'D.ps_prd_idx', '=', 'A.CD_IDX')
+            ->select('A.*', 'D.*');
 
-            // INNER JOIN으로 재고 있는 상품만 자동 필터링 + 정렬도 가능
-            // 상품당 재고 1개이므로 GROUP BY 불필요
-            $query->join('prd_stock as D', 'D.ps_prd_idx', '=', 'A.CD_IDX')
-                  ->select('A.*', 'D.*');  // 상품 + 재고 정보 모두 가져오기
+        if ($isProductStockMode) {
+            $query->whereNotNull('D.ps_prd_idx');
+        }
 
+        if ($isProductStockMode) {
             if( $rack_code ){
                 $query->where('D.ps_rack_code', $rack_code);
             }
@@ -203,8 +225,10 @@ class ProductService extends BaseClass
                 }elseif( $s_sale_mode == 'special' ){
                     $query->where('D.is_sale_special', 1);
                 }elseif( $s_sale_mode == 'sale_all' ){
-                    $query->where('D.is_sale_month', 1);
-                    $query->orWhere('D.is_sale_special', 1);
+                    $query->where(function($q){
+                        $q->where('D.is_sale_month', 1)
+                          ->orWhere('D.is_sale_special', 1);
+                    });
                 }
                 
             }
@@ -221,11 +245,14 @@ class ProductService extends BaseClass
             }elseif( $in_stock == 'have_with_no' ){
                 
             }
+        }
 
-            $sort_mode = $criteria['sort_mode'] ?? 'stock';
-
-        }else{
-            $sort_mode = $criteria['sort_mode'] ?? 'idx';
+        $sort_mode = $criteria['sort_mode'] ?? ($isProductStockMode ? 'stock' : 'idx');
+        if (!$isProductStockMode) {
+            $stockSortModes = ['stock', 'stock_asc'];
+            if (in_array($sort_mode, $stockSortModes, true)) {
+                $sort_mode = 'idx';
+            }
         }
 
         // 정렬 적용
@@ -262,6 +289,29 @@ class ProductService extends BaseClass
 
         return $result;
 
+    }
+
+
+    /**
+     * 상품 idx Where In 조회
+     * 
+     * @param array $idxs
+     * @return array
+     */
+    public function getProductWhereInIdx($idxs) 
+    {
+        if (empty($idxs)) {
+            return [];
+        }
+
+        $criteria = [
+            'paging' => false,
+            'idxs' => $idxs,
+            'show_mode' => '',
+            'sort_mode' => 'idx',
+        ];
+
+        return $this->getProductListForAdmin($criteria);
     }
 
 
@@ -570,6 +620,11 @@ class ProductService extends BaseClass
                 $query->orderBy('D.ps_sale_date', 'ASC')
                     ->orderBy('D.ps_stock', 'DESC')
                     ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'idx_asc':
+                // 기본(비재고 모드): 등록일순 (CD_IDX 오름차순)
+                $query->orderBy('A.CD_IDX', 'ASC');
                 break;
 
             case 'idx':
@@ -891,10 +946,9 @@ class ProductService extends BaseClass
      * @param int $prdIdx 상품 인덱스
      * @return array 상품 데이터
      */
-    public function getProductDataForAdmin($prdIdx) 
+    public function getProductDataForAdmin($prdIdx, array $criteria = []) 
     {
-
-        $productData = ProductModel::query()
+        $query = ProductModel::query()
             ->select([
                 'COMPARISON_DB.*',
                 'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
@@ -902,12 +956,22 @@ class ProductService extends BaseClass
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
             ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'COMPARISON_DB.CD_BRAND_IDX')
-            ->where('COMPARISON_DB.CD_IDX', '=', $prdIdx)
-            ->first()
-            ->toArray();
+            ->where('COMPARISON_DB.CD_IDX', '=', $prdIdx);
+
+        $productData = $query->first();
+        if (empty($productData)) {
+            return [];
+        }
+        $productData = is_array($productData) ? $productData : $productData->toArray();
 
         // JSON 데이터 디코딩 처리
         if ($productData) {
+            $productData['ps_idx'] = $productData['ps_idx'] ?? null;
+            $productData['ps_rack_code'] = $productData['ps_rack_code'] ?? '';
+            $productData['ps_stock_object'] = $productData['ps_stock_object'] ?? '';
+            $productData['ps_alarm_count'] = $productData['ps_alarm_count'] ?? 0;
+            $productData['is_sale_month'] = $productData['is_sale_month'] ?? 0;
+            $productData['is_sale_special'] = $productData['is_sale_special'] ?? 0;
 
             // CD_SIZE 디코딩
             if (!empty($productData['CD_SIZE'])) {

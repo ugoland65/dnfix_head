@@ -1,25 +1,25 @@
 //가격비교 퀵 창
-function comparisonQuick(idx, vmode = "comparison"){
-	window.open("/admin2/comparison/popup.comparison_modify.php?idx="+ idx +"&vmode="+vmode, "comparison_quick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+function comparisonQuick(idx, vmode = "comparison") {
+	window.open("/admin2/comparison/popup.comparison_modify.php?idx=" + idx + "&vmode=" + vmode, "comparison_quick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 //회원정보
-function userModify(id, mode){
-	window.open("<?=_A_PATH_MEMBER_INFO_POPUP?>?id="+ id +"&mode="+mode, "member_info_"+id, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+function userModify(id, mode) {
+	window.open("<?=_A_PATH_MEMBER_INFO_POPUP?>?id=" + id + "&mode=" + mode, "member_info_" + id, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 //상품 창 prd_provider_info
-function prdProviderQuick(idx, vmode = "info"){
-	window.open("/ad/ajax/prd_provider_info?prd_idx="+ idx +"&vmode="+vmode, "prdProviderQuick_"+idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+function prdProviderQuick(idx, vmode = "info") {
+	window.open("/ad/ajax/prd_provider_info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 //브랜드 수정
-function brandModify(idx){
-	window.open("/admin/brand/detail/"+idx, "brand_view_"+idx, "width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+function brandModify(idx) {
+	window.open("/admin/brand/detail/" + idx, "brand_view_" + idx, "width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 // 공급사 상품 매칭제외
-function prdProviderMatchExcluded(db1_idx = null, db2_idx = null){
+function prdProviderMatchExcluded(db1_idx = null, db2_idx = null) {
 
 	$.confirm({
 		title: '매칭제외 처리',
@@ -35,13 +35,13 @@ function prdProviderMatchExcluded(db1_idx = null, db2_idx = null){
 			+ '      <button type="button" id="quickReasonSupplierMatched" class="btnstyle1 btnstyle1-gary btnstyle1-xs">이미 타사 상품과 매칭하였음</button>'
 			+ '  </div>'
 			+ '</div>',
-		onContentReady: function(){
+		onContentReady: function () {
 			const self = this;
-			this.$content.find('#quickReasonSupplierStop').on('click', function(){
+			this.$content.find('#quickReasonSupplierStop').on('click', function () {
 				self.$content.find('#matchExcludedReasonInput').val('공급사 판매중단');
 				self.$$submit.trigger('click');
 			});
-			this.$content.find('#quickReasonSupplierMatched').on('click', function(){
+			this.$content.find('#quickReasonSupplierMatched').on('click', function () {
 				self.$content.find('#matchExcludedReasonInput').val('이미 타사 상품과 매칭하였음');
 				self.$$submit.trigger('click');
 			});
@@ -53,7 +53,7 @@ function prdProviderMatchExcluded(db1_idx = null, db2_idx = null){
 			submit: {
 				text: '처리',
 				btnClass: 'btn-blue',
-				action: function(){
+				action: function () {
 					const reason = (this.$content.find('#matchExcludedReasonInput').val() || '').trim();
 					if (!reason) {
 						alert('처리사유를 입력해주세요.');
@@ -70,21 +70,62 @@ function prdProviderMatchExcluded(db1_idx = null, db2_idx = null){
 							db2_idx: db2_idx,
 							process_reason: reason
 						}
-					}).done(function(res){
+					}).done(function (res) {
 						if (res && res.status === 'success') {
-							const $targetRow = $(`#match_id_${db1_idx}`);
-							$targetRow.fadeOut(150, function(){
+							const hasDb1 = db1_idx !== null && db1_idx !== undefined && String(db1_idx).trim() !== '';
+							const targetSelector = hasDb1
+								? `#match_id_${db1_idx}`
+								: `#trid_${db2_idx}`;
+							const $targetRow = $(targetSelector);
+							$targetRow.fadeOut(150, function () {
 								$(this).remove();
 							});
 							showToast("매칭제외 처리 완료", new Date().toLocaleTimeString());
 						} else {
 							alert((res && res.message) ? res.message : '매칭제외 처리에 실패했습니다.');
 						}
-					}).fail(function(){
+					}).fail(function () {
 						alert('서버 통신에 실패했습니다.');
 					});
 				}
 			}
+		}
+	});
+
+}
+
+// 상품 그룹핑 상품 순서 변경
+function productGroupingProductOrderChange(idx) {
+
+	var width = "1400px";
+
+	$.alert({
+		boxWidth: width,
+		useBootstrap: false,
+		title: "상품 추가/순서변경",
+		backgroundDismiss: false,
+		closeIcon: true,
+		closeIconClass: 'fas fa-times',
+		content: function () {
+			var self = this;
+			self._xhr = $.ajax({
+				url: '/admin/product/grouping_product_order_change',
+				data: { idx: idx },
+				dataType: 'html',
+				method: 'POST'
+			}).done(function (response) {
+				self.setContent(response);
+			}).fail(function () {
+				self.setContent('에러');
+			});
+
+			return self._xhr;
+		},
+		onClose: function () {
+			if (this._xhr && this._xhr.readyState !== 4) this._xhr.abort();
+		},
+		buttons: {
+			cancel: { text: '닫기' } // action 제거(추천)
 		}
 	});
 

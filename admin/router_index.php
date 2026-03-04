@@ -59,8 +59,9 @@ try {
     $router->post('/brand/save', BrandController::class, 'saveBrand'); //브랜드 수정
 
     //상품 관리
+    $router->get('/product/product_db', ProductController::class, 'prdDbList'); //상품 DB 목록
+    $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
-    $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
@@ -72,7 +73,9 @@ try {
     $router->post('/product/grouping_add_save', ProductGroupingController::class, 'productGroupingAddSave'); //상품 그룹핑 상품추가 저장
     $router->get('/product/grouping_view/{idx}', ProductGroupingController::class, 'productGroupingView'); //상품 그룹핑 상세
     $router->post('/product/grouping_save', ProductGroupingController::class, 'productGroupingSave'); //상품 그룹핑 저장
-
+    $router->post('/product/grouping_product_order_change', ProductGroupingController::class, 'productGroupingProductOrderChange'); //상품 그룹핑 상품 순서 변경
+    $router->post('/product/grouping_product_order_change_save', ProductGroupingController::class, 'productGroupingProductOrderChangeSave'); //상품 그룹핑 상품 순서 변경 저장
+    
     // 상품 처리
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경

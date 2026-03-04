@@ -4,6 +4,7 @@ namespace App\Services;
 use Throwable;
 use App\Utils\HttpClient;
 use App\Services\ProductPartnerService;
+use App\Core\AuthAdmin;
 
 class ProductPartnerApiService
 {
@@ -171,7 +172,17 @@ class ProductPartnerApiService
      */
     public function productMatchExcluded($data)
     {
-        $idx = $data['idx'] ?? null;
+
+        $db1_idx = $data['db1_idx'] ?? null;
+        $db2_idx = $data['db2_idx'] ?? null;
+
+        $match_excluded_date = date('Y-m-d H:i:s');
+        $process_reason = $data['process_reason'] ?? null;
+
+        $match_excluded_data = [
+            'reg' => AuthAdmin::getConnectionInfo(),
+        ];
+
         $url = $this->domain.'/api/SupplierProductAction';
 
         $headers = [
@@ -180,12 +191,17 @@ class ProductPartnerApiService
         ];          
 
         $payload = [
-            'actionMode' => 'Discontinued',
-            'idx' => $idx,
+            'actionMode' => 'MatchExcluded',
+            'idx' => $db2_idx,
+            'match_excluded_date' => $match_excluded_date,
+            'match_excluded_memo' => $process_reason,
+            'match_excluded_data' => $match_excluded_data,
         ];
 
         $response = HttpClient::postData($url, $payload, $headers);
         $data = json_decode($response, true);
+
+        //dd($data);
 
         return $data;
 

@@ -1,5 +1,5 @@
 <div id="contents_head">
-	<h1>상품 재고 (보유상품 관리)</h1>
+	<h1>상품 DB</h1>
 </div>
 <div id="contents_body">
     <div id="contents_body_wrap" >
@@ -82,7 +82,7 @@
                 <input type='text' name='rack_code' id='rack_code' value="<?=$rack_code ?? '' ?>" placeholder="랙코드" style="width:80px;">
             </ul>
             <ul>
-                <input type='text' name='search_value' id='search_value' value="<?= $_GET['search_value'] ?? '' ?>" placeholder="검색어" style="min-width: 200px;">
+                <input type='text' name='search_value' id='search_value' value="<?= $search_value?? '' ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
             <ul>
                 <button type="button" class="btn btnstyle1 btnstyle1-primary btnstyle1-sm" id="searchBtn">
@@ -121,13 +121,12 @@
                             <tr class="list">
                                 <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                                 <th class="list-idx">고유번호</th>
-                                <th class="list-idx">재고코드</th>
                                 <th>이미지</th>
                                 <th>분류</th>
                                 <th>상품명</th>
                                 <th>브랜드</th>
                                 <th>바코드</th>
-                                <th>재고</th>
+                                <th>출시일</th>
                                 <th>랙코드</th>
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
@@ -214,9 +213,8 @@
                                     }
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['ps_idx']?>"></td>
+                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"></td>
                                     <td class="text-center"><?=$product['CD_IDX']?></td>
-                                    <td class="text-center"><?=$product['ps_idx']?></td>
                                     <td class="p-5">
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><img src="<?=$img_path?>" style="height:70px; border:1px solid #eee !important;"></p>
                                     </td>
@@ -235,23 +233,27 @@
                                         <?php } ?>
                                     </td>
                                     <td class="text-center">
-                                        <a href="/admin/product/product_stock?s_brand=<?=$product['CD_BRAND_IDX']?>"><?=$product['brand_name']?></a>
+                                        <a href="/admin/product/product_db?s_brand=<?=$product['CD_BRAND_IDX']?>"><?=$product['brand_name']?></a>
                                         <?php if( $product['CD_BRAND2_IDX'] ){ ?>
                                             <br>
-                                            <a href="/admin/product/product_stock?s_brand=<?=$product['CD_BRAND2_IDX']?>"><?=$product['brand2_name']?></a>
+                                            <a href="/admin/product/product_db?s_brand=<?=$product['CD_BRAND2_IDX']?>"><?=$product['brand2_name']?></a>
                                         <?php } ?>
                                     </td>
                                     <td><?=$product['barcode']?></td>
+
+                                    <!-- 출시일 -->
                                     <td class="text-center">
-                                        <?php if( $product['ps_stock'] == 0 ){ ?>
-                                            <span style="color:#ff0000;">재고없음</span>
+                                        <?php
+                                            $releaseDate = trim((string)($product['CD_RELEASE_DATE'] ?? ''));
+                                            $isValidReleaseDate = $releaseDate !== '' && $releaseDate !== '0000-00-00' && $releaseDate !== '0000-00-00 00:00:00';
+                                        ?>
+                                        <?php if( $isValidReleaseDate ){ ?>
+                                            <?= date('Y-m-d', strtotime($releaseDate)) ?>
                                         <?php }else{ ?>
-                                            <b style="font-size:15px; color:#5e41ff;"><?=number_format($product['ps_stock'])?></b>
-                                        <?php } ?>
-                                        <?php if( $product['ps_stock_hold'] > 0 ){ ?>
-                                            <br><b style="font-size:14px; color:#999;"><?=number_format($product['ps_stock_hold'])?></b>
+                                            -
                                         <?php } ?>
                                     </td>
+
                                     <td class="text-center"><?=$product['ps_rack_code']?></td>
                                     <td class="text-center">
                                         <?php if( $product['weight'] ){ ?>
@@ -382,88 +384,79 @@
 </div>
 <div id="contents_bottom">
 	<div class="pageing-wrap" id="pageing_ajax_show"><?=$paginationHtml?></div>
-    <div class="m-l-20">
-        선택된 상품 <span id="selected_product_count"></span>
-        <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm " id="workRequestBtn">선택상품 업무요청</button>
-        <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
-
-        <input type='text' name='rack_change_code' id='rack_change_code' value="" placeholder="변경할 랙코드" style="width:80px;" class="m-l-30">
-        <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="rackChangeBtn">랙 일괄변경</button>
-
-    </div>
+	<div class="m-l-20">
+		선택된 상품 <span id="selected_product_count">0</span>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택상품 업무요청</button>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
+	</div>
 </div>
+<script type="text/javascript">
 
-<script>
+function select_all() {
+		var checkboxes = document.getElementsByName('check_idx[]');
+		var selectAll = event.target.checked;
 
-    // 선택된 상품 개수 업데이트
-    function updateSelectedCount() {
-        var count = $('input[name="check_idx[]"]:checked').length;
-        $('#selected_product_count').text(count + '개');
-    }
+		for (var i = 0; i < checkboxes.length; i++) {
+			checkboxes[i].checked = selectAll;
+			if (selectAll) {
+				$(checkboxes[i]).closest('tr').addClass('selected-row');
+			} else {
+				$(checkboxes[i]).closest('tr').removeClass('selected-row');
+			}
+		}
+		updateSelectedCount();
+	}
 
-    // 검색 파라미터 수집 공통 함수
-    function getSearchParams(additionalParams) {
-        var params = {};
-        
-        // 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
-        var fields = {
-            's_site': $("#s_site").val(),
-            's_brand': $("#s_brand").val(),
-            's_prd_kind': $("#s_prd_kind").val(),
-            's_importing_country': $("#s_importing_country").val(),
-            's_margin_group': $("#s_margin_group").val(),
-            'rack_code': $("#rack_code").val(),
-            'in_stock': $("#in_stock").val(),
-            'search_value': $("#search_value").val(),
-            's_sale_mode': $("#s_sale_mode").val(),
-        };
+	function updateSelectedCount() {
+		$('input[name="check_idx[]"]').each(function() {
+			$(this).closest('tr').toggleClass('selected-row', $(this).is(':checked'));
+		});
+		var count = $('input[name="check_idx[]"]:checked').length;
+		$("#selected_product_count").text(count);
+	}
 
-        // 추가 파라미터가 있으면 병합
-        if (additionalParams) {
-            fields = Object.assign(fields, additionalParams);
-        }
+	// 검색 파라미터 수집 공통 함수
+	function getSearchParams(additionalParams) {
+		var params = {};
 
-        // 유효한 값만 params에 추가
-        for (var key in fields) {
-            if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
-                params[key] = fields[key];
-            }
-        }
+		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
+		var fields = {
+			's_partner': $("#s_partner").val(),
+			's_godo_match': $("#s_godo_match").val(),
+			's_supplier_match': $("#s_supplier_match").val(),
+			'search_value': $("#search_value").val(),
+			's_brand': $("#s_brand").val(),
+			'sort_mode': $("#sort_kind").val(),
+			's_godo_sale_status': $("#s_godo_sale_status").val(),
+		};
 
-        return params;
-    }
+		// 추가 파라미터가 있으면 병합
+		if (additionalParams) {
+			fields = Object.assign(fields, additionalParams);
+		}
 
-    // 검색 파라미터로 페이지 이동
-    function navigateWithParams(params) {
-        // URL 쿼리 문자열 생성
-        var queryString = Object.keys(params)
-            .map(function(key) {
-                return key + '=' + encodeURIComponent(params[key]);
-            })
-            .join('&');
+		// 유효한 값만 params에 추가
+		for (var key in fields) {
+			if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+				params[key] = fields[key];
+			}
+		}
 
-        // 페이지 이동
-        location.href = '/admin/product/product_stock' + (queryString ? '?' + queryString : '');
-    }
+		return params;
+	}
 
-    // 전체 선택 함수 수정
-    function select_all() {
-        var checkboxes = document.getElementsByName('check_idx[]');
-        var selectAll = event.target.checked;
-        
-        for(var i = 0; i < checkboxes.length; i++) {
-            checkboxes[i].checked = selectAll;
-            
-            // 행 배경색 변경
-            if(selectAll) {
-                $(checkboxes[i]).closest('tr').addClass('selected-row');
-            } else {
-                $(checkboxes[i]).closest('tr').removeClass('selected-row');
-            }
-        }
-        updateSelectedCount();
-    }
+	// 검색 파라미터로 페이지 이동
+	function navigateWithParams(params) {
+		// URL 쿼리 문자열 생성
+		var queryString = Object.keys(params)
+			.map(function(key) {
+				return key + '=' + encodeURIComponent(params[key]);
+			})
+			.join('&');
 
+		// 페이지 이동
+		location.href = '/admin/product/product_db' + (queryString ? '?' + queryString : '');
+	}
 
     $(function(){
         $(".dn-select2").select2();
@@ -504,56 +497,6 @@
             navigateWithParams(params);
         });
 
-        // 랙코드 일괄 변경
-        $("#rackChangeBtn").on('click', function() {
-            // 선택된 상품 확인
-            var selectedItems = [];
-            $('input[name="check_idx[]"]:checked').each(function() {
-                selectedItems.push($(this).val());
-            });
-
-            if (selectedItems.length === 0) {
-                alert('변경할 상품을 선택해주세요.');
-                return;
-            }
-
-            // 랙코드 확인
-            var rackCode = $('#rack_change_code').val().trim();
-            if (rackCode === '') {
-                alert('변경할 랙코드를 입력해주세요.');
-                $('#rack_change_code').focus();
-                return;
-            }
-
-            // 확인 메시지
-            if (!confirm(selectedItems.length + '개 상품의 랙코드를 "' + rackCode + '"(으)로 변경하시겠습니까?')) {
-                return;
-            }
-
-            // AJAX POST 요청
-            $.ajax({
-                url: '/admin/product/proc/rack_change_batch',
-                type: 'POST',
-                data: {
-                    check_idx: selectedItems,
-                    rack_code: rackCode
-                },
-                dataType: 'json',
-                success: function(response) {
-                    if (response.success) {
-                        alert(response.message || '랙코드가 변경되었습니다.');
-                        location.reload();
-                    } else {
-                        alert(response.message || '랙코드 변경에 실패했습니다.');
-                    }
-                },
-                error: function(xhr, status, error) {
-                    console.error('Error:', error);
-                    alert('랙코드 변경 중 오류가 발생했습니다.');
-                }
-            });
-        });
-
 		// 선택상품 업무요청
 		$("#workRequestBtn").on('click', function() {
 			var selectedItems = [];
@@ -568,7 +511,7 @@
 
 			var pks = selectedItems.join(',');
 			var url = '/admin/work/TaskRequest/create?category=' + encodeURIComponent('업무요청')
-				+ '&withdb=' + encodeURIComponent('product_stock')
+				+ '&withdb=' + encodeURIComponent('product_db')
 				+ '&pks=' + encodeURIComponent(pks);
 			location.href = url;
 		});
@@ -586,10 +529,9 @@
 				return;
 			}
 
-			onlyAD.prdGrouping('product_stock', selectedItems);
+			onlyAD.prdGrouping('product_db', selectedItems);
 			
 		});
-
 
     });
 </script>

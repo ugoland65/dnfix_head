@@ -13,6 +13,7 @@ use App\Providers\Admin\ViewServiceProvider;
 Autoloader::register();
 
 require_once __DIR__ . '/../application/helpers.php';
+require_once __DIR__ . '/view_helpers.php';
 
 // Admin View Composer 부트스트랩 (Service Provider 패턴)
 ViewServiceProvider::boot();

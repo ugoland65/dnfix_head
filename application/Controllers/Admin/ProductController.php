@@ -26,6 +26,100 @@ class ProductController extends BaseClass
         $this->partnersService = new PartnersService();
     }
 
+
+    /**
+     * 상품 DB 목록 화면
+     * 
+     * @param Request $request
+     * @return view
+     */
+    public function prdDbList(Request $request) 
+    {
+
+        try{
+            
+            $requestData = $request->all();
+
+            $page = $requestData['page'] ?? 1;
+            $sort_mode = $requestData['sort_mode'] ?? 'idx';
+            $rack_code = $requestData['rack_code'] ?? null;
+
+            $in_stock = $requestData['in_stock'] ?? 'have';
+            $s_brand = $requestData['s_brand'] ?? null;
+            $s_prd_kind = $requestData['s_prd_kind'] ?? null;
+            $s_importing_country = $requestData['s_importing_country'] ?? null;
+            $s_margin_group = $requestData['s_margin_group'] ?? null;
+            $search_value = $requestData['search_value'] ?? null;
+            $rack_code = $requestData['rack_code'] ?? null;
+            $s_sale_mode = $requestData['s_sale_mode'] ?? null;
+
+            //서비스로 넘겨주는 값
+            $payload = [
+                'paging' => true,
+                'page' => $page,
+                'per_page' => 100,
+                'in_stock' => $in_stock,
+                'sort_mode' => $sort_mode,
+                'rack_code' => $rack_code,
+                's_brand' => $s_brand,
+                's_prd_kind' => $s_prd_kind,
+                's_importing_country' => $s_importing_country,
+                's_margin_group' => $s_margin_group,
+                'search_value' => $search_value,
+                's_sale_mode' => $s_sale_mode,
+            ];
+
+            $productList = $this->productService->getProductListForAdmin($payload);
+
+            $pagination = new Pagination(
+                $productList['total'],
+                $productList['per_page'],
+                $productList['current_page'],
+                10
+            );
+
+            $paginationHtml = $pagination->renderLinks();
+            $paginationArray = $pagination->toArray();
+
+            // 브랜드 셀렉트바를 위한 조회
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
+
+            $config_product = config('admin.product');
+            $prdKindSelect = $config_product['prd_kind_name'] ?? [];
+            $importingCountrySelect = $config_product['importing_country'] ?? [];
+
+            $data = [
+                's_brand' => $s_brand,
+                's_prd_kind' => $s_prd_kind,
+                's_importing_country' => $s_importing_country,
+                's_margin_group' => $s_margin_group,
+                's_sale_mode' => $s_sale_mode,
+                'rack_code' => $rack_code,
+                'in_stock' => $in_stock,
+                'search_value' => $search_value,
+                'productList' => $productList['data'],
+                'brandForSelect' => $brandForSelect,
+                'prdKindSelect' => $prdKindSelect,
+                'importingCountrySelect' => $importingCountrySelect,
+                'sort_mode' => $sort_mode,
+                'paginationHtml' => $paginationHtml,
+                'paginationArray' => $paginationArray
+            ];
+
+            return view('admin.product.product_db', $data)
+                ->extends('admin.layout.layout',['pageGroup2' => 'prd', 'pageNameCode' => 'prd_db']);
+
+        } catch (Throwable $e) {
+            dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+
+    }
+
+
     /**
      * 상품 재고 목록 화면
      * 
@@ -108,7 +202,7 @@ class ProductController extends BaseClass
             ];
 
             return view('admin.product.product_stock', $data)
-                ->extends('admin.layout.layout',['pageGroup2' => 'prd']);
+                ->extends('admin.layout.layout',['pageGroup2' => 'prd', 'pageNameCode' => 'product_stock']);
 
         } catch (Throwable $e) {
             dump($e->getMessage());
@@ -121,6 +215,7 @@ class ProductController extends BaseClass
 
 
     /**
+     * @deprecated 어디서 사용하는지 미확인
      * 상품 DB 목록 화면
      * 
      * @skin : skin.prd_db.php
