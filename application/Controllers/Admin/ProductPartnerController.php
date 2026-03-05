@@ -12,6 +12,7 @@ use App\Models\ProductPartnerModel;
 
 use App\Services\ProductPartnerService;
 use App\Services\ProductPartnerApiService;
+use App\Services\ProductSupplierPyApiService;
 use App\Services\PartnersService;
 use App\Services\BrandService;
 use App\Utils\Pagination;
@@ -300,8 +301,26 @@ class ProductPartnerController extends BaseClass
                 throw new \Exception('prd_idx가 비어있습니다.');
             }
 
+
             $productPartnerService = new ProductPartnerService();
             $productPartner = $productPartnerService->getProductPartnerInfo($prd_idx);
+
+            /*
+            $supplier_prd_pk = $productPartner['supplier_prd_pk'] ?? null;
+
+            if( $supplier_prd_pk ){
+                $crawlerUrl = 'https://showdang-crawler-git-465761242376.asia-northeast3.run.app/mobe_detail';
+                $crawlerHeaders = [
+                    'Content-Type: application/json',
+                    'X-API-KEY: A9X7QW3ZLMN4T8V2R5CY24802480',
+                ];
+                $crawlerPayload = [
+                    'id' => (int)$supplier_prd_pk,
+                ];
+                $crawlerResponse = HttpClient::postData($crawlerUrl, $crawlerPayload, $crawlerHeaders);
+                dump($crawlerResponse);
+            }
+            */
 
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
@@ -392,6 +411,7 @@ class ProductPartnerController extends BaseClass
 
             $productPartnerService = new ProductPartnerService();
             $productPartnerApiService = new ProductPartnerApiService();
+            $productSupplierPyApiService = new ProductSupplierPyApiService();
 
             $errorMessage = '처리에 실패했습니다.';
 
@@ -419,6 +439,17 @@ class ProductPartnerController extends BaseClass
                 $result = $productPartnerApiService->productMatchExcluded($payload);
                 $message = '매칭제외 처리되었습니다.';
                 $errorMessage = '매칭제외 처리에 실패했습니다.';
+
+            // 공급사 사이트 디테일 크롤링후 업데이트
+            }elseif( $actionMode == 'update_supplier_product_detail' ){
+                
+                $payload = [
+                    'prd_idx' => $requestData['prd_idx'] ?? null,
+                    'supplier_prd_pk' => $requestData['supplier_prd_pk'] ?? null,
+                ];
+                $result = $productSupplierPyApiService->updateSupplierProductDetail($payload);
+                $message = '업데이트되었습니다.';
+                $errorMessage = '업데이트에 실패했습니다.';
 
             }else{
                 throw new \Exception('지원하지 않는 action_mode 입니다.');
@@ -693,6 +724,22 @@ class ProductPartnerController extends BaseClass
                 throw new \Exception('godo_goodsNo가 비어있습니다.');
             }
 
+            $productPartnerService = new ProductPartnerService();
+            $result = $productPartnerService->updateProductPartnerByGodoGoodsInfo([
+                'prd_idx' => $prd_idx,
+                'godo_goodsNo' => $godo_goodsNo,
+            ]);
+
+            if($result){
+                return response()->json([
+                    'status' => 'success', 
+                    'message' => '고도몰 상품 정보 갱신 완료',
+                ]);
+            }
+
+            /*
+            @deprecated
+
             $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=detail&goodsNo='.$godo_goodsNo;
             $response = HttpClient::getData($apiUrl);
             
@@ -702,10 +749,10 @@ class ProductPartnerController extends BaseClass
             }
             $godoGoods = $responseData;
 
-            /*
-            $productPartnerService = new ProductPartnerService();
-            $productPartner = $productPartnerService->getProductPartnerInfo($prd_idx);
-            */
+            
+            //$productPartnerService = new ProductPartnerService();
+            //$productPartner = $productPartnerService->getProductPartnerInfo($prd_idx);
+            
             $productPartner = ProductPartnerModel::find($prd_idx);
             if(empty($productPartner)){
                 throw new \Exception("{$prd_idx}에 해당하는 상품이 없습니다.");
@@ -751,6 +798,7 @@ class ProductPartnerController extends BaseClass
                 'is_modify' => $is_modify,
                 'modify_message' => $modify_message
             ]);
+            */
             
         } catch(\Exception $e){
 

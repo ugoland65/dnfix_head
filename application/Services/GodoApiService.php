@@ -15,7 +15,8 @@ class GodoApiService extends BaseClass {
      * 고도몰 회원 HBTI 통계 조회
      * @return array
      */
-    public function getHbtiStatistics() {
+    public function getHbtiStatistics()
+    {
 
         $apiUrl = 'https://showdang.co.kr/dnfix/api/member_hbti_reports_api.php';
         $response = HttpClient::getData($apiUrl);
@@ -733,6 +734,27 @@ class GodoApiService extends BaseClass {
         });
         
         return $result;
+    }
+
+
+    /**
+     * 고도몰 상품 정보 조회
+     * @param string $goodsNo 상품번호
+     * @return array
+     */
+    public function getGodoGoodsInfo($goodsNo) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=detail&goodsNo='.$goodsNo;
+        $response = HttpClient::getData($apiUrl);
+
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        $godoGoods = $responseData;
+
+        return $godoGoods;
+
     }
 
 }

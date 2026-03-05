@@ -524,5 +524,18 @@ class BrandService
         return $result;
     }
 
+
+    /**
+     * 고도몰 카테고리 코드로 브랜드 pk 조회
+     * 
+     * @param string $cateCode 고도몰 카테고리 코드
+     * @return int
+     */
+    public function getBrandIdxByGodoCateCode($cateCode) 
+    {
+        $brandInfo = BrandModel::where('bd_matching_brand', $cateCode)->first();
+        return $brandInfo['BD_IDX'] ?? 0;
+    }
+
 }
 

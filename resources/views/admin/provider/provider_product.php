@@ -217,14 +217,18 @@
 									</td>
 
 									<td class="prd-name text-left">
-										<a href="javascript:goSupplierProductEdit('<?= $item['supplier_prd_idx'] ?>');"><?= $item['name_p'] ?? '-' ?></a>
-										<?php
-										if (!empty($item['matching_option'])) {
-										?>
-											<br>( 옵션 : <?= $item['matching_option'] ?? '-' ?>)
-										<?php
-										}
-										?>
+
+										<div>
+											<?php if( $item['supplier_is_option'] == 'Y' ){ ?>
+												<ul><span class="is-option-y">option</span></ul>
+											<?php } ?>
+
+											<ul><a href="javascript:goSupplierProductEdit('<?= $item['supplier_prd_idx'] ?>');"><?= $item['name_p'] ?? '-' ?></a></ul>
+
+											<?php if (!empty($item['matching_option'])) { ?>
+												<ul>( 옵션 : <?= $item['matching_option'] ?? '-' ?>)</ul>
+											<?php } ?>
+										</div>
 									</td>
 
 									<!-- 공급매칭 -->

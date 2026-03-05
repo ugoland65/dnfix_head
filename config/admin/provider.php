@@ -5,26 +5,31 @@ $supplier_code_data = [
         'name' => '모브',
         'idx' => 3,
         'code' => 'mobe',
+        'scmNo' => 3,
     ],
     'byedam' => [
         'name' => '바이담',
         'idx' => 10,
         'code' => 'byedam',
+        'scmNo' => 10,
     ],
     'doradora' => [
         'name' => '도라도라',
         'idx' => 6,
         'code' => 'doradora',
+        'scmNo' => 15,
     ],
     'allcon' => [
         'name' => '올컨코리아',
         'idx' => 7,
         'code' => 'allcon',
+        'scmNo' => 9,
     ],
     'bunny' => [
         'name' => '바니컴퍼니',
         'idx' => 8,
         'code' => 'bunny',
+        'scmNo' => 5,
     ],
 ];
 

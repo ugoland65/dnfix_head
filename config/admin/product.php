@@ -17,6 +17,7 @@ $prd_kind_name = [
     'AIRDOLL' => "에어돌",
     'UNDERWEAR' => "속옷",
     'COSTUME' => "코스튬",
+    'BDSM' => "BDSM",
     'SET' => "세트상품",
     'ONLYORDER' => "주문전용상품",
 ];

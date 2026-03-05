@@ -6,6 +6,8 @@ use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
 use App\Services\AdminActionLogService;
 use App\Services\ProductPartnerApiService;
+use App\Services\GodoApiService;
+use App\Services\BrandService;
 use App\Core\AuthAdmin;
 
 class ProductPartnerService extends BaseClass
@@ -128,7 +130,9 @@ class ProductPartnerService extends BaseClass
 
         $result['price_data'] = !empty($result['price_data']) ? json_decode($result['price_data'], true) : [];
         $result['godo_option'] = !empty($result['godo_option']) ? json_decode($result['godo_option'], true) : [];
-
+        $result['supplier_option_data'] = !empty($result['supplier_option_data']) ? json_decode($result['supplier_option_data'], true) : [];
+        $result['supplier_detail_img'] = !empty($result['supplier_detail_img']) ? json_decode($result['supplier_detail_img'], true) : [];
+        
         return $result;
 
     }
@@ -175,8 +179,12 @@ class ProductPartnerService extends BaseClass
             $cost_price = (int)preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
             $order_price = (int)preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
             $code = $postData['code'] ?? ''; // 상품 코드
-            $delivery_fee = (int)preg_replace('/[,\s]/', '', $postData['delivery_fee'] ?? 0); // 배송비
+
             $is_vat = $postData['is_vat'] ?? 'Y'; // 부가세
+            $delivery_fee = (int)preg_replace('/[,\s]/', '', $postData['delivery_fee'] ?? 0); // 배송비
+            $delivery_com = $postData['delivery_com'] ?? null; // 배송회사
+            $delivery_time = $postData['delivery_time'] ?? null; // 배송시간
+
             //$vat = preg_replace('/[,\s]/', '', $postData['vat'] ?? 10); // 부가세
 
             $action_url = $postData['action_url'] ?? ''; //로그용 변수
@@ -207,15 +215,20 @@ class ProductPartnerService extends BaseClass
             if( $is_vat == 'N' ){
                 $vat = $cost_price * 0.1;
                 $cost_price_save = $cost_price;
+                $order_price_save = $cost_price + $vat + ($delivery_fee ?? 0);
             }else{
                 $vat = $cost_price / 11;
                 $cost_price_save = ($cost_price / 1.1);
+                $order_price_save = $cost_price + ($delivery_fee ?? 0); 
             }
 
             $price_data = [
                 'is_vat' => $is_vat, // 부가세
                 'cost_price' => $cost_price_save,
+                'order_price' => $order_price_save,
                 'delivery_fee' => $delivery_fee, // 배송비
+                'delivery_com' => $delivery_com,
+                'delivery_time' => $delivery_time,
                 'vat' => $vat, // 부가세
             ];
 
@@ -305,6 +318,17 @@ class ProductPartnerService extends BaseClass
                 if (array_key_exists($key, $postData)) {
                     $updateData[$key] = $value;
                 }
+            }
+
+            // delivery_fee 등 가격 관련 입력이 있으면 price_data를 강제로 반영한다.
+            $hasPriceRelatedInput =
+                array_key_exists('price_data', $postData) ||
+                array_key_exists('delivery_fee', $postData) ||
+                array_key_exists('order_price', $postData) ||
+                array_key_exists('cost_price', $postData) ||
+                array_key_exists('is_vat', $postData);
+            if ($hasPriceRelatedInput) {
+                $updateData['price_data'] = $price_data;
             }
 
             // 공급사 판매상태가 '판매중'이 아니면 처리일을 강제로 갱신한다.
@@ -566,5 +590,173 @@ class ProductPartnerService extends BaseClass
         }
 
         return $result;
+    }
+
+
+    /**
+     * 공급사 config pk로 코드 조회
+     * 
+     * @param int $idx
+     * @return string
+     */
+    public function getProductPartnerCodeByIdx($pk) 
+    {
+
+        $config_provider = config('admin.provider');
+        $supplier_code_data = $config_provider['supplier_code_data'];
+
+        $site_code = '';
+        foreach ($supplier_code_data as $supplierCode => $supplierInfo) {
+            if ((int)($supplierInfo['idx'] ?? 0) === (int)($pk ?? 0)) {
+                $site_code = (string)($supplierInfo['code'] ?? $supplierCode);
+                break;
+            }
+        }
+
+        return $site_code;
+
+    }
+
+    /**
+     * 공급사 config scmNo로 pk 조회
+     * 
+     * @param int $idx
+     * @return string
+     */
+    public function getProductPartnerIdxByScmNo($scmNo) 
+    {
+
+        $config_provider = config('admin.provider');
+        $supplier_code_data = $config_provider['supplier_code_data'];
+
+        foreach ($supplier_code_data as $supplierCode => $supplierInfo) {
+            if ((int)($supplierInfo['scmNo'] ?? 0) === (int)($scmNo ?? 0)) {
+                return (int)($supplierInfo['idx'] ?? 0);
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * 고도몰 정보로 상품 정보 갱신
+     * 
+     * @param array $data
+     * @return array
+     */
+    public function updateProductPartnerByGodoGoodsInfo($data) 
+    {
+
+        $prd_idx = $data['prd_idx'] ?? null;
+        $godo_goodsNo = $data['godo_goodsNo'] ?? null;
+        $status = $data['status'] ?? '등록완료';
+
+        $godoApiService = new GodoApiService();
+        $godoGoods = $godoApiService->getGodoGoodsInfo($godo_goodsNo);
+
+        if(empty($godoGoods)){
+            throw new \Exception('고도몰 상품 정보 조회 실패');
+        }
+
+        $productPartner = ProductPartnerModel::find($prd_idx);
+        if(empty($productPartner)){
+            throw new \Exception('상품 공급사 정보 조회 실패');
+        }
+        $productPartner = $productPartner->toArray();
+
+        $beforeData = [
+            'name' => $productPartner['name'] ?? null,
+            'status' => $productPartner['status'] ?? null,
+            'sale_price' => $productPartner['sale_price'] ?? null,
+            'img_src' => $productPartner['img_src'] ?? null,
+            'code' => $productPartner['code'] ?? null,
+            'brand_idx' => $productPartner['brand_idx'] ?? null,
+            'godo_goodsNo' => $productPartner['godo_goodsNo'] ?? null,
+            'godo_is_option' => $productPartner['godo_is_option'] ?? null,
+            'godo_option' => $productPartner['godo_option'] ?? null,
+        ];
+
+        /*
+        {"goodsNo":1000003629,
+        "goodsNm":"트럼펫 마우스 텅",
+        "goodsCd":"",
+        "scmNo":3,
+        "brandCd":"018",
+        "goodsPrice":"46000.00",
+        "purchaseGoodsNm":"","optionFl":"n","optionDisplayFl":"s","optionName":"","cateNm":"기타 브랜드",
+        "thumbImageUrl":"https:\/\/godomall-storage.cdn-nhncommerce.com\/2f93719188848c1c1cec14525d2ccc5b\/goods\/1000003629\/image\/list\/thumb\/1000003629_list_093.jpg","options":[{"optionNo":1,"optionCode":"","optionPrice":0,"optionValue1":"","optionValue2":"","optionValue3":"","optionValue4":"","optionValue5":""}]}
+        */
+        $name = $godoGoods['goodsNm'] ?? null;
+        $code = $godoGoods['goodsCd'] ?? null;
+        $scmNo = $godoGoods['scmNo'] ?? null;
+        $partner_idx = $this->getProductPartnerIdxByScmNo($scmNo);
+        $brandCd = $godoGoods['brandCd'] ?? null;
+        $sale_price = $godoGoods['goodsPrice'] ?? null;
+        $img_src = $godoGoods['thumbImageUrl'] ?? null;
+
+        if( !empty($brandCd) ){
+            $brandService = new BrandService();
+            $brand_idx = $brandService->getBrandIdxByGodoCateCode($brandCd);
+            if( empty($brand_idx) ){
+                $brand_idx = null;
+            }
+        }else{
+            $brand_idx = null;
+        }
+        
+
+        if( $productPartner['partner_idx'] != $partner_idx ){
+            throw new \Exception('고도몰에 등록한 상품의 공급사와 현재 공급사가 다릅니다.');
+        }
+
+        $godo_is_option = 'N';
+        $godo_option = [];
+
+        $optionFl = strtolower($godoGoods['optionFl'] ?? 'n');
+        
+        if( $optionFl === 'y' ){
+            $godo_is_option = 'Y';
+            $optionName = explode('^|^', $godoGoods['optionName'] ?? '');
+            $optionData = [
+                'displayFl' => $godoGoods['optionDisplayFl'] ?? 'n',
+                'name' =>$optionName,
+                'items' => $godoGoods['options'] ?? [],
+            ];
+        }
+        $godo_option = json_encode($optionData, JSON_UNESCAPED_UNICODE);
+
+        $updateData = [
+            'name' => $name,
+            'status' => $status,
+            'sale_price' => $sale_price,
+            'img_src' => $img_src,
+            'code' => $code,
+            'brand_idx' => $brand_idx,
+            'godo_goodsNo' => $godo_goodsNo,
+            'godo_is_option' => $godo_is_option,
+            'godo_option' => $godo_option,
+        ];
+
+        $result = ProductPartnerModel::where('idx', $prd_idx)->update($updateData);
+
+        $adminActionLogService = new AdminActionLogService();
+
+        $diff = $adminActionLogService->buildDiff($beforeData, $updateData);
+
+        $adminActionLogService = new AdminActionLogService();
+
+        $adminActionLogService->log([
+            'target_type' => 'prd_partner',
+            'target_table' => 'prd_partner',
+            'target_pk' => (string)($prd_idx ?? ''),
+            'action_mode' => 'update',
+            'action_summary' => '고도몰 상품 정보 갱신',
+            'before_json' => $beforeData,
+            'after_json' => $updateData,
+            'diff_json' => $diff,
+        ]);
+
+        return true;
+
     }
 }

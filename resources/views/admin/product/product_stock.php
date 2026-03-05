@@ -214,7 +214,7 @@
                                     }
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['ps_idx']?>"></td>
+                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"></td>
                                     <td class="text-center"><?=$product['CD_IDX']?></td>
                                     <td class="text-center"><?=$product['ps_idx']?></td>
                                     <td class="p-5">

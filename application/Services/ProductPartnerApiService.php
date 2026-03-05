@@ -12,7 +12,6 @@ class ProductPartnerApiService
     private $domain = "https://dnetc01.mycafe24.com";
     private $apiKey = "DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f";
 
-
     /**
      * 공급사 DB를 공급사 상품 등록대기로 등록
      * 
@@ -58,11 +57,42 @@ class ProductPartnerApiService
 
             $partner_idx = $supplier_code_data[$row['site']]['idx'] ?? '';
 
+            $is_vat = $row['is_vat'] ?? 'N';
+
             $delivery_fee = $row['delivery_fee'] ?? 0;
-            $order_price = $row['price'] + $delivery_fee;
+            $delivery_com = $row['delivery_com'] ?? null;
+            $delivery_time = $row['delivery_time'] ?? null;
+
+            //$order_price = $row['price'] + $delivery_fee;
             $cost_price = $row['price'] ?? 0;
-            $vat = $cost_price * 0.1;
+            //$vat = $cost_price * 0.1;
             $supplier_2nd_name = $row['supplier'] ?? '';
+
+            
+            if( $is_vat == 'N' ){
+                $vat = $cost_price * 0.1;
+                $cost_price_save = $cost_price;
+                $order_price = $cost_price + $vat + $delivery_fee; 
+            }else{
+                $vat = $cost_price / 11;
+                $cost_price_save = ($cost_price / 1.1);
+                $order_price = $cost_price + $delivery_fee; 
+            }
+
+            /*
+            $price_data = [
+                'is_vat' => $is_vat, // 부가세
+                'cost_price' => $cost_price_save,
+                'order_price' => $order_price,
+                'delivery_com' => $delivery_com,
+                'delivery_fee' => $delivery_fee, // 배송비
+                'delivery_time' => $delivery_time,
+                'vat' => $vat, // 부가세
+            ];
+
+            $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
+            */
+
 
             $inputData = [
                 'status' => '등록대기',
@@ -78,6 +108,10 @@ class ProductPartnerApiService
                 'name_p' => $row['name'],
                 'cost_price' =>$cost_price,
                 'order_price' => $order_price,
+                'is_vat' => $is_vat,
+                'delivery_com' => $delivery_com,
+                'delivery_fee' => $delivery_fee,
+                'delivery_time' => $delivery_time,
                 'matching_code' => $partner_idx,
                 'img_mode' => 'out',
                 'img_src' => $row['image_url'],
@@ -206,5 +240,6 @@ class ProductPartnerApiService
         return $data;
 
     }
+
 
 }

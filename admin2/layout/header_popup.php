@@ -11,6 +11,7 @@
 	<meta http-equiv="content-script-type" content="text/javascript" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta http-equiv="imagetoolbar" content="no" />
+	<meta name="referrer" content="no-referrer">
 <!-- 
 	<link rel="stylesheet" type="text/css" href="/admin2/css/common.css?ver=<?=$wepix_now_time?>" />
 	<link rel="stylesheet" type="text/css" href="/admin2/css/layout.css?ver=<?=$wepix_now_time?>" />
@@ -109,7 +110,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .checkbox-td{ width:25px; }
 
 .prd-quick-left{ width:200px; height:100%; background-color:#fff; border-right:1px solid #9c9fae;  
-	position:fixed; padding-top:20px; }
+	position:fixed; padding-top:20px; z-index:99; }
 .on_sale_label_wrap{ text-align:center; padding:0 0 5px 0; }
 .prd-img{ text-align:center; }
 
@@ -137,7 +138,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 	background:         linear-gradient(180deg, #0088cc, #0044cc);
 }
 
-.crm-wrap{ width:100%; height:calc(100% - 30px); display:table; table-layout: fixed; }
+.crm-wrap{ width:100%; height:calc(100% - 30px); display:table; table-layout: fixed; /*position:relative;*/ }
 .crm-wrap > ul{ display:table-cell; vertical-align:top; }
 .crm-menu-wrap{ width:200px; border-right:1px solid #9c9fae; }
 .crm-gap{ width:5px; border-right:1px solid #9c9fae; }
@@ -162,7 +163,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 	}
 }
 .table-style td.title{}
-.table-style td h1{ display:inline-block; font-size:16px; font-weight:600; padding:5px; }
+.table-style td h1{ display:inline-block; font-size:20px; font-weight:600; padding:5px; }
 .table-style input[type=text]{ width:100%; }
 .img-upload-wrap{ font-size:0; }
 .img-upload-wrap > ul{ width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; }

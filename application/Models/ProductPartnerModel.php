@@ -19,6 +19,7 @@ class ProductPartnerModel extends BaseModel
 		'sale_price',
 		'order_price',
 		'cost_price',
+		'min_sale_price', // 최소판매가
 		'price_data',
 		'code',
 		'partner_idx',
@@ -32,6 +33,9 @@ class ProductPartnerModel extends BaseModel
 		'supplier_img_src',
 		'supplier_status',
 		'supplier_status_date',
+		'supplier_is_option',
+		'supplier_option_data',
+		'supplier_detail_img',
 		'godo_goodsNo',
 		'godo_option',
 		'godo_is_option',

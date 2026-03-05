@@ -228,6 +228,9 @@ const prdProviderInfo = (function(){
      */
     function loadGodoGoodsInfo(prd_idx, godo_goodsNo){
         
+        $('html, body').scrollTop(0).css('overflow', 'hidden');
+        $('#update_supplier_product_detail_loading').addClass('active');
+
         ajaxRequest(API_ENDPOINTS.loadGodoGoodsInfo, {
             prd_idx,
             godo_goodsNo,
@@ -237,12 +240,16 @@ const prdProviderInfo = (function(){
                 alert('고도몰 매칭 상품 정보 갱신 완료');
                 location.reload();
             }else{
-                alert('고도몰 매칭 상품 정보 갱신 실패');
+                alert(res.message);
             }
         })
         .catch(error => {
             console.error('AJAX 요청 실패:', error);
             alert('서버 통신에 실패했습니다.');
+        })
+        .always(() => {
+            $('html, body').scrollTop(0).css('overflow', 'auto');
+            $('#update_supplier_product_detail_loading').removeClass('active');
         });
 
     }
