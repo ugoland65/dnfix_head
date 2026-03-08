@@ -5,6 +5,7 @@ use Throwable;
 use App\Utils\HttpClient;
 use App\Models\ProductPartnerModel;
 use App\Services\AdminActionLogService;
+use App\Services\ProductPartnerApiService;
 
 class ProductSupplierPyApiService
 {
@@ -20,6 +21,7 @@ class ProductSupplierPyApiService
      */
     public function updateSupplierProductDetail($data)
     {
+
         $prd_idx = $data['prd_idx'] ?? null;
         if(empty($prd_idx)){
             throw new \Exception('prd_idx가 비어있습니다.');
@@ -29,6 +31,8 @@ class ProductSupplierPyApiService
         if(empty($productPartner)){
             throw new \Exception('prd_idx에 해당하는 상품이 없습니다.');
         }
+
+        $supplier_prd_idx = $productPartner['supplier_prd_idx'] ?? null;
 
         $supplier_prd_pk = $data['supplier_prd_pk'] ?? null;
         if(empty($supplier_prd_pk)){
@@ -85,7 +89,7 @@ class ProductSupplierPyApiService
             $delivery_time = $responseData['delivery_time'] ?? null;
 
             $supplier_is_option = $responseData['is_option'] ?? 'N';
-            $supplier_option_data = $responseData['option_data'] ?? null;
+            $option_data = $responseData['option_data'] ?? null;
             $supplier_detail_img = $responseData['detail_img'] ?? null;
 
             /* 모브,도라도라는 부가세 미포함 */
@@ -116,7 +120,7 @@ class ProductSupplierPyApiService
             ];
 
             $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
-            $supplier_option_data = json_encode($supplier_option_data, JSON_UNESCAPED_UNICODE);
+            $supplier_option_data = json_encode($option_data, JSON_UNESCAPED_UNICODE);
             $supplier_detail_img = json_encode($supplier_detail_img, JSON_UNESCAPED_UNICODE);
 
             $updateData = [
@@ -132,6 +136,15 @@ class ProductSupplierPyApiService
             ];
 
             $result = ProductPartnerModel::where('idx', $prd_idx)->update($updateData);
+
+            // 공급사 DB 상품 수정
+            $productPartnerApiService = new ProductPartnerApiService();
+            $productPartnerApiResult = $productPartnerApiService->productUpdate([
+                'idx' => $supplier_prd_idx,
+                'is_detail_crawler' => 'Y',
+                'is_option' => $supplier_is_option,
+                'option_data' => $supplier_option_data,
+            ]);
 
             $adminActionLogService = new AdminActionLogService();
 
@@ -149,6 +162,8 @@ class ProductSupplierPyApiService
                 'after_json' => $updateData,
                 'diff_json' => $diff,
             ]);
+
+            //공급사 DB에 업데이트
 
             return ['status' => 'success', 'message' => '업데이트되었습니다.'];
 

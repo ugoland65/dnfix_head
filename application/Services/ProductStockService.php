@@ -68,7 +68,7 @@ class ProductStockService extends BaseClass
         $adminActionLogService = new AdminActionLogService();
         $adminActionLogService->log([
             'target_type' => 'product',
-            'target_table' => 'COMPARISON_DB',
+            'target_table' => 'prd_stock',
             'target_pk' => (string)($prd_idx ?? ''),
             'action_mode' => 'create_stock_code',
             'action_summary' => '재고코드 생성',
@@ -79,12 +79,15 @@ class ProductStockService extends BaseClass
 
     }
 
+
     /**
      * 상품 재고 Where In 조회
      * @param array $idxs
      * @return array
      */
-    public function getProductStockWhereIn($ids) {
+    public function getProductStockWhereIn($ids) 
+    {
+        
         // 빈 배열이 전달된 경우 빈 배열 반환
         if (empty($ids)) {
             return [];
@@ -129,6 +132,7 @@ class ProductStockService extends BaseClass
         return $prdStockList;
     }
 
+
     /**
      * 상품 세일 설정
      * @param array $requestData
@@ -136,6 +140,8 @@ class ProductStockService extends BaseClass
      */
     public function setProductSale($data)
     {
+
+        $prd_idx = $data['prd_idx'] ?? null;
         $ps_idx = $data['ps_idx'] ?? null;
         $mode = $data['mode'] ?? null;
 
@@ -194,7 +200,37 @@ class ProductStockService extends BaseClass
 
         $updateData['ps_sale_data'] = $ps_sale_data;
 
+        $beforeData = [
+            'ps_idx' => (string)($productStock['ps_idx'] ?? ''),
+            'ps_prd_idx' => (string)($productStock['ps_prd_idx'] ?? ''),
+            'is_sale_month' => (int)($productStock['is_sale_month'] ?? 0),
+            'is_sale_special' => (int)($productStock['is_sale_special'] ?? 0),
+            'ps_sale_data' => (string)($productStock['ps_sale_data'] ?? ''),
+        ];
+        $afterData = array_merge($beforeData, [
+            'is_sale_month' => isset($updateData['is_sale_month']) ? (int)$updateData['is_sale_month'] : (int)$beforeData['is_sale_month'],
+            'is_sale_special' => isset($updateData['is_sale_special']) ? (int)$updateData['is_sale_special'] : (int)$beforeData['is_sale_special'],
+            'ps_sale_data' => (string)$updateData['ps_sale_data'],
+        ]);
+
         $result = ProductStockModel::where('ps_idx', $ps_idx)->update($updateData);
+
+        if ($result) {
+            $targetPrdIdx = !empty($prd_idx) ? $prd_idx : ($productStock['ps_prd_idx'] ?? null);
+            $adminActionLogService = new AdminActionLogService();
+            $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'prd_stock',
+                'target_pk' => (string)($targetPrdIdx ?? ''),
+                'action_mode' => 'set_product_sale',
+                'action_summary' => '상품 세일 설정 (' . $mode . ')',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
+        }
 
         return [
             'success' => (bool)$result,
@@ -213,6 +249,7 @@ class ProductStockService extends BaseClass
      */
     public function unsetProductSale($data)
     {
+        $prd_idx = $data['prd_idx'] ?? null;
         $ps_idx = $data['ps_idx'] ?? null;
         $mode = $data['mode'] ?? null;
 
@@ -253,7 +290,37 @@ class ProductStockService extends BaseClass
 
         $updateData['ps_sale_data'] = json_encode($sale_data, JSON_UNESCAPED_UNICODE);
 
+        $beforeData = [
+            'ps_idx' => (string)($productStock['ps_idx'] ?? ''),
+            'ps_prd_idx' => (string)($productStock['ps_prd_idx'] ?? ''),
+            'is_sale_month' => (int)($productStock['is_sale_month'] ?? 0),
+            'is_sale_special' => (int)($productStock['is_sale_special'] ?? 0),
+            'ps_sale_data' => (string)($productStock['ps_sale_data'] ?? ''),
+        ];
+        $afterData = array_merge($beforeData, [
+            'is_sale_month' => isset($updateData['is_sale_month']) ? (int)$updateData['is_sale_month'] : (int)$beforeData['is_sale_month'],
+            'is_sale_special' => isset($updateData['is_sale_special']) ? (int)$updateData['is_sale_special'] : (int)$beforeData['is_sale_special'],
+            'ps_sale_data' => (string)$updateData['ps_sale_data'],
+        ]);
+
         $result = ProductStockModel::where('ps_idx', $ps_idx)->update($updateData);
+
+        if ($result) {
+            $targetPrdIdx = !empty($prd_idx) ? $prd_idx : ($productStock['ps_prd_idx'] ?? null);
+            $adminActionLogService = new AdminActionLogService();
+            $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'prd_stock',
+                'target_pk' => (string)($targetPrdIdx ?? ''),
+                'action_mode' => 'unset_product_sale',
+                'action_summary' => '상품 세일 해제 (' . $mode . ')',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
+        }
 
         return [
             'success' => (bool)$result,

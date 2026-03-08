@@ -103,11 +103,14 @@ class CsRequestService
         $memId = $data['memId'] ?? '';
         $groupNm = $data['groupNm'] ?? '';
         $csBody = $data['csBody'] ?? '';
+        $category = $data['category'] ?? '출고준비';
 
         // 빈 필수값이 있으면 예외 반환
+        /*
         if (!$orderNo || !$orderDate || !$memNo || !$memId || !$groupNm) {
             throw new \InvalidArgumentException('필수 값이 누락되었습니다.');
         }
+        */
 
         $regId = $admin["sess_id"] ?? null;
         $regPk = $admin["sess_idx"] ?? null;
@@ -116,6 +119,7 @@ class CsRequestService
         $adminData = $adminServices->getAdmin(['idx' => $regPk]);
 
         $inputData = [
+            'category' => $category,
             'order_no' => $orderNo,
             'order_date' => $orderDate,
             'mem_no' => $memNo,
@@ -136,15 +140,15 @@ class CsRequestService
 
         $telegram = new TelegramUtils();
 
-        $message = "🟣 패킹 리스트 C/S 요청\n";
+        $message = "🟣 ".$category." C/S 요청\n";
         $message .= "주문번호 : " .  $orderNo . " \n";
         $message .= "주문일시 : " . date('Y-m-d H:i:s', strtotime($orderDate)) . "\n";
-        $message .= "---------------------------------------------------\n";
+        $message .= "----------------------------\n";
         $message .= $csBody . "\n";
-        $message .= "---------------------------------------------------\n";
+        $message .= "----------------------------\n";
         $message .= "요청일 : " . date('Y-m-d H:i:s') . "\n";
         $message .= "등록자 : " . $adminData['ad_name'] . "\n";
-        $message .= "---------------------------------------------------\n";
+        $message .= "----------------------------\n";
 
         $telegramResult = $telegram->sendMessage($chat_room_id, $message, 'HTML');
         //dd($telegramResult);

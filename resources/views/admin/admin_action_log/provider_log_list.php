@@ -35,8 +35,58 @@
                             ?>
                                 <tr>
                                     <td><?= $key ?></td>
-                                    <td><?= $value['before'] ?></td>
-                                    <td><?= $value['after'] ?></td>
+                                    <td>
+                                        <?php if ($key === 'cd_reg') { ?>
+                                            <details>
+                                                <summary style="cursor:pointer;">접기/펼치기</summary>
+                                                <?php
+                                                $beforeValue = $value['before'] ?? null;
+                                                $beforeDecoded = is_string($beforeValue) ? json_decode($beforeValue, true) : null;
+                                                if (is_string($beforeValue) && json_last_error() === JSON_ERROR_NONE) {
+                                                    dump($beforeDecoded);
+                                                } else {
+                                                    echo $beforeValue;
+                                                }
+                                                ?>
+                                            </details>
+                                        <?php } else { ?>
+                                            <?php
+                                            $beforeValue = $value['before'] ?? null;
+                                            $beforeDecoded = is_string($beforeValue) ? json_decode($beforeValue, true) : null;
+                                            if (is_string($beforeValue) && json_last_error() === JSON_ERROR_NONE) {
+                                                dump($beforeDecoded);
+                                            } else {
+                                                echo $beforeValue;
+                                            }
+                                            ?>
+                                        <?php } ?>
+                                    </td>
+                                    <td>
+                                        <?php if ($key === 'cd_reg') { ?>
+                                            <details>
+                                                <summary style="cursor:pointer;">접기/펼치기</summary>
+                                                <?php
+                                                $afterValue = $value['after'] ?? null;
+                                                $afterDecoded = is_string($afterValue) ? json_decode($afterValue, true) : null;
+                                                if (is_string($afterValue) && json_last_error() === JSON_ERROR_NONE) {
+                                                    dump($afterDecoded);
+                                                } else {
+                                                    echo $afterValue;
+                                                }
+                                                ?>
+                                            </details>
+                                        <?php } else { ?>
+                                            <?php
+                                            $afterValue = $value['after'] ?? null;
+                                            $afterDecoded = is_string($afterValue) ? json_decode($afterValue, true) : null;
+                                            if (is_string($afterValue) && json_last_error() === JSON_ERROR_NONE) {
+                                                dump($afterDecoded);
+                                            } else {
+                                                echo $afterValue;
+                                            }
+                                            ?>
+                                        <?php } ?>
+                                    </td>
                                 </tr>
                             <?php
                             }

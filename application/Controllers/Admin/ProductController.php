@@ -215,6 +215,101 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 디테일 (베이직)
+     */
+    public function prdDetailBasicPage(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            $prdIdx = $requestData['prd_idx'] ?? null;
+
+            $productService = new ProductService();
+            $productData = $productService->getProductDataForAdmin($prdIdx);
+
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
+            // 브랜드 셀렉트바를 위한 조회
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect();
+
+            $data = [
+                'mode' => 'edit',
+                'prd_idx' => $prdIdx,
+                'productData' => $productData,
+                'prd_kind_name' => $prd_kind_name,
+                'brandForSelect' => $brandForSelect
+            ];
+
+            return view('admin.product.prd_detail_basic', $data);
+
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+        
+    }
+
+
+    /**
+     * 상품 디테일 (가격정보)
+     */
+    public function prdDetailPricePage(Request $request)
+    {
+        try{
+
+            $data = [
+            ];
+
+            return view('admin.product.prd_detail_price', $data);
+
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+        
+    }
+
+
+    /**
+     * 상품 베이직 저장
+     */
+    public function saveProduct(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            
+            $productService = new ProductService();
+            $result = $productService->saveProduct($requestData);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'] ?? '상품 정보가 저장되었습니다.',
+                    'data' => $result,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? $result['msg'] ?? '상품 정보 저장에 실패했습니다.',
+                'data' => $result,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
      * @deprecated 어디서 사용하는지 미확인
      * 상품 DB 목록 화면
      * 
@@ -255,27 +350,7 @@ class ProductController extends BaseClass
 
 
     /**
-     * 상품 디테일 (가격정보)
-     */
-    public function prdDetailPricePage(Request $request)
-    {
-        try{
-
-            $data = [
-            ];
-
-            return view('admin.product.prd_detail_price', $data);
-
-        } catch (Throwable $e) {
-            return view('admin.errors.404', [
-                'message' => $e->getMessage(),
-            ])->response(404);
-        }
-        
-    }
-
-
-    /**
+     * @deprecated 사용하지 않을 예정
      * 상품 등록 폼 화면
      * @skin : skin.prd_reg_form.php
      * @return array

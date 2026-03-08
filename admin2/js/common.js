@@ -78,13 +78,27 @@ var onlyAD = function () {
 	var osWindow;
 
 	/**
+	 * 상품 상세 보기
+	 * @param {string} idx - 상품 고유번호
+	 * @param {string} vmode - 모드
+	 */
+	function prdView(idx, vmode = 'info', prd_mode = "basic") {
+
+		var url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode;
+		if (prd_mode == "stock") {
+			url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode + "&prd_mode=stock";
+		}
+		window.open(url, "prd_quick_" + idx, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+	}
+
+	/**
 	 * 상품 창 prd_provider_info
 	 * @param {string} idx - 상품 고유번호
 	 * @param {string} vmode - 모드
 	 */
 	function prdProviderQuick(idx, vmode) {
 		if (vmode == undefined) vmode = "info";
-		window.open("/ad/ajax/prd_provider_info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		window.open("/ad/ajax/prd_provider_info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 	}
 
 	/**
@@ -135,16 +149,7 @@ var onlyAD = function () {
 		},
 		prdProviderQuick,
 		prdGrouping,
-
-		// 상품 상세 보기
-		prdView: function (idx, vmode = 'info', prd_mode = "basic") {
-
-			var url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode;
-			if (prd_mode == "stock") {
-				url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode + "&prd_mode=stock";
-			}
-			window.open(url, "prd_quick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
-		},
+		prdView,
 
 		// 상품 상세 테스트
 		prdViewTest: function (idx) {

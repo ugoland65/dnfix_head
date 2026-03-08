@@ -31,6 +31,8 @@ class AdminActionLogController extends BaseClass
                 'target_pk' => $target_pk,
             ];
 
+            //dd($payload);
+
             $adminActionLogService = new AdminActionLogService();
             $adminActionLogList = $adminActionLogService->getAdminActionLogList($payload);
 

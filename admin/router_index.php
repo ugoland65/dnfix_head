@@ -27,7 +27,6 @@ try {
     // 어드민 공용 액션 로그 목록 조회
     $router->get('/admin_action_log/list', AdminActionLogController::class, 'adminActionLogList'); //어드민 공용 액션 로그 목록 조회
 
-
     // 인사/업무
     $router->get('/work/TaskRequest', WorkController::class, 'taskRequest'); //업무 로그
     $router->get('/work/TaskRequestDetail/{idx}', WorkController::class, 'taskRequestDetail'); //업무 로그 상세
@@ -61,6 +60,7 @@ try {
     //상품 관리
     $router->get('/product/product_db', ProductController::class, 'prdDbList'); //상품 DB 목록
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
+    $router->get('/product/detail_basic', ProductController::class, 'prdDetailBasicPage'); //상품 디테일 (베이직)
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
@@ -77,6 +77,7 @@ try {
     $router->post('/product/grouping_product_order_change_save', ProductGroupingController::class, 'productGroupingProductOrderChangeSave'); //상품 그룹핑 상품 순서 변경 저장
     
     // 상품 처리
+    $router->post('/product/saveProduct', ProductController::class, 'saveProduct'); //상품 저장
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
 
@@ -109,6 +110,7 @@ try {
 
     // C/S 관리
     $router->get('/cs/cs_list', CsRequestController::class, 'csList'); //C/S 목록
+    $router->get('/cs/cs_create', CsRequestController::class, 'csCreate'); //C/S 생성
     $router->get('/cs/cs_detail/{idx}', CsRequestController::class, 'csDetail'); //C/S 상세
     $router->post('/cs/cs_request', CsRequestController::class, 'createCsRequest'); //C/S 처리 요청
     $router->post('/cs/update_cs_status', CsRequestController::class, 'updateCsStatus'); //C/S 상태변경

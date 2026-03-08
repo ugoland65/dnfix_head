@@ -25,6 +25,8 @@ class AdminActionLogService
             $target_table = 'prd_partner';
         }
 
+        //dd($target_type, $target_pk);
+
         $query = AdminActionLogModel::query()
             ->select([
                 'idx',
@@ -37,7 +39,7 @@ class AdminActionLogService
                 'processed_at',
             ])
             ->where('target_type', $target_type)
-            ->where('target_table', $target_table)
+            //->where('target_table', $target_table)
             ->where('target_pk', $target_pk)
             ->orderBy('idx', 'desc')
             ->get()

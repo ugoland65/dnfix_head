@@ -122,7 +122,7 @@ $mentionTarget = $CommentService->getMentionTarget();
 <div class="chat-wrap">
 
 	<div class="chat-list-wrap">
-		<?
+		<?php
 		foreach ($result['comment'] as $key => $comment) {
 			if ($comment['mb_idx'] == $_ad_idx) {
 				//if( $comment['mb_idx'] == 16 ){
@@ -155,9 +155,22 @@ $mentionTarget = $CommentService->getMentionTarget();
 						<div class="m-t-5 comment-body" id='comment_body_<?= $comment['idx'] ?>'>
 							<?php
 								$commentText = nl2br(htmlspecialchars($comment['comment'] ?? '', ENT_QUOTES, 'UTF-8'));
-								$commentText = preg_replace(
+								$commentText = preg_replace_callback(
 									'~(https?://[^\s<]+)~i',
-									'<a href="$1" target="_blank" rel="noopener noreferrer">$1</a>',
+									function ($matches) {
+										$displayUrl = $matches[1];
+										$decodedUrl = $displayUrl;
+										for ($i = 0; $i < 3; $i++) {
+											$next = html_entity_decode($decodedUrl, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+											if ($next === $decodedUrl) {
+												break;
+											}
+											$decodedUrl = $next;
+										}
+										$safeHref = htmlspecialchars($decodedUrl, ENT_QUOTES, 'UTF-8');
+										$safeDisplay = htmlspecialchars($decodedUrl, ENT_QUOTES, 'UTF-8');
+										return '<a href="' . $safeHref . '" target="_blank" rel="noopener noreferrer">' . $safeDisplay . '</a>';
+									},
 									$commentText
 								);
 							?>
@@ -220,9 +233,7 @@ $mentionTarget = $CommentService->getMentionTarget();
 
 				</ul>
 			</div>
-		<?
-		}
-		?>
+		<?php } ?>
 	</div>
 
 </div>

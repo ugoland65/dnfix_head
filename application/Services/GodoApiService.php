@@ -757,4 +757,30 @@ class GodoApiService extends BaseClass {
 
     }
 
+
+    /**
+     * 고도몰 주문 정보 조회
+     * @param string $goodsNo 상품번호
+     * @return array
+     */
+    public function getGodoOrderInfo($orderNo) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_detail_api.php?orderNo='.$orderNo;
+        $response = HttpClient::getData($apiUrl);
+
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+
+        if( $responseData['status'] != 'success' ){
+            throw new \Exception('고도몰 API 응답 실패: '.$responseData['message']);
+        }
+
+        return $responseData['data'];
+
+    }
+
+
+
 }

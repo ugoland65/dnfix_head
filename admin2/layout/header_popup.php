@@ -132,17 +132,49 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 	font-weight:bold;
 	background-color:#2070db; 
 	background: -webkit-linear-gradient(180deg, #0088cc, #0044cc);
-	background:    -moz-linear-gradient(180deg, #0088cc, #0044cc);
-	background:     -ms-linear-gradient(180deg, #0088cc, #0044cc);
-	background:      -o-linear-gradient(180deg, #0088cc, #0044cc);
-	background:         linear-gradient(180deg, #0088cc, #0044cc);
+	background: -moz-linear-gradient(180deg, #0088cc, #0044cc);
+	background: -ms-linear-gradient(180deg, #0088cc, #0044cc);
+	background: -o-linear-gradient(180deg, #0088cc, #0044cc);
+	background: linear-gradient(180deg, #0088cc, #0044cc);
 }
 
 .crm-wrap{ width:100%; height:calc(100% - 30px); display:table; table-layout: fixed; /*position:relative;*/ }
 .crm-wrap > ul{ display:table-cell; vertical-align:top; }
 .crm-menu-wrap{ width:200px; border-right:1px solid #9c9fae; }
 .crm-gap{ width:5px; border-right:1px solid #9c9fae; }
-.crm-body{ padding:20px 20px 20px; box-sizing:border-box; background-color:#dddddd; }
+.crm-body{ padding:90px 20px 20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
+.crm-top-menu-wrap{ width:calc(100% - 205px); background-color:#fff; height:70px; position:fixed; 
+	top:0; left:205px; right:0; z-index:100; border-bottom:1px solid #9c9fae; 
+	display:flex; 
+	align-items:center; 
+	gap:15px;
+	padding:0 30px;
+	box-sizing:border-box;
+
+	> ul{
+		dl{
+			dt{ font-size:12px; font-weight:500; color:#777; }
+			dd{
+				b{ font-size:16px; font-weight:600; color:#000; }
+			}
+		}
+
+		&.warning-text{
+			color:#ff0000;
+			font-size:12px;
+			font-weight:500;
+		}
+
+		&.right{
+			margin-left:auto;
+		}
+	}
+}
+/* 상단 정보영역 ul 사이 구분선 */
+.crm-top-menu-wrap > ul + ul{
+	border-left:1px solid #d9dce7;
+	padding-left:15px;
+}
 
 .stock-write-box{ padding:15px 15px 0 15px; }
 .stock-write-box ul{ font-size:15px; }
@@ -166,7 +198,13 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .table-style td h1{ display:inline-block; font-size:20px; font-weight:600; padding:5px; }
 .table-style input[type=text]{ width:100%; }
 .img-upload-wrap{ font-size:0; }
-.img-upload-wrap > ul{ width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; }
+.img-upload-wrap > ul{ 
+	width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
+	h3{
+		font-size:17px;
+		font-weight:600;
+	}
+}
 .img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
 
 .button-wrap-back{ height:60px; }

@@ -9,6 +9,7 @@ class CsRequestModel extends BaseModel {
     //protected $primaryKey = 'idx';  //기본값 idx
 
     protected $fillable = [
+        'category',
         'order_no',
         'order_date',
         'mem_no',

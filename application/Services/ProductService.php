@@ -5,6 +5,11 @@ namespace App\Services;
 use App\Core\BaseClass;
 use App\Models\ProductModel;
 use App\Models\BrandModel;
+use App\Models\ProductStockModel;
+use App\Auth\AdminAuth;
+use App\Classes\ImageStorage;
+use App\Services\AdminActionLogService;
+use Exception;
 
 class ProductService extends BaseClass 
 {
@@ -966,6 +971,7 @@ class ProductService extends BaseClass
 
         // JSON 데이터 디코딩 처리
         if ($productData) {
+
             $productData['ps_idx'] = $productData['ps_idx'] ?? null;
             $productData['ps_rack_code'] = $productData['ps_rack_code'] ?? '';
             $productData['ps_stock_object'] = $productData['ps_stock_object'] ?? '';
@@ -1011,6 +1017,11 @@ class ProductService extends BaseClass
                 if (!is_array($productData['cd_hbti_data'])) {
                     $productData['cd_hbti_data'] = [];
                 }
+            }
+
+            // hbti_target 설정
+            if (!isset($productData['hbti_target'])) {
+                $productData['hbti_target'] = (!empty($productData['cd_hbti']) || !empty($productData['cd_hbti_data'])) ? 'Y' : 'N';
             }
 
         }
@@ -1068,6 +1079,361 @@ class ProductService extends BaseClass
             'mostUsed' => $mostUsed,
             'mostUsedCount' => $fourCharCounts[$mostUsed] ?? 0,
         ];
+    }
+
+
+    /**
+     * 상품 베이직 저장
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function saveProduct($postData)
+    {
+
+        $idx = (int)($postData['idx'] ?? 0);
+        
+        if ($idx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $auth = AdminAuth::user() ?? [];
+        $adIdx = (string)($auth['sess_idx'] ?? '0');
+        $regData = [
+            'date' => date('Y-m-d H:i:s'),
+            'idx' => $auth['sess_idx'] ?? null,
+            'id' => $auth['sess_id'] ?? '',
+            'name' => $auth['sess_name'] ?? '',
+            'ip' => AdminAuth::getIp(),
+            'domain' => AdminAuth::getDomain(),
+        ];
+
+        $uploadsDir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\') . '/data/comparion';
+        $imageStorage = new ImageStorage();
+
+        $oldProduct = ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        $cdAddImgData = json_decode($oldProduct['cd_add_img'] ?? '{}', true);
+        $cdCodeData = json_decode($oldProduct['cd_code_fn'] ?? '{}', true);
+
+        if (!is_array($cdAddImgData) || empty($cdAddImgData)) {
+            $cdAddImgData = ['add1' => ['filename' => ''], 'add2' => ['filename' => ''], 'add3' => ['filename' => '']];
+        }
+        if (!isset($cdAddImgData['add1'])) {
+            $cdAddImgData['add1'] = ['filename' => ''];
+        }
+        if (!isset($cdAddImgData['add2'])) {
+            $cdAddImgData['add2'] = ['filename' => ''];
+        }
+        if (!isset($cdAddImgData['add3'])) {
+            $cdAddImgData['add3'] = ['filename' => ''];
+        }
+        if (!is_array($cdCodeData) || empty($cdCodeData)) {
+            $cdCodeData = ['jan' => '', 'pcode' => ''];
+        }
+
+        $imgName = (string)($oldProduct['CD_IMG'] ?? '');
+        $imgName2 = (string)($oldProduct['CD_IMG2'] ?? '');
+        $imgAdd1 = (string)($cdAddImgData['add1']['filename'] ?? '');
+        $imgAdd2 = (string)($cdAddImgData['add2']['filename'] ?? '');
+        $imgAdd3 = (string)($cdAddImgData['add3']['filename'] ?? '');
+
+        $mainFile = $_FILES['cd_img'] ?? null;
+        $iconFile = $_FILES['cd_img2'] ?? null;
+        $add1File = $_FILES['cd_add1'] ?? null;
+        $add2File = $_FILES['cd_add2'] ?? null;
+        $add3File = $_FILES['cd_add3'] ?? null;
+        $outImg = (string)($postData['out_img'] ?? '');
+
+        if (!empty($mainFile['name'] ?? '')) {
+            $saveFileName = 'prd_' . $adIdx . '_' . time();
+            $imgName = $imageStorage->storeUploaded($mainFile, $uploadsDir, $saveFileName, 302, 302);
+            $this->deleteUploadedFile($uploadsDir, $oldProduct['CD_IMG'] ?? '');
+        } elseif ($outImg !== '') {
+            $saveFileName = 'prd_' . $adIdx . '_' . time();
+            $imgName = $imageStorage->storeFromUrl($outImg, $uploadsDir, $saveFileName, 302, 302);
+            $this->deleteUploadedFile($uploadsDir, $oldProduct['CD_IMG'] ?? '');
+        }
+
+        if (!empty($iconFile['name'] ?? '')) {
+            $saveFileName = 'prd_icon_' . $adIdx . '_' . time();
+            $imgName2 = $imageStorage->storeUploaded($iconFile, $uploadsDir, $saveFileName, 100, 100);
+            $this->deleteUploadedFile($uploadsDir, $oldProduct['CD_IMG2'] ?? '');
+        }
+
+        if (!empty($add1File['name'] ?? '')) {
+            $oldAdd1 = (string)($cdAddImgData['add1']['filename'] ?? '');
+            $saveFileName = 'prd_invoice_' . $adIdx . '_' . time();
+            $imgAdd1 = $imageStorage->storeUploaded($add1File, $uploadsDir, $saveFileName);
+            $this->deleteUploadedFile($uploadsDir, $oldAdd1);
+        }
+
+        if (!empty($add2File['name'] ?? '')) {
+            $oldAdd2 = (string)($cdAddImgData['add2']['filename'] ?? '');
+            $saveFileName = 'prd_c19_' . $adIdx . '_' . time();
+            $imgAdd2 = $imageStorage->storeUploaded($add2File, $uploadsDir, $saveFileName, 302, 302);
+            $this->deleteUploadedFile($uploadsDir, $oldAdd2);
+        }
+
+        if (!empty($add3File['name'] ?? '')) {
+            $oldAdd3 = (string)($cdAddImgData['add3']['filename'] ?? '');
+            $saveFileName = 'prd_ship_' . $adIdx . '_' . time();
+            $imgAdd3 = $imageStorage->storeUploaded($add3File, $uploadsDir, $saveFileName);
+            $this->deleteUploadedFile($uploadsDir, $oldAdd3);
+        }
+
+        $cdAddImgData = [
+            'add1' => [
+                'name' => '인보이스이미지',
+                'filename' => $imgAdd1,
+            ],
+            'add2' => [
+                'name' => '19금대체이미지',
+                'filename' => $imgAdd2,
+            ],
+            'add3' => [
+                'name' => '출고이미지',
+                'filename' => $imgAdd3,
+            ],
+        ];
+
+        $cdKindCode = (string)($postData['cd_kind_code'] ?? '');
+        $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
+        $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
+        $cdName = (string)($postData['cd_name'] ?? '');
+        $cdNameOg = (string)($postData['cd_name_og'] ?? '');
+        $cdNameEn = (string)($postData['cd_name_en'] ?? '');
+        $cdCont = (string)($postData['cd_cont'] ?? '');
+        $cdMemo = (string)($postData['cd_memo'] ?? '');
+        $cdMemo2 = (string)($postData['cd_memo2'] ?? '');
+        $cdMemo3 = (string)($postData['cd_memo3'] ?? '');
+        $cdSearchTerm = (string)($postData['cd_search_term'] ?? '');
+        $cdReleaseDate = !empty($postData['cd_release_date']) ? (string)$postData['cd_release_date'] : '0000-00-00';
+        $cdSizeW = (string)($postData['cd_size_w'] ?? '');
+        $cdSizeH = (string)($postData['cd_size_h'] ?? '');
+        $cdSizeD = (string)($postData['cd_size_d'] ?? '');
+        $cdSize2 = (string)($postData['cd_size2'] ?? '');
+        $cdWeight1 = (string)($postData['cd_weight_1'] ?? '');
+        $cdWeight2 = (string)($postData['cd_weight_2'] ?? '');
+        $cdWeight3 = (string)($postData['cd_weight_3'] ?? '');
+        $cdCode = (string)($postData['cd_code'] ?? '');
+        $cdCode2 = (string)($postData['cd_code2'] ?? '');
+        $cdCode3 = (string)($postData['cd_code3'] ?? '');
+        $cdNational = (string)($postData['cd_national'] ?? '');
+        $cdInvName1 = (string)($postData['cd_inv_name1'] ?? '');
+        $cdInvName2 = (string)($postData['cd_inv_name2'] ?? '');
+        $cdInvMaterial = (string)($postData['cd_inv_material'] ?? '');
+        $cdCoo = (string)($postData['cd_coo'] ?? '');
+        $cdGodoCode = !empty($postData['cd_godo_code']) ? (int)$postData['cd_godo_code'] : 0;
+        $hbti1 = $postData['hbti_1'] ?? null;
+        $hbti2 = $postData['hbti_2'] ?? null;
+        $hbti3 = $postData['hbti_3'] ?? null;
+        $hbti4 = $postData['hbti_4'] ?? null;
+        $hbtiTarget = (string)($postData['hbti_target'] ?? 'Y');
+        $cdSiteShow = (string)($postData['cd_site_show'] ?? 'N');
+        $psIdx = (string)($postData['ps_idx'] ?? '');
+        $psRackCode = (string)($postData['ps_rack_code'] ?? '');
+        $psStockObject = (string)($postData['ps_stock_object'] ?? '');
+        $psAlarmCount = (string)($postData['ps_alarm_count'] ?? '');
+        $invoiceSizeW = (string)($postData['invoice_size_w'] ?? '');
+        $invoiceSizeH = (string)($postData['invoice_size_h'] ?? '');
+        $invoiceSizeD = (string)($postData['invoice_size_d'] ?? '');
+        $invoiceSizeCbm = (string)($postData['invoice_size_cbm'] ?? '');
+        $invoiceSizeCbmMode = (string)($postData['invoice_size_cbm_mode'] ?? '');
+        $importPlastic = (string)($postData['import_plastic'] ?? '');
+        $importHscode = (string)($postData['import_hscode'] ?? '');
+        $importHscode1 = (string)($postData['import_hscode1'] ?? '');
+        $importHscode2 = (string)($postData['import_hscode2'] ?? '');
+
+        $cdCodeData['jan'] = $cdCode;
+        $cdCodeData['pcode'] = $cdCode2;
+        $cdCodeData['code3'] = $cdCode3;
+
+        $cdSizeData = ['W' => $cdSizeW, 'H' => $cdSizeH, 'D' => $cdSizeD];
+        $cdSize = json_encode($cdSizeData);
+
+        if ($invoiceSizeCbmMode !== 'hand') {
+            $invoiceSizeCbmMode = 'auto';
+        }
+        if (
+            $invoiceSizeCbmMode === 'auto'
+            && (float)$invoiceSizeD > 0
+            && (float)$invoiceSizeH > 0
+            && (float)$invoiceSizeW > 0
+        ) {
+            $cbm = round(((float)$invoiceSizeD / 1000) * ((float)$invoiceSizeH / 1000) * ((float)$invoiceSizeW / 1000), 3);
+        } else {
+            $cbm = $invoiceSizeCbm;
+        }
+
+        $invoiceSizeData = [
+            'W' => $invoiceSizeW,
+            'H' => $invoiceSizeH,
+            'D' => $invoiceSizeD,
+            'cbm' => $cbm,
+            'cbm_mode' => $invoiceSizeCbmMode,
+        ];
+        $importInformationData = [
+            'plastic' => $importPlastic,
+            'hscode' => $importHscode,
+            'hscode1' => $importHscode1,
+            'hscode2' => $importHscode2,
+        ];
+        $cdSizeFnData = [
+            'package' => $cdSizeData,
+            'invoice' => $invoiceSizeData,
+            'import' => $importInformationData,
+        ];
+        $cdSizeFn = json_encode($cdSizeFnData);
+
+        $cdWeightData = ['1' => $cdWeight1, '2' => $cdWeight2, '3' => $cdWeight3];
+        $cdWeightFn = json_encode($cdWeightData);
+
+        $cdRegData = json_decode($oldProduct['cd_reg'] ?? '{}', true);
+        if (!is_array($cdRegData) || empty($cdRegData)) {
+            $cdRegData = [];
+        }
+        if (!isset($cdRegData['modify']) || empty($cdRegData['modify']) || !is_array($cdRegData['modify'])) {
+            $cdRegData['modify'] = [$regData];
+        } else {
+            array_unshift($cdRegData['modify'], $regData);
+        }
+        $cdReg = json_encode($cdRegData, JSON_UNESCAPED_UNICODE);
+
+        $hbtiData = [$hbti1, $hbti2, $hbti3, $hbti4];
+        $cdHbtiData = json_encode($hbtiData, JSON_UNESCAPED_UNICODE);
+        $cdHbt = '';
+        foreach ($hbtiData as $val) {
+            if (!is_null($val) && $val !== '') {
+                $cdHbt .= $val;
+            }
+        }
+        if ($hbtiTarget === 'N') {
+            $cdHbtiData = null;
+            $cdHbt = null;
+        }
+
+        $updateData = [
+            'CD_KIND_CODE' => $cdKindCode,
+            'CD_BRAND_IDX' => $cdBrandIdx,
+            'CD_BRAND2_IDX' => $cdBrand2Idx,
+            'CD_NAME' => $cdName,
+            'CD_NAME_OG' => $cdNameOg,
+            'CD_NAME_EN' => $cdNameEn,
+            'CD_CONT' => $cdCont,
+            'CD_MEMO' => $cdMemo,
+            'cd_memo2' => $cdMemo2,
+            'cd_memo3' => $cdMemo3,
+            'CD_SEARCH_TERM' => $cdSearchTerm,
+            'CD_RELEASE_DATE' => $cdReleaseDate,
+            'CD_IMG' => $imgName,
+            'CD_IMG2' => $imgName2,
+            'cd_add_img' => json_encode($cdAddImgData, JSON_UNESCAPED_UNICODE),
+            'CD_SIZE' => $cdSize,
+            'CD_SIZE2' => $cdSize2,
+            'cd_size_fn' => $cdSizeFn,
+            'cd_weight_fn' => $cdWeightFn,
+            'CD_CODE' => $cdCode,
+            'CD_CODE2' => $cdCode2,
+            'cd_reg' => $cdReg,
+            'cd_national' => $cdNational,
+            'CD_INV_NAME1' => $cdInvName1,
+            'CD_INV_NAME2' => $cdInvName2,
+            'CD_INV_MATERIAL' => $cdInvMaterial,
+            'CD_COO' => $cdCoo,
+            'cd_code_fn' => json_encode($cdCodeData, JSON_UNESCAPED_UNICODE),
+            'cd_godo_code' => $cdGodoCode,
+            'cd_hbti_data' => $cdHbtiData,
+            'cd_hbti' => $cdHbt,
+            'cd_site_show' => $cdSiteShow,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+
+        $beforeStockData = [];
+        if (!empty($psIdx)) {
+            $stockModel = ProductStockModel::query()
+                ->where('ps_idx', '=', $psIdx)
+                ->first();
+            $beforeStockData = $stockModel ? (is_array($stockModel) ? $stockModel : $stockModel->toArray()) : [];
+
+            ProductStockModel::query()
+                ->where('ps_idx', '=', $psIdx)
+                ->update([
+                    'ps_rack_code' => $psRackCode,
+                    'ps_stock_object' => $psStockObject,
+                    'ps_alarm_count' => $psAlarmCount,
+                ]);
+        }
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        if (!empty($psIdx)) {
+            $afterStockData = [
+                'ps_idx' => (string)$psIdx,
+                'ps_rack_code' => $psRackCode,
+                'ps_stock_object' => $psStockObject,
+                'ps_alarm_count' => $psAlarmCount,
+            ];
+            $beforeStockMini = [
+                'ps_idx' => (string)($beforeStockData['ps_idx'] ?? ''),
+                'ps_rack_code' => (string)($beforeStockData['ps_rack_code'] ?? ''),
+                'ps_stock_object' => (string)($beforeStockData['ps_stock_object'] ?? ''),
+                'ps_alarm_count' => (string)($beforeStockData['ps_alarm_count'] ?? ''),
+            ];
+            $stockDiff = $adminActionLogService->buildDiff($beforeStockMini, $afterStockData);
+            if (!empty($stockDiff)) {
+                $diff['prd_stock'] = $stockDiff;
+            }
+        }
+
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 베이직 수정';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 상품 저장 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
+    }
+
+    private function deleteUploadedFile(string $uploadsDir, string $filename): void
+    {
+        $filename = trim($filename);
+        if ($filename === '') {
+            return;
+        }
+        $fullPath = rtrim($uploadsDir, '/\\') . DIRECTORY_SEPARATOR . $filename;
+        if (is_file($fullPath)) {
+            @unlink($fullPath);
+        }
     }
 
 }

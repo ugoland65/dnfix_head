@@ -21,6 +21,20 @@
         </ul>
     </div>
 
+
+    <a href="http://gdadmin.dnfix202439.godomall.com/order/order_list_all.php" target="_blank" class="m-l-20" >
+        <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm" >
+            고도몰 주문통합리스트
+        </button>
+    </a>
+    
+    <div id="head_write_btn">
+		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="csCreate()" > 
+			<i class="fas fa-plus-circle"></i>
+			신규 등록
+		</button>
+	</div>
+
 </div>
 <div id="contents_body">
 	<div id="contents_body_wrap">
@@ -58,6 +72,7 @@
 							<tr>
 								<th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
 								<th class="list-idx">고유번호</th>
+                                <th class="">분류</th>
 								<th class="">상태</th>
 								<th class="">주문번호</th>
 								<th class="">주문일</th>
@@ -92,6 +107,7 @@
                             <tr class="<?= $tr_class ?>">
                                 <td><input type="checkbox" name="check_idx[]" value="<?= $row['idx'] ?>"></td>
                                 <td class="list-idx"><?= $row['idx'] ?></td>
+                                <td><?= $row['category'] ?></td>
                                 <td><?= $row['cs_status'] ?></td>
                                 <td><a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['order_no'] ?>" target="_blank"><b><?= $row['order_no'] ?></b></a></td>
                                 <td><?= $row['order_date'] ?></td>
@@ -137,12 +153,18 @@
 	</div>
 </div>
 <script>
+
     function godoMemberCrm(mem_no){
+
         window.open(
             "http://gdadmin.dnfix202439.godomall.com/share/member_crm.php?popupMode=yes&navTabs=summary&memNo="+ mem_no, 
             "crm_member_"+mem_no, "width=1190,height=850,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+
     }
 
+    function csCreate(){
+        openDialog("/admin/cs/cs_create", { mode: 'create' }, "C/S 생성", "800px");
+    }
     function csDetail(idx){
         openDialog("/admin/cs/cs_detail/" + idx, { idx: idx }, "C/S 상세", "800px");
     }

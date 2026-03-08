@@ -63,15 +63,15 @@
 
 	<!-- bootstrap 재가공 -->
 	<style type="text/css">
-	/* 라디오 버튼 */
-	.radio-form label{ height:28px !important; font-size:12px !important; border:1px solid #9096a3 !important; }
-	.radio-form label.active{ color:#fff !important; text-shadow:none !important; font-weight:bold !important; background-color:#008cd4 !important; }
+		/* 라디오 버튼 */
+		.radio-form label{ height:28px !important; font-size:12px !important; border:1px solid #9096a3 !important; }
+		.radio-form label.active{ color:#fff !important; text-shadow:none !important; font-weight:bold !important; background-color:#008cd4 !important; }
 
-	label {
-		margin-bottom: 0;
-		font-weight: 500;
-		cursor:pointer;
-	}
+		label {
+			margin-bottom: 0;
+			font-weight: 500;
+			cursor:pointer;
+		}
 	</style>
 	
 <?php if (!empty($_SESSION['_flash']['success'])): ?>
@@ -276,8 +276,8 @@ $(function () {
 .work-count-modal::-webkit-scrollbar-thumb{  background:#ddd; border-radius:4px; }
 
 .work-count-modal.show {
- transform: translateY(0);
- opacity: 1;
+	transform: translateY(0);
+	opacity: 1;
 }
 </style>
 

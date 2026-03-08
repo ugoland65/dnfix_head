@@ -99,7 +99,7 @@ if( $_prd_idx ){
 <input type="hidden" name="idx" value="<?=$_prd_idx?>">
 <table class="table-style border01 width-full">
 	<tr>
-		<th style="width:140px;">수입/사입 형태</th>
+		<th style="width:140px;">매입 방식</th>
 		<td >
 
 			<?php

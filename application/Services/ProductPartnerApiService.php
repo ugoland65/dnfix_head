@@ -241,5 +241,49 @@ class ProductPartnerApiService
 
     }
 
+    /**
+     * 공급사 DB 상품 수정
+     * 
+     * @param array $data
+     * @return boolean
+     */
+    public function productUpdate($data)
+    {
+
+        $idx = $data['idx'] ?? null;
+
+        $is_detail_crawler = $data['is_detail_crawler'] ?? null;
+        $is_option = $data['is_option'] ?? null;
+        $option_data = $data['option_data'] ?? null;
+
+        if( empty($idx) ){
+            throw new \Exception('idx가 비어있습니다.');
+        }
+
+        $url = $this->domain.'/api/SupplierProductUpdate';
+
+        $headers = [
+            "Content-Type: application/json",
+            "X-API-KEY: {$this->apiKey}",
+        ];
+
+        $payload = [
+            'idx' => $idx,
+            'is_detail_crawler' => $is_detail_crawler,
+            'is_option' => $is_option,
+            'option_data' => $option_data,
+        ];
+
+        $response = HttpClient::postData($url, $payload, $headers);
+        $data = json_decode($response, true);
+
+        if( $data['status'] === 'success' ){
+            return ['status' => 'success', 'message' => '업데이트되었습니다.'];
+        }else{
+            return ['status' => 'error', 'message' => $data['message']];
+        }
+
+    }
+
 
 }
