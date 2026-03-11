@@ -43,9 +43,11 @@ class ProductSupplierPyApiService
         $supplier_code_data = $config_provider['supplier_code_data'];
 
         $site_code = '';
+        $is_vat = 'N';
         foreach ($supplier_code_data as $supplierCode => $supplierInfo) {
             if ((int)($supplierInfo['idx'] ?? 0) === (int)($productPartner['partner_idx'] ?? 0)) {
                 $site_code = (string)($supplierInfo['code'] ?? $supplierCode);
+                $is_vat = (string)($supplierInfo['vat'] ?? 'N');
                 break;
             }
         }
@@ -92,13 +94,6 @@ class ProductSupplierPyApiService
             $option_data = $responseData['option_data'] ?? null;
             $supplier_detail_img = $responseData['detail_img'] ?? null;
 
-            /* 모브,도라도라는 부가세 미포함 */
-            if( $productPartner['partner_idx'] == 3 || $productPartner['partner_idx'] == 6 ){
-                $is_vat = "N";
-            }else{
-                $is_vat = "Y";
-            }
-
             if( $is_vat == 'N' ){
                 $vat = $cost_price * 0.1;
                 $cost_price_save = $cost_price;
@@ -133,6 +128,7 @@ class ProductSupplierPyApiService
                 'supplier_is_option' => $supplier_is_option,
                 'supplier_option_data' => $supplier_option_data,
                 'supplier_detail_img' => $supplier_detail_img,
+                'detail_crawler_date' => date('Y-m-d H:i:s'),
             ];
 
             $result = ProductPartnerModel::where('idx', $prd_idx)->update($updateData);

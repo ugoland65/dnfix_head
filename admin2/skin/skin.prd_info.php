@@ -1,4 +1,7 @@
 <?
+
+use App\Services\ProductPartnerService;
+
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
 
@@ -17,7 +20,9 @@ if (!$_prd_idx) {
 
 if ($_prd_idx) {
 
-	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.cd_reg_time, A.cd_reg";
+	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, 
+		A.cd_reg_time, A.cd_reg, A.supplier_prd_idx";
+
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special";
 	$_colum .= ", C.BD_NAME";
 
@@ -114,14 +119,86 @@ if ($_prd_idx) {
 	}
 
 	$popup_browser_title = "(" . $prd_data['BD_NAME'] . ") " . $prd_data['CD_NAME'] ?? '';
-}
 
-// 디버깅: 최종 데이터 확인
-// echo "<pre>최종 prd_data: "; print_r($prd_data); echo "</pre>";
-// echo "<pre>img_path: " . $img_path . "</pre>";
+	if( !empty($prd_data['supplier_prd_idx']) ){
+		$supplier_prd_idx = $prd_data['supplier_prd_idx'];
+
+		$ProductPartnerService = new ProductPartnerService();
+		$supplier_data = $ProductPartnerService->getProductPartnerInfo($supplier_prd_idx);
+
+		//dump($supplier_data);
+	}
+}
 
 include($docRoot . "/admin2/layout/header_popup.php");
 ?>
+<style>
+	.supplier-match-wrap {
+		margin-top: 10px;
+		padding: 15px 10px 10px 10px !important;
+	}
+	.supplier-match-card {
+		display: flex;
+		align-items: center;
+		gap: 8px;
+		padding: 5px 5px;
+		margin-top: 3px;
+		border: 1px solid #e4e7ee;
+		border-radius: 6px;
+		background: #f8faff;
+		cursor: pointer;
+	}
+	.supplier-match-avatar {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		object-fit: cover;
+		border: 1px solid #dde3f0;
+	}
+	.supplier-match-avatar-placeholder {
+		width: 40px;
+		height: 40px;
+		border-radius: 50%;
+		background: #e9edf5;
+		color: #7a8599;
+		display: flex;
+		align-items: center;
+		justify-content: center;
+		font-size: 11px;
+	}
+	.supplier-match-text {
+		display: flex;
+		flex-direction: column;
+		gap: 2px;
+		min-width: 0;
+		align-items: flex-start;
+	}
+	.supplier-match-name {
+		font-size: 12px;
+		color: #1f2937;
+		font-weight: 600;
+		white-space: nowrap;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		max-width: 250px;
+	}
+	.supplier-match-meta {
+		font-size: 11px;
+		color: #6b7280;
+		text-align: left;
+	}
+	.supplier-unmatched-badge {
+		display: inline-flex;
+		align-items: center;
+		gap: 6px;
+		padding: 4px 10px;
+		border-radius: 12px;
+		background: #f7f7f8;
+		color: #666;
+		font-size: 12px;
+		border: 1px solid #e1e3e8;
+	}
+</style>
 <div class="prd-quick-left">
 
 	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special']) { ?>
@@ -148,14 +225,54 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul class="prd-name"><b><?= $prd_data['CD_NAME'] ?? '' ?></b></ul>
 		<!-- <ul class="prd-name-en"><?= $prd_data['CD_NAME_OG'] ?? '' ?></ul> -->
 
-		<ul class="m-t-10">
-			<div style="display:inline-flex; align-items:center; gap:6px; padding:4px 10px; border-radius:12px; background:#f7f7f8; color:#666; font-size:12px; border:1px solid #e1e3e8;">
-				<i class="fas fa-unlink" style="color:#9aa0a6;"></i>
-				공급사 상품 연동되지 않음
-			</div>
-		</ul>
+		<?php if( !empty($prd_data['supplier_prd_idx']) ){ ?>
+			
+			<?php
+				$supplierName = trim((string)($supplier_data['name_p'] ?? ''));
+				$supplierImage = trim((string)($supplier_data['supplier_img_src'] ?? ''));
+				$supplierStatus = trim((string)($supplier_data['status'] ?? ''));
+				$supplierSoldOutDate = trim((string)($supplier_data['sold_out_date'] ?? ''));
+				$supplierIdxText = (string)($prd_data['supplier_prd_idx'] ?? '');
+			?>
+			<ul class="supplier-match-wrap">
 
-		<?php /* if( !empty($prd_data['ps_idx']) ){ ?>
+				<p>매칭된 공급사 상품</p>
+				<div class="supplier-match-card" onclick="prdProviderQuick('<?= $prd_data['supplier_prd_idx'] ?>');" >
+					
+					<?php if ($supplierImage !== '') { ?>
+						<img src="<?= $supplierImage ?>" alt="supplier" class="supplier-match-avatar">
+					<?php } else { ?>
+						<div class="supplier-match-avatar-placeholder">IMG</div>
+					<?php } ?>
+
+					<div class="supplier-match-text">
+						<div class="supplier-match-name">
+							<?= $supplierName !== '' ? $supplierName : '공급사 상품명 없음' ?>
+						</div>
+						<div class="supplier-match-meta">
+							고유번호: <b>#<?= $supplierIdxText ?></b></br>
+							<?php if ($supplierStatus !== '') { ?>
+								상태: <b><?= $supplierStatus ?></b></br>
+							<?php } ?>
+							<?php if ($supplierStatus === '품절' && $supplierSoldOutDate !== '') { ?>
+								| 품절일: <span class="text-red"><?= date('Y.m.d', strtotime($supplierSoldOutDate)) ?></span>
+							<?php } ?>
+						</div>
+					</div>
+
+				</div>
+			</ul>
+		<?php } else { ?>
+			<ul class="m-t-10">
+				<div class="supplier-unmatched-badge">
+					<i class="fas fa-unlink" style="color:#9aa0a6;"></i>
+					공급사 상품 연동되지 않음
+				</div>
+			</ul>
+		<?php } ?>
+
+		<?php 
+		/* if( !empty($prd_data['ps_idx']) ){ ?>
 			<ul class="prd-stock-code">
 				<b><?=$prd_data['ps_idx']?></b>
 			</ul>
@@ -176,18 +293,20 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<? if( ($prd_data['comment_count'] ?? 0) > 0 ) { ?> : <b><?=$prd_data['comment_count']?></b><? } ?>
 			</button>
 		</ul>
-		<?php */ ?>
+		<?php 
+		*/ ?>
 
 	</div>
 
 	<div class="crm-menu m-t-10">
 
-		<?php /*
-		<ul id="crm_menu_info2" class="active" onclick="prdInfo.mode('', 'info2')">상품정보(구)</ul>
-		*/ ?>
+		<?php 
+			/*
+				<ul id="crm_menu_info2" class="active" onclick="prdInfo.mode('', 'info2')">상품정보(구)</ul>
+				<ul id="crm_menu_price2" class="" onclick="prdInfo.mode('', 'price2')">매입정보 (구)</ul>
+			*/ 
+		?>
 		<ul id="crm_menu_info" class="active" onclick="prdInfo.mode('', 'info')">상품정보</ul>
-
-
 		<ul id="crm_menu_price" class="" onclick="prdInfo.mode('', 'price')">매입정보</ul>
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
@@ -197,15 +316,20 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
 	</div>
 
-	<?php /* if( !empty($prd_data['ps_idx']) ){ ?>
-	<div class="stock-write-box">
-		<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
+	<?php 
+		if( !empty($prd_data['ps_idx']) ){ ?>
+		<div class="stock-write-box">
 
-		<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold'] ?? 0?></b></ul>
+			<?php /*
+			<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
+			<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold'] ?? 0?></b></ul>
+			*/ ?>
 
-		<ul class="m-t-7"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.stockModify()" >재고 변경등록</button></ul>
-	</div>
-	<?php } */ ?>
+			<ul class="m-t-7"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.stockModify()" >재고 변경등록</button></ul>
+		</div>
+		<?php } 
+
+	?>
 
 </div>
 
@@ -215,24 +339,33 @@ include($docRoot . "/admin2/layout/header_popup.php");
 	<ul class="crm-body">
 		<div class="crm-top-menu-wrap">
 
-			<?php /*
+			<?php
+			/*
 			<ul>
 				<div>
 					<ul><?=$prd_data['BD_NAME'] ?? ''?></ul>
 					<ul><b><?=$prd_data['CD_NAME'] ?? ''?></b></ul>
 				</div>
 			</ul>
-			*/ ?>
+			*/
+			?>
 
 			<?php if (!empty($prd_data['ps_idx'])) { ?>
-				<ul>
-					<dl>
-						<dt>매입 방식</dt>
-						<dd><b><?= $cd_national_label ?? '' ?></b></dd>
-					</dl>
-				</ul>
+				<?php if (!empty($prd_data['cd_national'])) { ?>
+					<ul>
+						<dl>
+							<dt>매입 방식</dt>
+							<dd><b><?= $cd_national_label ?? '' ?></b></dd>
+						</dl>
+					</ul>
+				<?php }else{ ?>
+					<ul class="warning-text">
+						<i class="fas fa-exclamation-triangle"></i>
+						<p>매입방식 미등록</p>
+						<p>매입방식 등록해주세요.</p>
+					</ul>
+				<?php } ?>
 			<?php } ?>
-
 
 			<ul>
 				<?php if (!empty($prd_data['ps_idx'])) { ?>
@@ -264,7 +397,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<ul>
 					<dl>
 						<dt>현재 재고</dt>
-						<dd><b id="now_stock"><?= $prd_data['ps_stock'] ?? 0 ?></b></dd>
+						<dd><b id="now_stock" onclick="prdInfo.stockModify()"><?= $prd_data['ps_stock'] ?? 0 ?></b></dd>
 					</dl>
 				</ul>
 				<ul>
@@ -351,6 +484,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			var ajaxMethod = "POST";
 			var ajaxUrl = "/ad/ajax/prd_reg_form";
 
+			// @deprecated
 			if (mode == "info2") {
 				ajaxUrl = "/ad/ajax/prd_reg_form";
 
@@ -362,6 +496,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				};
 
 			} else if (mode == "price") {
+				ajaxMethod = "GET";
+				ajaxUrl = "/admin/product/detail_price";
+				data = {
+					"prd_idx": prd_idx
+				};
+
+			} else if (mode == "price2") {
 				ajaxUrl = "/ad/ajax/prd_info_price";
 
 			} else if (mode == "saleLog") { //할인 로그

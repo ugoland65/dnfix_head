@@ -1,10 +1,10 @@
 <style>
     .loading-overlay {
-        position: absolute;
+        position: fixed;
         top: 0;
         left: 0;
-        width: 100%;
-        height: 100%;
+        bottom: 0;
+        right: 0;
         background-color: rgba(255, 255, 255, 0.8);
         display: flex;
         justify-content: center;
@@ -75,6 +75,12 @@
             </td>
         </tr>
         <tbody>
+            <tr>
+                <th>공급사 상품 고유번호</th>
+                <td>
+                    <b style="font-size:16px;"><?= $prd_data['idx'] ?></b>
+                </td>
+            </tr>
             <tr>
                 <th>상품 구분</th>
                 <td>
@@ -420,9 +426,15 @@
                         <h1>공급사</h1>
                     </ul>
 
-                    <?php if (!empty($prd_data['supplier_prd_pk']) && ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 ) ) { ?>
+                    <?php if (!empty($prd_data['supplier_prd_pk']) && 
+                    ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 || $prd_data['partner_idx'] == 7 ) ) { ?>
                         <ul class="right">
                             업데이트후 새로고침 됩니다. 저장후 이용바랍니다.
+
+                            <?php if (!empty($prd_data['detail_crawler_date'])) { ?>
+                                ( 최근 크롤링 일자 : <?= $prd_data['detail_crawler_date'] ?> )
+                            <?php } ?>
+
                             <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="updateSupplierProductDetail();">
                                 공급사 사이트 디테일 크롤링후 업데이트
                             </button>

@@ -6,6 +6,7 @@ $supplier_code_data = [
         'idx' => 3,
         'code' => 'mobe',
         'scmNo' => 3,
+        'vat' => 'N',
     ],
     'byedam' => [
         'name' => '바이담',
@@ -18,12 +19,14 @@ $supplier_code_data = [
         'idx' => 6,
         'code' => 'doradora',
         'scmNo' => 15,
+        'vat' => 'N',
     ],
     'allcon' => [
         'name' => '올컨코리아',
         'idx' => 7,
         'code' => 'allcon',
         'scmNo' => 9,
+        'vat' => 'N',
     ],
     'bunny' => [
         'name' => '바니컴퍼니',

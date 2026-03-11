@@ -497,6 +497,13 @@ function select_all() {
             navigateWithParams(params);
         });
 
+        $("#search_value").on('keydown', function(e){
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $("#searchBtn").trigger('click');
+            }
+        });
+
 		// 선택상품 업무요청
 		$("#workRequestBtn").on('click', function() {
 			var selectedItems = [];

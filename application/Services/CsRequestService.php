@@ -19,6 +19,7 @@ class CsRequestService
     {
         
         $cs_status = $criteria['cs_status'] ?? '요청+처리중';
+        $keyword = $criteria['keyword'] ?? '';
 
         $query = CsRequestModel::query()
             ->when($cs_status, function($query) use ($cs_status) {
@@ -28,6 +29,14 @@ class CsRequestService
                 }else{
                     $query->where('cs_status', $cs_status);
                 }
+            })
+            ->when($keyword, function($query) use ($keyword) {
+                $query->where('mem_id', 'like', '%'.$keyword.'%');
+                $query->orWhere('mem_name', 'like', '%'.$keyword.'%');
+                $query->orWhere('mem_phone', 'like', '%'.$keyword.'%');
+                $query->orWhere('receiver_name', 'like', '%'.$keyword.'%');
+                $query->orWhere('receiver_phone', 'like', '%'.$keyword.'%');
+                $query->orWhere('order_no', 'like', '%'.$keyword.'%');
             })
             ->orderBy('idx', 'desc')
             ->get();
@@ -97,12 +106,17 @@ class CsRequestService
         $admin = AdminAuth::user();
 
         // 필수 값 기본 가드
-        $orderNo   = $data['orderNo'] ?? '';
-        $orderDate = $data['orderDate'] ?? '';
-        $memNo = $data['memNo'] ?? '';
-        $memId = $data['memId'] ?? '';
-        $groupNm = $data['groupNm'] ?? '';
-        $csBody = $data['csBody'] ?? '';
+        $orderNo   = $data['orderNo'] ?? null;
+        $orderDate = $data['orderDate'] ?? null;
+        $paymentDt = $data['paymentDt'] ?? null;
+        $memNo = $data['memNo'] ?? null;
+        $memId = $data['memId'] ?? null;
+        $memName = $data['memName'] ?? null;
+        $memPhone = $data['memPhone'] ?? null;
+        $receiverName = $data['receiverName'] ?? null;
+        $receiverPhone = $data['receiverPhone'] ?? null;
+        $groupNm = $data['groupNm'] ?? null;
+        $csBody = $data['csBody'] ?? null;
         $category = $data['category'] ?? '출고준비';
 
         // 빈 필수값이 있으면 예외 반환
@@ -122,8 +136,13 @@ class CsRequestService
             'category' => $category,
             'order_no' => $orderNo,
             'order_date' => $orderDate,
+            'payment_date' => $paymentDt,
             'mem_no' => $memNo,
             'mem_id' => $memId,
+            'mem_name' => $memName,
+            'mem_phone' => $memPhone,
+            'receiver_name' => $receiverName,
+            'receiver_phone' => $receiverPhone,
             'group_nm' => $groupNm,
             'cs_status' => '요청',
             'cs_body' => $csBody,

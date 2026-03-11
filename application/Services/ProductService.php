@@ -1002,6 +1002,30 @@ class ProductService extends BaseClass
                     $productData['cd_weight_fn'] = [];
                 }
             }
+
+            // cd_price_fn 디코딩
+            if (!empty($productData['cd_price_fn'])) {
+                $productData['cd_price_fn'] = json_decode($productData['cd_price_fn'] ?? '{}', true);
+                if (!is_array($productData['cd_price_fn'])) {
+                    $productData['cd_price_fn'] = [];
+                }
+            }
+
+            // cd_price_history 디코딩
+            if (!empty($productData['cd_price_history'])) {
+                $productData['cd_price_history'] = json_decode($productData['cd_price_history'] ?? '{}', true);
+                if (!is_array($productData['cd_price_history'])) {
+                    $productData['cd_price_history'] = [];
+                }
+            }
+
+            // cd_cost_price_info 디코딩
+            if (!empty($productData['cd_cost_price_info'])) {
+                $productData['cd_cost_price_info'] = json_decode($productData['cd_cost_price_info'] ?? '{}', true);
+                if (!is_array($productData['cd_cost_price_info'])) {
+                    $productData['cd_cost_price_info'] = [];
+                }
+            }
             
             // cd_add_img 디코딩
             if (!empty($productData['cd_add_img'])) {
@@ -1423,6 +1447,188 @@ class ProductService extends BaseClass
             'idx' => $idx,
         ];
     }
+
+
+    /**
+     * 상품 매입정보 저장
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function saveProductPrice($postData)
+    {
+        $idx = (int)($postData['idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $oldProduct = ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        $invoiceSizeW = (string)($postData['invoice_size_w'] ?? '');
+        $invoiceSizeH = (string)($postData['invoice_size_h'] ?? '');
+        $invoiceSizeD = (string)($postData['invoice_size_d'] ?? '');
+        $invoiceSizeCbm = (string)($postData['invoice_size_cbm'] ?? '');
+        $invoiceSizeCbmMode = (string)($postData['invoice_size_cbm_mode'] ?? '');
+        $cdWeight1 = (string)($postData['cd_weight_1'] ?? '');
+        $cdWeight2 = (string)($postData['cd_weight_2'] ?? '');
+        $cdWeight3 = (string)($postData['cd_weight_3'] ?? '');
+        $cdSalePriceRaw = (string)($postData['cd_sale_price'] ?? '0');
+        $costCalKind = (string)($postData['cost_cal_kind'] ?? '');
+        $cdNational = (string)($postData['cd_national'] ?? '');
+        $costCalPrice = (string)($postData['cost_cal_price'] ?? '');
+        $costCalExchangeRate = (string)($postData['cost_cal_exchange_rate'] ?? '');
+        $costCalDelivery = (string)($postData['cost_cal_delivery'] ?? '');
+        $costCalTariff = (string)($postData['cost_cal_tariff'] ?? '');
+        $costCalIncidentalCost = (string)($postData['cost_cal_incidental_cost'] ?? '');
+        $exRate = (string)($postData['ex_rate'] ?? '');
+        $oprice = (string)($postData['oprice'] ?? '');
+        $opriceKey = (string)($postData['oprice_key'] ?? '');
+        $kgP = (string)($postData['kg_p'] ?? '');
+        $weightMode = (string)($postData['weight_mode'] ?? '');
+        $weight = (string)($postData['weight'] ?? '');
+        $tax = (string)($postData['tax'] ?? '');
+        $vat = (string)($postData['vat'] ?? '');
+        $cdCostPriceVat = (string)($postData['cd_cost_price_vat'] ?? '포함');
+        $delivery = (string)($postData['delivery'] ?? '');
+        $opWon = (string)($postData['op_won'] ?? '');
+        $costP = (string)($postData['cost_p'] ?? ($postData['cd_cost_price'] ?? '0'));
+        $supplierPrdIdx = (int)($postData['supplier_prd_idx'] ?? 0);
+        $cdCostPriceMemo = (string)($postData['cd_cost_price_memo'] ?? '');
+
+        $cdSizeFnData = json_decode($oldProduct['cd_size_fn'] ?? '{}', true);
+        if (!is_array($cdSizeFnData)) {
+            $cdSizeFnData = [];
+        }
+
+        if ($invoiceSizeCbmMode !== 'hand') {
+            $invoiceSizeCbmMode = 'auto';
+        }
+
+        if (
+            $invoiceSizeCbmMode === 'auto'
+            && (float)$invoiceSizeD > 0
+            && (float)$invoiceSizeH > 0
+            && (float)$invoiceSizeW > 0
+        ) {
+            $cbm = round(((float)$invoiceSizeD / 1000) * ((float)$invoiceSizeH / 1000) * ((float)$invoiceSizeW / 1000), 3);
+        } else {
+            $cbm = $invoiceSizeCbm;
+        }
+
+        $cdSizeFnData['invoice'] = [
+            'W' => $invoiceSizeW,
+            'H' => $invoiceSizeH,
+            'D' => $invoiceSizeD,
+            'cbm' => $cbm,
+            'cbm_mode' => $invoiceSizeCbmMode,
+        ];
+        $cdSizeFn = json_encode($cdSizeFnData);
+
+        $cdWeightFn = json_encode([
+            '1' => $cdWeight1,
+            '2' => $cdWeight2,
+            '3' => $cdWeight3,
+        ]);
+
+        $cdSalePrice = (int)str_replace(',', '', $cdSalePriceRaw);
+        $cdCostPrice = (string)str_replace(',', '', $costP);
+
+        $auth = AdminAuth::user() ?? [];
+        $regData = [
+            'date' => date('Y-m-d H:i:s'),
+            'idx' => $auth['sess_idx'] ?? null,
+            'id' => $auth['sess_id'] ?? '',
+            'name' => $auth['sess_name'] ?? '',
+            'ip' => AdminAuth::getIp(),
+            'domain' => AdminAuth::getDomain(),
+        ];
+
+        if ($costCalKind === '중국주문') {
+            $cdCostPriceInfoData = [
+                '주문종류' => '중국주문',
+                'VAT' => $cdCostPriceVat,
+                '국가' => $cdNational,
+                '주문가' => $costCalPrice,
+                '적용환율' => $costCalExchangeRate,
+                '배송비' => $costCalDelivery,
+                '관세율' => $costCalTariff,
+                '부대비용' => $costCalIncidentalCost,
+                'reg' => $regData,
+            ];
+        } else {
+            $cdCostPriceInfoData = [
+                'VAT' => $cdCostPriceVat,
+                '국가' => $cdNational,
+                '환율' => $exRate,
+                '기준주문가' => $oprice,
+                '기준주문가코드' => $opriceKey,
+                '1kg배송비' => $kgP,
+                '중량종류' => $weightMode,
+                '중량' => $weight,
+                '관세' => $tax,
+                '부가세' => $vat,
+                '배송비' => $delivery,
+                '원전환' => $opWon,
+                '원가' => $cdCostPrice,
+                'reg' => $regData,
+            ];
+        }
+        $cdCostPriceInfo = json_encode($cdCostPriceInfoData, JSON_UNESCAPED_UNICODE);
+
+        $updateData = [
+            'cd_national' => $cdNational,
+            'cd_size_fn' => $cdSizeFn,
+            'cd_weight_fn' => $cdWeightFn,
+            'cd_sale_price' => $cdSalePrice,
+            'cd_cost_price' => $cdCostPrice,
+            'cd_cost_price_info' => $cdCostPriceInfo,
+            'supplier_prd_idx' => $supplierPrdIdx,
+            'cd_cost_price_memo' => $cdCostPriceMemo,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 매입정보 수정';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update_price',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 상품 저장 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
+    }
+
 
     private function deleteUploadedFile(string $uploadsDir, string $filename): void
     {

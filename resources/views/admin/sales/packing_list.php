@@ -1,4 +1,16 @@
 <style>
+
+    .order-print-header {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        padding-left: 40px;
+        margin-bottom: 20px;
+
+        .right {
+            margin-left: auto;
+        }
+    }
     @media print {
         body {
             margin: 0;
@@ -93,6 +105,24 @@
             padding:0;
             font-size: 16px;
         }
+    }
+    .order-no-wrap{
+        display:flex;
+        align-items:center;
+        gap:10px;
+        h1{
+            margin:0;
+            padding:0;
+            font-size: 16px;
+            span{
+                font-size: 12px;
+                color:#666;
+            }
+        }
+    }
+    .order-no-barcode{
+        width: 180px;
+        height: 42px;
     }
     .order-goods-list {
         width: 100%;
@@ -283,36 +313,61 @@
         cursor: pointer;
     }
 </style>
-<div class="order-print-header">
-    <!-- 프린트 버튼 -->
-    <button class="print-button" onclick="window.print();">주문서 인쇄</button>
-    <div class="calendar-input">
-        <input type="text" name="start_date" value="<?=$start_date?>" placeholder="시작일">
+    <div class="order-print-header">
+        <ul>
+            <select name="mode" id="mode">
+                <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
+                <option value="g1" <?= $mode == 'g1' ? 'selected' : '' ?>>패킹 준비중</option>
+                <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>전체 준비중</option>
+                <option value="d" <?= $mode == 'd' ? 'selected' : '' ?>>배송중</option>
+                <option value="ds" <?= $mode == 'ds' ? 'selected' : '' ?>>배송완료</option>
+            </select>
+            <div class="calendar-input">
+                <input type="text" name="start_date" value="<?=$start_date?>" placeholder="시작일">
+            </div>
+            <div class="calendar-input">
+                <input type="text" name="end_date" value="<?=$end_date?>" placeholder="종료일">
+            </div>
+            <button class="search-button" onclick="searchOrders()">주문 검색</button>
+        </ul>
+        <ul class="right">
+            <!-- 프린트 버튼 -->
+            <button class="print-button" onclick="window.print();">주문서 인쇄</button>
+        </ul>    
     </div>
-    <div class="calendar-input">
-        <input type="text" name="end_date" value="<?=$end_date?>" placeholder="종료일">
-    </div>
-    <button class="search-button" onclick="searchOrders()">주문 검색</button>
-</div>
 
     <!-- 주문서 컨테이너 (수량 1개당 A4 한 장) -->
     <?php 
     foreach ($packingList['data'] as $index => $order) { 
         $index_count = $index + 1;
     ?>
+
     <div class="order-container">
         <input type="hidden" name="order_date" id="order_date_<?=$order['orderNo']?>" value="<?=$order['regDt']?>">
         <input type="hidden" name="mem_no" id="mem_no_<?=$order['orderNo']?>" value="<?=$order['member']['memNo']?>">
         <input type="hidden" name="mem_id" id="mem_id_<?=$order['orderNo']?>" value="<?=$order['member']['memId']?>">
+        <input type="hidden" name="mem_name" id="mem_name_<?=$order['orderNo']?>" value="<?=$order['member']['memNm']?>">
+        <input type="hidden" name="mem_phone" id="mem_phone_<?=$order['orderNo']?>" value="<?=$order['member']['cellPhone']?>">
         <input type="hidden" name="group_nm" id="group_nm_<?=$order['orderNo']?>" value="<?=$order['member']['groupNm']?>">
+        <input type="hidden" name="receiver_name" id="receiver_name_<?=$order['orderNo']?>" value="<?=$order['receiverName']?>">
+        <input type="hidden" name="receiver_phone" id="receiver_phone_<?=$order['orderNo']?>" value="<?=$order['receiverCellPhone']?>">
 
         <div class="order-header">
-            <h1>주문번호 : <?=$order['orderNo']?></h1>
+            <div class="order-no-wrap">
+                <h1><span>주문번호</span><br><?=$order['orderNo']?></h1>
+                <svg class="order-no-barcode" data-order-no="<?=$order['orderNo']?>"></svg>
+            </div>
             <h1>주문일자 : <?=$order['regDt']?> ( <b style="color:#ff0000"><?=$index_count?></b> / <?=$packingList['total']?> )</h1>
         </div>
         <div class="order-goods-list">
-
-            <div>
+            <?php
+                $total_goods_cnt = 0;
+                foreach (($order['orderGoods'] ?? []) as $_goods_cnt_row) {
+                    $total_goods_cnt += (int)($_goods_cnt_row['goodsCnt'] ?? 0);
+                }
+                $goods_column_count = $total_goods_cnt >= 8 ? 3 : 2;
+            ?>
+            <div style="grid-template-columns: repeat(<?=$goods_column_count?>, 1fr);">
                 <?php 
                 $count = 0;
                 foreach ($order['orderGoods'] as $goods) { 
@@ -322,10 +377,17 @@
                     <table style="width: 100%;">
                         <tr>
                             <td class="goods-image" >
-                                <img src="<?=$goods['thumbImageUrl']?>" alt="" referrerpolicy="no-referrer">
+
+                                <?php if(!empty($goods['add_img3_filename'])) { ?>
+                                    <img src="/data/comparion/<?=$goods['add_img3_filename']?>" alt="" referrerpolicy="no-referrer">
+                                <?php } else { ?>
+                                    <img src="<?=$goods['thumbImageUrl']?>" alt="" referrerpolicy="no-referrer">
+                                <?php } ?>
+
                                 <?php if(!empty($goods['package_volume_level'])) { ?>
                                     <div class="text-center m-t-5 p-b-5" style="color:#999; font-size:11px;">volume : <b  style="color:#0000ff; font-size:14px;"><?=$goods['package_volume_level']?></b></div>
                                 <?php } ?>
+
                             </td>
                             <td class="p-l-10">
                                 <div>
@@ -558,7 +620,24 @@
     </div>
     <?php } ?>
 
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script>
+    // 주문번호 바코드 렌더링
+    document.querySelectorAll('.order-no-barcode').forEach(function(el) {
+        const orderNo = el.getAttribute('data-order-no');
+        if (!orderNo || typeof JsBarcode === 'undefined') {
+            return;
+        }
+
+        JsBarcode(el, orderNo, {
+            format: 'CODE128',
+            width: 1.4,
+            height: 35,
+            margin: 0,
+            displayValue: false
+        });
+    });
+
     // 인쇄 시 입력창 숨김
     const printStyle = document.createElement('style');
     printStyle.innerHTML = `
@@ -589,6 +668,8 @@
     })();
 
     function searchOrders() {
+
+        const mode = document.querySelector('select[name="mode"]').value;
         const startDate = document.querySelector('input[name="start_date"]').value;
         const endDate = document.querySelector('input[name="end_date"]').value;
         
@@ -597,12 +678,16 @@
         
         // URL 파라미터 생성
         const params = new URLSearchParams();
+        if (mode) {
+            params.append('mode', mode);
+        }
         if (startDate) {
             params.append('start_date', startDate);
         }
         if (endDate) {
             params.append('end_date', endDate);
         }
+
         
         // 파라미터가 있으면 URL에 추가하여 페이지 이동
         const newUrl = params.toString() ? `${currentUrl}?${params.toString()}` : currentUrl;
@@ -615,7 +700,11 @@
         const orderDate = document.getElementById('order_date_' + orderNo).value;
         const memNo = document.getElementById('mem_no_' + orderNo).value;
         const memId = document.getElementById('mem_id_' + orderNo).value;
+        const memName = document.getElementById('mem_name_' + orderNo).value;
+        const memPhone = document.getElementById('mem_phone_' + orderNo).value;
         const groupNm = document.getElementById('group_nm_' + orderNo).value;
+        const receiverName = document.getElementById('receiver_name_' + orderNo).value;
+        const receiverPhone = document.getElementById('receiver_phone_' + orderNo).value;
         const csBody = document.getElementById('cs_body_' + orderNo).value;
 
 
@@ -624,7 +713,11 @@
             orderDate: orderDate,
             memNo: memNo,
             memId: memId,
+            memName: memName,
+            memPhone: memPhone,
             groupNm: groupNm,
+            receiverName: receiverName,
+            receiverPhone: receiverPhone,
             csBody: csBody,
         };
 

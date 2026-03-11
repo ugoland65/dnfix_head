@@ -95,7 +95,7 @@ class ProductStockService extends BaseClass
 
         $prdStockList = ProductStockModel::select([
                 'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock',
-                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.cd_size_fn'
+                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.cd_size_fn', 'cd.cd_add_img'
             ])
             ->join('COMPARISON_DB as cd', 'prd_stock.ps_prd_idx', '=', 'cd.CD_IDX', 'LEFT')
             ->whereIn('prd_stock.ps_idx', $ids)
@@ -107,6 +107,7 @@ class ProductStockService extends BaseClass
 
         foreach ($prdStockList as &$prdStock) {
             $prdStock['cd_size_fn'] = json_decode($prdStock['cd_size_fn'] ?? '{}', true);
+            $prdStock['cd_add_img'] = json_decode($prdStock['cd_add_img'] ?? '{}', true);
             if (!is_array($prdStock['cd_size_fn'])) {
                 $prdStock['cd_size_fn'] = [];
             }

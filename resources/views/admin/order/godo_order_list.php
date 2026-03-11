@@ -54,6 +54,8 @@
     <div class="m-l-20">
         <select name="mode" id="mode">
             <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
+            <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>준비중</option>
+            <option value="d" <?= $mode == 'd' ? 'selected' : '' ?>>배송중</option>
             <option value="ds" <?= $mode == 'ds' ? 'selected' : '' ?>>배송완료</option>
         </select>
         <label class="calendar-input">

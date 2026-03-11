@@ -604,6 +604,122 @@ class GodoApiService extends BaseClass {
 
     }
 
+    /**
+     * 고도몰 주문서 상품별 조회
+     * @param array $criteria 검색 조건
+     * @return array
+     */
+    public function getOrderGoodsList($criteria) 
+    {
+        
+        $mode = $criteria['mode'] ?? 'b';
+        $start_date = $criteria['start_date'] ?? date('Y-m-d');
+        $end_date = $criteria['end_date'] ?? date('Y-m-d');
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?apiMode=orderGoods&scmNo=noScm&mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
+        $response = HttpClient::getData($apiUrl);
+
+        $apiData = json_decode($response, true);
+
+        $scmMapping = [
+            0  => '오류',
+            1  => '주식회사 디엔픽스',
+            2  => '모브X',
+            3  => '모브',
+            4  => '공급사사입',
+            5  => '바니컴퍼니',
+            6  => '바이담',
+            7  => '해외직구',
+            8  => '그린쉘프',
+            9  => '울컨코리아',
+            10 => '모노프로',
+            11 => '핑크에그',
+            12 => '리퍼브',
+            13 => 'MSHb2b',
+            14 => 'JPDOLL',
+            15 => '도라토이',
+            16 => '대형',	
+            17 => '리퍼브',	
+            18 => '랜덤박스',	
+            19 => '예비1',	
+            20 => '예비2',		
+        ];
+
+        $otherGoodNos = [];
+        foreach ($apiData['data'] as &$order) {
+            $order['scmName'] = $scmMapping[$order['scmNo']] ?? '오류';
+
+            // optionInfo가 문자열(JSON)로 오는 경우 배열로 정규화
+            if (isset($order['optionInfo']) && is_string($order['optionInfo'])) {
+                $rawOptionInfo = trim($order['optionInfo']);
+                $normalizedOptionInfo = [];
+
+                // 이중 인코딩 케이스까지 최대 3회 디코딩 시도
+                for ($decodeTry = 0; $decodeTry < 3; $decodeTry++) {
+                    if ($rawOptionInfo === '') {
+                        break;
+                    }
+
+                    $decodedOptionInfo = json_decode($rawOptionInfo, true);
+                    if (json_last_error() !== JSON_ERROR_NONE) {
+                        // \"...\" 형태가 슬래시로 한 번 더 이스케이프된 경우 보정
+                        $decodedOptionInfo = json_decode(stripslashes($rawOptionInfo), true);
+                        if (json_last_error() !== JSON_ERROR_NONE) {
+                            break;
+                        }
+                    }
+
+                    if (is_array($decodedOptionInfo)) {
+                        $normalizedOptionInfo = $decodedOptionInfo;
+                        break;
+                    }
+
+                    if (is_string($decodedOptionInfo)) {
+                        $rawOptionInfo = trim($decodedOptionInfo);
+                        continue;
+                    }
+
+                    break;
+                }
+
+                $order['optionInfo'] = $normalizedOptionInfo;
+            } elseif (!isset($order['optionInfo']) || !is_array($order['optionInfo'])) {
+                $order['optionInfo'] = [];
+            }
+
+            $goodsNo = (string)($order['goodsNo'] ?? '');
+            if ($goodsNo !== '') {
+                $otherGoodNos[] = $goodsNo;
+            }
+        }
+        unset($order);
+
+        $otherGoodNos = array_values(array_unique($otherGoodNos));
+        $productPartnerData = [];
+        if (!empty($otherGoodNos)) {
+            $productPartnerService = new ProductPartnerService();
+            $productPartnerData = $productPartnerService->getProductPartnerWhereInGodoGoodsNo($otherGoodNos);
+        }
+        foreach ($apiData['data'] as &$order) {
+            $goodsNo = (string)($order['goodsNo'] ?? '');
+            $order['ProductPartner'] = $goodsNo !== '' && isset($productPartnerData[$goodsNo])
+                ? $productPartnerData[$goodsNo]
+                : null;
+        }
+        unset($order);
+
+        
+
+        $result = [
+            'start_date' => $start_date,
+            'end_date' => $end_date,
+            'orderData' => $apiData ?? [],
+        ];
+    
+        return $result;
+
+    }
+
 
     /**
      * 패킹리스트 조회
@@ -672,7 +788,8 @@ class GodoApiService extends BaseClass {
             $productStockService = new ProductStockService();
             $productData = $productStockService->getProductStockWhereIn($numericGoodsList);
             
-            
+            //dump($productData);
+
             foreach ($apiData['data'] as &$order) {
                 foreach ($order['orderGoods'] as &$goods) {
                     if ($goods['match'] == "stock") {
@@ -682,9 +799,15 @@ class GodoApiService extends BaseClass {
                         $goods['package_volume'] = $productData[$goods['goodsCd']]['package_volume'];
                         $goods['package_volume_m3'] = $productData[$goods['goodsCd']]['package_volume_m3'];
                         $goods['package_volume_level'] = $productData[$goods['goodsCd']]['package_volume_level'];
+
+                        $add_img3_filename = $productData[$goods['goodsCd']]['cd_add_img']['add3']['filename'] ?? null;
+                        if($add_img3_filename){
+                            $goods['add_img3_filename'] = $add_img3_filename;
+                        }
                     }
                 }
             }
+            
 
             $test = [
                 'errorGoodsList' => $errorGoodsList,

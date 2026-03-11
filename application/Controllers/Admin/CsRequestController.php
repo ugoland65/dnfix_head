@@ -24,6 +24,7 @@ class CsRequestController extends BaseClass
             $requestData = $request->all();
 
             $cs_status = $requestData['s_cs_status'] ?? '요청+처리중';
+            $keyword = $requestData['s_keyword'] ?? '';
 
             $csRequestService = new CsRequestService();
 
@@ -33,10 +34,12 @@ class CsRequestController extends BaseClass
 
             $payload = [
                 'cs_status' => $cs_status,
+                'keyword' => $keyword,
             ];
             $csRequestList = $csRequestService->getCsRequestList($payload);
             $data = [
                 's_cs_status' => $cs_status,
+                's_keyword' => $keyword,
                 'csRequestCount' => $csRequestCount,
                 'csRequestList' => $csRequestList,
             ];
@@ -67,9 +70,33 @@ class CsRequestController extends BaseClass
         try{
 
             $requestData = $request->all();
+            $apiMode = $requestData['apiMode'] ?? 'do';
+            $category = $requestData['category'] ?? '출고준비';
+            $orderNo = $requestData['orderNo'] ?? null;
+            $orderDate = $requestData['orderDate'] ?? null;
+            $paymentDt = $requestData['paymentDt'] ?? null;
+            $memNo = $requestData['memNo'] ?? null;
+            $memId = $requestData['memId'] ?? null;
+            $memName = $requestData['memName'] ?? null;
+            $memPhone = $requestData['memPhone'] ?? null;
+            $groupNm = $requestData['groupNm'] ?? null;
+            $receiverName = $requestData['receiverName'] ?? null;
+            $receiverPhone = $requestData['receiverPhone'] ?? null;
 
             $data = [
                 'mode' => 'create',
+                'apiMode' => $apiMode,
+                'category' => $category,
+                'orderNo' => $orderNo,
+                'orderDate' => $orderDate,
+                'paymentDt' => $paymentDt,
+                'memNo' => $memNo,
+                'memId' => $memId,
+                'memName' => $memName,
+                'memPhone' => $memPhone,
+                'groupNm' => $groupNm,
+                'receiverName' => $receiverName,
+                'receiverPhone' => $receiverPhone,
             ];
 
             return view('admin.cs.cs_detail', $data);
@@ -160,7 +187,16 @@ class CsRequestController extends BaseClass
             if( $mode == 'create' ){
 
                 $order_no = $requestData['order_no'] ?? null; 
+                $order_date = $requestData['order_date'] ?? null;
+                $payment_dt = $requestData['payment_dt'] ?? null;
                 $category = $requestData['category'] ?? null;
+                $mem_no = $requestData['mem_no'] ?? null;
+                $mem_id = $requestData['mem_id'] ?? null;
+                $mem_name = $requestData['mem_name'] ?? null;
+                $mem_phone = $requestData['mem_phone'] ?? null;
+                $group_nm = $requestData['group_nm'] ?? null;
+                $receiver_name = $requestData['receiver_name'] ?? null;
+                $receiver_phone = $requestData['receiver_phone'] ?? null;
                 $cs_body = $requestData['cs_body'] ?? null;
 
                 if( !empty($order_no) ){
@@ -170,17 +206,56 @@ class CsRequestController extends BaseClass
                     $payload = [
                         'orderNo' => $order_no,
                         'orderDate' => $godoGoodsInfo['regDt'],
+                        'paymentDt' => $godoGoodsInfo['paymentDt'],
                         'memNo' => $godoGoodsInfo['memNo'],
                         'memId' => $godoGoodsInfo['memId'],
+                        'memName' => $godoGoodsInfo['memNm'],
+                        'memPhone' => $godoGoodsInfo['cellPhone'],
+                        'receiverName' => $godoGoodsInfo['receiverName'],
+                        'receiverPhone' => $godoGoodsInfo['receiverCellPhone'],
                         'category' => $category,
                         'csBody' => $cs_body,
                     ];
 
-                    $csRequest = $csRequestService->createCsRequest($payload);
+                }else{
 
-                    $message = 'C/S 처리 요청 완료';
+                    $payload[]['orderNo'] = $order_no;
+                    if( !empty($order_date) ){
+                        $payload[]['orderDate'] = $order_date;
+                    }
+                    if( !empty($payment_dt) ){
+                        $payload[]['paymentDt'] = $payment_dt;
+                    }
+                    if( !empty($mem_no) ){
+                        $payload[]['memNo'] = $mem_no;
+                    }
+                    if( !empty($mem_id) ){
+                        $payload[]['memId'] = $mem_id;
+                    }
+                    if( !empty($mem_name) ){
+                        $payload[]['memName'] = $mem_name;
+                    }
+                    if( !empty($mem_phone) ){
+                        $payload[]['memPhone'] = $mem_phone;
+                    }
+                    if( !empty($group_nm) ){
+                        $payload[]['groupNm'] = $group_nm;
+                    }
+                    if( !empty($receiver_name) ){
+                        $payload[]['receiverName'] = $receiver_name;
+                    }
+                    if( !empty($receiver_phone) ){
+                        $payload[]['receiverPhone'] = $receiver_phone;
+                    }
+                    $payload[]['category'] = $category;
+                    $payload[]['csBody'] = $cs_body;
 
                 }
+
+                $csRequest = $csRequestService->createCsRequest($payload);
+
+                $message = 'C/S 처리 요청 완료';
+
 
             }else{
 

@@ -26,7 +26,8 @@ class GodoApiController extends BaseClass
      * @param Request $request 요청 데이터
      * @return view
      */
-    public function godoOrderList(Request $request) {
+    public function godoOrderList(Request $request) 
+    {
 
         try{
 
@@ -71,7 +72,60 @@ class GodoApiController extends BaseClass
         }
     }
         
+
+    /**
+     * 고도몰 주문서 상품별 조회
+     * 
+     * @param Request $request 요청 데이터
+     * @return view
+     */
+    public function godoOrderGoodsList(Request $request) 
+    {
+        
+        try{
+
+            $requestData = $request->all();
+
+            $today = date('Y-m-d');
+            $dayOfWeek = date('N'); // 1(월)~7(일)
+            // 월요일이면 지난주 금요일(-3일), 그 외는 전날(-1일)
+            $default_start_date = ($dayOfWeek == 1)
+                ? date('Y-m-d', strtotime('-3 days'))
+                : date('Y-m-d', strtotime('-1 day'));
+
+            $start_date = $requestData['start_date'] ?? $default_start_date;
+            $end_date = $requestData['end_date'] ?? $today;
+            $mode = $requestData['mode'] ?? 'p';
+     
+            $payload = [
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'mode' => $mode,
+            ];
+            $godoApiService = new GodoApiService();
+            $orderList = $godoApiService->getOrderGoodsList($payload);
+
+            $data = [
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'mode' => $mode,
+                'orderList' => $orderList['orderData'] ?? [],
+            ];
+
+            return view('admin.order.godo_order_goods_list', $data)
+                ->extends('admin.layout.layout',[
+                    'pageGroup2' => 'order',
+                    'pageNameCode' => 'godo_order_goods_list'
+                ]);
+
+        } catch (Exception $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
     
+
     /**
      * 고도 주문서 출력 화면
      * @skin : skin.godo_order_print.php

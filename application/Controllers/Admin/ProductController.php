@@ -260,7 +260,14 @@ class ProductController extends BaseClass
     {
         try{
 
+            $requestData = $request->all();
+            $prdIdx = $requestData['prd_idx'] ?? null;
+
+            $productService = new ProductService();
+            $productData = $productService->getProductDataForAdmin($prdIdx);
+
             $data = [
+                'productData' => $productData,
             ];
 
             return view('admin.product.prd_detail_price', $data);
@@ -285,6 +292,41 @@ class ProductController extends BaseClass
             
             $productService = new ProductService();
             $result = $productService->saveProduct($requestData);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'] ?? '상품 정보가 저장되었습니다.',
+                    'data' => $result,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? $result['msg'] ?? '상품 정보 저장에 실패했습니다.',
+                'data' => $result,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+
+    /**
+     * 상품 매입정보 저장
+     */
+    public function saveProductPrice(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            
+            $productService = new ProductService();
+            $result = $productService->saveProductPrice($requestData);
 
             if ($result['success']) {
                 return response()->json([

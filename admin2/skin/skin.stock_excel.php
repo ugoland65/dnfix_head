@@ -13,7 +13,10 @@
 		</form>
 	</div>
 	<div class="btn-group-wrap m-l-10">
+
+		<!--
 		<button type="button" class="btnstyle1 btnstyle1-sm" onclick="stockExcel.godoOrderPrint()">고도몰 주문서 프린트 (구버전)</button>
+		-->
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="stockExcel.godoOrderPrint('new')">고도몰 주문서 프린트 (신버전)</button>
 	</div>
 </div>

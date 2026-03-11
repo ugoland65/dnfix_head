@@ -201,7 +201,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .img-upload-wrap > ul{ 
 	width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
 	h3{
-		font-size:17px;
+		font-size:15px;
 		font-weight:600;
 	}
 }

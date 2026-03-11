@@ -241,21 +241,18 @@ function toast2(mode, title, msg, timer, position) {
 	  "hideMethod": "fadeOut"
 	}
 	
-/*
-	if( mode == "success" ){
-		toastr.success(title, msg);
-	}else if( mode == "info" ){
-		toastr.info(title, msg);
-	}else if( mode == "warning" ){
-		toastr.warning(title, msg);
-	}else if( mode == "error" ){
-		toastr.error(title, msg);
-	}
-*/
+	/*
+		if( mode == "success" ){
+			toastr.success(title, msg);
+		}else if( mode == "info" ){
+			toastr.info(title, msg);
+		}else if( mode == "warning" ){
+			toastr.warning(title, msg);
+		}else if( mode == "error" ){
+			toastr.error(title, msg);
+		}
+	*/
 }
-
-//GAME
-
 
 $(function(){
 

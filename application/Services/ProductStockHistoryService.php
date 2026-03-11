@@ -121,7 +121,7 @@ class ProductStockHistoryService
         $products = [];
         if (!empty($cdIdxList)) {
             $productsData = ProductModel::query()
-                ->select(['CD_IDX', 'CD_NAME', 'CD_IMG', 'CD_CODE', 'CD_BRAND_IDX', 'cd_size_fn'])
+                ->select(['CD_IDX', 'CD_NAME', 'CD_IMG', 'CD_CODE', 'CD_BRAND_IDX', 'cd_size_fn', 'cd_add_img'])
                 ->whereIn('CD_IDX', $cdIdxList)
                 ->get()
                 ->toArray();
@@ -130,6 +130,7 @@ class ProductStockHistoryService
 
             foreach ($productsData as $product) {
                 $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
+                $product['cd_add_img'] = json_decode($product['cd_add_img'] ?? '{}', true);
                 if (!is_array($product['cd_size_fn'])) {
                     $product['cd_size_fn'] = [];
                 }
@@ -147,6 +148,11 @@ class ProductStockHistoryService
                     $product['package_volume'] = 0;
                     $product['package_volume_m3'] = 0;
                     $product['package_volume_level'] = 0;    
+                }
+
+                $add_img3_filename = $product['cd_add_img']['add3']['filename'] ?? null;
+                if($add_img3_filename){
+                    $product['add_img3_filename'] = $add_img3_filename;
                 }
 
                 $products[$product['CD_IDX']] = $product;
@@ -213,6 +219,8 @@ class ProductStockHistoryService
                 
                 // 계산 필드
                 'ps_stock_sum' => $currentStock - $currentQty, // 남는 재고
+
+                'add_img3_filename' => $productData['add_img3_filename'] ?? null,
             ]);
 
             $pickingDataResult[] = $resultRow;

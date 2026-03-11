@@ -78,11 +78,9 @@ class SalesController extends BaseClass
                 $default_start_date = date('Y-m-d', strtotime('-1 day'));
             }
 
-
+            $mode = $requestData['mode'] ?? 'g1';
             $startDate = $requestData['start_date'] ?? $default_start_date;
             $endDate = $requestData['end_date'] ?? $default_end_date;
-
-            $mode = $requestData['mode'] ?? 'b';
 
             $payload = [
                 'start_date' => $startDate,
@@ -96,6 +94,7 @@ class SalesController extends BaseClass
             //dump($packingList);
 
             $data = [
+                'mode' => $mode,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'packingList' => $packingList,

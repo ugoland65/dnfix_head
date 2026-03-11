@@ -23,7 +23,12 @@
             <?php
             foreach ($pickingList as $row) { 
 
-                $img_path = '/data/comparion/'.$row['CD_IMG'];
+                $add_img3_filename = $row['add_img3_filename'] ?? null;
+                if($add_img3_filename){
+                    $img_path = '/data/comparion/'.$add_img3_filename;
+                }else{
+                    $img_path = '/data/comparion/'.$row['CD_IMG'];
+                }
                 $bar_code = substr($row['CD_CODE'], 0, -5);
                 $bar_code_point = substr($row['CD_CODE'], -5);
 

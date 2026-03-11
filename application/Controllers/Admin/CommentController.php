@@ -630,12 +630,24 @@ class CommentController extends BaseClass
 			$postData = $this->postData;
 			$action_time = date('Y-m-d H:i:s');
 
+			$mode = $postData['mode'] ?? '';
+			$tidx = $postData['tidx'] ?? '';
+			$commentIdx = $postData['idx'] ?? '';
+			$reactionMode = $postData['reaction_mode'] ?? '';
+
+			if (empty($mode) || empty($tidx) || empty($commentIdx) || empty($reactionMode)) {
+				throw new \Exception('필수 값이 누락되었습니다.');
+			}
+
 			$telegram = new TelegramUtils();
 			$AdminModel = new AdminModel();
 
 			$CommentModel = new CommentModel();
 			//$Comment = $CommentModel->find($postData['idx'], ['mode','tidx','comment','mb_idx','reaction']);
-			$Comment = $CommentModel->find($postData['idx'], []);
+			$Comment = $CommentModel->find($commentIdx, []);
+			if (empty($Comment)) {
+				throw new \Exception('댓글을 찾을 수 없습니다.');
+			}
 
 			$TitleInfo = $this->getTitleInfo($Comment['mode'], $Comment['tidx']);
 			$_title_mode = $TitleInfo['title_mode'];
@@ -652,7 +664,7 @@ class CommentController extends BaseClass
 			$_new_reaction = [
 				"mb_idx" => AuthAdmin::getSession('sess_idx'),
 				"mb_name" => AuthAdmin::getSession('sess_name'),
-				"mode" => $postData['reaction_mode'],
+				"mode" => $reactionMode,
 				"created_at" => $action_time,
 			];
 
@@ -670,35 +682,39 @@ class CommentController extends BaseClass
 				$_old_reaction[] = $_new_reaction;
 
 				// 업데이트 처리
-				$CommentModel->update($postData['idx'], [
-					'reaction' => json_encode($_old_reaction, JSON_UNESCAPED_UNICODE),
-				]);
+				CommentModel::query()
+					->where('idx', '=', $commentIdx)
+					->update([
+						'reaction' => json_encode($_old_reaction, JSON_UNESCAPED_UNICODE),
+					]);
 
 				$ad = $AdminModel->find($Comment['mb_idx'], ['ad_telegram_token']);
-				$chatId = $ad['ad_telegram_token'];
+				$chatId = $ad['ad_telegram_token'] ?? '';
 
 				$_reaction_icon['Good'] = "👍";
 				$_reaction_icon['Heart'] = "❤️";
 				$_reaction_icon['Clapping'] = "👏";
 				$_reaction_icon['Check'] = "✔️";
 
-				$message = $_reaction_icon[$postData['reaction_mode']] . " 리액션 | ";
-				$message .= "<b>[" . $postData['idx'] . "] " . $_title_mode . " (" . $_title_name . ") </b>\n";
+				$message = ($_reaction_icon[$reactionMode] ?? '👍') . " 리액션 | ";
+				$message .= "<b>[" . $commentIdx . "] " . $_title_mode . " (" . $_title_name . ") </b>\n";
 				$message .= "---------------------------------------------------\n";
 				$message .= "" . $Comment['comment'] . "\n";
 				$message .= "---------------------------------------------------";
 				$message .= "\n\n( " . AuthAdmin::getSession('sess_name') . " :: " . $action_time . ")\n";
-				$message .= $_reaction_icon[$postData['reaction_mode']] . " 리액션 했습니다.";
+				$message .= ($_reaction_icon[$reactionMode] ?? '👍') . " 리액션 했습니다.";
 
-				$telegramResult = $telegram->sendMessage($chatId, $message, 'HTML');
+				if (!empty($chatId)) {
+					$telegramResult = $telegram->sendMessage($chatId, $message, 'HTML');
+				}
 			}
 
 			$WorkViewCheckModel = new WorkViewCheckModel();
 
 			//부모글을 내가 체크했나 안했나 확인해보자.
 			$isViewCheck = WorkViewCheckModel::query()
-				->where('mode', '=', $postData['mode'])
-				->where('tidx', '=', $postData['idx'])
+				->where('mode', '=', $mode)
+				->where('tidx', '=', $tidx)
 				->where('mb_idx', '=', AuthAdmin::getSession('sess_idx'))
 				->exists();
 
@@ -706,8 +722,8 @@ class CommentController extends BaseClass
 			if (!$isViewCheck) {
 
 				$insertData = [
-					'mode' => $postData['mode'],
-					'tidx' => $postData['idx'],
+					'mode' => $mode,
+					'tidx' => $tidx,
 					'mb_idx' => AuthAdmin::getSession('sess_idx'),
 					'reg' => json_encode(AuthAdmin::getConnectionInfo(), JSON_UNESCAPED_UNICODE) ?? null,
 					'reg_date' => $action_time,
@@ -720,7 +736,7 @@ class CommentController extends BaseClass
 				'status' => 'success',
 				'message' => "등록완료"
 			];
-		} catch (\Exception $e) {
+		} catch (\Throwable $e) {
 			return ['status' => 'error', 'message' => $e->getMessage()];
 		}
 	}

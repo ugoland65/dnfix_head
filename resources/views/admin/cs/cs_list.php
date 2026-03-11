@@ -63,6 +63,11 @@
 						<i class="fas fa-search"></i> 검색
 					</button>
 				</ul>
+                <ul>
+                    <button type="button" id="searchResetBtn" class="btnstyle1 btnstyle1-sm">
+                        <i class="fas fa-undo"></i> 검색초기화
+                    </button>
+                </ul>
             </div>
             <div class="table-wrap5 m-t-5">
 				<div class="scroll-wrap">
@@ -77,6 +82,10 @@
 								<th class="">주문번호</th>
 								<th class="">주문일</th>
 								<th class="">회원ID</th>
+                                <th class="">회원명</th>
+                                <th class="">회원전화</th>
+                                <th class="">수령자명</th>
+                                <th class="">수령자전화</th>
                                 <th class="">요청내용</th>
                                 <th class="">댓글</th>
                                 <th class="">등록자</th>
@@ -115,6 +124,10 @@
                                     <a href="javascript:godoMemberCrm('<?= $row['mem_no'] ?>');"><?= $row['mem_id'] ?></a><br>
                                     <a href="javascript:godoMemberCrm('<?= $row['mem_no'] ?>');"><?= $row['group_nm'] ?></a>
                                 </td>
+                                <td><?= $row['mem_name'] ?></td>
+                                <td><?= $row['mem_phone'] ?></td>
+                                <td><?= $row['receiver_name'] ?></td>
+                                <td><?= $row['receiver_phone'] ?></td>
                                 <td><?= nl2br($row['cs_body']) ?></td>
                                 <td class="text-left">
                                     <button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('cs','<?=$row['idx']?>')" >
@@ -215,6 +228,10 @@
 
 			// 페이지 이동
 			navigateWithParams(params);
+		});
+
+		$("#searchResetBtn").on('click', function() {
+			location.href = '/admin/cs/cs_list';
 		});
 
     });

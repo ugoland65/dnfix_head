@@ -47,6 +47,7 @@ class ProductPartnerModel extends BaseModel
 		'memo',
 		'memo_work',
 		'sold_out_date',
+		'detail_crawler_date',
 	];	
 
 }

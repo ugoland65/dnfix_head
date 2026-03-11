@@ -78,6 +78,7 @@ try {
     
     // 상품 처리
     $router->post('/product/saveProduct', ProductController::class, 'saveProduct'); //상품 저장
+    $router->post('/product/saveProductPrice', ProductController::class, 'saveProductPrice'); //상품 매입정보 저장
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
 
@@ -95,11 +96,13 @@ try {
     // 재고/발주 관리
     $router->get('/order/sheet/list', OrderSheetController::class, 'orderSheetList'); //주문서 목록
     $router->get('/order/sheet/create', OrderSheetController::class, 'orderSheetCreate'); //주문서 생성
-    $router->get('/order/sheet_info/{idx}', OrderSheetController::class, 'orderSheetInfo'); //주문서 상세
+    $router->get('/order/sheet_info', OrderSheetController::class, 'orderSheetInfo'); //주문서 상세
     $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
     $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
 
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회
+    $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
+
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록
     $router->get('/stock/rack_info', RackController::class, 'rackCreate'); //랙신규등록
     $router->get('/stock/rack_info/{idx}', RackController::class, 'rackInfo'); //랙상세

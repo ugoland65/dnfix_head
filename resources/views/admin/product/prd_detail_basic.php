@@ -540,15 +540,15 @@
                 <th>수입국가</th>
                 <td>
                     <?php
-                    
-                        $_arr_national = [
-                            [ "name" => "일본", "code" => "jp" ],
-                            [ "name" => "중국", "code" => "cn" ],
-                            [ "name" => "한국", "code" => "kr" ],
-                            [ "name" => "달러", "code" => "dollar" ]
-                        ];
-                        
-                        foreach ($_arr_national as $national) {
+
+                    $_arr_national = [
+                        ["name" => "일본", "code" => "jp"],
+                        ["name" => "중국", "code" => "cn"],
+                        ["name" => "한국", "code" => "kr"],
+                        ["name" => "달러", "code" => "dollar"]
+                    ];
+
+                    foreach ($_arr_national as $national) {
                     ?>
                         <label><input type="radio" name="cd_national" value="<?= $national['code'] ?? '' ?>" <?php if (($productData['cd_national'] ?? '') == ($national['code'] ?? '')) echo "checked"; ?>> <?= $national['name'] ?? '' ?>(<?= $national['code'] ?? '' ?>)</label>&nbsp;&nbsp;
                     <?php } ?>
@@ -606,114 +606,113 @@
 
 </form>
 
-<?php if( !empty($productData['CD_IDX']) ){ ?>
+<?php if (!empty($productData['CD_IDX'])) { ?>
     <div class="button-wrap-back">
     </div>
     <div class="button-wrap">
-        <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="prdDetailBasicForm.save()" >상품수정</button>
+        <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="prdDetailBasicForm.save()">상품수정</button>
     </div>
 <?php } ?>
 
 <script>
+    var prdDetailBasicForm = function() {
 
-const prdDetailBasicForm = function() 
-{
+        /**
+         * 상품 세일 설정
+         * 
+         * @param int $prd_idx 상품 인덱스
+         * @param int $ps_idx 재고 인덱스
+         * @param string $mode 모드 (monthly, special)
+         */
+        function setProductSale(prd_idx, ps_idx, mode) {
 
-	/**
-	 * 상품 세일 설정
-	 * 
-     * @param int $prd_idx 상품 인덱스
-	 * @param int $ps_idx 재고 인덱스
-	 * @param string $mode 모드 (monthly, special)
-	 */
-	function setProductSale(prd_idx, ps_idx, mode) {
-		
-        var payload = {
-            action_mode: 'set_product_sale',
-            prd_idx: prd_idx,
-            ps_idx: ps_idx,
-			mode: mode
-        };
+            var payload = {
+                action_mode: 'set_product_sale',
+                prd_idx: prd_idx,
+                ps_idx: ps_idx,
+                mode: mode
+            };
 
-        ajaxRequest('/admin/product/stock/action', payload)
-            .done(function(res) {
-                if (res && res.success) {
-                    alert(res.message || '처리가 완료되었습니다.');
-                    location.reload();
-                } else {
-                    alert(res && res.message ? res.message : '처리 실패');
-                }
-            })
-            .fail(function(res) {
-                alert(res && res.message ? res.message : '에러');
-            });
+            ajaxRequest('/admin/product/stock/action', payload)
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '처리가 완료되었습니다.');
+                        location.reload();
+                    } else {
+                        alert(res && res.message ? res.message : '처리 실패');
+                    }
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '에러');
+                });
 
-	}
+        }
 
-	/**
-	 * 상품 세일 해제
-	 * 
-     * @param int $prd_idx 상품 인덱스
-	 * @param int $ps_idx 재고 인덱스
-	 * @param string $mode 모드 (monthly, special)
-	 */
-	function unsetProductSale(prd_idx, ps_idx, mode) {
-		
-		var payload = {
-			action_mode: 'unset_product_sale',
-            prd_idx: prd_idx,
-            ps_idx: ps_idx,
-			mode: mode
-        };
+        /**
+         * 상품 세일 해제
+         * 
+         * @param int $prd_idx 상품 인덱스
+         * @param int $ps_idx 재고 인덱스
+         * @param string $mode 모드 (monthly, special)
+         */
+        function unsetProductSale(prd_idx, ps_idx, mode) {
 
-        ajaxRequest('/admin/product/stock/action', payload)
-            .done(function(res) {
-                if (res && res.success) {
-                    alert(res.message || '처리가 완료되었습니다.');
-                    location.reload();
-                } else {
-                    alert(res && res.message ? res.message : '처리 실패');
-                }
-            })
-            .fail(function(res) {
-                alert(res && res.message ? res.message : '에러');
-            });
+            var payload = {
+                action_mode: 'unset_product_sale',
+                prd_idx: prd_idx,
+                ps_idx: ps_idx,
+                mode: mode
+            };
 
-	}
+            ajaxRequest('/admin/product/stock/action', payload)
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '처리가 완료되었습니다.');
+                        location.reload();
+                    } else {
+                        alert(res && res.message ? res.message : '처리 실패');
+                    }
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '에러');
+                });
 
-    /**
-     * 상품 베이직 저장
-     */
-    function save() {
+        }
 
-        const form = document.getElementById('prd_form');
-        const formData = new FormData(form);
-        fetch('/admin/product/saveProduct', {
-            method: 'POST',
-            body: formData,
-        })
-        .then(async (response) => {
-            const data = await response.json();
-            if (!response.ok || data.success !== true) {
-                throw new Error(data.message || '저장 실패');
-            }
+        /**
+         * 상품 베이직 저장
+         */
+        function save() {
 
-            alert(data.message || '저장 완료');
-            window.location.reload();
-        })
-        .catch(error => {
-            console.error('Error:', error);
-            alert(error.message || '저장 실패');
-        });
-    }
+            const form = document.getElementById('prd_form');
+            const formData = new FormData(form);
+            fetch('/admin/product/saveProduct', {
+                    method: 'POST',
+                    body: formData,
+                })
+                .then(async (response) => {
+                    const data = await response.json();
+                    if (!response.ok || data.success !== true) {
+                        throw new Error(data.message || '저장 실패');
+                    }
 
-    return {
-        save,
-        setProductSale,
-        unsetProductSale,
-    }
+                    alert(data.message || '저장 완료');
+                    window.location.reload();
+                })
+                .catch(error => {
+                    console.error('Error:', error);
+                    alert(error.message || '저장 실패');
+                });
+        }
 
-}();
+        return {
+            save,
+            setProductSale,
+            unsetProductSale,
+        }
+
+    }();
+
     $(function() {
 
         $(".dn-select2").select2();
@@ -738,4 +737,3 @@ const prdDetailBasicForm = function()
 
     });
 </script>
-<?= dump($productData) ?>

@@ -8,6 +8,7 @@ use App\Classes\Request;
 use App\Core\BaseClass;
 use App\Services\OrderSheetService;
 use App\Services\OnaOrderGroupService;
+use App\Utils\Pagination;
 
 class OrderSheetController extends BaseClass 
 {
@@ -22,7 +23,46 @@ class OrderSheetController extends BaseClass
     {
         try{
 
+            $requestData = $request->all();
+
+            $page = (int)($requestData['page'] ?? ($requestData['pn'] ?? 1));
+            if ($page < 1) {
+                $page = 1;
+            }
+
+            $oo_state = $requestData['oo_state'] ?? 'ing';
+
+            $orderSheetService = new OrderSheetService();
+            $orderSheetListResult = $orderSheetService->getOrderSheetList([
+                'page' => $page,
+                'per_page' => 100,
+                'oo_import' => $requestData['oo_import'] ?? 'all',
+                'oo_state' => $oo_state,
+                'oo_form_idx' => $requestData['oo_form_idx'] ?? 0,
+                'search_value' => $requestData['search_value'] ?? '',
+            ]);
+
+            $pagination = new Pagination(
+                $orderSheetListResult['total'],
+                $orderSheetListResult['per_page'],
+                $orderSheetListResult['current_page'],
+                10
+            );
+            $paginationHtml = $pagination->renderLinks();
+
+            $onaOrderGroupService = new OnaOrderGroupService();
+            $onaOrderGroupList = $onaOrderGroupService->getOnaOrderGroupForSelect();
+
             $data = [
+                'orderSheetList' => $orderSheetListResult['data'],
+                'totalCount' => $orderSheetListResult['total'],
+                'paginationHtml' => $paginationHtml,
+                'pagination' => $pagination->toArray(),
+                'onaOrderGroupList' => $onaOrderGroupList,
+                'oo_import' => $requestData['oo_import'] ?? 'all',
+                'oo_state' => $oo_state,
+                'oo_form_idx' => $requestData['oo_form_idx'] ?? '',
+                'search_value' => $requestData['search_value'] ?? '',
             ];
 
             return view('admin.order_sheet.order_sheet_list', $data)
@@ -38,6 +78,7 @@ class OrderSheetController extends BaseClass
         }
     }
 
+    
     /**
      * 주문서 생성 페이지
      * 
@@ -55,7 +96,7 @@ class OrderSheetController extends BaseClass
             return view('admin.order_sheet.info', [
                 'mode' => 'create',
                 'onaOrderGroupList' => $onaOrderGroupList
-            ])->extends('admin.layout.layout',['pageGroup2' => 'order']);
+            ]);
 
         } catch (Throwable $e) {
             return view('admin.errors.404', [
@@ -66,8 +107,15 @@ class OrderSheetController extends BaseClass
     }
 
 
-    public function orderSheetInfo(Request $request, int $idx)
+    public function orderSheetInfo(Request $request)
     {
+
+        $requestData = $request->all();
+        $idx = $requestData['idx'] ?? 0;
+
+        if ($idx <= 0) {
+            throw new Exception('주문서 번호가 없습니다.');
+        }
 
         $orderSheetService = new OrderSheetService();
         $orderSheetInfo = $orderSheetService->getOrderSheetInfo($idx);
@@ -82,7 +130,7 @@ class OrderSheetController extends BaseClass
                 'mode' => 'modify',
                 'orderSheetInfo' => $orderSheetInfo,
                 'onaOrderGroupList' => $onaOrderGroupList
-            ])->extends('admin.layout.layout',['pageGroup2' => 'order']);
+            ]);
 
         } catch (Throwable $e) {
             return view('admin.errors.404', [
@@ -105,9 +153,14 @@ class OrderSheetController extends BaseClass
 
             $postData = $request->all();
             $payload = $postData;
+            $mode = $payload['mode'] ?? '';
 
             $orderSheetService = new OrderSheetService();
-            $orderSheetInfo = $orderSheetService->saveOrderSheet($payload);
+            if ($mode === 'create') {
+                $orderSheetInfo = $orderSheetService->createOrderSheet($payload);
+            } else {
+                $orderSheetInfo = $orderSheetService->saveOrderSheet($payload);
+            }
 
             return response()->json(
                 [
