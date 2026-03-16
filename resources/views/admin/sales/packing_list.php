@@ -427,13 +427,30 @@
                                     */ 
                                     ?>
                                     
-                                    <? if(!empty($goods['optionInfo'])) { ?>
+                                    <?php if(!empty($goods['optionInfo'])) { ?>
                                     <ul class="goods-optionInfo">
                                         <? foreach($goods['optionInfo'] as $option) { ?>
                                             <p><?=$option[0]?> : <b style="font-size:15px; color:#ff0000;"><?=$option[1]?></b></p>
+                                            <div>
+
+                                                <?php if(!empty($option['product_data'])) { 
+                                                    $_bar_code_normal = substr($option['product_data']['CD_CODE'], 0, -5);
+                                                    $_bar_code_point = substr($option['product_data']['CD_CODE'], -5);
+                                                ?>
+                                                <ul class="goods-barcode m-t-5">
+                                                    <b><?=$_bar_code_normal?> <span style="color:#0000ff;"><?=$_bar_code_point?></span></b>
+                                                </ul>
+                                                <?php } ?>
+
+                                                <?php if(!empty($option['product_data']['ps_rack_code'])) { ?>
+                                                    <ul>랙코드 : <b><?=$option['product_data']['ps_rack_code']?></b></ul>
+                                                <?php } ?>
+
+                                            </div>
                                         <? } ?>
                                     </ul>
-                                    <? } ?>
+                                    <?php } ?>
+
                                 </div>
                             </td>
                             <td class="goods-cnt">

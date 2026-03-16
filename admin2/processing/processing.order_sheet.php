@@ -1088,12 +1088,16 @@ if( $_a_mode == "orderSheet_reg" ){
 
 	$_inst_selpd = [];
 	for ( $i=0; $i<count($_send_idx); $i++ ){
+		$_memo_raw = (string)($_send_memo[$i] ?? "");
+		// 줄바꿈은 유지하고, JSON/DB 저장에 문제되는 제어문자는 제거
+		$_memo_raw = str_replace(["\r\n", "\r"], "\n", $_memo_raw);
+		$_memo_raw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $_memo_raw);
 		
 		$_inst_selpd[] = array(
 			"pidx" => $_send_idx[$i] ?? "",
 			"price" => $_send_price[$i] ?? 0,
 			"qty" => $_send_qty[$i] ?? 0,
-			"memo" => $_send_memo[$i] ?? ""
+			"memo" => $_memo_raw
 		);
 
 	} // for END
@@ -1169,7 +1173,12 @@ if( $_a_mode == "orderSheet_reg" ){
 	}
 
 
-	$_oo_json = json_encode($_inst_json_salt, JSON_UNESCAPED_UNICODE);
+	$_oo_json = json_encode($_inst_json_salt, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($_oo_json === false) {
+		$_oo_json = '[]';
+	}
+	$_oo_json = mysqli_real_escape_string($connect, $_oo_json);
+	$_oo_idx = mysqli_real_escape_string($connect, $_oo_idx);
 
 	$query = "update ona_order set
 		oo_json = '".$_oo_json."',
@@ -1518,6 +1527,9 @@ if( $_a_mode == "orderSheet_reg" ){
 		oog_import = '".$_oog_import."',
 		oog_code = '".$_oog_code."',
 		oog_group = '".$_oog_group."',
+		oog_brand = '[]',
+		oog_data = '[]',
+		price_colum = '',
 		memo = '".$_memo."' ";
 	sql_query_error($query);
 
@@ -1674,33 +1686,58 @@ if( $_a_mode == "orderSheet_reg" ){
 // 주문서폼 그룹 추가 상품 검색
 }elseif( $_a_mode == "orderSheetForm_group_prd_search" ){
 
-	$_keyword = $_POST['keyword'] ?? "";
+	$_keyword = $_POST['keyword'] ?? null;
+	$_s_brand = $_POST['s_brand'] ?? null;
+
+/*
+	echo "<pre>";
+	print_r($_keyword);
+	print_r($_s_brand);
+	echo "</pre>";
+	exit;
+	*/
 
 	$_search_query = "";
 
-	if ( preg_match("/[a-zA-Z]/", $_keyword) ){
-		
-		$_search_query .= " ( ";
-		$_search_query .= " INSTR(LOWER(CD_NAME), LOWER('".$_keyword."')) ";
-		$_search_query .= " or INSTR(replace(CD_NAME,' ',''), LOWER('".$_keyword."')) ";
-		$_search_query .= " or INSTR(LOWER(CD_SEARCH_TERM), LOWER('".$_keyword."')) ";
-		$_search_query .= " or INSTR(LOWER(CD_NAME_OG), LOWER('".$_keyword."')) ";
-		$_search_query .= " or INSTR(cd_code_fn, '".$_keyword."') ";
-		$_search_query .= " ) ";
+	if( !empty($_keyword) ){
 
-	}else{
+		if ( preg_match("/[a-zA-Z]/", $_keyword) ){
+			
+			$_search_query .= " ( ";
+			$_search_query .= " INSTR(LOWER(CD_NAME), LOWER('".$_keyword."')) ";
+			$_search_query .= " or INSTR(replace(CD_NAME,' ',''), LOWER('".$_keyword."')) ";
+			$_search_query .= " or INSTR(LOWER(CD_SEARCH_TERM), LOWER('".$_keyword."')) ";
+			$_search_query .= " or INSTR(LOWER(CD_NAME_OG), LOWER('".$_keyword."')) ";
+			$_search_query .= " or INSTR(cd_code_fn, '".$_keyword."') ";
+			$_search_query .= " ) ";
 
-		$_search_query .= " ( ";
-		$_search_query .= " INSTR(CD_NAME, '".$_keyword."') ";
-		$_search_query .= " or INSTR(replace(CD_NAME,' ',''), '".$_keyword."') ";
-		$_search_query .= " or INSTR(CD_SEARCH_TERM, '".$_keyword."') ";
-		$_search_query .= " or INSTR(CD_NAME_OG, '".$_keyword."') ";
-		$_search_query .= " or INSTR(cd_code_fn, '".$_keyword."') ";
-		$_search_query .= " ) ";
+		}else{
 
+			$_search_query .= " ( ";
+			$_search_query .= " INSTR(CD_NAME, '".$_keyword."') ";
+			$_search_query .= " or INSTR(replace(CD_NAME,' ',''), '".$_keyword."') ";
+			$_search_query .= " or INSTR(CD_SEARCH_TERM, '".$_keyword."') ";
+			$_search_query .= " or INSTR(CD_NAME_OG, '".$_keyword."') ";
+			$_search_query .= " or INSTR(cd_code_fn, '".$_keyword."') ";
+			$_search_query .= " ) ";
+
+		}
+
+		$_search_query .= " or CD_IDX = '".$_keyword."' ";
 	}
 
-	$_search_query .= " or CD_IDX = '".$_keyword."' ";
+	if( $_s_brand ){
+		if( $_search_query ){ $_search_query .= "AND"; }
+		$_search_query .= " ( CD_BRAND_IDX = '".$_s_brand."' OR CD_BRAND2_IDX = '".$_s_brand."' ) ";
+	}
+
+
+/*
+	echo "<pre>";
+	print_r($_search_query);
+	echo "</pre>";
+	exit;
+*/
 
 	$_search_count = 0;
 	$_prd_data = [];

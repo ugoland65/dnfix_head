@@ -60,7 +60,7 @@ if (!empty($_scm)) {
 	// 공백 제거 (모든 공백 문자 제거)
 	$goodsCdListNoSpaces = array_map(function ($v) {
 		// 모든 공백 문자(\s)를 제거
-		return preg_replace('/\s+/', '', $v);
+		return preg_replace('/\s+/', '', (string)($v ?? ''));
 	}, $goodsCdList);
 
 	// 중복 제거
@@ -135,7 +135,7 @@ if( !empty($_scm) ){
 
 		$count++;
 		$scmNo = $product['scmNo'] ?? '0';
-		$cateNmNoSpace = preg_replace('/\s+/', '', $product['cateNm']);
+		$cateNmNoSpace = preg_replace('/\s+/', '', (string)($product['cateNm'] ?? ''));
 		$goodsNo = $product['goodsNo'];
 
 		$_errors = [];
@@ -148,7 +148,7 @@ if( !empty($_scm) ){
 			$is_error = true;
 			$_errors[] = "고도몰 자체코드가 없음";
 		}
-		*/
+
 
 		if (!empty($product['goodsCd']) && ctype_digit($product['goodsCd'])) {
 			$is_error = true;
@@ -173,7 +173,8 @@ if( !empty($_scm) ){
 				'message' => '세트코드 제외',
 			];
 		}
-
+		*/
+		
 		/*
 		if (!empty($product['goodsCd']) && stripos($product['goodsCd'], 'toy') !== false) {
 			$is_error = true;

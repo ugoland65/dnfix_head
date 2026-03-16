@@ -459,6 +459,7 @@ function select_all() {
 	}
 
     $(function(){
+        
         $(".dn-select2").select2();
         
         // 개별 체크박스 선택 시 행 배경색 변경

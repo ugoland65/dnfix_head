@@ -21,10 +21,11 @@ class TelegramUtils {
      *
      * @param string $chatId 메시지를 받을 사용자의 Chat ID
      * @param string $message 전송할 메시지 내용
+     * @param string|null $parseMode HTML 또는 MarkdownV2
      * @return array API 호출 결과
      */
-    public function sendMessage($chatId, $message, $parseMode = null) {
-
+    public function sendMessage($chatId, $message, $parseMode = null)
+    {
         if (empty($chatId) || empty($message)) {
             return [
                 'status' => 'error',
@@ -39,38 +40,58 @@ class TelegramUtils {
             'text' => $message
         ];
 
-		if (!empty($parseMode)) {
-			$postData['parse_mode'] = $parseMode; // HTML 또는 MarkdownV2
-		}
+        if (!empty($parseMode)) {
+            $postData['parse_mode'] = $parseMode;
+        }
 
-        $ch = curl_init();
-        curl_setopt($ch, CURLOPT_URL, $url);
-        curl_setopt($ch, CURLOPT_POST, true);
-        curl_setopt($ch, CURLOPT_POSTFIELDS, http_build_query($postData));
-        curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
+        $maxRetry = 1; // 재시도 1회
+        $attempt = 0;
 
-        $response = curl_exec($ch);
+        do {
 
-        if (curl_errno($ch)) {
-            $error = curl_error($ch);
+            $ch = curl_init();
+
+            curl_setopt_array($ch, [
+                CURLOPT_URL => $url,
+                CURLOPT_POST => true,
+                CURLOPT_POSTFIELDS => http_build_query($postData),
+                CURLOPT_RETURNTRANSFER => true,
+
+                // 텔레그램 서버 문제 대비
+                CURLOPT_CONNECTTIMEOUT => 2,
+                CURLOPT_TIMEOUT => 4,
+
+                CURLOPT_SSL_VERIFYPEER => true,
+                CURLOPT_SSL_VERIFYHOST => 2,
+            ]);
+
+            $response = curl_exec($ch);
+            $curlError = curl_errno($ch);
+            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+
             curl_close($ch);
-            return [
-                'status' => 'error',
-                'message' => $error
-            ];
-        }
 
-        curl_close($ch);
+            // 성공 조건
+            if ($curlError === 0 && $httpCode === 200 && $response !== false) {
+                $decodedResponse = json_decode($response, true);
 
-        $decodedResponse = json_decode($response, true);
+                if (json_last_error() === JSON_ERROR_NONE) {
+                    return $decodedResponse;
+                }
 
-        if (json_last_error() !== JSON_ERROR_NONE) {
-            return [
-                'status' => 'error',
-                'message' => 'Invalid JSON response: ' . json_last_error_msg()
-            ];
-        }
+                return [
+                    'status' => 'error',
+                    'message' => 'Invalid JSON response: ' . json_last_error_msg()
+                ];
+            }
 
-        return $decodedResponse;
+            $attempt++;
+
+        } while ($attempt <= $maxRetry);
+
+        return [
+            'status' => 'error',
+            'message' => 'Telegram request failed after retry'
+        ];
     }
 }

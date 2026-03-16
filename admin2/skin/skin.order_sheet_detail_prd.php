@@ -215,7 +215,7 @@ for ($z = 0; $z < count($_false_json); $z++) {
 				<th style="width:86px;">주문코드</th>
 				<th>이미지</th>
 				<th>상품명</th>
-				<th>메모</th>
+				<th  style="width:100px;">메모</th>
 				<th>가격</th>
 				<th>IV가격</th>
 				<th>주문수량</th>
@@ -412,7 +412,7 @@ for ($z = 0; $z < count($_false_json); $z++) {
 
 
 					<!-- 주문메모 -->
-					<td style="width:90px; padding:0 !important; ">
+					<td style="width:100px; padding:0 !important; ">
 						<textarea name="memo" id="memo_<?= $_idx ?>" style="width:100%; height:56px; background-color:transparent;  border:none !important; resize: none; padding:5px; margin:0 !important; box-sizing:border-box;  color:#ff0000;"><?= $_memo ?></textarea>
 
 						<?

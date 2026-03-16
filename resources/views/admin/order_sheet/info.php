@@ -447,22 +447,61 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>배송사</th>
                             <td>
+                                <?php
+                                    $selectedExpressMode = (string)($orderSheetInfo['oo_express_data']['mode'] ?? '');
+                                    $selectedExpressName = (string)($orderSheetInfo['oo_express_data']['name'] ?? '');
+                                    $expressNameMap = [
+                                        '국내택배' => [
+                                            'CJ대한통운',
+                                            '롯데택배',
+                                            '로젠택배',
+                                            '한진택배',
+                                            '우체국택배',
+                                            '경동택배',
+                                            '대신택배',
+                                            '일양로지스',
+                                            '합동택배',
+                                            '건영택배',
+                                            '천일택배',
+                                            '용마로지스',
+                                            '컬리넥스트마일',
+                                            'SLX택배',
+                                            '성화기업택배',
+                                        ],
+                                        '항공' => [
+                                            '항공 FEDEX',
+                                            '항공 DHL',
+                                            '항공 UPS',
+                                        ],
+                                        '해운' => [
+                                            '중국 해운 이안로지스틱',
+                                            '중국 해운 구매대행',
+                                            '일본 해운 파테스',
+                                            '일본 해운 HTNS',
+                                        ],
+                                    ];
+                                    $initialExpressNames = $expressNameMap[$selectedExpressMode] ?? [];
+                                ?>
                                 <select name="express_name">
                                     <option value="">배송사 선택</option>
-                                    <option value="항공 FEDEX" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "항공 FEDEX") echo "selected"; ?>>항공 FEDEX</option>
-                                    <option value="항공 DHL" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "항공 DHL") echo "selected"; ?>>항공 DHL</option>
-                                    <option value="항공 UPS" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "항공 UPS") echo "selected"; ?>>항공 UPS</option>
-                                    <option value="중국 해운 이안로지스틱" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "중국 해운 이안로지스틱") echo "selected"; ?>>중국 해운 이안로지스틱</option>
-                                    <option value="중국 해운 구매대행" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "중국 해운 구매대행") echo "selected"; ?>>중국 해운 구매대행</option>
-                                    <option value="일본 해운 파테스" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "일본 해운 파테스") echo "selected"; ?>>일본 해운 파테스</option>
-                                    <option value="일본 해운 HTNS" <?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') == "일본 해운 HTNS") echo "selected"; ?>>일본 해운 HTNS</option>
+                                    <?php foreach ($initialExpressNames as $expressName) { ?>
+                                        <option value="<?= $expressName ?>" <?php if ($selectedExpressName === $expressName) echo "selected"; ?>><?= $expressName ?></option>
+                                    <?php } ?>
                                 </select>
                             </td>
                         </tr>
 
                         <tr>
                             <th>송장번호</th>
-                            <td><input type='text' name='express_number' value="<?= $orderSheetInfo['oo_express_data']['number'] ?? '' ?>" style='width:300px;'></td>
+                            <td>
+                                <input type='text' name='express_number' value="<?= $orderSheetInfo['oo_express_data']['number'] ?? '' ?>" style='width:300px;'>
+                                <?php
+                                    $hasExpressTracking = ($selectedExpressMode === '국내택배') && ($orderSheetInfo['oo_express_data']['number'] ?? '') !== '';
+                                ?>
+                                <button type="button" id="express_tracking_btn" class="btnstyle1 btnstyle1-primary btnstyle1-xs m-l-5" onclick="openExpressTracking();" <?php if (!$hasExpressTracking) echo 'style="display:none;"'; ?>>
+                                    배송추적
+                                </button>
+                            </td>
                         </tr>
 
                         <tr id="express_price_expected_row" style="<?php if (($orderSheetInfo['oo_express_data']['name'] ?? '') !== '항공 FEDEX') echo 'display:none;'; ?>">
@@ -1174,6 +1213,89 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
 </script>
 
 <script>
+        var expressNameMap = <?= json_encode($expressNameMap ?? [], JSON_UNESCAPED_UNICODE) ?>;
+
+        function updateExpressNameOptions() {
+            var mode = $('input[name="express_mode"]:checked').val() || '';
+            var $select = $('select[name="express_name"]');
+            if ($select.length === 0) {
+                return;
+            }
+
+            var currentValue = $select.val() || '';
+            var names = Array.isArray(expressNameMap[mode]) ? expressNameMap[mode] : [];
+            var html = '<option value="">배송사 선택</option>';
+
+            for (var i = 0; i < names.length; i++) {
+                var name = names[i];
+                var selected = (name === currentValue) ? ' selected' : '';
+                html += '<option value="' + name + '"' + selected + '>' + name + '</option>';
+            }
+
+            $select.html(html);
+        }
+
+        function updateExpressTrackingButton() {
+            var mode = $('input[name="express_mode"]:checked').val() || '';
+            var expressNumber = ($('input[name="express_number"]').val() || '').trim();
+            if (mode === '국내택배' && expressNumber !== '') {
+                $('#express_tracking_btn').show();
+            } else {
+                $('#express_tracking_btn').hide();
+            }
+        }
+
+        function openExpressTracking() {
+            var mode = $('input[name="express_mode"]:checked').val() || '';
+            var expressNumber = ($('input[name="express_number"]').val() || '').trim();
+            var normalizedExpressNumber = expressNumber.replace(/[^0-9]/g, '');
+            var expressName = $('select[name="express_name"]').val() || '';
+
+            if (mode !== '국내택배') {
+                alert('국내택배 선택 시에만 배송추적이 가능합니다.');
+                return;
+            }
+            if (normalizedExpressNumber === '') {
+                alert('송장번호를 입력해주세요.');
+                return;
+            }
+
+            var trackingUrl = '';
+
+            // 주요 택배사: 공식 배송조회 URL
+            if (expressName === 'CJ대한통운') {
+                trackingUrl = 'https://trace.cjlogistics.com/next/tracking.html?wblNo=' + encodeURIComponent(normalizedExpressNumber);
+            } else if (expressName === '우체국택배') {
+                trackingUrl = 'https://service.epost.go.kr/trace.RetrieveDomRigiTraceList.comm?sid1=' + encodeURIComponent(normalizedExpressNumber) + '&displayHeader=';
+            } else if (expressName === '한진택배') {
+                trackingUrl = 'https://www.hanjin.co.kr/kor/CMS/DeliveryMgr/WaybillResult.do?mCode=MN038&schLang=KR&wblNum=' + encodeURIComponent(normalizedExpressNumber);
+            } else if (expressName === '로젠택배') {
+                trackingUrl = 'https://www.ilogen.com/web/trace/' + encodeURIComponent(normalizedExpressNumber);
+            } else if (expressName === '롯데택배') {
+                trackingUrl = 'https://www.lotteglogis.com/mobile/tracking/invoice?invNo=' + encodeURIComponent(normalizedExpressNumber);
+            } else {
+                // 기타 택배사는 통합 조회 링크 fallback
+                var carrierIdMap = {
+                    '경동택배': 'kr.kdexp',
+                    '대신택배': 'kr.daesin',
+                    '일양로지스': 'kr.ilyanglogis',
+                    '합동택배': 'kr.hdexp',
+                    '건영택배': 'kr.kunyoung',
+                    '천일택배': 'kr.chunilps',
+                    '용마로지스': 'kr.yongmalogis',
+                    'SLX택배': 'kr.slx'
+                };
+                var carrierId = carrierIdMap[expressName] || '';
+                if (carrierId !== '') {
+                    trackingUrl = 'https://tracker.delivery/#/' + carrierId + '/' + encodeURIComponent(normalizedExpressNumber);
+                } else {
+                    var query = [expressName, normalizedExpressNumber, '배송조회'].join(' ').trim();
+                    trackingUrl = 'https://search.naver.com/search.naver?query=' + encodeURIComponent(query);
+                }
+            }
+
+            window.open(trackingUrl, '_blank');
+        }
 
         function toggleExpressPriceExpectedRow() {
             var expressName = $('select[name="express_name"]').val() || '';
@@ -1209,9 +1331,20 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             $('.calendar-input input').datepicker(clareCalendar);
 
             toggleOrderCurrencySetting();
+            updateExpressNameOptions();
             toggleExpressPriceExpectedRow();
+            updateExpressTrackingButton();
             $('input[name="oo_import"]').on('change', toggleOrderCurrencySetting);
-            $('select[name="express_name"]').on('change', toggleExpressPriceExpectedRow);
+            $('input[name="express_mode"]').on('change', function() {
+                updateExpressNameOptions();
+                toggleExpressPriceExpectedRow();
+                updateExpressTrackingButton();
+            });
+            $('select[name="express_name"]').on('change', function() {
+                toggleExpressPriceExpectedRow();
+                updateExpressTrackingButton();
+            });
+            $('input[name="express_number"]').on('input', updateExpressTrackingButton);
 
             $(document).on('input', 'input.price', function() {
                 var value = $(this).val();

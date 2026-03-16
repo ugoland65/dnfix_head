@@ -738,6 +738,8 @@ class GodoApiService extends BaseClass {
         
         $apiData = json_decode($response, true);
 
+        //dump($apiData);
+
         if( $apiData['total'] > 0 ){
 
             $errorGoodsList = []; // 오류 데이터 저장
@@ -777,6 +779,22 @@ class GodoApiService extends BaseClass {
                         $otherGoodsList[] = $goodsCd;
                     }
 
+                    //옵션정보
+                    if( isset($goods['optionInfo']) && is_array($goods['optionInfo']) ){
+                        foreach($goods['optionInfo'] as $option){
+                            $optionName = $option[0]; // 옵션명
+                            $optionValue = $option[1]; // 옵션값
+                            $optionCd = $option[2]; // 옵션코드
+
+                            //dd($optionCd);
+                            // 숫자로만 이루어진 goodsCd
+                            if (ctype_digit($optionCd)) {
+                                $numericGoodsList[] = $optionCd;
+                            }
+    
+                        }
+                    }
+
                 }
             }
 
@@ -785,10 +803,12 @@ class GodoApiService extends BaseClass {
             $setGoodsList = array_values(array_unique($setGoodsList));
             $otherGoodsList = array_values(array_unique($otherGoodsList));
 
+            //dd($numericGoodsList);
             $productStockService = new ProductStockService();
             $productData = $productStockService->getProductStockWhereIn($numericGoodsList);
             
             //dump($productData);
+            //dump($productData['5369']);
 
             foreach ($apiData['data'] as &$order) {
                 foreach ($order['orderGoods'] as &$goods) {
@@ -805,8 +825,36 @@ class GodoApiService extends BaseClass {
                             $goods['add_img3_filename'] = $add_img3_filename;
                         }
                     }
+
+                    //옵션정보
+                    if( isset($goods['optionInfo']) && is_array($goods['optionInfo']) ){
+                        foreach($goods['optionInfo'] as &$option){
+                            $optionName = $option[0]; // 옵션명
+                            $optionValue = $option[1]; // 옵션값
+                            $optionCd = $option[2]; // 옵션코드
+
+                            // 숫자로만 이루어진 goodsCd
+                            if (ctype_digit($optionCd)) {
+                                //dd($optionCd);
+                                //dump($optionCd);
+
+                                /*
+                                if( $optionCd =='5369' && isset($productData[$optionCd]) ){
+                                    dump($productData[$optionCd]);
+                                }
+                                */
+
+                                if( isset($productData[$optionCd]) ){
+                                    $option['product_data'] = $productData[$optionCd];
+                                }
+                            }
+                        }
+                    }
+
                 }
             }
+
+            //dump($apiData);
             
 
             $test = [

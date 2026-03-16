@@ -1,4 +1,7 @@
 <?php
+
+use App\Services\BrandService;
+
 // 변수 초기화
 $_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
 $data = [];
@@ -29,6 +32,10 @@ if ($_idx) {
 	if (!is_array($_prd_jsondata)) {
 		$_prd_jsondata = [];
 	}
+
+	// 브랜드 셀렉트바를 위한 조회
+	$brandService = new BrandService();
+	$brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
 }
 ?>
 <div class="prd-search-add-wrap">
@@ -36,8 +43,21 @@ if ($_idx) {
 		<div>
 			<?= $_idx ?>
 		</div>
+
 		<div>
-			<input type="text" name="prdSearch" id="prdSearch" value="" autocomplete="off" placeholder="검색어">
+			<ul>
+				<select name="s_brand" id="s_brand" class="dn-select2">
+					<option value="">브랜드</option>
+					<?
+					foreach ($brandForSelect as $brand) {
+					?>
+						<option value="<?= $brand['BD_IDX'] ?>" <? if ($brand['BD_IDX'] == ($s_brand ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?></option>
+					<? } ?>
+				</select>
+			</ul>
+			<ul>
+				<input type="text" name="prdSearch" id="prdSearch" value="" autocomplete="off" placeholder="검색어">
+			</ul>
 		</div>
 		<div class="m-t-5 m-b-10 text-center">
 			<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="osFormGroupReg.prdSearch(this);">상품검색</button>
@@ -169,13 +189,12 @@ if ($_idx) {
 </div>
 
 <style>
-.add-prd.selected{
-	background:#fff3cd !important;
-}
+	.add-prd.selected {
+		background: #fff3cd !important;
+	}
 </style>
 
 <script>
-
 	var osFormGroupReg = function() {
 
 		var prdSearchResultVal;
@@ -223,17 +242,21 @@ if ($_idx) {
 			prdSearch: function(obj, oop_idx) {
 
 				var keyword = $("#prdSearch").val();
+				var s_brand = $("#s_brand").val();
 
+				/*
 				if (!$("#prdSearch").val()) {
 					showAlert("Error", "검색어를 입력해주세요.", "alert2");
 					return false;
 				}
+					*/
 
 				$.ajax({
 					url: "/ad/processing/order_sheet",
 					data: {
 						"a_mode": "orderSheetForm_group_prd_search",
-						"keyword": keyword
+						"keyword": keyword,
+						"s_brand": s_brand,
 					},
 					type: "POST",
 					dataType: "json",
@@ -355,14 +378,14 @@ if ($_idx) {
 							'</select>' +
 							'</li>' +
 							'<li class="text-center" style="width:90px">' +
-								'<div class="m-b-3">' +
-									'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveTop(this)"><i class="fas fa-angle-double-up"></i></button>' +
-									'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveUp(this)"><i class="fas fa-angle-up"></i></button>' +
-								'</div>' +
-								'<div>' +
-									'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveDown(this)"><i class="fas fa-angle-down"></i></button>' +
-									'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveBottom(this)"><i class="fas fa-angle-double-down"></i></button>' +
-								'</div>' +
+							'<div class="m-b-3">' +
+							'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveTop(this)"><i class="fas fa-angle-double-up"></i></button>' +
+							'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveUp(this)"><i class="fas fa-angle-up"></i></button>' +
+							'</div>' +
+							'<div>' +
+							'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveDown(this)"><i class="fas fa-angle-down"></i></button>' +
+							'<button type="button" class="btnstyle1 btnstyle1-xs" onclick="osFormGroupReg.moveBottom(this)"><i class="fas fa-angle-double-down"></i></button>' +
+							'</div>' +
 							'</li>' +
 							'<li class="" style="width:50px"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="osFormGroupReg.prdListDel(this)" ><i class="fas fa-trash-alt"></i></button></li>' +
 							'</ul>';
@@ -387,58 +410,66 @@ if ($_idx) {
 				$(obj).closest('ul').remove();
 			},
 
-			toggleSelect: function(item){
+			toggleSelect: function(item) {
 				$(item).toggleClass('selected');
 			},
 
-			moveUp: function(btn){
+			moveUp: function(btn) {
 				var $item = $(btn).closest('ul');
 				var $prev = $item.prev('ul');
-				if($prev.length){ $item.insertBefore($prev); }
+				if ($prev.length) {
+					$item.insertBefore($prev);
+				}
 			},
 
-			moveDown: function(btn){
+			moveDown: function(btn) {
 				var $item = $(btn).closest('ul');
 				var $next = $item.next('ul');
-				if($next.length){ $item.insertAfter($next); }
+				if ($next.length) {
+					$item.insertAfter($next);
+				}
 			},
 
-			moveTop: function(btn){
+			moveTop: function(btn) {
 				var $item = $(btn).closest('ul');
 				$item.parent().prepend($item);
 			},
 
-			moveBottom: function(btn){
+			moveBottom: function(btn) {
 				var $item = $(btn).closest('ul');
 				$item.parent().append($item);
 			},
 
-			moveUpSelected: function(){
-				$("#prd_search_add_prd_list_table ul.add-prd.selected").each(function(){
+			moveUpSelected: function() {
+				$("#prd_search_add_prd_list_table ul.add-prd.selected").each(function() {
 					var $item = $(this);
 					var $prev = $item.prev('ul');
-					if($prev.length){ $item.insertBefore($prev); }
+					if ($prev.length) {
+						$item.insertBefore($prev);
+					}
 				});
 			},
 
-			moveDownSelected: function(){
-				$($("#prd_search_add_prd_list_table ul.add-prd.selected").get().reverse()).each(function(){
+			moveDownSelected: function() {
+				$($("#prd_search_add_prd_list_table ul.add-prd.selected").get().reverse()).each(function() {
 					var $item = $(this);
 					var $next = $item.next('ul');
-					if($next.length){ $item.insertAfter($next); }
+					if ($next.length) {
+						$item.insertAfter($next);
+					}
 				});
 			},
 
-			moveTopSelected: function(){
+			moveTopSelected: function() {
 				var $selected = $("#prd_search_add_prd_list_table ul.add-prd.selected");
-				if($selected.length){
+				if ($selected.length) {
 					$selected.first().parent().prepend($selected);
 				}
 			},
 
-			moveBottomSelected: function(){
+			moveBottomSelected: function() {
 				var $selected = $("#prd_search_add_prd_list_table ul.add-prd.selected");
-				if($selected.length){
+				if ($selected.length) {
 					$selected.first().parent().append($selected);
 				}
 			},
@@ -482,20 +513,22 @@ if ($_idx) {
 
 	$(function() {
 
+		//$(".dn-select2").select2();
+
 		$("#prd_search_add_prd_list_table").sortable({
 			axis: "y",
 			cursor: "move"
 		});
 
 		// 체크박스 선택 시 행 하이라이트
-		$(document).on('change', '.prd-select-chk', function(){
+		$(document).on('change', '.prd-select-chk', function() {
 			$(this).closest('ul.add-prd').toggleClass('selected', this.checked);
 		});
 
 		// 행 선택/해제 (컨트롤: ul 클릭 시 토글, 내부 input/textarea/select/button 클릭은 제외)
-		$(document).on('click', '#prd_search_add_prd_list_table ul.add-prd', function(e){
+		$(document).on('click', '#prd_search_add_prd_list_table ul.add-prd', function(e) {
 			var tag = e.target.tagName.toLowerCase();
-			if(['input','textarea','select','button','i','option'].indexOf(tag) !== -1){
+			if (['input', 'textarea', 'select', 'button', 'i', 'option'].indexOf(tag) !== -1) {
 				return;
 			}
 			var $chk = $(this).find('.prd-select-chk');
@@ -509,5 +542,4 @@ if ($_idx) {
 		});
 
 	});
-
 </script>

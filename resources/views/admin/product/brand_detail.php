@@ -42,7 +42,48 @@ $hasFlag = function ($value) use ($ev) {
     .filsu {
         color: #ff0000;
     }
+
+    .major-notice {
+        width: 800px;
+        margin: 0 auto 12px;
+        padding: 14px 16px;
+        border: 1px solid #f3c7c7;
+        border-left: 4px solid #dc3545;
+        background: #fff7f7;
+        border-radius: 6px;
+        box-sizing: border-box;
+    }
+
+    .major-notice-title {
+        font-size: 16px;
+        font-weight: 700;
+        color: #b42318;
+        margin-bottom: 8px;
+    }
+
+    .major-notice-body {
+        line-height: 1.6;
+        color: #333;
+    }
+
+    .major-notice-date {
+        margin-top: 8px;
+        font-size: 12px;
+        color: #777;
+    }
 </style>
+
+<div class="major-notice">
+    <div class="major-notice-title">주요 공지사항</div>
+    <div class="major-notice-body">
+        <div>고도몰과 연동을 해제했습니다.</div>
+        <div>사유 : 인트라넷 접속불안정시 쑈당몰에서 브랜드 노출페이지 (상품상세,브랜드페이지 등)이 에러를 발생시켜 분리하였습니다.</div>
+        <div>쑈당몰에서 노출되는 브랜드 정보는 관리자 &gt; DNFIX &gt; 상품관리 &gt; 쑈당몰 브랜드 관리에서 수정할 수 있습니다.</div>
+        <div>인트라넷에서 관리하기 위한 기초 정보는 입력해야 합니다.</div>
+    </div>
+    <div class="major-notice-date">2026.03.16 권윤호</div>
+</div>
+
 
 <div class="table-wrap">
     <form name='brand_form' id='brand_form' action='/admin/brand/save' method='post' enctype="multipart/form-data" autocomplete="off">
@@ -101,6 +142,9 @@ $hasFlag = function ($value) use ($ev) {
                             }
                             ?>
                         </select>
+                    </div>
+                    <div class="admin-guide-text">
+                        - 숫자가 첫글자인 경우 한글은 # 영문은 @ 사용
                     </div>
                 </td>
             </tr>
@@ -520,6 +564,7 @@ $hasFlag = function ($value) use ($ev) {
         const form = document.getElementById('brand_form');
         fetch(form.action, {
             method: form.method || 'POST',
+            credentials: 'same-origin',
             headers: {
                 'X-Requested-With': 'XMLHttpRequest',
                 'Accept': 'application/json'
@@ -528,19 +573,24 @@ $hasFlag = function ($value) use ($ev) {
         })
         .then(async (res) => {
             const contentType = res.headers.get('content-type') || '';
-            if (res.ok && contentType.includes('application/json')) {
-                return res.json();
+            if (contentType.includes('application/json')) {
+                const json = await res.json();
+                if (!res.ok) {
+                    throw new Error((json && json.message) ? json.message : ('요청이 실패했습니다. (' + res.status + ')'));
+                }
+                return json;
             }
-            // JSON이 아니거나 리다이렉트된 경우도 성공으로 간주
-            if (res.ok) {
-                return { success: true };
+            const text = await res.text();
+            if (!res.ok) {
+                throw new Error(text || ('요청이 실패했습니다. (' + res.status + ')'));
             }
-            throw new Error('요청이 실패했습니다. (' + res.status + ')');
+            // JSON이 아니더라도 200이면 성공 간주
+            return { success: true };
         })
         .then((data) => {
             if (data && data.success) {
                 alert('브랜드 수정 완료');
-                window.location.reload();
+                //window.location.reload();
             } else {
                 alert((data && data.message) ? data.message : '수정에 실패했습니다.');
             }

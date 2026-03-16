@@ -72,7 +72,7 @@
                         <th class="">관리 로고</th>
                         <th class="">브랜드 이름 (국문)</th>
                         <th class="">브랜드 이름 (영문)</th>
-                        <th class="">일반<br>상품수</th>
+                        <th class="">DB<br>상품수</th>
                         <th class="">공급사<br>상품수</th>
                         <th class="">보유<br>상품수</th>
                         <th class="">수정일<br>등록일</th>
@@ -123,7 +123,7 @@
                            <td><?= $brand['BD_NAME_EN'] ?? '' ?></td>
                            <td class="text-center">
                               <?php if ($brand['product_count'] > 0) { ?>
-                                 <a href="/ad/prd/prd_db?s_brand=<?= $brand['BD_IDX'] ?>" target="_blank"><?= number_format($brand['product_count']) ?></a>
+                                 <a href="/admin/product/product_db?s_brand=<?= $brand['BD_IDX'] ?>" target="_blank"><?= number_format($brand['product_count']) ?></a>
                               <?php } ?>
                            </td>
                            <td class="text-center">

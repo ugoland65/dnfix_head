@@ -160,7 +160,7 @@ class ImageStorage
 
         $srcW = (int)$info[0];
         $srcH = (int)$info[1];
-        if ($srcW <= $width && $srcH <= $height) {
+        if ($srcW <= 0 || $srcH <= 0) {
             return;
         }
 
@@ -170,15 +170,35 @@ class ImageStorage
             return;
         }
 
+        $srcRatio = $srcW / $srcH;
+        $targetRatio = $width / $height;
+        $isRatioDifferent = abs($srcRatio - $targetRatio) > 0.0001;
+
+        // 비율이 같고 원본이 더 작으면 기존처럼 원본 유지
+        if (!$isRatioDifferent && $srcW <= $width && $srcH <= $height) {
+            imagedestroy($src);
+            return;
+        }
+
         $dst = imagecreatetruecolor($width, $height);
         if (in_array($type, [IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP], true)) {
             imagealphablending($dst, false);
             imagesavealpha($dst, true);
             $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
             imagefilledrectangle($dst, 0, 0, $width, $height, $transparent);
+        } else {
+            $white = imagecolorallocate($dst, 255, 255, 255);
+            imagefilledrectangle($dst, 0, 0, $width, $height, $white);
         }
 
-        imagecopyresampled($dst, $src, 0, 0, 0, 0, $width, $height, $srcW, $srcH);
+        // 긴 변 기준으로 축소(업스케일 금지) 후, 남는 공간은 여백으로 채운다.
+        $scale = min($width / $srcW, $height / $srcH, 1);
+        $dstW = max(1, (int)round($srcW * $scale));
+        $dstH = max(1, (int)round($srcH * $scale));
+        $dstX = (int)floor(($width - $dstW) / 2);
+        $dstY = (int)floor(($height - $dstH) / 2);
+
+        imagecopyresampled($dst, $src, $dstX, $dstY, 0, 0, $dstW, $dstH, $srcW, $srcH);
         $this->saveImageResource($dst, $filePath, $type);
 
         imagedestroy($src);

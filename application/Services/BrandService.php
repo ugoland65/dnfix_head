@@ -211,7 +211,7 @@ class BrandService
 
         try{
 
-            //dd($data);
+            $debugStage = 'init';
 
             $idx = $data['idx'] ?? 0;
             $modifyBdLogo = $data['modify_bd_logo'] ?? '';
@@ -226,29 +226,33 @@ class BrandService
             $bdIntroduce = $data['bd_introduce'] ?? ''; //간략소개
             $bdCode = $data['bd_code'] ?? ''; //브랜드 코드
             $bdKindCode = $data['bd_kind_code'] ?? ''; //구분코드   
-            $bdCateNo = $data['bd_cate_no'] ?? 0; //카페24 카테고리 넘버
+            $bdCateNoRaw = trim((string)($data['bd_cate_no'] ?? ''));
+            $bdCateNo = ($bdCateNoRaw === '') ? 0 : (int)$bdCateNoRaw; //카페24 카테고리 넘버
             $bdMatchingCate = $data['bd_matching_cate'] ?? ''; //고도몰 카테고리 코드
             $bdMatchingBrand = $data['bd_matching_brand'] ?? ''; //고도몰 브랜드 코드
             $bdApiIntroduce = $data['bd_api_introduce'] ?? '';
             //$bdShowdangActive = $data['bd_showdang_active'] ?? '';
             $bdOnadbActive = $data['bd_onadb_active'] ?? '';
-            $bdOnadbSortNum = $data['bd_onadb_sort_num'] ?? 0;
+            $bdOnadbSortNumRaw = trim((string)($data['bd_onadb_sort_num'] ?? ''));
+            $bdOnadbSortNum = ($bdOnadbSortNumRaw === '') ? 0 : (int)$bdOnadbSortNumRaw;
             $bdMemo = $data['bd_memo'] ?? '';
 
             $now = date('Y-m-d H:i:s');
 
             $auth = AdminAuth::user();
-            $adminIdx = $auth['sess_idx'];
+            $adminIdx = $auth['sess_idx'] ?? null;
+            $debugStage = 'load_before_data';
 
             $beforeBrandInfo = [];
             if (!empty($idx)) {
-                $beforeBrandInfo = BrandModel::query()
+                $beforeBrandRow = BrandModel::query()
                     ->where('BD_IDX', $idx)
-                    ->first()
-                    ->toArray();
+                    ->first();
+                $beforeBrandInfo = $beforeBrandRow ? (is_array($beforeBrandRow) ? $beforeBrandRow : $beforeBrandRow->toArray()) : [];
             }
 
             // 로고 업로드 처리 (새 파일이 없으면 기존 값 유지)
+            $debugStage = 'logo_upload';
             $bdLogo = $modifyBdLogo;
             if (!empty($files['bd_logo'])) {
                 $uploaded = new UploadedFile($files['bd_logo']);
@@ -261,6 +265,7 @@ class BrandService
             }
             
             //브랜드 카테고리
+            $debugStage = 'build_brand_kind';
             $bdKindAry = [
                 'ona' => $data['bd_kind_ona'] ?? 'N',
                 'breast' => $data['bd_kind_breast'] ?? 'N',
@@ -283,8 +288,8 @@ class BrandService
 
 
             //쑈당몰 디스플레이
+            $debugStage = 'build_api_info';
             $bdApiActive = $data['bd_api_active'] ?? ''; //사용여부
-            $bdCateNo = $data['bd_cate_no'] ?? ''; //카페24 카테고리 넘버
             $bdMatchingCate = $data['bd_matching_cate'] ?? ''; //고도몰 카테고리 코드
             $bdMatchingBrand = $data['bd_matching_brand'] ?? ''; //고도몰 브랜드 코드
             $bdApiName = $data['bd_api_name'] ?? ''; //쑈당몰 디스플레이 이름
@@ -318,6 +323,7 @@ class BrandService
             | 입력: $data['brand_eval'][...]
             | 저장: brand_eval_json + 요약 점수 컬럼 + 등급(산출/강제/최종)
             */
+            $debugStage = 'build_brand_eval';
             $brandEval = $data['brand_eval'] ?? [];
 
             $toIntScore = function ($v) {
@@ -418,6 +424,7 @@ class BrandService
             }
 
             // 업데이트 데이터 구성
+            $debugStage = 'build_update_data';
             $updateData = [
                 'BD_NAME' => $bdName,
                 'BD_NAME_EN' => $bdNameEn,
@@ -467,15 +474,55 @@ class BrandService
                 $updateData['brand_grade_forced_at'] = $now;
             }
 
-            $brandInfo = BrandModel::updateOrCreate(
-                ['BD_IDX' => $idx],
-                $updateData
-            );
+            // DB 컬럼 제약(NOT NULL) 충돌 방지: null 값은 업데이트 대상에서 제외
+            foreach (array_keys($updateData) as $column) {
+                if ($updateData[$column] === null) {
+                    unset($updateData[$column]);
+                }
+            }
 
+            $debugStage = 'update_or_create';
+            $removedColumns = [];
+            if (!empty($beforeBrandInfo) && is_array($beforeBrandInfo)) {
+                $dbColumns = array_keys($beforeBrandInfo);
+                foreach (array_keys($updateData) as $column) {
+                    if (!in_array($column, $dbColumns, true)) {
+                        unset($updateData[$column]);
+                        $removedColumns[] = $column;
+                    }
+                }
+            }
+
+            try {
+                $brandInfo = BrandModel::updateOrCreate(
+                    ['BD_IDX' => $idx],
+                    $updateData
+                );
+            } catch (Throwable $updateError) {
+                $logContext = [
+                    'stage' => 'update_or_create',
+                    'idx' => $idx,
+                    'message' => $updateError->getMessage(),
+                    'code' => $updateError->getCode(),
+                    'update_keys' => array_keys($updateData),
+                ];
+
+                if (property_exists($updateError, 'errorInfo')) {
+                    $logContext['errorInfo'] = $updateError->errorInfo;
+                }
+
+                error_log('[BrandService::saveBrandInfo] ' . json_encode($logContext, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES));
+                throw $updateError;
+            }
+            $debugStage = 'after_update';
             $afterBrandInfo = array_merge($beforeBrandInfo, $updateData);
             $adminActionLogService = new AdminActionLogService();
             $diff = $adminActionLogService->buildDiff($beforeBrandInfo, $afterBrandInfo);
+            if (!empty($removedColumns)) {
+                $diff['_skipped_columns'] = $removedColumns;
+            }
 
+            $debugStage = 'write_action_log';
             $adminActionLogService->log([
                 'target_type' => 'brand',
                 'target_table' => 'BRAND_DB',
@@ -488,12 +535,11 @@ class BrandService
                 'is_success' => 1,
             ]);
 
-            //dd($brandInfo);
-
             return $brandInfo;
 
         } catch (Throwable $e) {
-            throw new Exception($e->getMessage());
+            $stage = isset($debugStage) ? $debugStage : 'unknown';
+            throw new Exception('[saveBrandInfo:' . $stage . '] ' . $e->getMessage());
         }
 
     }

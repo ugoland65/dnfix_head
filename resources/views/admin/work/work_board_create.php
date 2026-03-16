@@ -63,7 +63,7 @@
                 <?php }  */?>
 
             <?php }  ?>
-<?= dump($workInfo) ?>
+
             <input type="hidden" name="mode" value="<?= $mode ?? 'create' ?>">
 
             <table class="table-reg th-150">

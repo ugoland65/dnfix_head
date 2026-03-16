@@ -9,6 +9,7 @@ use App\Classes\Request;
 use App\Utils\Pagination;
 
 use App\Services\BrandService;
+use App\Models\BrandModel;
 
 
 class BrandController extends BaseClass 
@@ -25,7 +26,113 @@ class BrandController extends BaseClass
 
         try{
 
+
+
+
             $requestData = $request->all();
+
+            /*
+                $brandRows = BrandModel::query()
+                    ->select([
+                        'bd_matching_brand',
+                        'bd_matching_cate',
+                        'bd_api_info',
+                        'bd_api_introduce',
+                        'bd_kind',
+                        'BD_NAME_EN',
+                        'BD_NAME_GROUP',
+                        'BD_NAME_EN_GROUP',
+                    ])
+                    ->whereNotNull('bd_matching_brand')
+                    ->where('bd_matching_brand', '!=', '')
+                    ->get()
+                    ->toArray();
+
+                $lines = [];
+                foreach ($brandRows as $row) {
+                    $apiInfo = json_decode((string)($row['bd_api_info'] ?? ''), true);
+                    if (!is_array($apiInfo)) {
+                        $apiInfo = [];
+                    }
+                    $bdKind = json_decode((string)($row['bd_kind'] ?? ''), true);
+                    if (!is_array($bdKind)) {
+                        $bdKind = [];
+                    }
+
+                    $logo = (string)($apiInfo['logo'] ?? '');
+                    $goodsCateCd = str_replace("'", "''", (string)($row['bd_matching_cate'] ?? ''));
+                    $thumbUrl = str_replace("'", "''", $logo);
+                    $brandNmEnRaw = html_entity_decode((string)($row['BD_NAME_EN'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $brandNmEn = str_replace("'", "''", $brandNmEnRaw);
+                    $initialKr = str_replace("'", "''", (string)($row['BD_NAME_GROUP'] ?? ''));
+                    $initialEn = str_replace("'", "''", (string)($row['BD_NAME_EN_GROUP'] ?? ''));
+                    $brandDescRaw = html_entity_decode((string)($row['bd_api_introduce'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                    $brandDesc = str_replace("'", "''", $brandDescRaw);
+                    $cateCd = str_replace("'", "''", (string)($row['bd_matching_brand'] ?? ''));    
+
+                    $categoryKeys = [
+                        'ona',
+                        'breast',
+                        'gel',
+                        'condom',
+                        'annal',
+                        'prostate',
+                        'care',
+                        'dildo',
+                        'vibe',
+                        'suction',
+                        'man',
+                        'nipple',
+                        'cos',
+                        'perfume',
+                        'bdsm',
+                    ];
+                    $categoryTypesArray = [];
+                    foreach ($categoryKeys as $key) {
+                        if (($bdKind[$key] ?? '') === 'Y') {
+                            $categoryTypesArray[] = $key;
+                        }
+                    }
+                    $categoryTypes = json_encode($categoryTypesArray, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    if ($categoryTypes === false) {
+                        $categoryTypes = '[]';
+                    }
+                    $categoryTypes = str_replace("'", "''", $categoryTypes);
+
+                    $displayJsonData = [
+                        'logo' => (string)($apiInfo['logo'] ?? ''),
+                        'bg_img' => (string)($apiInfo['bg'] ?? ''),
+                        'info_class' => (string)($apiInfo['info_class'] ?? ''),
+                        'bg_rgb' => (string)($apiInfo['bg_rgb'] ?? ''),
+                        'logo_mobile' => (string)($apiInfo['logo_mobile'] ?? ''),
+                        'bg_img_mobile' => (string)($apiInfo['bg_mobile'] ?? ''),
+                    ];
+                    $displayJson = json_encode($displayJsonData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                    if ($displayJson === false) {
+                        $displayJson = '{}';
+                    }
+                    $displayJson = str_replace("'", "''", $displayJson);
+
+
+                    
+                    $lines[] = "UPDATE dnfix_brand SET\n"
+                        . "goodsCateCd = '" . $goodsCateCd . "',\n"
+                        . "thumbUrl = '" . $thumbUrl . "',\n"
+                        . "brandNmEn = '" . $brandNmEn . "',\n"
+                        . "initialKr = '" . $initialKr . "',\n"
+                        . "initialEn = '" . $initialEn . "',\n"
+                        . "categoryTypes = '" . $categoryTypes . "',\n"
+                        . "displayJson = '" . $displayJson . "',\n"
+                        . "brandDesc = '" . $brandDesc . "'\n"
+                        . "WHERE cateCd = '" . $cateCd . "';";
+                }
+
+                header('Content-Type: text/plain; charset=UTF-8');
+                echo implode("\n\n", $lines);
+                exit;
+
+            */
+
             $page = $requestData['page'] ?? 1;
             $sort_kind = $requestData['sort_kind'] ?? "";
             $search_value = $requestData['search_value'] ?? "";
@@ -117,8 +224,8 @@ class BrandController extends BaseClass
             $brandService = new BrandService();
             $brandInfo = $brandService->saveBrandInfo($payload, $files);
 
-            // AJAX 요청이면 JSON, 그렇지 않으면 기존 리다이렉트
-            if ($request->ajax() || $request->wantsJson()) {
+            // AJAX(X-Requested-With) 요청일 때만 JSON 응답
+            if ($request->ajax()) {
                 return response()->json([
                     'success' => true,
                     'message' => '브랜드 수정 완료',
@@ -129,7 +236,7 @@ class BrandController extends BaseClass
             return redirect()->back()->with('success', '브랜드 수정 완료');
 
         } catch (Throwable $e) {
-            if ($request->ajax() || $request->wantsJson()) {
+            if ($request->ajax()) {
                 return response()->json([
                     'success' => false,
                     'message' => $e->getMessage(),

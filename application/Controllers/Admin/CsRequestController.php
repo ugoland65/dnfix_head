@@ -200,6 +200,7 @@ class CsRequestController extends BaseClass
                 $cs_body = $requestData['cs_body'] ?? null;
 
                 if( !empty($order_no) ){
+                    
                     $godoApiService = new GodoApiService();
                     $godoGoodsInfo = $godoApiService->getGodoOrderInfo($order_no);
 
