@@ -153,8 +153,13 @@
                                 foreach ($productList as $product) {
 
                                     $img_path = "";
-                                    if( $product['CD_IMG'] ){
-                                        $img_path = '/data/comparion/'.$product['CD_IMG'];
+
+                                    if( $product['img_mode'] == 'out' ){
+                                        $img_path = $product['CD_IMG'];
+                                    }else{
+                                        if( $product['CD_IMG'] ){
+                                            $img_path = '/data/comparion/'.$product['CD_IMG'];
+                                        }
                                     }
 
                                     /*

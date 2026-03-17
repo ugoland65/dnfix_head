@@ -20,7 +20,7 @@ if (!$_prd_idx) {
 
 if ($_prd_idx) {
 
-	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, 
+	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
 		A.cd_reg_time, A.cd_reg, A.supplier_prd_idx";
 
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special";
@@ -60,7 +60,7 @@ if ($_prd_idx) {
 
 	$prd_data = sql_fetch_array($result);
 
-	$reg_data = json_decode($prd_data['cd_reg'], true);
+	$reg_data = json_decode((string)($prd_data['cd_reg'] ?? ''), true);
 	$latest_modify_date = '';
 	if (is_array($reg_data) && !empty($reg_data['modify']) && is_array($reg_data['modify'])) {
 		foreach ($reg_data['modify'] as $modifyUnit) {
@@ -102,8 +102,14 @@ if ($_prd_idx) {
 	// 디버깅: 데이터 확인
 	// echo "<pre>prd_data: "; print_r($prd_data); echo "</pre>";
 
-	if (!empty($prd_data['CD_IMG'])) {
-		$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
+	if( $prd_data['img_mode'] == 'out' ){
+		if (!empty($prd_data['CD_IMG'])) {
+			$img_path = $prd_data['CD_IMG'];
+		}
+	}else{
+		if (!empty($prd_data['CD_IMG'])) {
+			$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
+		}
 	}
 
 	//매입 방식 라벨

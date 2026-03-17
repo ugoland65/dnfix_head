@@ -415,7 +415,7 @@ class ProductPartnerController extends BaseClass
 
             $errorMessage = '처리에 실패했습니다.';
 
-            // 공급사 상품 등록대기로 등록
+            // 공급사 DB 상품 등록대기로 등록
             if( $actionMode == 'product_standby_register' ){
 
                 $payload = [
@@ -450,6 +450,16 @@ class ProductPartnerController extends BaseClass
                 $result = $productSupplierPyApiService->updateSupplierProductDetail($payload);
                 $message = '업데이트되었습니다.';
                 $errorMessage = '업데이트에 실패했습니다.';
+
+            // 공급사 상품 -> 상품DB로 등록후 매칭
+            }elseif( $actionMode == 'product_register_to_supplier_product' ){
+                
+                $payload = [
+                    'prd_idx' => $requestData['prd_idx'] ?? null
+                ];
+                $result = $productPartnerService->productRegisterToSupplierProduct($payload);
+                $message = '상품DB로 등록되었습니다.';
+                $errorMessage = '상품DB로 등록에 실패했습니다.';
 
             }else{
                 throw new \Exception('지원하지 않는 action_mode 입니다.');

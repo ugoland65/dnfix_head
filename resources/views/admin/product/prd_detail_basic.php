@@ -685,6 +685,28 @@
         function save() {
 
             const form = document.getElementById('prd_form');
+            const weightFields = [
+                { name: 'cd_weight_1', label: '상품중량' },
+                { name: 'cd_weight_2', label: '전체중량' },
+                { name: 'cd_weight_3', label: '실측중량' },
+            ];
+
+            for (const field of weightFields) {
+                const input = form.querySelector('input[name="' + field.name + '"]');
+                if (!input) {
+                    continue;
+                }
+                const value = String(input.value || '').trim();
+                if (value === '') {
+                    continue;
+                }
+                if (!/^\d+$/.test(value)) {
+                    alert(field.label + '은(는) 숫자만 입력할 수 있습니다.');
+                    input.focus();
+                    return;
+                }
+            }
+
             const formData = new FormData(form);
             fetch('/admin/product/saveProduct', {
                     method: 'POST',

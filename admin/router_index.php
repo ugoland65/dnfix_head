@@ -86,6 +86,7 @@ try {
     $router->get('/provider_product/list', ProductPartnerController::class, 'getProductPartnerList'); //공급사 상품 목록
     $router->post('/provider_product/proc/match_provider_product', ProductPartnerController::class, 'matchProviderProduct'); //공급사 상품 매칭
     $router->post('/provider_product/proc/cancel_match_provider_product', ProductPartnerController::class, 'cancelMatchProviderProduct'); //공급사 상품 매칭 취소
+    //$router->post('/provider_product/proc/product_register_to_supplier_product', ProductPartnerController::class, 'productRegisterToSupplierProduct'); //공급사 상품 -> 상품DB로 등록후 매칭
 
     $router->get('/provider_product/db', ProductPartnerController::class, 'getSupplierProductDb'); //공급사 사이트 상품DB
     $router->post('/provider_product/action', ProductPartnerController::class, 'providerProductAction'); //공급사 상품 액션

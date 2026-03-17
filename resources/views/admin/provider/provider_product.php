@@ -103,6 +103,7 @@
 								<th class="">공급<br>사이트</th>
 								<th class="">공급 2차</th>
 								<th class="" style="width:80px;">매칭취소</th>
+								<th class="">상품DB등록</th>
 								<th class="">수정일<br>등록일</th>
 							</tr>
 						</thead>
@@ -293,6 +294,31 @@
 										<?php } ?>
 									</td>
 									<td class="text-center">
+
+										<?php
+											$comparisonCnt = (int)($item['comparison_cnt'] ?? 0);
+											$cdIdx = (int)($item['cd_idx'] ?? 0);
+										?>
+										<?php if ($comparisonCnt <= 0) { ?>
+											<button type="button" class="btnstyle1 btnstyle1-xs product-register-to-supplier-product-btn"
+												data-idx="<?= $item['idx'] ?>"
+												data-supplier-is-option="<?= $item['supplier_is_option'] ?>"
+												data-partner-name="<?= htmlspecialchars((string)($item['partner_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+												data-product-name="<?= htmlspecialchars((string)($item['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+													data-supplier-option-data="<?= htmlspecialchars(json_encode($item['supplier_option_data'] ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_APOS | JSON_HEX_QUOT | JSON_HEX_AMP | JSON_HEX_TAG), ENT_QUOTES, 'UTF-8') ?>"
+												>상품DB등록</button>
+										<?php } elseif ($comparisonCnt === 1 && $cdIdx > 0) { ?>
+											상품 DB 등록됨
+											<br>
+											<p onclick="onlyAD.prdView('<?= $cdIdx ?>','info');" style="cursor:pointer;">
+												<span class="text-red">#<?= $cdIdx ?></span>
+											</p>
+										<?php } else { ?>
+											<span class="text-red"><?= $comparisonCnt ?>개 연동중</span>
+										<?php } ?>
+
+									</td>
+									<td class="text-center">
 										<?= date('Y.m.d H:i', strtotime($item['updated_at'])) ?? '-' ?><br>
 										<?= date('Y.m.d H:i', strtotime($item['created_at'])) ?? '-' ?>
 									</td>
@@ -323,6 +349,7 @@
 
 		const API_ENDPOINT = {
 			cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product',
+			productRegisterToSupplierProduct: '/admin/provider_product/action',
 		};
 
 		/**
@@ -350,8 +377,84 @@
 				});
 		}
 
+		/**
+		 * 공급사 상품 -> 상품DB로 등록후 매칭
+		 * @param {string} prd_idx - 상품 고유번호
+		 * @param {string} supplier_is_option - 공급사 상품 옵션 여부
+		 */
+		function productRegisterToSupplierProduct(prd_idx, supplier_is_option, supplier_option_data_json, partner_name, product_name) {
+			const partnerText = String(partner_name || '').trim();
+			const productText = String(product_name || '').trim();
+			const productTitleText = (partnerText !== '' || productText !== '') ? ('(' + partnerText + ') ' + productText) : '';
+
+			if( supplier_is_option == 'Y' ) {
+				let optionData = [];
+				let optionNames = [];
+
+				try {
+					optionData = JSON.parse(supplier_option_data_json || '[]');
+				} catch (e) {
+					optionData = [];
+				}
+
+				if (Array.isArray(optionData)) {
+					optionData.forEach(function(group) {
+						const items = Array.isArray(group.items) ? group.items : [];
+						items.forEach(function(item) {
+							const value = (item && item.value) ? String(item.value).trim() : '';
+							if (value !== '') {
+								optionNames.push(value);
+							}
+						});
+					});
+				}
+
+				const uniqueOptionNames = Array.from(new Set(optionNames));
+				const optionCount = uniqueOptionNames.length;
+				const optionNameText = optionCount > 0 ? uniqueOptionNames.join(', ') : '-';
+				const confirmMessage =
+					(productTitleText !== '' ? (productTitleText + '\n\n') : '')
+					+ '공급사 상품에 옵션이 있는 상품입니다.\n'
+					+ '옵션수 만큼 상품이 DB로 등록됩니다.\n'
+					+ '생성될 상품 개수 : ' + optionCount + '개\n'
+					+ '옵션명 : ' + optionNameText + '\n\n'
+					+ '상품DB 등록 후 재고코드도 자동으로 생성됩니다.\n'
+					+ '계속 진행하시겠습니까?';
+
+				if( !confirm(confirmMessage)) {
+					return;
+				}
+			}else{
+				const baseConfirmMessage =
+					(productTitleText !== '' ? (productTitleText + '\n\n') : '')
+					+ '공급사 상품을 상품DB로 등록하시겠습니까?\n'
+					+ '상품DB 등록 후 재고코드도 자동으로 생성됩니다.';
+				if( !confirm(baseConfirmMessage)) {
+					return;
+				}
+			}
+
+			ajaxRequest(API_ENDPOINT.productRegisterToSupplierProduct, {
+				action_mode: 'product_register_to_supplier_product',
+				prd_idx,
+			})
+			.then(res => {
+				if (res.status === 'success') {
+					alert(res.message);
+					location.reload();
+				} else {
+					alert(res.message);
+				}
+			})
+			.catch(error => {
+				console.error('AJAX 요청 실패:', error);
+				alert('서버 통신에 실패했습니다.');
+			});
+		}
+
 		return {
-			cancelMatchProviderProduct
+			cancelMatchProviderProduct,
+			productRegisterToSupplierProduct,
 		};
 
 	})();
@@ -510,6 +613,16 @@
 				}
 			);
 
+		});
+
+		// 상품DB등록 버튼 클릭
+		$('.product-register-to-supplier-product-btn').on('click', function() {
+			const prd_idx = $(this).data('idx');
+			const supplier_is_option = $(this).data('supplier-is-option');
+			const supplier_option_data_json = $(this).attr('data-supplier-option-data') || '[]';
+			const partner_name = $(this).attr('data-partner-name') || '';
+			const product_name = $(this).attr('data-product-name') || '';
+			prdProvider.productRegisterToSupplierProduct(prd_idx, supplier_is_option, supplier_option_data_json, partner_name, product_name);
 		});
 
 

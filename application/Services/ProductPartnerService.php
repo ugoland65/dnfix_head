@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
+use App\Models\ProductModel;
 use App\Services\AdminActionLogService;
 use App\Services\ProductPartnerApiService;
 use App\Services\GodoApiService;
@@ -49,7 +50,9 @@ class ProductPartnerService extends BaseClass
                 'partners.idx AS partner_idx'
             ])
             ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'prd_partner.brand_idx')
-            ->leftJoin('partners', 'partners.idx', '=', 'prd_partner.partner_idx');
+            ->leftJoin('partners', 'partners.idx', '=', 'prd_partner.partner_idx')
+            ->selectRaw("(SELECT MIN(CD_IDX) FROM COMPARISON_DB WHERE COMPARISON_DB.supplier_prd_idx = prd_partner.idx) AS cd_idx")
+            ->selectRaw("(SELECT COUNT(*) FROM COMPARISON_DB WHERE COMPARISON_DB.supplier_prd_idx = prd_partner.idx) AS comparison_cnt");
 
         if($s_partner){
             $query->where('prd_partner.partner_idx', $s_partner);
@@ -97,6 +100,28 @@ class ProductPartnerService extends BaseClass
             $result = $query->paginate($perPage, $page);
         } else {
             $result = $query->get();
+        }
+
+        $decodeSupplierOptionData = function (&$rows) {
+            if (!is_array($rows)) {
+                return;
+            }
+            foreach ($rows as &$row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $row['supplier_option_data'] = !empty($row['supplier_option_data'])
+                    ? (json_decode($row['supplier_option_data'], true) ?: [])
+                    : [];
+            }
+            unset($row);
+        };
+
+        // 페이지네이션 결과(data) / 일반 리스트 모두 대응
+        if (is_array($result) && isset($result['data']) && is_array($result['data'])) {
+            $decodeSupplierOptionData($result['data']);
+        } else {
+            $decodeSupplierOptionData($result);
         }
 
         return $result;
@@ -758,5 +783,116 @@ class ProductPartnerService extends BaseClass
 
         return true;
 
+    }
+
+    /**
+     * 공급사 상품 -> 상품DB로 등록후 매칭
+     * 
+     * @param array $data
+     * @return array
+     */
+    public function productRegisterToSupplierProduct($data) 
+    {
+
+        $prd_idx = $data['prd_idx'] ?? null;
+
+        if(empty($prd_idx)){
+            throw new \Exception('상품 고유번호가 비어있습니다.');
+        }
+
+        $productPartner = ProductPartnerModel::find($prd_idx);
+
+        if(empty($productPartner)){
+            throw new \Exception('상품 공급사 정보 조회 실패');
+        }
+
+        $productPartner = $productPartner->toArray();
+
+        $config_product = config('admin.product');
+        $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+
+        // kind 값(한글명/코드)을 CD_KIND_CODE로 정규화
+        $kindRaw = trim((string)($productPartner['kind'] ?? ''));
+        $cdKindCode = '';
+        if ($kindRaw !== '') {
+            if (isset($prd_kind_name[$kindRaw])) {
+                // 이미 코드(예: GEL)인 경우
+                $cdKindCode = $kindRaw;
+            } else {
+                // 한글명(예: 윤활젤) -> 코드(예: GEL) 역매핑
+                foreach ($prd_kind_name as $code => $name) {
+                    if ((string)$name === $kindRaw) {
+                        $cdKindCode = (string)$code;
+                        break;
+                    }
+                }
+            }
+        }
+
+
+        $supplier_is_option = $productPartner['supplier_is_option'] ?? 'N';
+        $supplier_option_data = $productPartner['supplier_option_data'] ?? [];
+        if (is_string($supplier_option_data) && trim($supplier_option_data) !== '') {
+            $decodedOptionData = json_decode($supplier_option_data, true);
+            $supplier_option_data = is_array($decodedOptionData) ? $decodedOptionData : [];
+        }
+        if (!is_array($supplier_option_data)) {
+            $supplier_option_data = [];
+        }
+
+        $baseName = (string)($productPartner['name'] ?? '');
+        $optionNames = [];
+        foreach ($supplier_option_data as $optionGroup) {
+            if (!is_array($optionGroup)) {
+                continue;
+            }
+            $items = $optionGroup['items'] ?? [];
+            if (!is_array($items)) {
+                continue;
+            }
+            foreach ($items as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+                $optionValue = trim((string)($item['value'] ?? ''));
+                if ($optionValue !== '') {
+                    $optionNames[] = $optionValue;
+                }
+            }
+        }
+        $optionNames = array_values(array_unique($optionNames));
+
+        $insertData = [
+            'CD_KIND_CODE' => $cdKindCode ?: '',
+            'CD_BRAND_IDX' => $productPartner['brand_idx'] ?? 0,
+            'CD_NAME' => $baseName !== '' ? $baseName : null,
+            'CD_NAME_OG' => $productPartner['name_ori'] ?? null,
+            'img_mode' => 'out',
+            'CD_IMG' => $productPartner['img_src'] ?? null,
+            'cd_cost_price' => $productPartner['cost_price'] ?? null,
+            'supplier_prd_idx' => $prd_idx,
+            'cd_site_show' => 'N',
+            'cd_national' => 'kr',
+        ];
+
+        $productStockService = new ProductStockService();
+
+        if ($supplier_is_option === 'Y' && count($optionNames) > 0) {
+            foreach ($optionNames as $optionName) {
+                $optionInsertData = $insertData;
+                $optionInsertData['CD_NAME'] = $baseName !== '' ? ($baseName . ' - ' . $optionName) : $optionName;
+                $createdPrdIdx = ProductModel::query()->insertGetId($optionInsertData);
+                if (!empty($createdPrdIdx)) {
+                    $productStockService->createStockCode(['prd_idx' => $createdPrdIdx]);
+                }
+            }
+        } else {
+            $createdPrdIdx = ProductModel::query()->insertGetId($insertData);
+            if (!empty($createdPrdIdx)) {
+                $productStockService->createStockCode(['prd_idx' => $createdPrdIdx]);
+            }
+        }
+
+        return true;
     }
 }

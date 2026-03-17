@@ -167,7 +167,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             <tr>
                 <th>주문서 상태</th>
                 <td>
-
+                    <input type="hidden" name="oo_state" value="<?= $orderSheetInfo['oo_state'] ?? '' ?>">
                     <div class="os-state-btn-wrap">
                         <button type="button" id="" class="btnstyle1 <?php if (($orderSheetInfo['oo_state'] ?? '') == "1") echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.orderSheetState(this, '1', '<?= $orderSheetInfo['oo_idx'] ?? '' ?>')" data-name="작성중">작성중</button>
                         <button type="button" id="" class="btnstyle1 <?php if (($orderSheetInfo['oo_state'] ?? '') == "2") echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.orderSheetState(this, '2', '<?= $orderSheetInfo['oo_idx'] ?? '' ?>')" data-name="주문전송">주문전송</button>
@@ -432,15 +432,15 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             <tr>
                 <th>배송</th>
                 <td>
-
+                    <?php $selectedExpressMode = (string)($orderSheetInfo['oo_express_data']['mode'] ?? ''); ?>
                     <table class="table-style width-full">
                         <tr>
                             <th style="width:120px;">배송방식</th>
                             <td>
-                                <label><input type="radio" name="express_mode" value="국내택배" <?php if ($orderSheetInfo['oo_express_data']['mode'] ?? '' == "국내택배") echo "checked"; ?>> 국내택배</label>
-                                <label><input type="radio" name="express_mode" value="국내화물" <?php if ($orderSheetInfo['oo_express_data']['mode'] ?? '' == "국내화물") echo "checked"; ?>> 국내화물</label>
-                                <label><input type="radio" name="express_mode" value="항공" <?php if ($orderSheetInfo['oo_express_data']['mode'] ?? '' == "항공") echo "checked"; ?>> 항공</label>
-                                <label><input type="radio" name="express_mode" value="해운" <?php if ($orderSheetInfo['oo_express_data']['mode'] ?? '' == "해운") echo "checked"; ?>> 해운</label>
+                                <label><input type="radio" name="express_mode" value="국내택배" <?php if ($selectedExpressMode === '국내택배') echo "checked"; ?>> 국내택배</label>
+                                <label><input type="radio" name="express_mode" value="국내화물" <?php if ($selectedExpressMode === '국내화물') echo "checked"; ?>> 국내화물</label>
+                                <label><input type="radio" name="express_mode" value="항공" <?php if ($selectedExpressMode === '항공') echo "checked"; ?>> 항공</label>
+                                <label><input type="radio" name="express_mode" value="해운" <?php if ($selectedExpressMode === '해운') echo "checked"; ?>> 해운</label>
                             </td>
                         </tr>
 
