@@ -1270,6 +1270,7 @@ class ProductService extends BaseClass
         $invoiceSizeCbm = (string)($postData['invoice_size_cbm'] ?? '');
         $invoiceSizeCbmMode = (string)($postData['invoice_size_cbm_mode'] ?? '');
         $importPlastic = (string)($postData['import_plastic'] ?? '');
+        $importPlasticAmount = (string)($postData['import_plastic_amount'] ?? '');
         $importHscode = (string)($postData['import_hscode'] ?? '');
         $importHscode1 = (string)($postData['import_hscode1'] ?? '');
         $importHscode2 = (string)($postData['import_hscode2'] ?? '');
@@ -1304,6 +1305,7 @@ class ProductService extends BaseClass
         ];
         $importInformationData = [
             'plastic' => $importPlastic,
+            'plastic_amount' => $importPlasticAmount,
             'hscode' => $importHscode,
             'hscode1' => $importHscode1,
             'hscode2' => $importHscode2,

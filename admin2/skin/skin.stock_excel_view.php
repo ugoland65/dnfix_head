@@ -1,51 +1,53 @@
 <?php
 
-	// 변수 초기화
-	$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
-	$_sort = $_GET['sort'] ?? $_POST['sort'] ?? "qty";
+// 변수 초기화
+$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
+$_sort = $_GET['sort'] ?? $_POST['sort'] ?? "qty";
 
-	$data = sql_fetch_array(sql_query_error("select * from prd_stock_history where uid = '" . $_idx . "' "));
+$data = sql_fetch_array(sql_query_error("select * from prd_stock_history where uid = '" . $_idx . "' "));
 
-	// 배열 검증
-	if (!is_array($data)) {
-		$data = [];
+//dump($data['data']);
+
+// 배열 검증
+if (!is_array($data)) {
+	$data = [];
+}
+
+$_json_data = json_decode($data['data'] ?? '[]', true);
+$_error_data = json_decode($data['error'] ?? '{"result":[]}', true);
+
+// JSON 디코딩 결과 검증
+if (!is_array($_json_data)) {
+	$_json_data = [];
+}
+if (!is_array($_error_data)) {
+	$_error_data = ['result' => []];
+}
+if (!isset($_error_data['result']) || !is_array($_error_data['result'])) {
+	$_error_data['result'] = [];
+}
+
+if ($_sort == "brand") {
+	$_json_data = arr_sort($_json_data, 'brand_idx', 'desc');
+} else {
+	$_json_data = arr_sort($_json_data, 'qty', 'desc');
+}
+
+
+// 배열 초기화
+$_row1 = [];
+$_row2 = [];
+
+foreach ($_json_data as $key => $val) {
+
+	// 배열 요소 검증
+	if (!is_array($val)) {
+		continue;
 	}
 
-	$_json_data = json_decode($data['data'] ?? '[]', true);
-	$_error_data = json_decode($data['error'] ?? '{"result":[]}', true);
+	$_ps_idx = $val['ps_idx'] ?? '';
 
-	// JSON 디코딩 결과 검증
-	if (!is_array($_json_data)) {
-		$_json_data = [];
-	}
-	if (!is_array($_error_data)) {
-		$_error_data = ['result' => []];
-	}
-	if (!isset($_error_data['result']) || !is_array($_error_data['result'])) {
-		$_error_data['result'] = [];
-	}
-
-	if ($_sort == "brand") {
-		$_json_data = arr_sort($_json_data, 'brand_idx', 'desc');
-	} else {
-		$_json_data = arr_sort($_json_data, 'qty', 'desc');
-	}
-
-
-	// 배열 초기화
-	$_row1 = [];
-	$_row2 = [];
-
-	foreach ($_json_data as $key => $val) {
-
-		// 배열 요소 검증
-		if (!is_array($val)) {
-			continue;
-		}
-
-		$_ps_idx = $val['ps_idx'] ?? '';
-
-		$prd_data = sql_fetch_array(sql_query_error("select 
+	$prd_data = sql_fetch_array(sql_query_error("select 
 				A.ps_stock, A.ps_stock_object, A.ps_alarm_count,
 				B.CD_NAME, B.CD_IMG, B.CD_CODE,
 				C.BD_NAME 
@@ -54,73 +56,77 @@
 				left join " . _DB_BRAND . " C  ON (B.CD_BRAND_IDX = C.BD_IDX ) 
 				where ps_idx = '" . $_ps_idx . "' "));
 
-		// 배열 검증
-		if (!is_array($prd_data)) {
-			$prd_data = [];
-		}
-
-		//저장된 데이터가 완료된 경우 재고는 현재 재고로 처리
-		if ($data['step'] == "2") {
-			$_stock_sum = ($prd_data['ps_stock'] ?? 0);
-		} else {
-			$_stock_sum = ($prd_data['ps_stock'] ?? 0) - ($val['qty'] ?? 0);
-		}
-
-
-		if ($_stock_sum < 1 && ($prd_data['ps_stock_object'] ?? '') == "Y") {
-
-			$_mode = "";
-			if ($_stock_sum < 0) {
-				$_mode = "stock_over";
-			} elseif ($_stock_sum == 0) {
-				$_mode = "stock_zero";
-			}
-
-			$_row1[] = array(
-				"mode" => $_mode,
-				"ps_idx" => $_ps_idx,
-				"cd_idx" => $val['cd_idx'] ?? '',
-				"brand_name" => $prd_data['BD_NAME'] ?? '',
-				"prd_name" => $prd_data['CD_NAME'] ?? '',
-				"packageOut" => $val['packageOut'] ?? 0,
-				"one_qty" => $val['one']['qty'] ?? 0,
-				"set_qty" => $val['set']['qty'] ?? 0,
-				"qty" => $val['qty'] ?? 0,
-				"ps_stock" => $prd_data['ps_stock'] ?? 0,
-				"stock_sum" => $_stock_sum,
-				"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
-			);
-		} else {
-
-			$_row2[] = array(
-				"mode" => "basic",
-				"ps_idx" => $_ps_idx,
-				"cd_idx" => $val['cd_idx'] ?? '',
-				"brand_name" => $prd_data['BD_NAME'] ?? '',
-				"prd_name" => $prd_data['CD_NAME'] ?? '',
-				"packageOut" => $val['packageOut'] ?? 0,
-				"one_qty" => $val['one']['qty'] ?? 0,
-				"set_qty" => $val['set']['qty'] ?? 0,
-				"qty" => $val['qty'] ?? 0,
-				"ps_stock" => $prd_data['ps_stock'] ?? 0,
-				"stock_sum" => $_stock_sum,
-				"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
-			);
-		}
+	// 배열 검증
+	if (!is_array($prd_data)) {
+		$prd_data = [];
 	}
 
-	// 배열 정렬 및 병합
-	if (count($_row1) > 0) {
-		$_row1 = arr_sort($_row1, 'stock_sum', 'asc');
-
-		if (count($_row2) > 0) {
-			$_row = array_merge($_row1, $_row2);
-		} else {
-			$_row = $_row1;
-		}
+	//저장된 데이터가 완료된 경우 재고는 현재 재고로 처리
+	if ($data['step'] == "2") {
+		$_stock_sum = ($prd_data['ps_stock'] ?? 0);
 	} else {
-		$_row = $_row2;
+		$_stock_sum = ($prd_data['ps_stock'] ?? 0) - ($val['qty'] ?? 0);
 	}
+
+	$order_num = array_merge($val['one']['order_num'], $val['set']['order_num']);
+
+
+	if ($_stock_sum < 1 && ($prd_data['ps_stock_object'] ?? '') == "Y") {
+
+		$_mode = "";
+		if ($_stock_sum < 0) {
+			$_mode = "stock_over";
+		} elseif ($_stock_sum == 0) {
+			$_mode = "stock_zero";
+		}
+
+		$_row1[] = array(
+			"mode" => $_mode,
+			"ps_idx" => $_ps_idx,
+			"cd_idx" => $val['cd_idx'] ?? '',
+			"brand_name" => $prd_data['BD_NAME'] ?? '',
+			"prd_name" => $prd_data['CD_NAME'] ?? '',
+			"packageOut" => $val['packageOut'] ?? 0,
+			"one_qty" => $val['one']['qty'] ?? 0,
+			"set_qty" => $val['set']['qty'] ?? 0,
+			"qty" => $val['qty'] ?? 0,
+			"ps_stock" => $prd_data['ps_stock'] ?? 0,
+			"stock_sum" => $_stock_sum,
+			"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
+			"order_num" => $order_num ?? [],
+		);
+	} else {
+
+		$_row2[] = array(
+			"mode" => "basic",
+			"ps_idx" => $_ps_idx,
+			"cd_idx" => $val['cd_idx'] ?? '',
+			"brand_name" => $prd_data['BD_NAME'] ?? '',
+			"prd_name" => $prd_data['CD_NAME'] ?? '',
+			"packageOut" => $val['packageOut'] ?? 0,
+			"one_qty" => $val['one']['qty'] ?? 0,
+			"set_qty" => $val['set']['qty'] ?? 0,
+			"qty" => $val['qty'] ?? 0,
+			"ps_stock" => $prd_data['ps_stock'] ?? 0,
+			"stock_sum" => $_stock_sum,
+			"ps_stock_object" => $prd_data['ps_stock_object'] ?? '',
+			"order_num" => $order_num ?? [],
+		);
+	}
+}
+
+// 배열 정렬 및 병합
+if (count($_row1) > 0) {
+	$_row1 = arr_sort($_row1, 'stock_sum', 'asc');
+
+	if (count($_row2) > 0) {
+		$_row = array_merge($_row1, $_row2);
+	} else {
+		$_row = $_row1;
+	}
+} else {
+	$_row = $_row2;
+}
 
 ?>
 <style type="text/css">
@@ -138,6 +144,66 @@
 	#sh_name {
 		height: 30px;
 		line-height: 30px;
+	}
+
+	.copy-cell-wrap {
+		display: inline-flex;
+		align-items: center;
+		gap: 4px;
+		max-width: 100%;
+	}
+
+	.copy-target {
+		min-width: 0;
+	}
+
+	.copy-btn {
+		padding: 0;
+		border: 0;
+		background: transparent;
+		color: #888;
+		cursor: pointer;
+		line-height: 1;
+		display: inline-flex;
+		align-items: center;
+	}
+
+	.copy-btn:hover {
+		color: #296abc;
+	}
+
+	.copy-btn.is-copied {
+		color: #1f9d55;
+	}
+
+	.copy-btn.is-copied .copy-icon {
+		display: none;
+	}
+
+	.copy-btn.is-copied::after {
+		content: '✓';
+		font-size: 12px;
+		font-weight: 700;
+		line-height: 1;
+	}
+
+	.order_num_list {
+
+		display: none;
+
+		.table-st1 {
+			border-top: 1px solid #b4b4b4;
+			border-left: 1px solid #b4b4b4;
+			border-bottom: 1px solid #b4b4b4;
+
+			thead tr {
+				position: static;
+			}
+
+			tfoot>tr {
+				position: static;
+			}
+		}
 	}
 </style>
 <div class="division-top" id="sort_wrap" data-idx="" data-sort="qty">
@@ -171,6 +237,7 @@
 				<tr class="">
 					<th>재고<br>코드</th>
 					<th>상품명</th>
+					<th>주문번호</th>
 					<th>패킹<br>재거</th>
 					<th>단일<br>상품</th>
 					<th>세트<br>상품</th>
@@ -189,7 +256,7 @@
 			?>
 				<tbody>
 					<tr>
-						<td colspan="10">
+						<td colspan="100%">
 							<div>
 								※ 에러항목
 							</div>
@@ -257,9 +324,22 @@
 
 							<p class="prd-name">
 								<button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?= $val['cd_idx'] ?? '' ?>','info');"">보기</button>
-					<? if (!empty($val['brand_name'])) { ?><span class=" brand-name">[<?= $val['brand_name'] ?>] </span><? } ?>
-								<?= $val['prd_name'] ?? '' ?>
+								<? if (!empty($val['brand_name'])) { ?><span class=" brand-name">[<?= $val['brand_name'] ?>] </span><? } ?>
+								<span class="copy-cell-wrap">
+									<span class="copy-target"><?= $val['prd_name'] ?? '' ?></span>
+									<?php if (($val['prd_name'] ?? '') !== '') { ?>
+										<button type="button" class="copy-btn" title="복사" aria-label="상품명 복사" onclick="copyCellText(this)">
+											<svg class="copy-icon" width="20" height="20" viewBox="0 0 24 24" fill="none" aria-hidden="true">
+												<rect x="9" y="9" width="10" height="10" rx="2" stroke="currentColor" stroke-width="2"></rect>
+												<path d="M5 15V7C5 5.9 5.9 5 7 5H15" stroke="currentColor" stroke-width="2" stroke-linecap="round"></path>
+											</svg>
+										</button>
+									<?php } ?>
+								</span>
 							</p>
+						</td>
+						<td class="text-center">
+							<button type="button" class="btnstyle1 btnstyle1-xs order-toggle">▼</button>
 						</td>
 						<td class="text-center">
 							<?php if (($val['packageOut'] ?? 0) > 0) { ?><?= $val['packageOut'] ?><?php } ?>
@@ -288,11 +368,39 @@
 						<td class="stock-mode-text">출고</td>
 						<td><input type="text" name="stock_memo[]" class="stock-memo" value="카페24 엑셀등록" /></td>
 					</tr>
+					<tr class="order_num_list">
+						<td colspan="100%" >
+							<table class="table-st1">
+								<thead>
+									<tr>
+										<th>주문번호</th>
+										<th>주문수량</th>
+										<th>C/S 요청</th>
+									</tr>
+								</thead>
+								<tbody>
+									<?php foreach ($val['order_num'] as $key => $val) { ?>
+										<tr>
+											<td>
+												<a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $val['num'] ?>" target="_blank"><?= $val['num'] ?></a>
+											</td>
+											<td class="text-center"><?= $val['qty'] ?></td>
+											<td>
+												<button type="button" class="btnstyle1 btnstyle1-xs"
+													data-order-no="<?= $val['num'] ?>"
+													onclick="csCreate(this);">C/S 요청</button>
+											</td>
+										</tr>
+									<?php } ?>
+								</tbody>
+							</table>
+						</td>
+					</tr>
 				<?php } ?>
 			</tbody>
 			<tfoot>
 				<tr>
-					<th colspan="2" class="text-center">합계 - 상품 : <b><?= $prd_count ?></b>개</th>
+					<th colspan="3" class="text-center">합계 - 상품 : <b><?= $prd_count ?></b>개</th>
 					<th><?= $total_packageOut ?></th>
 					<th><?= $total_one_qty ?></th>
 					<th><?= $total_set_qty ?></th>
@@ -318,6 +426,84 @@
 </div>
 
 <script>
+	/**
+	 * C/S 요청
+	 * @param string $orderNo 주문번호
+	 * @param string $memNo 회원번호
+	 * @param string $memId 회원ID
+	 * @param string $memName 회원명
+	 * @param string $memPhone 회원전화
+	 * @param string $receiverName 수령자명
+	 * @param string $receiverPhone 수령자전화
+	 */
+	function csCreate(button) {
+
+		var orderNo = $(button).data('order-no');
+
+		var data = {
+			mode: 'create',
+			apiMode: 'none',
+			category: '일일재고관리',
+			orderNo: orderNo,
+		};
+		openDialog("/admin/cs/cs_create", data, "C/S 생성", "800px");
+
+	}
+
+	function copyTextWithFallback(text) {
+		var textarea = document.createElement('textarea');
+		textarea.value = text;
+		textarea.setAttribute('readonly', '');
+		textarea.style.position = 'fixed';
+		textarea.style.top = '-9999px';
+		textarea.style.left = '-9999px';
+		document.body.appendChild(textarea);
+
+		textarea.focus();
+		textarea.select();
+		textarea.setSelectionRange(0, textarea.value.length);
+
+		var copied = false;
+		try {
+			copied = document.execCommand('copy');
+		} catch (e) {
+			copied = false;
+		}
+		document.body.removeChild(textarea);
+		return copied;
+	}
+
+	function setCopyButtonFeedback(button) {
+		if (!button) return;
+		button.classList.add('is-copied');
+		button.title = '복사됨';
+		setTimeout(function() {
+			button.classList.remove('is-copied');
+			button.title = '복사';
+		}, 1200);
+	}
+
+	function copyCellText(button) {
+		var textNode = button && button.parentNode ? button.parentNode.querySelector('.copy-target') : null;
+		var text = textNode ? (textNode.textContent || '').trim() : '';
+		if (text === '') return;
+
+		if (navigator.clipboard && navigator.clipboard.writeText) {
+			navigator.clipboard.writeText(text).then(function() {
+				setCopyButtonFeedback(button);
+			}).catch(function() {
+				if (copyTextWithFallback(text)) {
+					setCopyButtonFeedback(button);
+				}
+			});
+			return;
+		}
+
+		if (copyTextWithFallback(text)) {
+			setCopyButtonFeedback(button);
+		}
+	}
+
 	var stockExcelView = (function() {
 
 		return {
@@ -444,6 +630,17 @@
 		if ($(".calendar-input input").length) {
 			$(".calendar-input input").datepicker(clareCalendar);
 		}
+
+		$(document)
+			.off('click.stockExcelOrderToggle', '.order-toggle')
+			.on('click.stockExcelOrderToggle', '.order-toggle', function() {
+			var $targetRow = $(this).closest('tr').next('.order_num_list');
+			if ($targetRow.length === 0) {
+				return;
+			}
+			$targetRow.toggle();
+			$(this).text($targetRow.is(':visible') ? '▲' : '▼');
+		});
 
 		<? if (($data['step'] ?? '') == "1" && ($_notice_count1 > 0 || $_notice_count2 > 0 || $_error_result_count > 0)) { ?>
 

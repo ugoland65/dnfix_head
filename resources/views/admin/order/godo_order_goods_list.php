@@ -111,6 +111,17 @@
         color: #ffffff;
     }
 
+    .copy-btn.is-copied .copy-icon {
+        display: none;
+    }
+
+    .copy-btn.is-copied::before {
+        content: '✓';
+        font-size: 12px;
+        font-weight: 700;
+        line-height: 1;
+    }
+
     .copy-btn.is-copied::after {
         content: '복사됨';
         position: absolute;

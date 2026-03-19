@@ -588,7 +588,16 @@
             </tr>
             <tr>
                 <th>플라스틱 함유량</th>
-                <td><input type='text' name='import_plastic' value="<?= $productData['cd_size_fn']['import']['plastic'] ?? '' ?>" style='width:250px;'></td>
+                <td>
+                    함유량 퍼센트(%) : <input type='text' name='import_plastic' value="<?= $productData['cd_size_fn']['import']['plastic'] ?? '' ?>" style='width:100px; margin-right:30px !important;'>
+                    신재원료사용량(g) : <input type='text' name='import_plastic_amount' value="<?= $productData['cd_size_fn']['import']['plastic_amount'] ?? '' ?>" style='width:100px;'>
+                    <div class="admin-guide-text">
+                        - 퍼센트 입력시 %기호 넣지 말고 숫자만 넣어주세요.<br>
+                        - 퍼센트 입력시 자동계산은 실측중량값이 존재할때만 자동계산됩니다.<br>
+                        - 젤일때는 퍼센트 넣지 말고 신재원료사용량(g)만 넣어주세요.<br>
+                        - 신재원료사용량(g)은 신고되는 최종 개당 플라스틱 함유량입니다.
+                    </div>
+                </td>
             </tr>
             <tr>
                 <th>HS CODE</th>
@@ -707,6 +716,16 @@
                 }
             }
 
+            const importPlasticInput = form.querySelector('input[name="import_plastic"]');
+            if (importPlasticInput) {
+                const importPlasticValue = String(importPlasticInput.value || '').trim();
+                if (importPlasticValue !== '' && !/^(?:\d+|\d+\.\d+|\.\d+)$/.test(importPlasticValue)) {
+                    alert('플라스틱 함유량 퍼센트는 숫자만 입력할 수 있습니다.');
+                    importPlasticInput.focus();
+                    return;
+                }
+            }
+
             const formData = new FormData(form);
             fetch('/admin/product/saveProduct', {
                     method: 'POST',
@@ -753,6 +772,46 @@
                 $hbtiConfigRow.show();
             }
         }
+
+        const $weight3 = $('input[name="cd_weight_3"]');
+        const $importPlastic = $('input[name="import_plastic"]');
+        const $importPlasticAmount = $('input[name="import_plastic_amount"]');
+
+        function sanitizeDecimalInput(value) {
+            let sanitized = String(value || '').replace(/[^0-9.]/g, '');
+            const dotIndex = sanitized.indexOf('.');
+            if (dotIndex !== -1) {
+                sanitized = sanitized.slice(0, dotIndex + 1) + sanitized.slice(dotIndex + 1).replace(/\./g, '');
+            }
+            return sanitized;
+        }
+
+        function updateImportPlasticAmount() {
+            const weightText = String($weight3.val() || '').trim();
+            const percentText = String($importPlastic.val() || '').trim();
+            const weightValue = parseFloat(weightText);
+            const percentValue = parseFloat(percentText);
+
+            // 실측중량/퍼센트가 모두 숫자일 때만 자동 계산
+            if (!Number.isFinite(weightValue) || !Number.isFinite(percentValue)) {
+                return;
+            }
+
+            const calculatedAmount = (weightValue * percentValue) / 100;
+            $importPlasticAmount.val(calculatedAmount.toFixed(2));
+        }
+
+        $importPlastic.on('input', function() {
+            const sanitized = sanitizeDecimalInput($(this).val());
+            if ($(this).val() !== sanitized) {
+                $(this).val(sanitized);
+            }
+            updateImportPlasticAmount();
+        });
+
+        $weight3.on('input', function() {
+            updateImportPlasticAmount();
+        });
 
         $hbtiTargetCheckbox.on('change', toggleHbtiConfigRow);
         toggleHbtiConfigRow();
