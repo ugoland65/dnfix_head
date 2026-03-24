@@ -33,6 +33,8 @@ class OrderSheetModel extends BaseModel
             'oo_price_kr', //최종 합계 결제액
             'oo_in_date', //입고일
             'reg', //등록일시
+            'created_by', //등록자 PK
+            'created_name', //등록자 이름            
         ];
     
 

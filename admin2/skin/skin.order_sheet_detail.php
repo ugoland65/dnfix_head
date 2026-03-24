@@ -389,13 +389,16 @@ var orderSheetDetail = function() {
 
 			var oprice = $("#unit_price_"+ id).val();
 			var v = $("#unit_qty_"+ id).val();
+			oprice = parseFloat(String(oprice).replace(/,/g, "")) || 0;
+			v = parseFloat(String(v).replace(/,/g, "")) || 0;
 
 			if(v=="") v=0;
 			if( oprice > 0 && v > 0 ) {	
-				var oprice_sum = oprice*v;
+				var oprice_sum = Math.round(((oprice * v) + Number.EPSILON) * 100) / 100;
 				if( oprice_sum > 0 ){
-					$("#unit_price_sum_"+ id).val(oprice_sum);
-					$("#order_qty_sum_"+ id).html(GC.comma(oprice_sum));
+					var oprice_sum_text = oprice_sum.toFixed(2);
+					$("#unit_price_sum_"+ id).val(oprice_sum_text);
+					$("#order_qty_sum_"+ id).html(GC.comma(oprice_sum_text));
 					ckTr(id,"on");
 				}
 			}else{

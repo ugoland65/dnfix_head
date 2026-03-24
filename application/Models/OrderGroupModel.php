@@ -4,7 +4,7 @@ namespace App\Models;
 
 use App\Core\BaseModel;
 
-class OnaOrderGroupModel extends BaseModel
+class OrderGroupModel extends BaseModel
 {
     protected $table = 'ona_order_group';
     protected $primaryKey = 'oog_idx';
@@ -15,6 +15,7 @@ class OnaOrderGroupModel extends BaseModel
         'oog_code',
         'oog_brand',
         'oog_group',
+        'bank',
         'memo',
     ];
 }

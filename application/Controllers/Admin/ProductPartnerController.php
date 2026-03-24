@@ -448,8 +448,18 @@ class ProductPartnerController extends BaseClass
                     'supplier_prd_pk' => $requestData['supplier_prd_pk'] ?? null,
                 ];
                 $result = $productSupplierPyApiService->updateSupplierProductDetail($payload);
+
+                if( $result['status'] == 'success' ){
+                    $message = $result['message'];
+                }else{
+                    $errorMessage = $result['message'];
+                    //throw new \Exception($result['message']);
+                }
+
+                /*
                 $message = '업데이트되었습니다.';
                 $errorMessage = '업데이트에 실패했습니다.';
+                */
 
             // 공급사 상품 -> 상품DB로 등록후 매칭
             }elseif( $actionMode == 'product_register_to_supplier_product' ){

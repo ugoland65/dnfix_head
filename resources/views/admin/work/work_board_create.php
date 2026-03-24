@@ -171,7 +171,7 @@
 
                             <?php if ($withdb == "provider_product") { ?>
 
-                                <h3 style="font-size:16px; font-weight: 600; margin-bottom:5px;">공급사 상품 참조</h3>
+                                <h3 style="font-size:16px; font-weight: 600; margin-bottom:5px;">위탁상품 참조</h3>
                                 <table class="table-style">
                                     <thead>
                                         <tr>
@@ -266,7 +266,7 @@
                                                     ?>
                                                 </td>
 
-                                                <!-- 공급사 상품코드 -->
+                                                <!-- 위탁상품코드 -->
                                                 <td class="text-center">
                                                     <?php
                                                     if (!empty($item['supplier_prd_idx'])) {

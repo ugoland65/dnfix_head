@@ -22,14 +22,14 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 
 </div>
 <div class="left-menu-mid-title">
-	<ul>공급사 상품관리</ul>
+	<ul>위탁 상품관리</ul>
 </div>
 <div class="left-menu-wrap">
 	<ul <?php if( $pageNameCode == "prd_provider" && $s_status == null) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/provider_product/list'">
-		<li>공급사 상품관리</li>
+		<li>위탁 상품관리</li>
 	</ul>
 	<ul <?php if( $pageNameCode == "prd_provider" && $s_status == '등록대기') echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/provider_product/list?s_godo_sale_status=등록대기'">
-		<li>공급사 상품관리 (등록대기)</li>
+		<li>위탁 상품관리 (등록대기)</li>
 	</ul>
 </div>
 

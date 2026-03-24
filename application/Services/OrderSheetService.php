@@ -85,6 +85,7 @@ class OrderSheetService
                 $row['oo_price_data'] = [];
             }
 
+            /*
             $reg = json_decode($row['reg'] ?? '{}', true);
             if (!is_array($reg)) {
                 $reg = [];
@@ -102,6 +103,7 @@ class OrderSheetService
                 }
             }
             $row['show_date'] = $showDate;
+            */
 
             $state = (int)($row['oo_state'] ?? 0);
             if ($state === 2) {
@@ -436,6 +438,10 @@ class OrderSheetService
         $reg_json = AuthAdmin::getConnectionInfo();
         $reg = json_encode($reg_json, JSON_UNESCAPED_UNICODE);
 
+        // created_by 컬럼은 정수(PK) 컬럼이므로 sess_idx를 사용하고 정수로 강제 변환
+        $created_by = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $created_name = AuthAdmin::getSession('sess_name');
+
         return [
             'oo_name' => $name ?? '',
             'oo_po_name' => $po_name ?? '',
@@ -456,6 +462,8 @@ class OrderSheetService
             'oo_sum_price' => $oo_sum_price ?? 0, //주문 결제 가격
             'oo_in_date' => $inDateColumnValue, //입고일
             'reg' => $reg ?? '',
+            'created_by' => $created_by,
+            'created_name' => $created_name ?? '',
             'oo_price_kr' => $oo_price_kr ?? 0, //최종 합계 결제액
         ];
     }

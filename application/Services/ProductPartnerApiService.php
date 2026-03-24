@@ -255,6 +255,8 @@ class ProductPartnerApiService
         $is_detail_crawler = $data['is_detail_crawler'] ?? null;
         $is_option = $data['is_option'] ?? null;
         $option_data = $data['option_data'] ?? null;
+        $status = $data['status'] ?? null;
+        $sold_out_date = $data['sold_out_date'] ?? null;
 
         if( empty($idx) ){
             throw new \Exception('idx가 비어있습니다.');
@@ -272,6 +274,8 @@ class ProductPartnerApiService
             'is_detail_crawler' => $is_detail_crawler,
             'is_option' => $is_option,
             'option_data' => $option_data,
+            'status' => $status,
+            'sold_out_date' => $sold_out_date,
         ];
 
         $response = HttpClient::postData($url, $payload, $headers);

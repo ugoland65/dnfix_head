@@ -241,7 +241,7 @@
                                         <td><a href="/admin/work/TaskRequestDetail/<?= $row['idx'] ?>"><span style="font-size:13px; font-weight:600;"><?= $row['subject'] ?? '제목없음'?></span></a></td>
                                         <td class="text-center">
                                             <?php if( $row['withdb_mode'] == "provider_product" ){ ?>
-                                                공급사상품 : <?= $row['withdb_pks_count'] ?>
+                                                위탁상품 : <?= $row['withdb_pks_count'] ?>
                                             <?php } else { ?>
                                                 -
                                             <?php } ?>

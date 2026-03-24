@@ -84,7 +84,7 @@ class WorkController extends BaseClass
             ];
 
             return view('admin.work.work_board', $data)
-                ->extends('admin.layout.layout', ['pageGroup2' => 'staff', 'pageNameCode' => 'work_board']);
+                ->extends('admin.layout.layout', ['pageGroup2' => 'work', 'pageNameCode' => 'work_board']);
 
         } catch (Exception $e) {
             return view('admin.errors.404', [

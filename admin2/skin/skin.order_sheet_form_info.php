@@ -4,6 +4,7 @@ $_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
 $data = [];
 $_oog_idx = "";
 $_oog_group = [];
+$_oog_data = [];
 
 if( $_idx ){
 
@@ -16,11 +17,37 @@ if( $_idx ){
 	
 	$_oog_idx = $data['oog_idx'] ?? "";
 	$_oog_group = json_decode($data['oog_brand'] ?? '[]', true);
-	
+	$_oog_data = json_decode($data['oog_data'] ?? '[]', true);
+
+	$bank = json_decode($data['bank'] ?? '[]', true);
+	if (!is_array($bank)) {
+		$bank = [];
+	}
+	if (!is_array($bank['domestic'])) {
+		$bank['domestic'] = [];
+	}
+	/*
+	if (!is_array($bank['import_account'])) {
+		$bank['import_account'] = [];
+	}
+	*/
+
+	//dump($bank);
+
+	$_oog_bank_name = $bank['domestic']['bank'] ?? '';
+	$_oog_bank_account = $bank['domestic']['account'] ?? '';
+	$_oog_bank_depositor = $bank['domestic']['depositor'] ?? '';
+	$_oog_import_account = $bank['import_account'] ?? '';
+
+	/*
 	// 배열 검증
 	if (!is_array($_oog_group)) {
 		$_oog_group = [];
 	}
+	if (!is_array($_oog_data)) {
+		$_oog_data = [];
+	}
+	*/
 
 }
 ?>
@@ -63,10 +90,43 @@ if( $_idx ){
 			<tr>
 				<th>수입형태</th>
 				<td>
-					<select name="oog_import">
+					<select name="oog_import" id="oog_import">
 						<option value="국내" <? if( ($data['oog_import'] ?? '') == "국내" ) echo "selected"; ?>>국내</option>
 						<option value="수입" <? if( ($data['oog_import'] ?? '') == "수입" ) echo "selected"; ?>>수입</option>
 					</select>
+				</td>
+			</tr>
+			<tr id="domestic_account_row">
+				<th>국내계좌</th>
+				<td>
+					<?php
+						$_bank_options = [
+							'국민은행',
+							'신한은행',
+							'우리은행',
+							'하나은행',
+							'농협은행',
+							'기업은행',
+							'카카오뱅크',
+							'토스뱅크',
+							'케이뱅크',
+						];
+					?>
+					<select name="oog_bank_name">
+						<option value="">은행 선택</option>
+						<?php foreach ($_bank_options as $_bank_name) { ?>
+							<option value="<?= $_bank_name ?>" <?php if ($_oog_bank_name === $_bank_name) echo "selected"; ?>><?= $_bank_name ?></option>
+						<?php } ?>
+					</select>
+					<input type="text" name="oog_bank_account" value="<?= htmlspecialchars($_oog_bank_account, ENT_QUOTES, 'UTF-8') ?>" placeholder="계좌번호" style="width:180px;">
+					<br>예금주 :
+					<input type="text" name="oog_bank_depositor" value="<?= htmlspecialchars($_oog_bank_depositor, ENT_QUOTES, 'UTF-8') ?>" placeholder="예금주" style="width:120px;">
+				</td>
+			</tr>
+			<tr id="import_account_row">
+				<th>수입계좌 정보</th>
+				<td>
+					<textarea name="oog_import_account" rows="4"><?= htmlspecialchars($_oog_import_account, ENT_QUOTES, 'UTF-8') ?></textarea>
 				</td>
 			</tr>
 			<tr>
@@ -240,7 +300,7 @@ var orderSheetFormReg = function() {
 			var formData = $("#form1").serializeArray();
 
 			$.ajax({
-				url: "/ad/processing/order_sheet",
+				url: "/admin/order/group/update",
 				data : formData,
 				type: "POST",
 				dataType: "json",
@@ -275,6 +335,20 @@ $(function(){
 		axis: "y",
 		cursor: "move"
 	});
+
+	function toggleAccountRowsByImportType() {
+		var importType = String($('#oog_import').val() || '').trim();
+		if (importType === '국내') {
+			$('#domestic_account_row').show();
+			$('#import_account_row').hide();
+		} else {
+			$('#domestic_account_row').hide();
+			$('#import_account_row').show();
+		}
+	}
+
+	$('#oog_import').on('change', toggleAccountRowsByImportType);
+	toggleAccountRowsByImportType();
 
 });
 //--> 

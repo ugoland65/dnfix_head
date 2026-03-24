@@ -125,7 +125,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                 </select>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 적용환율 :
-                                <input type="text" name='oo_prd_exchange_rate' class="price" value="<?= $orderSheetInfo['oo_prd_exchange_rate'] ?? '' ?>">
+                                <input type="text" name='oo_prd_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_exchange_rate'] ?? '' ?>">
                             </td>
                         </tr>
                         <tr>
@@ -140,7 +140,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                 </select>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 적용환율 :
-                                <input type="text" name='oo_sum_exchange_rate' class="price" value="<?= $orderSheetInfo['oo_sum_exchange_rate'] ?? '' ?>">
+                                <input type="text" name='oo_sum_exchange_rate' class="" value="<?= $orderSheetInfo['oo_sum_exchange_rate'] ?? '' ?>">
                             </td>
                         </tr>
                     </table>
@@ -174,6 +174,10 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <button type="button" id="" class="btnstyle1 <?php if (($orderSheetInfo['oo_state'] ?? '') == "4") echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.orderSheetState(this, '4', '<?= $orderSheetInfo['oo_idx'] ?? '' ?>')" data-name="입금완료">입금완료</button>
                         <button type="button" id="" class="btnstyle1 <?php if (($orderSheetInfo['oo_state'] ?? '') == "5") echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.orderSheetState(this, '5', '<?= $orderSheetInfo['oo_idx'] ?? '' ?>')" data-name="입고완료">입고완료</button>
                         <button type="button" id="" class="btnstyle1 <?php if (($orderSheetInfo['oo_state'] ?? '') == "7") echo "btnstyle1-info"; ?> btnstyle1-sm" onclick="orderSheetReg.orderSheetState(this, '7', '<?= $orderSheetInfo['oo_idx'] ?? '' ?>')" data-name="주문종료">주문종료</button>
+                    </div>
+
+                    <div class="admin-guide-text">
+                       - 주문전송 처리자가 물류팀 입고완료 처리 후 주문종료 처리해야 합니다.
                     </div>
 
                     <div class="m-t-5">
@@ -313,6 +317,25 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                     <button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetReg.fileUpload('invoice');">주문관련파일 업로드</button>
                                 </div>
 
+                            </td>
+                        </tr>
+
+                        <tr>
+                            <th>결제요청서 등록</th>
+                            <td>
+                                <?php if( !empty($orderGroupInfo['bank']) ){ ?>
+                                    <div class="p-b-5">
+                                        <?= $orderGroupInfo['bank']['domestic']['bank'] ?? '' ?>
+                                        <b><?= $orderGroupInfo['bank']['domestic']['account'] ?? '' ?></b>
+                                        <?= $orderGroupInfo['bank']['domestic']['depositor'] ?? '' ?>
+                                        <?= $orderGroupInfo['bank']['import_account'] ?? '' ?>
+                                    </div>
+                                <?php } ?>
+                                <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" 
+                                    data-order-group-idx="<?= $orderGroupInfo['oog_idx'] ?? '' ?>"
+                                    data-order-sheet-idx="<?= $orderSheetInfo['oo_idx'] ?? '' ?>"
+                                    data-amount="<?= $orderSheetInfo['oo_fn_price'] ?? 0 ?>"
+                                    onclick="orderSheetReg.paymentRequestCreate(this);">결제요청서 등록</button>
                             </td>
                         </tr>
 
@@ -1191,6 +1214,28 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             });
         }
 
+        /**
+         * 결제요청서 등록
+         * @return void
+         */
+        function paymentRequestCreate(button){
+
+            var orderGroupIdx = $(button).data('order-group-idx');
+            var orderSheetIdx = $(button).data('order-sheet-idx');
+            var amount = $(button).data('amount');
+
+            var data = {
+                mode: 'create',
+                category: '주문발주',
+                amount: amount,
+                kind: 'order_sheet',
+                orderGroupIdx: orderGroupIdx,
+                orderSheetIdx: orderSheetIdx,
+            }
+            openDialog("/admin/payment/payment_request_create", data, "결제요청 생성", "800px", "POST" );
+        }
+
+
         return {
             addChangePrice,
             delChangePrice: function(button) {
@@ -1207,6 +1252,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             calendarDel,
             fileUpload,
             fileDel,
+            paymentRequestCreate,
         }
 
     })();

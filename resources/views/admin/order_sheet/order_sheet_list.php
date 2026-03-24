@@ -115,7 +115,10 @@
 										*/ ?>
 
 									</td>
-									<td class="text-center"><?= $orderSheet['show_date'] ?></td>
+									<td class="text-center">
+										<?= date('y.m.d H:i', strtotime($orderSheet['created_at'])) ?><br>
+										( <?= $orderSheet['created_name'] ?> )
+									</td>
 									<td class="text-left">
 										<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('orderSheet','<?=$orderSheet['oo_idx']?>')" >
 											댓글

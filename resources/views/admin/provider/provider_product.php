@@ -5,8 +5,8 @@
 	}
 </style>
 <div id="contents_head">
-	<h1>공급사 상품관리</h1>
-	<h3>인트라넷에 등록된 공급사 상품입니다.</h3>
+	<h1>위탁 상품관리</h1>
+	<h3>인트라넷에 등록된 위탁 상품입니다.</h3>
 </div>
 <div id="contents_body">
 	<div id="contents_body_wrap">
@@ -124,9 +124,12 @@
 									<td><input type="checkbox" name="check_idx[]" value="<?= $item['idx'] ?>"></td>
 									<td class="text-center"><?= $item['idx'] ?></td>
 									<td class="text-center">
-										<?= $item['status'] ?>
+										
 										<?php if( $item['status'] == '품절' ){ ?>
+											<span class="text-red">품절</span>
 											<br><span class="text-red"><?=date('Y.m.d', strtotime($item['sold_out_date'])) ?? ''?></span>
+										<?php }else{ ?>
+											<?= $item['status'] ?>
 										<?php } ?>
 									</td>
 									<td>

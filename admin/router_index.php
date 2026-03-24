@@ -19,6 +19,8 @@ use App\Controllers\Admin\ProductStockController;
 use App\Controllers\Admin\AdminActionLogController;
 use App\Controllers\Admin\AiRulebookController;
 use App\Controllers\Admin\ProductGroupingController;
+use App\Controllers\Admin\PaymentRequestController;
+use App\Controllers\Admin\OrderGroupController;
 
 try {
 
@@ -101,6 +103,9 @@ try {
     $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
     $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
 
+    // 주문서 그룹 관리
+    $router->post('/order/group/update', OrderGroupController::class, 'updateOrderGroup'); //주문서 폼 수정
+
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
 
@@ -112,12 +117,19 @@ try {
     $router->get('/stock/rack_change', RackController::class, 'rackChange'); //랙그룹변경 페이지
     $router->post('/stock/save_rack_change', RackController::class, 'saveRackChange'); //랙그룹변경 저장
 
+    //업무
     // C/S 관리
     $router->get('/cs/cs_list', CsRequestController::class, 'csList'); //C/S 목록
     $router->get('/cs/cs_create', CsRequestController::class, 'csCreate'); //C/S 생성
     $router->get('/cs/cs_detail/{idx}', CsRequestController::class, 'csDetail'); //C/S 상세
     $router->post('/cs/cs_request', CsRequestController::class, 'createCsRequest'); //C/S 처리 요청
     $router->post('/cs/update_cs_status', CsRequestController::class, 'updateCsStatus'); //C/S 상태변경
+
+    // 결제요청 관리
+    $router->get('/payment/payment_request_list', PaymentRequestController::class, 'paymentRequestList'); //결제요청 목록
+    $router->post('/payment/payment_request_create', PaymentRequestController::class, 'paymentRequestCreate'); //결제요청 생성
+    $router->get('/payment/payment_request_detail', PaymentRequestController::class, 'paymentRequestDetail'); //결제요청 상세
+    $router->post('/payment/payment_request_save', PaymentRequestController::class, 'paymentRequestSave'); //결제요청 저장
 
     // 라우트 처리
     $router->dispatch();

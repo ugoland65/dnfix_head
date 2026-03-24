@@ -7,7 +7,7 @@ use Throwable;
 use App\Classes\Request;
 use App\Core\BaseClass;
 use App\Services\OrderSheetService;
-use App\Services\OnaOrderGroupService;
+use App\Services\OrderGroupService;
 use App\Utils\Pagination;
 
 class OrderSheetController extends BaseClass 
@@ -50,8 +50,8 @@ class OrderSheetController extends BaseClass
             );
             $paginationHtml = $pagination->renderLinks();
 
-            $onaOrderGroupService = new OnaOrderGroupService();
-            $onaOrderGroupList = $onaOrderGroupService->getOnaOrderGroupForSelect();
+            $OrderGroupService = new OrderGroupService();
+            $onaOrderGroupList = $OrderGroupService->getOnaOrderGroupForSelect();
 
             $data = [
                 'orderSheetList' => $orderSheetListResult['data'],
@@ -88,8 +88,8 @@ class OrderSheetController extends BaseClass
     public function orderSheetCreate(Request $request)
     {
 
-        $onaOrderGroupService = new OnaOrderGroupService();
-        $onaOrderGroupList = $onaOrderGroupService->getOnaOrderGroupForSelect();
+        $OrderGroupService = new OrderGroupService();
+        $onaOrderGroupList = $OrderGroupService->getOnaOrderGroupForSelect();
 
         try{
 
@@ -107,6 +107,12 @@ class OrderSheetController extends BaseClass
     }
 
 
+    /**
+     * 주문서 상세 페이지
+     * 
+     * @param Request $request
+     * @return View
+     */
     public function orderSheetInfo(Request $request)
     {
 
@@ -120,8 +126,12 @@ class OrderSheetController extends BaseClass
         $orderSheetService = new OrderSheetService();
         $orderSheetInfo = $orderSheetService->getOrderSheetInfo($idx);
 
-        $onaOrderGroupService = new OnaOrderGroupService();
-        $onaOrderGroupList = $onaOrderGroupService->getOnaOrderGroupForSelect();
+        $OrderGroupService = new OrderGroupService();
+        $onaOrderGroupList = $OrderGroupService->getOnaOrderGroupForSelect();
+
+        if( $orderSheetInfo['oo_form_idx'] > 0 ){
+            $orderGroupInfo = $OrderGroupService->getOrderGroupInfo($orderSheetInfo['oo_form_idx']);
+        }
         
         try {
 
@@ -129,7 +139,8 @@ class OrderSheetController extends BaseClass
                 'idx' => $idx,
                 'mode' => 'modify',
                 'orderSheetInfo' => $orderSheetInfo,
-                'onaOrderGroupList' => $onaOrderGroupList
+                'onaOrderGroupList' => $onaOrderGroupList,
+                'orderGroupInfo' => $orderGroupInfo ?? []
             ]);
 
         } catch (Throwable $e) {

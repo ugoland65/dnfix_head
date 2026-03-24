@@ -242,7 +242,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			?>
 			<ul class="supplier-match-wrap">
 
-				<p>매칭된 공급사 상품</p>
+				<p>매칭된 위탁 상품</p>
 				<div class="supplier-match-card" onclick="prdProviderQuick('<?= $prd_data['supplier_prd_idx'] ?>');" >
 					
 					<?php if ($supplierImage !== '') { ?>
@@ -253,7 +253,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 					<div class="supplier-match-text">
 						<div class="supplier-match-name">
-							<?= $supplierName !== '' ? $supplierName : '공급사 상품명 없음' ?>
+							<?= $supplierName !== '' ? $supplierName : '위탁 상품명 없음' ?>
 						</div>
 						<div class="supplier-match-meta">
 							고유번호: <b>#<?= $supplierIdxText ?></b></br>

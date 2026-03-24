@@ -318,26 +318,7 @@ $gnb_lang = "ko";
 	<div id="gnb">
 		<ul>
             <li class="<?=$gnb_lang?> <? if($pageGroup == "1") echo "active"; ?>"><a href="<?=_A_PATH_MAIN?>">DASHBOARD</a></li><!-- 통계/현황표 -->
-            <li class="<?=$gnb_lang?> <?php if( $_pageGroup == "staff" || $pageGroup2 == "staff" ) echo "active"; ?> have-sub-menu">
-				인사/업무
-				<div class="sub-menu">
-					<ul>
-						<li>
-							<a href="/admin/work/TaskRequest?category=업무요청">업무요청</a>
-						</li>
-						<li>
-							<a href="/admin/work/TaskRequest?category=프로젝트">프로젝트</a>
-						</li>
-						<li>
-							<a href="/admin/work/TaskRequest?category=기획안">기획안</a>
-						</li>
-						<li>
-							<a href="/admin/work/TaskRequest?category=공지사항">공지사항</a>
-						</li>
-					</ul>
-				</div>
-			</li>
-
+			<li class="<?=$gnb_lang?> <?php if( $_pageGroup == "staff" || $pageGroup2 == "staff" ) echo "active"; ?>"><a href="/admin/staff/list">인사관리</a></li>
 			<li class="<?=$gnb_lang?> <? if($pageGroup2 == "airulebook") echo "active"; ?>"><a href="/admin/ai/rulebook/detail/1">AI 룰북</a></li>
 
 			<?php
@@ -360,7 +341,7 @@ $gnb_lang = "ko";
 							<a href="/admin/product/product_stock">보유상품 관리</a>
 						</li>
 						<li>
-							<a href="/admin/provider_product/list">공급사 상품관리</a>
+							<a href="/admin/provider_product/list">위탁상품 관리</a>
 						</li>
 						<li>
 							<a href="/admin/product/grouping">상품 그룹핑</a>
@@ -400,8 +381,33 @@ $gnb_lang = "ko";
 				</div>
 			</li>
 
-			<li class="<?=$gnb_lang?> <?php if( $pageGroup2 == "cs" ) echo "active"; ?>">
-				<a href="/admin/cs/cs_list">C/S 관리</a>
+			<li class="<?=$gnb_lang?> <?php if( $pageGroup2 == "work" ) echo "active"; ?> have-sub-menu">
+				업무관리
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/admin/cs/cs_list">C/S 관리</a>
+						</li>
+						<li>
+							<a href="/admin/payment/payment_request_list">결제요청</a>
+						</li>
+					</ul>
+					<ul>
+						<li>
+							<a href="/admin/work/TaskRequest?category=업무요청">업무요청</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=프로젝트">프로젝트</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=기획안">기획안</a>
+						</li>
+						<li>
+							<a href="/admin/work/TaskRequest?category=공지사항">공지사항</a>
+						</li>
+					</ul>
+				</div>
+				
 			</li>
 
 			<?php 

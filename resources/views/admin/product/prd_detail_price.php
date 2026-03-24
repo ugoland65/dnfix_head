@@ -230,18 +230,18 @@
             </tr>
             <tr>
                 <td colspan="2" class="none-bg title">
-                    <h1>공급사 정보</h1>
+                    <h1>위탁상품 정보</h1>
                 </td>
             </tr>
         </tbody>
 
         <tbody>
             <tr>
-                <th>공급사 상품 고유번호</th>
+                <th>위탁 상품 고유번호</th>
                 <td>
                     <input type='text' name='supplier_prd_idx' style='width:200px;' value="<?= $productData['supplier_prd_idx'] ?? '' ?>">
                     <div class="admin-guide-text">
-                        - 매칭할 공급사 상품 고유번호 입니다.
+                        - 매칭할 위탁 상품 고유번호 입니다.
                     </div>
                 </td>
             </tr>

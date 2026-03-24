@@ -11,6 +11,68 @@ use App\Services\WorkLogHistoryService;
 
 class WorkService
 {
+    /**
+     * 텔레그램 야간 차단 기능 스위치
+     * - true: 차단 시간대(기본 19:00~08:00)에는 발송하지 않음
+     * - false: 시간대와 무관하게 항상 발송
+     */
+    private const TELEGRAM_QUIET_HOURS_ENABLED = true;
+    /** 차단 시작 시각(24시간제, 포함) */
+    private const TELEGRAM_QUIET_START_HOUR = 19;
+    /** 차단 종료 시각(24시간제, 미포함) */
+    private const TELEGRAM_QUIET_END_HOUR = 8;
+
+    /**
+     * 현재 시간이 텔레그램 차단 시간대인지 확인한다.
+     *
+     * @return bool true면 차단 시간대
+     */
+    private function isTelegramQuietHours(): bool
+    {
+        // 서버 현재 시각의 시(hour)만 사용한다. (0~23)
+        $hour = (int)date('G');
+        // 야간 구간은 날짜를 넘어가므로 OR 조건으로 판별한다.
+        // 예: 19~23시 또는 0~7시 => 차단
+        return ($hour >= self::TELEGRAM_QUIET_START_HOUR || $hour < self::TELEGRAM_QUIET_END_HOUR);
+    }
+
+    /**
+     * 현재 시점에 텔레그램 발송 가능 여부를 반환한다.
+     *
+     * @return bool true면 발송 가능
+     */
+    private function canSendTelegramNow(): bool
+    {
+        // 차단 기능을 꺼둔 경우 시간과 무관하게 항상 발송 허용
+        if (!self::TELEGRAM_QUIET_HOURS_ENABLED) {
+            return true;
+        }
+        // 차단 시간대가 아닐 때만 발송 허용
+        return !$this->isTelegramQuietHours();
+    }
+
+    /**
+     * 텔레그램 발송 공통 메서드
+     * - 토큰이 비어 있으면 발송하지 않음
+     * - 차단 시간대이면 발송하지 않음
+     * - 위 조건을 통과하면 TelegramUtils로 실제 전송
+     *
+     * @param string $telegramToken 수신자 텔레그램 토큰
+     * @param string $message 발송 메시지
+     * @param string $parseMode 파싱 모드(기본 HTML)
+     * @return mixed false(미발송) 또는 TelegramUtils sendMessage 반환값
+     */
+    private function sendTelegramMessage(string $telegramToken, string $message, string $parseMode = 'HTML')
+    {
+        $telegramToken = trim($telegramToken);
+        // 발송 대상이 없거나 현재 발송이 막힌 시간대라면 즉시 종료
+        if ($telegramToken === '' || !$this->canSendTelegramNow()) {
+            return false;
+        }
+
+        $telegram = new TelegramUtils();
+        return $telegram->sendMessage($telegramToken, $message, $parseMode);
+    }
 
     /**
      * 업무 로그 목록 조회
@@ -384,8 +446,6 @@ class WorkService
 
         $adminServices = new AdminServices();
 
-        $telegram = new TelegramUtils();
-
         $in_message = "🟠 업무요청 - 참여자 지정되었습니다.\n\n";
         $in_message .= "<b>[" . $workInfo['idx'] . "] " . $workInfo['subject'] . "</b>\n\n";
         $in_message .= "( " . AuthAdmin::getSession('sess_name') . " :: " . date('Y-m-d H:i:s') . ")";
@@ -420,7 +480,7 @@ class WorkService
 
             $mentionTargetTelegramIds = $adminServices->getMentionTargetTelegramId($target_mb_idx);
             foreach($mentionTargetTelegramIds as $mentionTargetTelegramId){
-                $telegramResult = $telegram->sendMessage($mentionTargetTelegramId['ad_telegram_token'], $in_message, 'HTML');
+                $this->sendTelegramMessage((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''), $in_message, 'HTML');
             }
 
         }elseif( $mode == 'modify' ){
@@ -500,7 +560,7 @@ class WorkService
             if (!empty($added_target_mb_idxs)) {
                 $mentionTargetTelegramIds = $adminServices->getMentionTargetTelegramId($added_target_mb_idxs);
                 foreach ($mentionTargetTelegramIds as $mentionTargetTelegramId) {
-                    $telegramResult = $telegram->sendMessage($mentionTargetTelegramId['ad_telegram_token'], $in_message, 'HTML');
+                    $this->sendTelegramMessage((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''), $in_message, 'HTML');
                 }
             }
 
@@ -508,7 +568,7 @@ class WorkService
             if (!empty($removed_target_mb_idxs)) {
                 $mentionTargetTelegramIds = $adminServices->getMentionTargetTelegramId($removed_target_mb_idxs);
                 foreach ($mentionTargetTelegramIds as $mentionTargetTelegramId) {
-                    $telegramResult = $telegram->sendMessage($mentionTargetTelegramId['ad_telegram_token'], $out_message, 'HTML');
+                    $this->sendTelegramMessage((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''), $out_message, 'HTML');
                 }
             }
 
@@ -618,9 +678,8 @@ class WorkService
         $message .= "<b>[" . $workInfo['idx'] . "] " . $workInfo['subject'] . "</b>\n\n";
         $message .= "( " . AuthAdmin::getSession('sess_name') . " :: " . date('Y-m-d H:i:s') . ")";
 
-        $telegram = new TelegramUtils();
         foreach($mentionTargetTelegramIds as $mentionTargetTelegramId){
-            $telegramResult = $telegram->sendMessage($mentionTargetTelegramId['ad_telegram_token'], $message, 'HTML');
+            $this->sendTelegramMessage((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''), $message, 'HTML');
         }
 
         $result = [
@@ -715,8 +774,7 @@ class WorkService
             $message .= "<b>[" . $workInfo['idx'] . "] " . $workInfo['subject'] . "</b>\n\n";
             $message .= "( " . AuthAdmin::getSession('sess_name') . " :: " . date('Y-m-d H:i:s') . ")";
 
-            $telegram = new TelegramUtils();
-            $telegramResult = $telegram->sendMessage($mentionTargetTelegramId, $message, 'HTML');
+            $this->sendTelegramMessage((string)$mentionTargetTelegramId, $message, 'HTML');
         }
 
         $auth = AdminAuth::user();
@@ -787,10 +845,8 @@ class WorkService
         $adminServices = new AdminServices();
         $mentionTargetTelegramIds = $adminServices->getMentionTargetTelegramId($target_mb_idx);
         
-        $telegram = new TelegramUtils();
-
         foreach($mentionTargetTelegramIds as $mentionTargetTelegramId){
-            $telegramResult = $telegram->sendMessage($mentionTargetTelegramId['ad_telegram_token'], $message, 'HTML');
+            $this->sendTelegramMessage((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''), $message, 'HTML');
         }
 
         $auth = AdminAuth::user();

@@ -1509,7 +1509,23 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_oog_import = $_POST['oog_import'] ?? "";
 	$_oog_code = $_POST['oog_code'] ?? "";
 	$_oog_group = $_POST['oog_group'] ?? "";
+	$_oog_bank_name = $_POST['oog_bank_name'] ?? "";
+	$_oog_bank_account = $_POST['oog_bank_account'] ?? "";
+	$_oog_bank_depositor = $_POST['oog_bank_depositor'] ?? "";
+	$_oog_import_account = $_POST['oog_import_account'] ?? "";
 	$_memo = $_POST['memo'] ?? "";
+
+	$_oog_data_arr = [
+		'domestic' => [
+			'bank' => $_oog_bank_name,
+			'account' => $_oog_bank_account,
+			'depositor' => $_oog_bank_depositor,
+		],
+		'import_account' => $_oog_import_account,
+	];
+	$_oog_data_json = json_encode($_oog_data_arr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($_oog_data_json === false) $_oog_data_json = '[]';
+	$_oog_data_json = mysqli_real_escape_string($connect, $_oog_data_json);
 
 	$data = sql_fetch_array(sql_query_error("SELECT oog_idx FROM ona_order_group WHERE oog_code = '".$_oog_code."' "));
 
@@ -1528,7 +1544,7 @@ if( $_a_mode == "orderSheet_reg" ){
 		oog_code = '".$_oog_code."',
 		oog_group = '".$_oog_group."',
 		oog_brand = '[]',
-		oog_data = '[]',
+		oog_data = '".$_oog_data_json."',
 		price_colum = '',
 		memo = '".$_memo."' ";
 	sql_query_error($query);
@@ -1544,13 +1560,30 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_oog_import = $_POST['oog_import'] ?? "";
 	$_oog_code = $_POST['oog_code'] ?? "";
 	$_oog_group = $_POST['oog_group'] ?? "";
+	$_oog_bank_name = $_POST['oog_bank_name'] ?? "";
+	$_oog_bank_account = $_POST['oog_bank_account'] ?? "";
+	$_oog_bank_depositor = $_POST['oog_bank_depositor'] ?? "";
+	$_oog_import_account = $_POST['oog_import_account'] ?? "";
 	$_memo = $_POST['memo'] ?? "";
+
+	$_oog_data_arr = [
+		'domestic' => [
+			'bank' => $_oog_bank_name,
+			'account' => $_oog_bank_account,
+			'depositor' => $_oog_bank_depositor,
+		],
+		'import_account' => $_oog_import_account,
+	];
+	$_oog_data_json = json_encode($_oog_data_arr, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+	if ($_oog_data_json === false) $_oog_data_json = '[]';
+	$_oog_data_json = mysqli_real_escape_string($connect, $_oog_data_json);
 
 	$query = "UPDATE ona_order_group SET 
 		oog_name = '".$_oog_name."',
 		oog_import = '".$_oog_import."',
 		oog_code = '".$_oog_code."',
 		oog_group = '".$_oog_group."',
+		oog_data = '".$_oog_data_json."',
 		memo = '".$_memo."'
 		WHERE oog_idx = '".$_idx."' ";
 	sql_query_error($query);

@@ -46,8 +46,8 @@ class CsRequestController extends BaseClass
 
             return view('admin.cs.cs_list', $data)
                 ->extends('admin.layout.layout',[
-                    'pageGroup2' => 'order',
-                    'pageNameCode' => 'godo_order_list'
+                    'pageGroup2' => 'work',
+                    'pageNameCode' => 'cs_list'
                 ]);
 
         } catch (Exception $e) {

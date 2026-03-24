@@ -280,8 +280,14 @@ for ($z = 0; $z < count($_false_json); $z++) {
 					$_code3 = $prd_data['CD_CODE3'] ?? '';
 
 					$img_path = '';
-					if (!empty($prd_data['CD_IMG'])) {
-						$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
+					if( $prd_data['img_mode'] == 'out' ){
+						if (!empty($prd_data['CD_IMG'])) {
+							$img_path = $prd_data['CD_IMG'];
+						}
+					}else{
+						if (!empty($prd_data['CD_IMG'])) {
+							$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
+						}
 					}
 
 					$_prd_price_data = json_decode($prd_data['cd_price_fn'] ?? '{}', true);
@@ -446,8 +452,7 @@ for ($z = 0; $z < count($_false_json); $z++) {
 							<?
 							$_this_won_price = "";
 							if (($oo_data['oo_sum_exchange_rate'] ?? 0) > 0) {
-								$_this_won_price = number_format($_price * $oo_data['oo_sum_exchange_rate'], 2);
-								$_this_won_price = str_replace('.00', '', $_this_won_price);
+								$_this_won_price = number_format(round($_price * $oo_data['oo_sum_exchange_rate']), 0);
 							?>
 								<div class="m-t-5">₩ <?= $_this_won_price ?></div>
 							<? } ?>
@@ -513,7 +518,9 @@ for ($z = 0; $z < count($_false_json); $z++) {
 
 					<!-- 마지막 입고일 -->
 					<td class="text-left" style="width:100px; font-size:11px;">
+
 						<?
+						/*
 						$_ps_cafe24_sms_data = json_decode($prd_data['ps_cafe24_sms'] ?? '{}', true);
 						if (!is_array($_ps_cafe24_sms_data)) {
 							$_ps_cafe24_sms_data = [];
@@ -523,7 +530,10 @@ for ($z = 0; $z < count($_false_json); $z++) {
 								<ul>입고알림 : <b><?= $_ps_cafe24_sms_data['count'] ?? 0 ?></b></ul>
 								<ul class="m-t-2" style="font-size:10px;"><?= !empty($_ps_cafe24_sms_data['date']) ? date("m.d H:i:s", strtotime($_ps_cafe24_sms_data['date'])) : '' ?></ul>
 							</div>
-						<? } ?>
+						<? } 
+						*/
+						?>
+
 						<div style="font-size:12px;"><?= $_last ?></div>
 					</td>
 

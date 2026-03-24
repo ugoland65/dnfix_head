@@ -67,6 +67,8 @@ class ProductSupplierPyApiService
         $response = HttpClient::postData($url, $payload, $headers);
         $responseData = json_decode($response, true);
         
+        //dd($responseData);
+
         if($responseData['success'] === true){
             //return $responseData['data'];
 
@@ -79,7 +81,19 @@ class ProductSupplierPyApiService
                 'supplier_is_option' => $productPartner['supplier_is_option'] ?? null,
                 'supplier_option_data' => $productPartner['supplier_option_data'] ?? null,
                 'supplier_detail_img' => $productPartner['supplier_detail_img'] ?? null,
+                'supplier_status' => $productPartner['supplier_status'] ?? null,
+                'supplier_status_date' => $productPartner['supplier_status_date'] ?? null,
             ];
+
+            $in_stock = $responseData['in_stock'] ?? null;
+            if( $in_stock > 0 ){
+                $status = '판매중';
+                $supplier_status_date = null;
+            }else{
+                $status = '품절';
+                $supplier_status_date = date('Y-m-d H:i:s');
+            }
+
 
             $name_p = $responseData['name'] ?? null;
             $cost_price = $responseData['price'] ?? null;
@@ -118,6 +132,14 @@ class ProductSupplierPyApiService
             $supplier_option_data = json_encode($option_data, JSON_UNESCAPED_UNICODE);
             $supplier_detail_img = json_encode($supplier_detail_img, JSON_UNESCAPED_UNICODE);
 
+            //$message = '성공적으로 업데이트되었습니다.';
+
+            if( $status == '품절' ){
+                $message = '공급사 상품이 현재 품절상태입니다.';
+            }else{
+                $message = '성공적으로 업데이트되었습니다.';
+            }
+
             $updateData = [
                 'name_p' => $name_p,
                 'order_price' => $order_price,
@@ -129,18 +151,27 @@ class ProductSupplierPyApiService
                 'supplier_option_data' => $supplier_option_data,
                 'supplier_detail_img' => $supplier_detail_img,
                 'detail_crawler_date' => date('Y-m-d H:i:s'),
+                'supplier_status' => $status,
+                'supplier_status_date' => $supplier_status_date,
             ];
 
             $result = ProductPartnerModel::where('idx', $prd_idx)->update($updateData);
 
             // 공급사 DB 상품 수정
+            /*
+                컬럼추가시 $productPartnerApiService->productUpdate에서 $payload값도 추가해야함
+            */
             $productPartnerApiService = new ProductPartnerApiService();
             $productPartnerApiResult = $productPartnerApiService->productUpdate([
                 'idx' => $supplier_prd_idx,
                 'is_detail_crawler' => 'Y',
                 'is_option' => $supplier_is_option,
                 'option_data' => $supplier_option_data,
+                'status' => $status,
+                'sold_out_date' => $supplier_status_date,
             ]);
+
+            //dd($productPartnerApiResult);
 
             $adminActionLogService = new AdminActionLogService();
 
@@ -161,7 +192,7 @@ class ProductSupplierPyApiService
 
             //공급사 DB에 업데이트
 
-            return ['status' => 'success', 'message' => '업데이트되었습니다.'];
+            return ['status' => 'success', 'message' => $message];
 
         }else{
             throw new \Exception($responseData['message']);
