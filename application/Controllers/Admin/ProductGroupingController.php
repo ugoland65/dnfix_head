@@ -262,19 +262,39 @@ class ProductGroupingController extends BaseClass
      */
     public function productGroupingSave(Request $request)
     {
-        try{
-     
-            $requestData = $request->all();
-            $idx = $requestData['idx'] ?? null;
+        $requestData = $request->all();
+        $idx = $requestData['idx'] ?? null;
+        $isAjaxRequest = $request->ajax() || $request->wantsJson();
 
+        try{
             $productGroupingService = new ProductGroupingService();
             $productGroupingSave = $productGroupingService->productGroupingUpdate($requestData);
+
+            if ($isAjaxRequest) {
+                return response()->json([
+                    'status' => 'success',
+                    'message' => '그룹핑 저장 완료',
+                    'data' => $productGroupingSave,
+                ]);
+            }
 
             return redirect()->to('/admin/product/grouping_view/'.$idx)->with('success', '그룹핑 저장 완료');
 
         }
         catch (Throwable $e) {
-            return redirect()->back()->with('error', $e->getMessage());
+            dd($e);
+            if ($isAjaxRequest) {
+                return response()->json([
+                    'status' => 'error',
+                    'message' => $e->getMessage(),
+                ], 500);
+            }
+
+            if (!empty($idx)) {
+                return redirect()->to('/admin/product/grouping_view/'.$idx)->with('error', $e->getMessage());
+            }
+
+            return redirect()->to('/admin/product/grouping')->with('error', $e->getMessage());
         }
     }
 

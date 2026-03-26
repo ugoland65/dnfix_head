@@ -557,8 +557,8 @@ class ProductGroupingService
                             $ps_in_sale_s = date("Y-m-d",strtotime($pg_day))." 17:00:00";
                             $ps_in_sale_e = date("Y-m-d",strtotime($pg_day." +1 days"))." 17:00:00";
                         } else {
-                            $ps_in_sale_s = "";
-                            $ps_in_sale_e = "";
+                            $ps_in_sale_s = null;
+                            $ps_in_sale_e = null;
                         }
 
                     //기간할인 일경우
@@ -570,15 +570,15 @@ class ProductGroupingService
                             $ps_in_sale_s = date("Y-m-d",strtotime($pg_sday))." 17:00:00";
                             $ps_in_sale_e = date("Y-m-d",strtotime($pg_day))." 17:00:00";
                         } else {
-                            $ps_in_sale_s = "";
-                            $ps_in_sale_e = "";
+                            $ps_in_sale_s = null;
+                            $ps_in_sale_e = null;
                         }
 
                     }else{
 
                         $sale_mode = "";
-                        $ps_in_sale_s = "";
-                        $ps_in_sale_e = "";
+                        $ps_in_sale_s = null;
+                        $ps_in_sale_e = null;
 
                     }
 

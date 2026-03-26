@@ -276,9 +276,23 @@
 
                                             $item = $row['prd_data'];
 
+                                            /*
                                             if (!empty($item['CD_IMG'])) {
                                                 $img_path = '/data/comparion/' . $item['CD_IMG'];
                                             }
+                                            */
+
+                                            if( $item['img_mode'] == 'out' ){
+                                                if (!empty($item['CD_IMG'])) {
+                                                    $img_path = $item['CD_IMG'];
+                                                }
+                                            }else{
+                                                if (!empty($item['CD_IMG'])) {
+                                                    $img_path = '/data/comparion/' . $item['CD_IMG'];
+                                                }
+                                            }
+                                        
+
                                         ?>
                                             <tr>
                                                 <td class="text-center"><p class="position-move-btn"><i class="fas fa-arrows-alt-v"></i></p></td>

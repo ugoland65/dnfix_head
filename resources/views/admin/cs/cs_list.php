@@ -125,7 +125,15 @@
                                     <a href="javascript:godoMemberCrm('<?= $row['mem_no'] ?>');"><?= $row['group_nm'] ?></a>
                                 </td>
                                 <td><?= $row['mem_name'] ?></td>
-                                <td><?= $row['mem_phone'] ?></td>
+                                <td>
+                                    <?php if( !empty($row['mem_no']) && !empty($row['mem_phone']) ) { ?>
+                                        <button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="godoMemberSms('<?= $row['mem_no'] ?>');"><?= $row['mem_phone'] ?></button>
+                                    <?php }elseif( !empty($row['mem_no']) && empty($row['mem_phone']) ) { ?>
+                                        <button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="godoMemberCrm('<?= $row['mem_no'] ?>');">회원에게 문자발송</button>
+                                    <?php }else{ ?>
+                                        <?= $row['mem_phone'] ?>
+                                    <?php } ?>
+                                </td>
                                 <td><?= $row['receiver_name'] ?></td>
                                 <td><?= $row['receiver_phone'] ?></td>
                                 <td><?= nl2br($row['cs_body']) ?></td>
@@ -172,6 +180,14 @@
         window.open(
             "http://gdadmin.dnfix202439.godomall.com/share/member_crm.php?popupMode=yes&navTabs=summary&memNo="+ mem_no, 
             "crm_member_"+mem_no, "width=1190,height=850,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+
+    }
+
+    function godoMemberSms(mem_no){
+
+        window.open(
+            "http://gdadmin.dnfix202439.godomall.com/member/sms_send.php?receiverMemNo="+ mem_no +"&receiverNm=&receiverPhone=&smsFl=", 
+            "sms_member_"+mem_no, "width=1000,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 
     }
 

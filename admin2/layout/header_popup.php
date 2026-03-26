@@ -142,7 +142,8 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .crm-wrap > ul{ display:table-cell; vertical-align:top; }
 .crm-menu-wrap{ width:200px; border-right:1px solid #9c9fae; }
 .crm-gap{ width:5px; border-right:1px solid #9c9fae; }
-.crm-body{ padding:90px 20px 20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
+.crm-body{ padding:20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
+.crm-body.has-top-menu{ padding:90px 20px 20px; }
 .crm-top-menu-wrap{ width:calc(100% - 205px); background-color:#fff; height:70px; position:fixed; 
 	top:0; left:205px; right:0; z-index:100; border-bottom:1px solid #9c9fae; 
 	display:flex; 
@@ -210,6 +211,15 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .button-wrap-back{ height:60px; }
 .button-wrap{ width:calc(100% - 205px); height:60px; line-height:60px; text-align:center; background:rgba(0,0,0,.4); border-top:1px solid #000; position:fixed; bottom:0; right:0;  }
 </STYLE>
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    var crmBodies = document.querySelectorAll('.crm-body');
+    crmBodies.forEach(function (bodyEl) {
+        var hasTopMenu = !!bodyEl.querySelector('.crm-top-menu-wrap');
+        bodyEl.classList.toggle('has-top-menu', hasTopMenu);
+    });
+});
+</script>
 
 </head>
 <body id="popup">

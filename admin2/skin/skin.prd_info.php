@@ -177,16 +177,19 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		flex-direction: column;
 		gap: 2px;
 		min-width: 0;
+		width: 0;
+		flex: 1;
 		align-items: flex-start;
 	}
 	.supplier-match-name {
+		display: block;
 		font-size: 12px;
 		color: #1f2937;
 		font-weight: 600;
+		width: 100%;
 		white-space: nowrap;
 		overflow: hidden;
 		text-overflow: ellipsis;
-		max-width: 250px;
 	}
 	.supplier-match-meta {
 		font-size: 11px;
@@ -203,6 +206,10 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		color: #666;
 		font-size: 12px;
 		border: 1px solid #e1e3e8;
+	}
+
+	.left-btn-wrap {
+		padding: 5px 15px 0 15px;
 	}
 </style>
 <div class="prd-quick-left">
@@ -336,6 +343,9 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<?php } 
 
 	?>
+	<div class="left-btn-wrap">
+		<button type="button" id="" class="btnstyle1 btnstyle1-info btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.prdGroupingAdd()" >이상품 그룹핑 추가</button>
+	</div>
 
 </div>
 
@@ -574,9 +584,17 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 		}
 
+		/**
+		 * 이상품 그룹핑 추가
+		 */
+		function prdGroupingAdd() {
+			onlyAD.prdGrouping('product_db', prd_idx);
+		}
+
 		return {
 
 			mode,
+			prdGroupingAdd,
 			makePsIdx: function() {
 
 				var payload = {

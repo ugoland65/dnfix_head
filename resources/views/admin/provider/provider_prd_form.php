@@ -131,7 +131,12 @@
             </tr>
             <tr>
                 <th>판매 상품명</th>
-                <td><input type='text' name='name' size='40' value="<?= $prd_data['name'] ?>"></td>
+                <td>
+                    <input type='text' name='name' size='40' value="<?= $prd_data['name'] ?>">
+                    <div class="admin-guide-text">
+                        브랜드에서 명칭한 정식 상품명이 특정이 될 경우 공급사에서 제공한 상품명을 무시하고 브랜드에서 명칭한 상품명을 사용합니다.
+                    </div>
+                </td>
             </tr>
             <tr>
                 <th>원(영문,일어,중국어) 상품명</th>

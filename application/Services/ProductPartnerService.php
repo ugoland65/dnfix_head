@@ -13,7 +13,6 @@ use App\Core\AuthAdmin;
 
 class ProductPartnerService extends BaseClass
 {
-
     /**
      * 상품 공급사 목록 조회
      * 
