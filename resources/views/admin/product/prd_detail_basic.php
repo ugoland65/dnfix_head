@@ -74,18 +74,39 @@
                             <div class="img-box">
                                 <?php
                                 if ($productData['CD_IMG'] ?? '') {
-                                    $img_path = '/data/comparion/' . $productData['CD_IMG'];
+                                    //$img_path = '/data/comparion/' . $productData['CD_IMG'];
+
+                                    if( $productData['img_mode'] == 'out' ){
+                                        if (!empty($productData['CD_IMG'])) {
+                                            $img_path = $productData['CD_IMG'];
+                                        }
+                                    }else{
+                                        if (!empty($productData['CD_IMG'])) {
+                                            $img_path = '/data/comparion/' . $productData['CD_IMG'];
+                                        }
+                                    }
+
                                 ?>
                                     <div class="m-b-15">
                                         <img src="<?= $img_path ?>" style="height:100px; margin-left:20px; border:1px solid #eee !important;">
                                     </div>
                                 <?php } ?>
 
-                                <input type='file' name='cd_img'><br>
-                                <input type='text' name='out_img' value="" placeholder="URL로 저장"><br>
+                                <div class="img-upload-file-wrap">
+                                    <ul>
+                                        <input type='file' name='cd_img'>
+                                    </ul>
+                                    <ul>
+                                        <input type='text' name='out_img' value="" placeholder="URL로 저장">
+                                    </ul>
+                                    <ul>
+                                        <label><input type="radio" name="img_mode" value="out" <?php if (($productData['img_mode'] ?? '') == "out") echo "checked"; ?>> 외부서버 이미지</label>
+                                        <label><input type="radio" name="img_mode" value="this" <?php if (($productData['img_mode'] ?? '') == "this") echo "checked"; ?>> 내부서버 이미지</label>
+                                    </ul>
+                                </div>
 
                                 <?php if ($productData['CD_IMG'] ?? '') { ?>
-                                    <div class="m-t-10"><?= $productData['CD_IMG'] ?></div>
+                                    <div class="m-t-10 cd-img-text-wrap"><?= $productData['CD_IMG'] ?></div>
                                 <?php } ?>
                             </div>
                         </ul>
@@ -216,6 +237,16 @@
                 </tr>
             <?php } ?>
 
+            <tr>
+                <th>단종 설정</th>
+                <td>
+                    <?php if ($productData['is_discontinued']) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdDetailBasicForm.unsetProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>')">단종 해제</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>')">단종 처리</button>
+                    <?php } ?>
+                </td>
+            </tr>
             <tr>
                 <th>리스트 메모</th>
                 <td>
@@ -689,6 +720,54 @@
         }
 
         /**
+         * 상품 단종 설정
+         */
+        function setProductDiscontinued(prd_idx) {
+
+            var payload = {
+                action_mode: 'set_product_discontinued',
+                prd_idx: prd_idx
+            };
+
+            ajaxRequest('/admin/product/action', payload)
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '처리가 완료되었습니다.');
+                        location.reload();
+                    } else {
+                        alert(res && res.message ? res.message : '처리 실패');
+                    }
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '에러');
+                });
+        }
+
+        /**
+         * 상품 단종 해제
+         */
+        function unsetProductDiscontinued(prd_idx) {
+
+            var payload = {
+                action_mode: 'unset_product_discontinued',
+                prd_idx: prd_idx
+            };
+
+            ajaxRequest('/admin/product/action', payload)
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '처리가 완료되었습니다.');
+                        location.reload();
+                    } else {
+                        alert(res && res.message ? res.message : '처리 실패');
+                    }
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '에러');
+                });
+        }
+
+        /**
          * 상품 베이직 저장
          */
         function save() {
@@ -750,6 +829,8 @@
             save,
             setProductSale,
             unsetProductSale,
+            setProductDiscontinued,
+            unsetProductDiscontinued,
         }
 
     }();

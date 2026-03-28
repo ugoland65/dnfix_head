@@ -110,6 +110,7 @@ class ProductService extends BaseClass
         $s_margin_group = $criteria['s_margin_group'] ?? null;
         $search_value = $criteria['search_value'] ?? null;
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
+        $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
 
         $since = $criteria['since'] ?? null;
         $idxs = $criteria['idxs'] ?? [];
@@ -166,6 +167,12 @@ class ProductService extends BaseClass
         // 수입국 검색
         if ($s_importing_country) {
             $query->where('A.cd_national', $s_importing_country);
+        }
+
+        // 단종여부 검색
+        if ($s_discontinued) {
+            
+            $query->where('A.is_discontinued', $s_discontinued);
         }
 
         // 마진율 그룹 검색 (A~I)
@@ -1173,6 +1180,11 @@ class ProductService extends BaseClass
         $add2File = $_FILES['cd_add2'] ?? null;
         $add3File = $_FILES['cd_add3'] ?? null;
         $outImg = (string)($postData['out_img'] ?? '');
+        $hasUploadedFile = !empty($mainFile['name'] ?? '')
+            || !empty($iconFile['name'] ?? '')
+            || !empty($add1File['name'] ?? '')
+            || !empty($add2File['name'] ?? '')
+            || !empty($add3File['name'] ?? '');
 
         if (!empty($mainFile['name'] ?? '')) {
             $saveFileName = 'prd_' . $adIdx . '_' . time();
@@ -1226,6 +1238,10 @@ class ProductService extends BaseClass
             ],
         ];
 
+        $imgMode = (string)($postData['img_mode'] ?? 'this');
+        if ($hasUploadedFile) {
+            $imgMode = 'this';
+        }
         $cdKindCode = (string)($postData['cd_kind_code'] ?? '');
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
@@ -1357,6 +1373,7 @@ class ProductService extends BaseClass
             'cd_memo3' => $cdMemo3,
             'CD_SEARCH_TERM' => $cdSearchTerm,
             'CD_RELEASE_DATE' => $cdReleaseDate,
+            'img_mode' => $imgMode,
             'CD_IMG' => $imgName,
             'CD_IMG2' => $imgName2,
             'cd_add_img' => json_encode($cdAddImgData, JSON_UNESCAPED_UNICODE),
@@ -1642,6 +1659,94 @@ class ProductService extends BaseClass
         if (is_file($fullPath)) {
             @unlink($fullPath);
         }
+    }
+
+    /**
+     * 상품 단종 설정
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function setProductDiscontinued($postData)
+    {
+
+        $idx = (int)($postData['prd_idx'] ?? 0);
+
+        $oldProduct = ProductModel::query()
+            ->select('CD_IDX', 'is_discontinued')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        if($oldProduct['is_discontinued'] == 1) {
+            throw new Exception('이미 단종 처리된 상품입니다.');
+        }
+
+        $updateData = [
+            'is_discontinued' => 1,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
+
+    }
+
+
+    /**
+     * 상품 단종 해제
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function unsetProductDiscontinued($postData)
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+    
+        $oldProduct = ProductModel::query()
+            ->select('CD_IDX', 'is_discontinued')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        if($oldProduct['is_discontinued'] == 0) {
+            throw new Exception('이미 단종 해제된 상품입니다.');
+        }
+
+        $updateData = [
+            'is_discontinued' => 0,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+            
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
+
     }
 
 }

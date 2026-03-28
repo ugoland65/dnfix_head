@@ -58,6 +58,13 @@
                 </select>
             </ul>
             <ul>
+                <select name="s_discontinued" id="s_discontinued" >
+                    <option value="">단종여부</option>
+                    <option value="1" <? if( $s_discontinued == '1' ) echo "selected";?> >단종</option>
+                    <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >미단종</option>
+                </select>
+            </ul>
+            <ul>
                 <select name="s_margin_group" id="s_margin_group" >
                     <option value="">마진그룹 </option>
                     <?
@@ -230,6 +237,9 @@
                                         <?php } ?>
                                         <?php if( $product['is_sale_special'] ){ ?>
                                             <label class="on_sale_label xs special">특가할인</label>
+                                        <?php } ?>
+                                        <?php if( $product['is_discontinued'] ){ ?>
+                                            <label class="on_sale_label xs discontinued">단종</label>
                                         <?php } ?>
 
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
@@ -433,6 +443,7 @@ function select_all() {
 			's_brand': $("#s_brand").val(),
 			'sort_mode': $("#sort_kind").val(),
 			's_godo_sale_status': $("#s_godo_sale_status").val(),
+			's_discontinued': $("#s_discontinued").val(),
 		};
 
 		// 추가 파라미터가 있으면 병합

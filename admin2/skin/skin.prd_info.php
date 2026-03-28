@@ -21,7 +21,7 @@ if (!$_prd_idx) {
 if ($_prd_idx) {
 
 	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
-		A.cd_reg_time, A.cd_reg, A.supplier_prd_idx";
+		A.cd_reg_time, A.cd_reg, A.supplier_prd_idx, A.is_discontinued";
 
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special";
 	$_colum .= ", C.BD_NAME";
@@ -214,13 +214,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 </style>
 <div class="prd-quick-left">
 
-	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special']) { ?>
+	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special'] || $prd_data['is_discontinued']) { ?>
 		<div class="on_sale_label_wrap">
 			<?php if ($prd_data['is_sale_month']) { ?>
 				<label class="on_sale_label xs monthly">월간할인</label>
 			<?php } ?>
 			<?php if ($prd_data['is_sale_special']) { ?>
 				<label class="on_sale_label xs special">특가할인</label>
+			<?php } ?>
+			<?php if ($prd_data['is_discontinued']) { ?>
+				<label class="on_sale_label xs discontinued">단종</label>
 			<?php } ?>
 		</div>
 	<?php } ?>

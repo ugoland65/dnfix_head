@@ -52,6 +52,7 @@ class ProductController extends BaseClass
             $search_value = $requestData['search_value'] ?? null;
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
+            $s_discontinued = $requestData['s_discontinued'] ?? null;
 
             //서비스로 넘겨주는 값
             $payload = [
@@ -67,6 +68,7 @@ class ProductController extends BaseClass
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
+                's_discontinued' => $s_discontinued,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -95,6 +97,7 @@ class ProductController extends BaseClass
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
+                's_discontinued' => $s_discontinued,
                 'rack_code' => $rack_code,
                 'in_stock' => $in_stock,
                 'search_value' => $search_value,
@@ -145,6 +148,7 @@ class ProductController extends BaseClass
             $search_value = $requestData['search_value'] ?? null;
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
+            $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종여부
 
             //서비스로 넘겨주는 값
             $payload = [
@@ -161,6 +165,7 @@ class ProductController extends BaseClass
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
+                's_discontinued' => $s_discontinued,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -347,6 +352,46 @@ class ProductController extends BaseClass
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+
+    /**
+     * 상품 처리 액션
+     */
+    public function productAction(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            $actionMode = $requestData['action_mode'] ?? null;
+
+            switch ($actionMode) {
+
+                case 'set_product_discontinued':
+                    $result = $this->productService->setProductDiscontinued($requestData);
+                    break;
+
+                case 'unset_product_discontinued':
+                    $result = $this->productService->unsetProductDiscontinued($requestData);
+                    break;
+
+            }
+
+            $message = (is_array($result) && isset($result['message'])) ? $result['message'] : '처리 완료';
+
+            return response()->json([
+                'success' => true,
+                'message' => $message,
+                'data' => $result,
+            ]);
+
+        }
+        catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

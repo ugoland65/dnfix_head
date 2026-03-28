@@ -208,6 +208,21 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 }
 .img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
 
+.img-upload-file-wrap{
+	display:flex;
+	flex-direction:column;
+	gap:5px;
+}
+
+.cd-img-text-wrap{
+	width:100%;
+	max-width:100%;
+	white-space:normal;
+	word-break:break-word;
+	overflow-wrap:anywhere;
+	line-height:1.4;
+}
+
 .button-wrap-back{ height:60px; }
 .button-wrap{ width:calc(100% - 205px); height:60px; line-height:60px; text-align:center; background:rgba(0,0,0,.4); border-top:1px solid #000; position:fixed; bottom:0; right:0;  }
 </STYLE>

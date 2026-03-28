@@ -86,6 +86,9 @@
 .on_sale_label.special{
 	background-color:#28a745;
 }
+.on_sale_label.discontinued{
+	background-color:#222121;
+}
 
 /* 공통 배지 */
 .grade-badge{

@@ -83,6 +83,7 @@ try {
     $router->post('/product/saveProductPrice', ProductController::class, 'saveProductPrice'); //상품 매입정보 저장
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
+    $router->post('/product/action', ProductController::class, 'productAction'); //상품 처리 액션
 
     //공급사
     $router->get('/provider_product/list', ProductPartnerController::class, 'getProductPartnerList'); //공급사 상품 목록

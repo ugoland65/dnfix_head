@@ -28,7 +28,7 @@ include "../lib/inc_common.php";
 			$_qty = $_select_json[$z]['qty'];
 
 			$prd_data = wepix_fetch_array(wepix_query_error("select 
-				A.CD_NAME, A.CD_IMG, A.CD_CODE, A.CD_CODE2, A.cd_code_fn, A.CD_INV_NAME1, A.CD_INV_NAME2, A.CD_INV_MATERIAL, A.CD_NAME_OG, A.CD_COO,
+				A.CD_NAME, A.CD_IMG, A.CD_CODE, A.CD_CODE2, A.cd_code_fn, A.CD_INV_NAME1, A.CD_INV_NAME2, A.CD_INV_MATERIAL, A.CD_NAME_OG, A.CD_COO, A.img_mode,
 				B.ps_idx, B.ps_rack_code, B.ps_stock,
 				C.BD_NAME 
 				from "._DB_COMPARISON." A 
@@ -36,7 +36,17 @@ include "../lib/inc_common.php";
 				left join "._DB_BRAND." C  ON (A.CD_BRAND_IDX = C.BD_IDX ) 
 				where CD_IDX = '".$_pidx."' "));
 
-			$img_path = '../../data/comparion/'.$prd_data['CD_IMG'];
+			//$img_path = '../../data/comparion/'.$prd_data['CD_IMG'];
+
+			if( $prd_data['img_mode'] == 'out' ){
+				if (!empty($prd_data['CD_IMG'])) {
+					$img_path = $prd_data['CD_IMG'];
+				}
+			}else{
+				if (!empty($prd_data['CD_IMG'])) {
+					$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
+				}
+			}
 
 			$_prd[] = array(
 				"ps_idx" => $prd_data['ps_idx'],
