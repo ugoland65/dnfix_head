@@ -1617,7 +1617,6 @@ class ProductService extends BaseClass
         $afterData = array_merge($oldProduct, $updateData);
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
-
         $actionSummary = (string)($postData['action_summary'] ?? '');
         if ($actionSummary === '') {
             $actionSummary = '상품 매입정보 수정';
@@ -1695,6 +1694,26 @@ class ProductService extends BaseClass
         $afterData = array_merge($oldProduct, $updateData);
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 단종 설정';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 단종 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
 
         return [
             'success' => true,
@@ -1739,6 +1758,26 @@ class ProductService extends BaseClass
         $afterData = array_merge($oldProduct, $updateData);
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 단종 해제';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 단종 해제 성공/실패에 영향을 주지 않도록 분리한다.
+        }
 
         return [
             'success' => true,

@@ -23,6 +23,7 @@ class OrderSheetModel extends BaseModel
             'oo_sum_currency', //주문 결제 가격 화폐
             'oo_sum_exchange_rate', //주문 결제 가격 환율
             'oo_sum_price', //주문 결제 가격
+            'oo_prd_to_pay_exchange_rate', // 환산 환율
             'oo_tex_data', //세금 정보
             'oo_upload_file', //주문 관련 파일
             'oo_express_data', //배송 정보

@@ -368,11 +368,11 @@ var orderSheet = function () {
 		 * @param {number} idx
 		 * @param {number} oop_idx
 		 */
-		Detail: function (idx, oop_idx) {
+		Detail: function (idx, oop_idx, form_view) {
 
 			$.ajax({
 				url: "/ad/ajax/order_sheet_detail",
-				data: { "idx": idx, "open_oop_idx": oop_idx },
+				data: { "idx": idx, "open_oop_idx": oop_idx, "form_view": form_view },
 				type: "POST",
 				dataType: "html",
 				success: function (html) {

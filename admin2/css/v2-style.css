@@ -491,8 +491,11 @@ tr.selected-row:hover {
 
 			/* 취소 라인 */
 			&.status_clx{
-				background-color:#e2dadc;
+				background-color:#eee;
 				.status-box{ color:#ff0000; font-weight:bold; }
+			}
+			&.status_clx2{
+				background-color:#d1c7ca;
 			}
 
 			/* block */
@@ -519,6 +522,8 @@ tr.selected-row:hover {
 
 
 			/* hover 시 기본색보다 진하게 */
+			&.red:hover{ background-color:#ffcbcb; }
+			&.status_clx2:hover{ background-color:#d1c7ca; }
 			&.status_end2:hover{ background-color:#e6e6e6; }
 			&.status_bl:hover{ background-color:#eef08e; }
 

@@ -804,7 +804,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$response = array('success' => true, 'msg' => '완료' );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 주문서 가격 신규등록
+// @deprecated 주문서 가격 신규등록
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "orderSheet_price_new" ){
 
@@ -863,7 +863,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$response = array('success' => true, 'msg' => '완료' );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 주문서 가격수정
+// @deprecated 주문서 가격수정
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "orderSheet_price_modify" ){
 
@@ -1050,7 +1050,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$response = array('success' => true, 'msg' => '완료' );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 주문서 그룹 상품담기
+// @deprecated 주문서 그룹 상품담기
 }elseif( $_a_mode == "orderSheet_groupOrder" ){
 
 	$_oo_idx = $_POST['oo_idx'] ?? "";
@@ -1198,7 +1198,7 @@ if( $_a_mode == "orderSheet_reg" ){
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 상품 단종처리
+// @deprecated 상품 단종처리
 }elseif( $_a_mode == "orderSheet_soldOut" ){
 
 	$_oop_idx = $_POST['oop_idx'] ?? "";
@@ -1254,14 +1254,14 @@ if( $_a_mode == "orderSheet_reg" ){
 	sql_query_error($query);
 
 	if( $_cd_idx ){
-		//sql_query_error("update "._DB_COMPARISON." set CD_SALE_STATE = '".$_cd_sale_state."' where CD_IDX = '".$_cd_idx."' ");
+		sql_query_error("update "._DB_COMPARISON." set is_discontinued = '1' where CD_IDX = '".$_cd_idx."' ");
 	}
 
 	$response = array('success' => true, 'msg' => '완료' );
 
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 상품 주문 실패처리
+// @deprecated 상품 주문 실패처리
 }elseif( $_a_mode == "orderSheet_unitFalse" ){
 
 	$_oo_idx = $_POST['oo_idx'] ?? "";
@@ -1722,7 +1722,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$_keyword = $_POST['keyword'] ?? null;
 	$_s_brand = $_POST['s_brand'] ?? null;
 
-/*
+	/*
 	echo "<pre>";
 	print_r($_keyword);
 	print_r($_s_brand);
@@ -1765,12 +1765,12 @@ if( $_a_mode == "orderSheet_reg" ){
 	}
 
 
-/*
-	echo "<pre>";
-	print_r($_search_query);
-	echo "</pre>";
-	exit;
-*/
+	/*
+		echo "<pre>";
+		print_r($_search_query);
+		echo "</pre>";
+		exit;
+	*/
 
 	$_search_count = 0;
 	$_prd_data = [];

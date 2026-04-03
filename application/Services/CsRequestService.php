@@ -110,7 +110,10 @@ class CsRequestService
         $orderDate = $data['orderDate'] ?? null;
         $paymentDt = $data['paymentDt'] ?? null;
         $memNo = $data['memNo'] ?? null;
-        $memId = $data['memId'] ?? null;
+        $memId = trim((string)($data['memId'] ?? ''));
+        if ($memId === '') {
+            $memId = trim((string)($memNo ?? ''));
+        }
         $memName = $data['memName'] ?? null;
         $memPhone = $data['memPhone'] ?? null;
         $receiverName = $data['receiverName'] ?? null;

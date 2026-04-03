@@ -53,8 +53,10 @@ class OrderGroupService
     public function updateOrderGroup($requestData)
     {
 
+        $mode = $requestData['mode'] ?? '';
         $idx = $requestData['idx'] ?? null;
-        if (empty($idx)) {
+
+        if ( empty($idx) && $mode === 'modify' ) {
             throw new Exception("주문서 폼 번호가 없습니다.");
         }
 
@@ -79,18 +81,33 @@ class OrderGroupService
         ];
         $bank = json_encode($oog_data_json, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
+        $saveData = [
+            'oog_name' => $oog_name,
+            'oog_import' => $oog_import,
+            'oog_code' => $oog_code,
+            'oog_group' => $oog_group,
+            'bank' => $bank,
+            'memo' => $memo,
+        ];
 
-        $query = OrderGroupModel::where('oog_idx', $idx)
-            ->update([
-                'oog_name' => $oog_name,
-                'oog_import' => $oog_import,
-                'oog_code' => $oog_code,
-                'oog_group' => $oog_group,
-                'bank' => $bank,
-                'memo' => $memo,
-            ]);
+        if ($mode === 'create') {
+            $newIdx = OrderGroupModel::query()->insertGetId($saveData);
+            return [
+                'mode' => 'create',
+                'idx' => $newIdx,
+            ];
+        }
 
-        return $query;
+        if ($mode === 'modify') {
+            $updated = OrderGroupModel::where('oog_idx', $idx)->update($saveData);
+            return [
+                'mode' => 'modify',
+                'idx' => $idx,
+                'updated' => $updated,
+            ];
+        }
+
+        throw new Exception("유효하지 않은 mode 값입니다.");
     }
 
 }

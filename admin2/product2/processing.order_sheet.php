@@ -724,7 +724,7 @@ if( $_a_mode == "makeOrder" ){
 
 	$_oo_date_data = json_decode($oo_data[oo_date_data], true);
 
-	$_oo_sum_price = (int)str_replace(',','', $_oo_sum_price);
+	$_oo_sum_price = (double)str_replace(',','', $_oo_sum_price);
 	$_exchange_charge = (int)str_replace(',','', $_exchange_charge);
 	$_oo_fn_price = (int)str_replace(',','', $_oo_fn_price);
 

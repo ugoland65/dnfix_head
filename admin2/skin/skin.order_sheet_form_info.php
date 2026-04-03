@@ -74,10 +74,10 @@ if( $_idx ){
 		<form id="form1">
 
 		<? if( $_idx ){ ?>
-		<input type="hidden" name="a_mode" value="orderSheetForm_modify" >
+		<input type="hidden" name="mode" value="modify" >
 		<input type="hidden" name="idx" value="<?=$_oog_idx ?? ''?>" >
 		<? }else{ ?>
-		<input type="hidden" name="a_mode" value="orderSheetForm_reg" >
+		<input type="hidden" name="mode" value="create" >
 		<? } ?>
 
 		<table class="table-style border01 width-full">

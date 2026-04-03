@@ -180,6 +180,22 @@ var orderSheetDetail = function() {
 		var oprice_sum_qty = 0;
 		var oprice_sum_goods = 0;
 		var oprice_sum_weight = 0;
+			var toNumber = function(value){
+				var normalized = String(value ?? '').replace(/,/g, '').trim();
+				var n = parseFloat(normalized);
+				return isFinite(n) ? n : 0;
+			};
+			var formatDecimalForView = function(value, precision){
+				var p = (typeof precision === 'number') ? precision : 2;
+				var rounded = Math.round((toNumber(value) + Number.EPSILON) * Math.pow(10, p)) / Math.pow(10, p);
+				var text = rounded.toFixed(p);
+				if (p > 0 && text.slice(-(p + 1)) === '.' + '0'.repeat(p)) {
+					text = rounded.toFixed(0);
+				}
+				var parts = text.split('.');
+				parts[0] = parts[0].replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+				return parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
+			};
 
 		$(".checkSelect:checked").each(function(){
 
@@ -188,18 +204,18 @@ var orderSheetDetail = function() {
 			if( $("#unit_qty_" + checkbox_id).val() == "" ){
 				var plus_oprice_sum_qty = 1;
 			}else{
-				var plus_oprice_sum_qty = ($("#unit_qty_" + checkbox_id).val() * 1);
+				var plus_oprice_sum_qty = toNumber($("#unit_qty_" + checkbox_id).val());
 			}
 
-			oprice_allsum = oprice_allsum + ($("#unit_price_sum_" + checkbox_id).val() * 1);
+			oprice_allsum = oprice_allsum + toNumber($("#unit_price_sum_" + checkbox_id).val());
 			oprice_sum_goods++;
 			oprice_sum_qty = oprice_sum_qty + plus_oprice_sum_qty;
-			oprice_sum_weight = oprice_sum_weight + ($("#weight_"+checkbox_id).data('weight') * plus_oprice_sum_qty);
+			oprice_sum_weight = oprice_sum_weight + (toNumber($("#weight_"+checkbox_id).data('weight')) * plus_oprice_sum_qty);
 
 		});
 
 
-		$("#oprice_allsum_" + oop_idx).html(GC.comma(oprice_allsum));
+		$("#oprice_allsum_" + oop_idx).html(formatDecimalForView(oprice_allsum, 2));
 		$("#oprice_allsum_data_" + oop_idx).val(oprice_allsum);
 
 		//선택상품
@@ -225,6 +241,113 @@ var orderSheetDetail = function() {
 		$("#oprice_sum_weight_data_" + oop_idx).val(oprice_sum_weight);
 		if( $("#group_body_sum_weight_" + oop_idx).length ){ $("#group_body_sum_weight_" + oop_idx).html(show_oprice_sum_weight);  }
 
+		// 하단 footer 총합(총수량/합가격) 동기화: 체크항목이 아닌 "현재 전체 라인" 기준으로 계산
+		if (
+			$("#order_sheet_total_qty").length ||
+			$("#order_sheet_total_sum_price").length ||
+			$("#order_sheet_pay_total_sum_price").length ||
+			$("#order_sheet_total_weight_sum_kg").length
+		) {
+			var footerTotalQty = 0;
+			var footerTotalSum = 0;
+			var footerPayTotalSum = 0;
+			var footerTotalWeightSumKg = 0;
+			var isFalseByRowId = function(rowId){
+				return String($("#unit_qty_" + rowId).data('is-false') || '0') === '1';
+			};
+
+			$(".qty-input").each(function(){
+				if (String($(this).data('is-false') || '0') === '1') {
+					return;
+				}
+				var qty = toNumber($(this).val());
+				footerTotalQty += qty;
+
+				var inputId = String($(this).attr('id') || '');
+				var rowId = inputId.replace('unit_qty_', '');
+				if (rowId !== '') {
+					var unitWeight = toNumber($("#weight_" + rowId).data('weight'));
+					if (unitWeight > 0 && qty > 0) {
+						footerTotalWeightSumKg += (unitWeight * qty) / 1000;
+					}
+				}
+			});
+
+			$(".unit-price-sum-data").each(function(){
+				var thisId = String($(this).attr('id') || '');
+				var rowId = thisId.replace('unit_price_sum_', '');
+				if (rowId !== '' && isFalseByRowId(rowId)) {
+					return;
+				}
+				footerTotalSum += toNumber($(this).val());
+			});
+			$(".pay-unit-price-sum-data").each(function(){
+				var thisId = String($(this).attr('id') || '');
+				var rowId = thisId.replace('pay_unit_price_sum_', '');
+				if (rowId !== '' && isFalseByRowId(rowId)) {
+					return;
+				}
+				footerPayTotalSum += toNumber($(this).val());
+			});
+
+			if ($("#order_sheet_total_qty").length) {
+				$("#order_sheet_total_qty").html(GC.comma(footerTotalQty));
+			}
+			if ($("#order_sheet_total_sum_price").length) {
+				var totalSumRounded = Math.round((footerTotalSum + Number.EPSILON) * 100) / 100;
+				var totalSumText = totalSumRounded.toFixed(2);
+				if (totalSumText.slice(-3) === '.00') {
+					totalSumText = totalSumRounded.toFixed(0);
+				}
+				$("#order_sheet_total_sum_price").html(GC.comma(totalSumText));
+
+				var $totalWonEl = $("#order_sheet_total_sum_price_won");
+				if ($totalWonEl.length > 0) {
+					var footerExchangeRateRaw = String($totalWonEl.data('exchangerate') || '0');
+					var footerCurrency = String($totalWonEl.data('currency') || '');
+					var footerExchangeRate = parseFloat(footerExchangeRateRaw.replace(/,/g, "")) || 0;
+					if (footerExchangeRate > 0) {
+						var footerWonRaw = totalSumRounded * footerExchangeRate;
+						if (footerCurrency === '엔' || footerCurrency.toUpperCase() === 'JPY') {
+							footerWonRaw = footerWonRaw / 100;
+						}
+						$totalWonEl.html(GC.comma(Math.round(footerWonRaw)));
+					} else {
+						$totalWonEl.html("");
+					}
+				}
+			}
+			if ($("#order_sheet_pay_total_sum_price").length) {
+				var payTotalSumRounded = Math.round((footerPayTotalSum + Number.EPSILON) * 100) / 100;
+				var payTotalSumText = payTotalSumRounded.toFixed(2);
+				if (payTotalSumText.slice(-3) === '.00') {
+					payTotalSumText = payTotalSumRounded.toFixed(0);
+				}
+				$("#order_sheet_pay_total_sum_price").html(GC.comma(payTotalSumText));
+
+				var $payTotalWonEl = $("#order_sheet_pay_total_sum_price_won");
+				if ($payTotalWonEl.length > 0) {
+					var payFooterExchangeRateRaw = String($payTotalWonEl.data('exchangerate') || '0');
+					var payFooterCurrency = String($payTotalWonEl.data('currency') || '');
+					var payFooterExchangeRate = parseFloat(payFooterExchangeRateRaw.replace(/,/g, "")) || 0;
+					if (payFooterExchangeRate > 0) {
+						var payFooterWonRaw = payTotalSumRounded * payFooterExchangeRate;
+						if (payFooterCurrency === '엔' || payFooterCurrency.toUpperCase() === 'JPY') {
+							payFooterWonRaw = payFooterWonRaw / 100;
+						}
+						$payTotalWonEl.html(GC.comma(Math.round(payFooterWonRaw)));
+					} else {
+						$payTotalWonEl.html("");
+					}
+				}
+			}
+			if ($("#order_sheet_total_weight_sum_kg").length) {
+				var totalWeightSumKgRounded = Math.round((footerTotalWeightSumKg + Number.EPSILON) * 1000) / 1000;
+				var totalWeightSumKgText = totalWeightSumKgRounded.toFixed(3).replace(/\.?0+$/, '');
+				$("#order_sheet_total_weight_sum_kg").html(GC.comma(totalWeightSumKgText));
+			}
+		}
+
 		var bw1 = $("#group_side_sum_qty_"+ detailDisplay).html() * 1;
 		var bw2 = $("#group_side_sum_qty_"+ detailDisplay).data('value') * 1;
 
@@ -246,7 +369,8 @@ var orderSheetDetail = function() {
 		$("#group_side_" + oop_idx).addClass('active');
 
 		$.ajax({
-			url: "/ad/ajax/order_sheet_detail_prd",
+			//url: "/ad/ajax/order_sheet_detail_prd",
+			url: "/admin//order/sheet/delete_product",
 			data : { "oo_idx" : oo_idx, "oop_idx" : oop_idx, "form_view" : form_view  },
 			type: "POST",
 			dataType: "html",
@@ -388,23 +512,117 @@ var orderSheetDetail = function() {
 		qtyGogo : function( id, oop_idx ) {
 
 			var oprice = $("#unit_price_"+ id).val();
-			var v = $("#unit_qty_"+ id).val();
+			var payOprice = $("#pay_unit_price_"+ id).val();
+			var $qtyInput = $("#unit_qty_"+ id);
+			var v = $qtyInput.val();
+			var isFalseRow = String($qtyInput.data('is-false') || '0') === '1';
+			var unitWeight = parseFloat(String($("#weight_" + id).data('weight') || 0).replace(/,/g, "")) || 0;
 			oprice = parseFloat(String(oprice).replace(/,/g, "")) || 0;
+			payOprice = parseFloat(String(payOprice).replace(/,/g, "")) || 0;
 			v = parseFloat(String(v).replace(/,/g, "")) || 0;
+
+			// 결품상품은 라인 계산/합계 계산에서 제외
+			if (isFalseRow) {
+				groupSum(oop_idx);
+				return;
+			}
 
 			if(v=="") v=0;
 			if( oprice > 0 && v > 0 ) {	
 				var oprice_sum = Math.round(((oprice * v) + Number.EPSILON) * 100) / 100;
 				if( oprice_sum > 0 ){
 					var oprice_sum_text = oprice_sum.toFixed(2);
+					if (oprice_sum_text.slice(-3) === '.00') {
+						oprice_sum_text = oprice_sum.toFixed(0);
+					}
 					$("#unit_price_sum_"+ id).val(oprice_sum_text);
 					$("#order_qty_sum_"+ id).html(GC.comma(oprice_sum_text));
+
+					var $sumWonEl = $("#order_qty_sum_won_" + id);
+					if ($sumWonEl.length > 0) {
+						var exchangeRateRaw = String($sumWonEl.data('exchangerate') || '0');
+						var currency = String($sumWonEl.data('currency') || '');
+						var exchangeRate = parseFloat(exchangeRateRaw.replace(/,/g, "")) || 0;
+						if (exchangeRate > 0) {
+							var wonSumRaw = oprice_sum * exchangeRate;
+							if (currency === '엔' || currency.toUpperCase() === 'JPY') {
+								wonSumRaw = wonSumRaw / 100;
+							}
+							$sumWonEl.html(GC.comma(Math.round(wonSumRaw)));
+						} else {
+							$sumWonEl.html("");
+						}
+					}
+
 					ckTr(id,"on");
 				}
 			}else{
 				$("#unit_price_sum_"+ id).val("");
 				$("#order_qty_sum_"+ id).html("");
+				var $sumWonEl = $("#order_qty_sum_won_" + id);
+				if ($sumWonEl.length > 0) {
+					$sumWonEl.html("");
+				}
 				ckTr(id,"off");
+			}
+
+			// 라인별 총중량(gram / kg) 동기화
+			if ($("#weight_sum_" + id).length > 0 || $("#weight_sum_kg_" + id).length > 0) {
+				var weightSum = 0;
+				var weightSumKg = 0;
+				if (unitWeight > 0 && v > 0) {
+					weightSum = Math.round((unitWeight * v) * 100) / 100;
+					weightSumKg = Math.round(((weightSum / 1000) + Number.EPSILON) * 100) / 100;
+				}
+				if ($("#weight_sum_" + id).length > 0) {
+					$("#weight_sum_" + id).html(GC.comma(weightSum));
+				}
+				if ($("#weight_sum_kg_" + id).length > 0) {
+					$("#weight_sum_kg_" + id).html(GC.comma(weightSumKg));
+				}
+			}
+
+			// 결제통화 합가격/원화 합계 동기화
+			// (국내 주문 등 결제통화 컬럼이 없는 경우를 위해 요소가 존재할 때만 처리)
+			var hasPayPriceTargets =
+				$("#pay_unit_price_sum_" + id).length > 0 ||
+				$("#pay_order_qty_sum_" + id).length > 0 ||
+				$("#pay_order_qty_sum_won_" + id).length > 0;
+			if (hasPayPriceTargets) {
+				if (payOprice > 0 && v > 0) {
+					var payOpriceSum = Math.round(((payOprice * v) + Number.EPSILON) * 100) / 100;
+					if (payOpriceSum > 0) {
+						var payOpriceSumText = payOpriceSum.toFixed(2);
+						if (payOpriceSumText.slice(-3) === '.00') {
+							payOpriceSumText = payOpriceSum.toFixed(0);
+						}
+						$("#pay_unit_price_sum_" + id).val(payOpriceSumText);
+						$("#pay_order_qty_sum_" + id).html(GC.comma(payOpriceSumText));
+
+						var $paySumWonEl = $("#pay_order_qty_sum_won_" + id);
+						if ($paySumWonEl.length > 0) {
+							var payExchangeRateRaw = String($paySumWonEl.data('exchangerate') || '0');
+							var payCurrency = String($paySumWonEl.data('currency') || '');
+							var payExchangeRate = parseFloat(payExchangeRateRaw.replace(/,/g, "")) || 0;
+							if (payExchangeRate > 0) {
+								var payWonSumRaw = payOpriceSum * payExchangeRate;
+								if (payCurrency === '엔' || payCurrency.toUpperCase() === 'JPY') {
+									payWonSumRaw = payWonSumRaw / 100;
+								}
+								$paySumWonEl.html(GC.comma(Math.round(payWonSumRaw)));
+							} else {
+								$paySumWonEl.html("");
+							}
+						}
+					}
+				} else {
+					$("#pay_unit_price_sum_" + id).val("");
+					$("#pay_order_qty_sum_" + id).html("");
+					var $paySumWonEl = $("#pay_order_qty_sum_won_" + id);
+					if ($paySumWonEl.length > 0) {
+						$paySumWonEl.html("");
+					}
+				}
 			}
 
 			groupSum(oop_idx);

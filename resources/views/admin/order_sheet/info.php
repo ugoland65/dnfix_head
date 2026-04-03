@@ -143,10 +143,32 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                 <input type="text" name='oo_sum_exchange_rate' class="" value="<?= $orderSheetInfo['oo_sum_exchange_rate'] ?? '' ?>">
                             </td>
                         </tr>
+
+                        <?php
+                            $_is_currency_conversion_visible = (
+                                ($orderSheetInfo['oo_import'] ?? '') !== '국내'
+                                && (($orderSheetInfo['oo_prd_currency'] ?? '') !== ($orderSheetInfo['oo_sum_currency'] ?? ''))
+                            );
+                        ?>
+                        <tr id="currency_conversion_row" style="<?= $_is_currency_conversion_visible ? '' : 'display:none;' ?>">
+                            <th>통화 환산 환율</th>
+                            <td>
+                                ( <span id="currency_conversion_from"><?= $orderSheetInfo['oo_prd_currency'] ?? '' ?></span> -> <span id="currency_conversion_to"><?= $orderSheetInfo['oo_sum_currency'] ?? '' ?></span> ) 환산 환율
+                                <input type="text" name='prd_to_pay_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_to_pay_exchange_rate'] ?? '' ?>">
+                                <div class="admin-guide-text">
+                                    ※ 입력은 USD → CNY 기준 환율로 입력해 주세요. (예: 1 USD = 6.8 CNY)<br/>
+                                </div>
+                            </td>
+                        </tr>
+                        
                     </table>
 
                     <div class="admin-guide-text">
-                        - 예) 중국 주문일경우 상품가격 통화는 위안, 결제는 달러로 해야할경우 결제 통화와, 환율을 설정해주세요.<br>
+                        - JPY 환율은 100엔 기준이며, 입력값은 '100엔 = 원화 금액' 형태로 사용됩니다.<br>
+                        &nbsp;&nbsp;&nbsp;예) 환율이 9.244 일때 100엔 = 924.4으로 입력해주세요.<br>
+                        - 중국 주문일경우 상품가격 통화는 위안, 결제는 달러로 해야할경우 결제 통화와, 환율이 따로 설정 가능합니다.<br>
+                        - 중국 주문일경우 상품가격이 위안이고 결제는 달러로 해야하는 경우 통화 환산 환율을 입력해주세요.<br>
+                        &nbsp;&nbsp;&nbsp;만약 통화 환산 환율이 없다면 달러가를 개별 등록해야 합니다.<br>
                         - 국내주문은 안써도 됨
                     </div>
 
@@ -219,7 +241,11 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th style="width:120px;">상품 주문가격</th>
                             <td>
-                                <input type='text' name='prd_sum_price' class="price" value="<?= number_format($orderSheetInfo['oo_price_data']['prd_sum_price'] ?? 0) ?>">
+                                <?php
+                                    $_prd_sum_price_view = (float)($orderSheetInfo['oo_price_data']['prd_sum_price'] ?? 0);
+                                    $_prd_sum_price_view_text = number_format($_prd_sum_price_view, ($_prd_sum_price_view == floor($_prd_sum_price_view)) ? 0 : 2);
+                                ?>
+                                <input type='text' name='prd_sum_price' class="price price-decimal" value="<?= $_prd_sum_price_view_text ?>">
                                 <?= $orderSheetInfo['oo_prd_currency'] ?? '' ?>
                                 <div class="admin-guide-text">
                                     - 결제 통화와 다를 경우 입력해주세요.<br>
@@ -231,7 +257,11 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>주문 결제 가격</th>
                             <td>
-                                <input type='text' name='oo_sum_price' class="price" value="<?= number_format($orderSheetInfo['oo_sum_price'] ?? 0) ?>">
+                                <?php
+                                    $_oo_sum_price_view = (float)($orderSheetInfo['oo_sum_price'] ?? 0);
+                                    $_oo_sum_price_view_text = number_format($_oo_sum_price_view, ($_oo_sum_price_view == floor($_oo_sum_price_view)) ? 0 : 2);
+                                ?>
+                                <input type='text' name='oo_sum_price' class="price price-decimal" value="<?= $_oo_sum_price_view_text ?>">
                                 <?= $orderSheetInfo['oo_sum_currency'] ?? '' ?>
                             </td>
                         </tr>
@@ -258,7 +288,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                                     <option value="추가" <? if ($change_price['mode'] == "추가") echo "selected"; ?>>추가</option>
                                                 </select>
                                             <li>
-                                            <li><input type="text" name='change_price_price[]' class="price" placeholder="금액" value="<?= number_format($change_price['price'] ?? 0, 2) ?>">
+                                            <li><input type="text" name='change_price_price[]' class="price price-decimal" placeholder="금액" value="<?= number_format($change_price['price'] ?? 0, 2) ?>">
                                             <li>
                                             <li><input type="text" name='change_price_body[]' class='change-price-body' value="<?= $change_price['body'] ?? '' ?>" placeholder="사유">
                                             <li>
@@ -275,7 +305,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>확정 주문 금액</th>
                             <td>
-                                <input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point" value="<?= number_format($orderSheetInfo['oo_fn_price'] ?? 0, 2) ?>">
+                                <input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point price-decimal" value="<?= number_format($orderSheetInfo['oo_fn_price'] ?? 0, 2) ?>">
                                 <?= $orderSheetInfo['oo_sum_currency'] ?? '' ?>
                             </td>
                         </tr>
@@ -774,7 +804,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 '<option value="추가">추가</option>' +
                 '</select>' +
                 '<li>' +
-                '<li><input type="text" name="change_price_price[]" class="price" placeholder="금액"><li>' +
+                '<li><input type="text" name="change_price_price[]" class="price price-decimal" placeholder="금액"><li>' +
                 '<li><input type="text" name="change_price_body[]" class= "change-price-body" placeholder="사유"><li>' +
                 '<li><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs m-t-3" onclick="orderSheetReg.delChangePrice(this)" ><i class="fas fa-minus-circle"></i> 삭제</button><li>' +
                 '</ul>';
@@ -817,6 +847,16 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
          * @return void
          */
         function orderSheetSave(obj, savemode) {
+            var ooImport = String($("input[name='oo_import']:checked").val() || '국내').trim();
+            var prdCurrency = String($("select[name='oo_prd_currency']").val() || '').trim();
+            var prdExchangeRateRaw = String($("input[name='oo_prd_exchange_rate']").val() || '').replace(/,/g, '').trim();
+            var prdExchangeRate = prdExchangeRateRaw === '' ? 0 : Number(prdExchangeRateRaw);
+
+            if (ooImport !== '국내' && prdCurrency !== '원' && (!isFinite(prdExchangeRate) || prdExchangeRate <= 0)) {
+                $("input[name='oo_prd_exchange_rate']").addClass('input-point-ani').focus();
+                alert('상품 통화가 원이 아닐 경우 적용환율은 필수입니다.');
+                return false;
+            }
 
             var formData = $("#orderSheetForm").serialize();
 
@@ -1361,13 +1401,33 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             }
         }
 
+        function toggleCurrencyConversionRow() {
+            var importValue = String($('input[name="oo_import"]:checked').val() || '').trim();
+            var prdCurrency = String($('select[name="oo_prd_currency"]').val() || '').trim();
+            var sumCurrency = String($('select[name="oo_sum_currency"]').val() || '').trim();
+            var shouldShow = (importValue !== '국내' && prdCurrency !== '' && sumCurrency !== '' && prdCurrency !== sumCurrency);
+
+            $('#currency_conversion_from').text(prdCurrency);
+            $('#currency_conversion_to').text(sumCurrency);
+
+            if (shouldShow) {
+                $('#currency_conversion_row').show();
+            } else {
+                $('#currency_conversion_row').hide();
+            }
+        }
+
         function formatNumberWithComma(value) {
             var raw = String(value || '').replace(/,/g, '');
             if (raw === '') return '';
+            var hasTrailingDot = /\.$/.test(raw);
             var parts = raw.split('.');
             var intPart = parts[0].replace(/\D/g, '');
             var decPart = parts[1] ? parts[1].replace(/\D/g, '') : '';
             var formatted = intPart.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+            if (hasTrailingDot && decPart === '') {
+                return formatted + '.';
+            }
             return decPart ? formatted + '.' + decPart : formatted;
         }
 
@@ -1377,10 +1437,15 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             $('.calendar-input input').datepicker(clareCalendar);
 
             toggleOrderCurrencySetting();
+            toggleCurrencyConversionRow();
             updateExpressNameOptions();
             toggleExpressPriceExpectedRow();
             updateExpressTrackingButton();
-            $('input[name="oo_import"]').on('change', toggleOrderCurrencySetting);
+            $('input[name="oo_import"]').on('change', function() {
+                toggleOrderCurrencySetting();
+                toggleCurrencyConversionRow();
+            });
+            $('select[name="oo_prd_currency"], select[name="oo_sum_currency"]').on('change', toggleCurrencyConversionRow);
             $('input[name="express_mode"]').on('change', function() {
                 updateExpressNameOptions();
                 toggleExpressPriceExpectedRow();
@@ -1394,6 +1459,10 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
 
             $(document).on('input', 'input.price', function() {
                 var value = $(this).val();
+                if ($(this).hasClass('price-decimal')) {
+                    $(this).val(formatNumberWithComma(value));
+                    return;
+                }
                 if (typeof GC !== 'undefined' && typeof GC.commaInput === 'function') {
                     GC.commaInput(value, this);
                     return;

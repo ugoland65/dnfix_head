@@ -48,7 +48,7 @@ if( !empty($_idx) ){
 }
 
 $_oop_idx = $_GET['oop_idx'] ?? $_POST['oop_idx'] ?? "";
-
+$_form_view = $_GET['form_view'] ?? $_POST['form_view'] ?? "";
 ?>
 
 <link rel="stylesheet" href="/admin2/css/order_sheet.css?ver=<?=time()?>">
@@ -167,7 +167,8 @@ $_oop_idx = $_GET['oop_idx'] ?? $_POST['oop_idx'] ?? "";
 <script type="text/javascript">
 <!-- 
 <? if( $_idx ){ ?>
-	orderSheet.Detail('<?=$_idx?>', '<?=$_oop_idx?>');
+	
+	orderSheet.Detail('<?=$_idx?>', '<?=$_oop_idx?>', '<?=$_form_view?>');
 <? } ?>
 //--> 
 </script>

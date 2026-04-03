@@ -840,6 +840,10 @@ class ProductPartnerService extends BaseClass
         }
 
         $baseName = (string)($productPartner['name'] ?? '');
+        $baseOriginalName = trim((string)($productPartner['name_ori'] ?? ''));
+        if ($baseOriginalName === '') {
+            $baseOriginalName = $baseName;
+        }
         $optionNames = [];
         foreach ($supplier_option_data as $optionGroup) {
             if (!is_array($optionGroup)) {
@@ -865,7 +869,7 @@ class ProductPartnerService extends BaseClass
             'CD_KIND_CODE' => $cdKindCode ?: '',
             'CD_BRAND_IDX' => $productPartner['brand_idx'] ?? 0,
             'CD_NAME' => $baseName !== '' ? $baseName : null,
-            'CD_NAME_OG' => $productPartner['name_ori'] ?? null,
+            'CD_NAME_OG' => $baseOriginalName,
             'img_mode' => 'out',
             'CD_IMG' => $productPartner['img_src'] ?? null,
             'cd_cost_price' => $productPartner['cost_price'] ?? null,
