@@ -1304,10 +1304,13 @@ class OrderSheetService
                     'A.cd_price_fn',
                     'A.cd_memo3',
                     'A.is_discontinued',
+                    'B.is_sale_month',
+                    'B.is_sale_special',
                     'B.ps_idx',
                     'B.ps_stock',
                     'B.ps_in_date',
                     'B.ps_last_date',
+
                 ])
                 ->get()
                 ->keyBy('CD_IDX')

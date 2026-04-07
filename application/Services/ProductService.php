@@ -1416,27 +1416,28 @@ class ProductService extends BaseClass
                 ]);
         }
 
-        $afterData = array_merge($oldProduct, $updateData);
-        $adminActionLogService = new AdminActionLogService();
-        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $beforeData = $oldProduct;
         if (!empty($psIdx)) {
-            $afterStockData = [
-                'ps_idx' => (string)$psIdx,
-                'ps_rack_code' => $psRackCode,
-                'ps_stock_object' => $psStockObject,
-                'ps_alarm_count' => $psAlarmCount,
-            ];
-            $beforeStockMini = [
+            $beforeData['prd_stock'] = [
                 'ps_idx' => (string)($beforeStockData['ps_idx'] ?? ''),
                 'ps_rack_code' => (string)($beforeStockData['ps_rack_code'] ?? ''),
                 'ps_stock_object' => (string)($beforeStockData['ps_stock_object'] ?? ''),
                 'ps_alarm_count' => (string)($beforeStockData['ps_alarm_count'] ?? ''),
             ];
-            $stockDiff = $adminActionLogService->buildDiff($beforeStockMini, $afterStockData);
-            if (!empty($stockDiff)) {
-                $diff['prd_stock'] = $stockDiff;
-            }
         }
+
+        $afterData = array_merge($oldProduct, $updateData);
+        if (!empty($psIdx)) {
+            $afterData['prd_stock'] = [
+                'ps_idx' => (string)$psIdx,
+                'ps_rack_code' => $psRackCode,
+                'ps_stock_object' => $psStockObject,
+                'ps_alarm_count' => $psAlarmCount,
+            ];
+        }
+
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
 
         $actionSummary = (string)($postData['action_summary'] ?? '');
         if ($actionSummary === '') {
@@ -1450,7 +1451,7 @@ class ProductService extends BaseClass
                 'target_pk' => (string)$idx,
                 'action_mode' => 'update',
                 'action_summary' => $actionSummary,
-                'before_json' => $oldProduct,
+                'before_json' => $beforeData,
                 'after_json' => $afterData,
                 'diff_json' => $diff,
                 'action_url' => $actionUrl !== '' ? $actionUrl : null,

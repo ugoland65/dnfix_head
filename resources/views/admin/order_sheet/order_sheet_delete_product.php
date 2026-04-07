@@ -352,18 +352,40 @@
                     <!-- 상품 명 -->
                     <td class="text-left">
 
+                        <?php if( $item['product']['is_sale_month'] || $item['product']['is_sale_special'] || $item['product']['is_discontinued'] ){ ?>
+                        <div class="p-b-5">
+                            <?php if( $item['product']['is_sale_month'] ){ ?>
+                                <label class="on_sale_label xs monthly">월간할인</label>
+                            <?php } ?>
+                            <?php if( $item['product']['is_sale_special'] ){ ?>
+                                <label class="on_sale_label xs special">특가할인</label>
+                            <?php } ?>
+                            <?php if( $item['product']['is_discontinued'] ){ ?>
+                                <label class="on_sale_label xs discontinued">단종</label>
+                            <?php } ?>
+                        </div>
+                        <?php } ?>
+
                         <!-- 상품 바코드 -->
                         <?php if (!empty($item['product']['CD_CODE'])) { ?><div><?= $item['product']['CD_CODE'] ?></div><?php } ?>
-                        <div class="p-t-5 p-b-5" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" style="cursor:pointer;">
+                        <div class="p-t-5" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" style="cursor:pointer;">
                             <?php /*
                             <button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">보기</button> 
                             <?php */ ?>
                             <b><?= $item['product']['CD_NAME'] ?? '' ?></b>
-                            <?php if (!empty($item['om'])) { ?><br><span style="color:#ff0000; display:inline-block; margin-top:3px; font-size:11px;"><?= $item['om'] ?? '' ?></span><?php } ?>
                         </div>
 
-                        <?php if (!empty($prd_data['cd_memo3'])) { ?>
-                            <div class="p-b-5"><span style="color:#ff0000; font-size:13px;"><?= $prd_data['cd_memo3'] ?></span></div>
+                        <?php if (!empty($item['om'])) { ?>
+                            <div class="m-t-3">
+                                
+                                <span style="color:#1e5eff; display:inline-block; margin-top:3px; font-size:11px;"><i class="far fa-sticky-note m-r-2" title="폼 그룹 메모"></i><?= $item['om'] ?? '' ?></span>
+                            </div>
+                        <?php } ?>
+                        <?php if (!empty($item['product']['cd_memo3'])) { ?>
+                            <div class="m-t-3">
+                                
+                                <span style="color:#ff0000; display:inline-block; margin-top:3px; font-size:11px;"><i class="fas fa-clipboard-list m-r-2" title="상품 주문 메모"></i><?= $item['product']['cd_memo3'] ?></span>
+                            </div>
                         <?php } ?>
 
                     </td>
