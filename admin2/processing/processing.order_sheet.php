@@ -1591,7 +1591,7 @@ if( $_a_mode == "orderSheet_reg" ){
 	$response = array('success' => true, 'msg' => '완료' );
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
-// 주문서폼 그룹 수정
+// @deprecated 주문서폼 그룹 수정
 }elseif( $_a_mode == "orderSheetForm_group" ){
 
 	$_idx = $_POST['idx'] ?? "";

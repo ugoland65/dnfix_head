@@ -246,10 +246,16 @@ var orderSheetFormReg = function() {
 		},
 
 		groupNew : function(obj) {
+			var newGroupName = String($("#new_group_name").val() || '');
+			var escapedGroupName = newGroupName
+				.replace(/&/g, '&amp;')
+				.replace(/"/g, '&quot;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;');
 		
 			var html = '<ul>'
 				+ '<p class="position-move-btn"><i class="fas fa-arrows-alt-v"></i></p>'
-				+ ' <input type="text" name="name[]" class="width-200">'
+				+ ' <input type="text" name="name[]" class="width-200" value="' + escapedGroupName + '">'
 				+ ' <select name="active[]">'
 				+ '<option value="Y" selected >활성</option>'
 				+ '<option value="N" >비활성</option>'
@@ -258,17 +264,27 @@ var orderSheetFormReg = function() {
 				+ '</ul>';
 
 			$("#group_list_table").prepend(html);
+			$("#new_group_name").val('');
 
 		},
 
 		groupSave : function( obj, idx ) {
 
+			var oopCode = String($("#oog_code").val() || '').trim();
+			if (!oopCode) {
+				$("#oog_code").focus();
+				showAlert("Error", "가격코드값이 비어있습니다.", "alert2" );
+				return false;
+			}
+
 			$(obj).attr('disabled', true);
 
 			var formData = $("#form2").serializeArray();
+			formData = formData.filter(function(item) { return item.name !== 'oop_code'; });
+			formData.push({ name: 'oop_code', value: oopCode });
 
 			$.ajax({
-				url: "/ad/processing/order_sheet",
+				url: "/admin/order/group/update_group",
 				data: formData,
 				type: "POST",
 				dataType: "json",

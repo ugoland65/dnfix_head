@@ -93,12 +93,11 @@
                 </ul>
 
 				<ul>
-					<select name="s_cs_status" id="s_cs_status">
+					<select name="s_status" id="s_status">
 						<option value="">처리상태</option>
-						<option value="요청" <? if ($s_cs_status == '요청') echo "selected"; ?>>요청</option>
-						<option value="처리중" <? if ($s_cs_status == '처리중') echo "selected"; ?>>처리중</option>
-                        <option value="요청+처리중" <? if ($s_cs_status == '요청+처리중') echo "selected"; ?>>요청+처리중</option>
-						<option value="처리완료" <? if ($s_cs_status == '처리완료') echo "selected"; ?>>처리완료</option>
+						<option value="요청" <? if ($s_status == '요청') echo "selected"; ?>>요청</option>
+						<option value="처리완료" <? if ($s_status == '처리완료') echo "selected"; ?>>처리완료</option>
+						<option value="반려" <? if ($s_status == '반려') echo "selected"; ?>>반려</option>
 					</select>
 				</ul>
 				<ul>
@@ -185,8 +184,8 @@
                                 <td class="text-right">
                                     <?= $row['currency'] ?> <b><?= number_format($row['amount']) ?></b>
                                 </td>
-                                <td>
-                                    <span class="copy-cell-wrap">
+                                <td style="min-width:350px; white-space:normal;">
+                                    <span class="copy-cell-wrap" >
                                         <span class="copy-target"><?= $bank ?></span>
                                         <?php if ($bankAccountForCopy !== '') { ?>
                                             <button type="button" class="copy-btn" title="복사" aria-label="은행계좌 복사" data-copy-text="<?= htmlspecialchars($bankAccountForCopy, ENT_QUOTES, 'UTF-8') ?>" onclick="copyCellText(this)">
@@ -238,6 +237,7 @@
 </div>
 <script src="/admin2/js/order_sheet.js?ver=<?=time()?>"></script>
 <script>
+
     function copyTextWithFallback(text) {
         var textarea = document.createElement('textarea');
         textarea.value = text;
@@ -306,4 +306,59 @@
     function paymentRequestDetail(idx){
         openDialog("/admin/payment/payment_request_detail", { mode: 'detail', idx: idx }, "결제요청 상세", "800px", "GET" );
     }
+
+	// 검색 파라미터 수집 공통 함수
+	function getSearchParams(additionalParams) {
+		var params = {};
+
+		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
+		var fields = {
+			's_status': $("#s_status").val(),
+			's_keyword': $("#s_keyword").val(),
+		};
+
+		// 추가 파라미터가 있으면 병합
+		if (additionalParams) {
+			fields = Object.assign(fields, additionalParams);
+		}
+
+		// 유효한 값만 params에 추가
+		for (var key in fields) {
+			if (fields[key] !== undefined && fields[key] !== null && fields[key] !== '') {
+				params[key] = fields[key];
+			}
+		}
+
+		return params;
+	}
+
+	// 검색 파라미터로 페이지 이동
+	function navigateWithParams(params) {
+		// URL 쿼리 문자열 생성
+		var queryString = Object.keys(params)
+			.map(function(key) {
+				return key + '=' + encodeURIComponent(params[key]);
+			})
+			.join('&');
+
+		// 페이지 이동
+		location.href = '/admin/payment/payment_request_list' + (queryString ? '?' + queryString : '');
+	}
+
+    $(function() {
+
+        $("#searchBtn").on('click', function() {
+            // 검색 파라미터 수집
+            var params = getSearchParams();
+
+            // 페이지 이동
+            navigateWithParams(params);
+        });
+
+        $("#searchResetBtn").on('click', function() {
+            location.href = '/admin/payment/payment_request_list';
+        });
+
+    });
+
 </script>

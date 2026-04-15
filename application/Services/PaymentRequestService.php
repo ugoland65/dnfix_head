@@ -16,18 +16,36 @@ class PaymentRequestService
     public function getPaymentRequestList($criteria)
     {
 
+        $page = (int)($criteria['page'] ?? ($criteria['pn'] ?? 1));
+        if ($page < 1) {
+            $page = 1;
+        }
+        $perPage = (int)($criteria['per_page'] ?? 100);
+        if ($perPage < 1) {
+            $perPage = 100;
+        }
+
+        $status = $criteria['status'] ?? '요청';
+        $keyword = $criteria['keyword'] ?? '';
+
         $query = PaymentRequestModel::query()
+            ->when($status, function($query) use ($status) {
+                $query->where('status', $status);
+            })
             ->orderBy('idx', 'desc')
             ->get();
 
-        $result = $query->toArray();
-        foreach($result as &$row){
+        //$result = $query->toArray();
+        $result = $query->paginate($perPage, $page);
+
+        foreach($result['data'] as &$row){
             $row['meta_json'] = json_decode($row['meta_json'], true);
         }
         unset($row);
 
         return $result;
     }
+
 
     /**
      * 결제요청 상세 조회

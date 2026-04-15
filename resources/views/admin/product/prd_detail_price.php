@@ -168,7 +168,7 @@
                             <?php } else { ?>
                                 배송비
                             <?php } ?>
-                        </span> : <input type="text" name="cost_cal_delivery" id="cost_cal_delivery" class="width-80" value="<?= $productData['cd_cost_price_info']['배송비'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+                        </span> : <input type="text" name="cost_cal_delivery" id="cost_cal_delivery" class="width-80" value="<?= $productData['cd_cost_price_info']['1kg배송비'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
 
                         <!-- <button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="alert('준비중');" >해외주문 기본값 설정</button> -->
 

@@ -271,6 +271,8 @@ class ProductController extends BaseClass
             $productService = new ProductService();
             $productData = $productService->getProductDataForAdmin($prdIdx);
 
+            //dump($productData);
+
             $data = [
                 'productData' => $productData,
             ];

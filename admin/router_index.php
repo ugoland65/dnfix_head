@@ -21,6 +21,7 @@ use App\Controllers\Admin\AiRulebookController;
 use App\Controllers\Admin\ProductGroupingController;
 use App\Controllers\Admin\PaymentRequestController;
 use App\Controllers\Admin\OrderGroupController;
+use App\Controllers\Admin\OrderController;
 
 try {
 
@@ -108,8 +109,10 @@ try {
 
     // 주문서 그룹 관리
     $router->post('/order/group/update', OrderGroupController::class, 'updateOrderGroup'); //주문서 폼 수정
+    $router->post('/order/group/update_group', OrderGroupController::class, 'updateOrderGroupGroup'); //주문서 폼 그룹 수정
 
-    $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회
+    $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
+    $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
 
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록

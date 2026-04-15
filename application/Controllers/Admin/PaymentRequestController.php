@@ -24,18 +24,36 @@ class PaymentRequestController extends BaseClass
 
             $requestData = $request->all();
 
+            $page = (int)($requestData['page'] ?? ($requestData['pn'] ?? 1));
+            if ($page < 1) {
+                $page = 1;
+            }
+
+            $status = $requestData['s_status'] ?? '요청';
+            $keyword = $requestData['s_keyword'] ?? '';
+
             $payload = [
-                'page' => $requestData['page'] ?? 1,
-                'per_page' => $requestData['per_page'] ?? 10,
+                'page' => $page,
+                'per_page' => 100,
+                'status' => $status,
+                'keyword' => $keyword,
             ];
             $paymentRequestService = new PaymentRequestService();
             $paymentRequestList = $paymentRequestService->getPaymentRequestList($payload);
 
-            $pagination = new Pagination($paymentRequestList['total'], $paymentRequestList['per_page'], $paymentRequestList['current_page'], 10);
+            $pagination = new Pagination(
+                $paymentRequestList['total'],
+                $paymentRequestList['per_page'],
+                $paymentRequestList['current_page'],
+                10
+            );
             $paginationHtml = $pagination->renderLinks();
 
             $data = [
-                'paymentRequestList' => $paymentRequestList,
+                's_status' => $status,
+                's_keyword' => $keyword,
+                'paymentRequestList' => $paymentRequestList['data'],
+                'pagination' => $pagination->toArray(),
                 'paginationHtml' => $paginationHtml,
             ];
 

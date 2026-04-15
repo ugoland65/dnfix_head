@@ -7,6 +7,7 @@ use App\Core\BaseClass;
 use App\Classes\Request;
 use App\Services\CsRequestService;
 use App\Services\GodoApiService;
+use App\Utils\Pagination;
 
 class CsRequestController extends BaseClass
 {
@@ -23,6 +24,11 @@ class CsRequestController extends BaseClass
 
             $requestData = $request->all();
 
+            $page = (int)($requestData['page'] ?? ($requestData['pn'] ?? 1));
+            if ($page < 1) {
+                $page = 1;
+            }
+
             $cs_status = $requestData['s_cs_status'] ?? '요청+처리중';
             $keyword = $requestData['s_keyword'] ?? '';
 
@@ -33,15 +39,28 @@ class CsRequestController extends BaseClass
             //dd($csRequestCount);
 
             $payload = [
+                'page' => $page,
+                'per_page' => 100,
                 'cs_status' => $cs_status,
                 'keyword' => $keyword,
             ];
             $csRequestList = $csRequestService->getCsRequestList($payload);
+
+            $pagination = new Pagination(
+                $csRequestList['total'],
+                $csRequestList['per_page'],
+                $csRequestList['current_page'],
+                10
+            );
+            $paginationHtml = $pagination->renderLinks();
+
             $data = [
                 's_cs_status' => $cs_status,
                 's_keyword' => $keyword,
                 'csRequestCount' => $csRequestCount,
-                'csRequestList' => $csRequestList,
+                'csRequestList' => $csRequestList['data'],
+                'paginationHtml' => $paginationHtml,
+                'pagination' => $pagination->toArray(),
             ];
 
             return view('admin.cs.cs_list', $data)

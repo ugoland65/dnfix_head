@@ -95,7 +95,7 @@ class ProductStockService extends BaseClass
 
         $prdStockList = ProductStockModel::select([
                 'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock',
-                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.cd_size_fn', 'cd.cd_add_img'
+                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.cd_size_fn', 'cd.cd_add_img', 'cd.img_mode', 'cd.CD_IMG',
             ])
             ->join('COMPARISON_DB as cd', 'prd_stock.ps_prd_idx', '=', 'cd.CD_IDX', 'LEFT')
             ->whereIn('prd_stock.ps_idx', $ids)

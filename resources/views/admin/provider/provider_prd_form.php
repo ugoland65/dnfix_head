@@ -434,7 +434,7 @@
                     </ul>
 
                     <?php if (!empty($prd_data['supplier_prd_pk']) && 
-                    ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 || $prd_data['partner_idx'] == 7 ) ) { ?>
+                    ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 || $prd_data['partner_idx'] == 7 || $prd_data['partner_idx'] == 8 ) ) { ?>
                         <ul class="right">
                             업데이트후 새로고침 됩니다. 저장후 이용바랍니다.
 
@@ -587,7 +587,22 @@
 
         <?php
         if (!empty($prd_data['supplier_detail_img'])) {
+            $detailImgHtmlLines = [];
+            foreach ($prd_data['supplier_detail_img'] as $imgSrc) {
+                $detailImgHtmlLines[] = '<img src="' . htmlspecialchars((string)$imgSrc, ENT_QUOTES, 'UTF-8') . '">';
+            }
+            $detailImgHtmlCode = implode("\n", $detailImgHtmlLines);
         ?>
+            <tr>
+                <td colspan="2">
+                    <div style="margin-bottom:10px;">
+                        <b>상세이미지 HTML 코드</b>
+                        <button type="button" class="btnstyle1 btnstyle1-xs m-l-5" onclick="copySupplierDetailImgHtml()">복사</button>
+                    </div>
+                    <textarea id="supplier_detail_img_html_code" readonly style="width:100%; height:90px; resize:vertical;"><?= htmlspecialchars($detailImgHtmlCode, ENT_QUOTES, 'UTF-8') ?></textarea>
+                </td>
+            </tr>
+
             <tr>
                 <td colspan="2">
 
@@ -674,6 +689,41 @@
 
         prdProviderInfo.loadGodoGoodsInfo('<?= $prd_data['idx'] ?>', godo_goodsNo);
 
+    }
+
+    function copySupplierDetailImgHtml() {
+        var $target = $('#supplier_detail_img_html_code');
+        if ($target.length === 0) {
+            alert('복사할 HTML 코드가 없습니다.');
+            return;
+        }
+
+        var text = String($target.val() || '');
+        if (!text) {
+            alert('복사할 HTML 코드가 없습니다.');
+            return;
+        }
+
+        var onSuccess = function() {
+            if (typeof showToast === 'function') {
+                showToast('상세이미지 HTML 코드가 복사되었습니다.', new Date().toLocaleTimeString());
+            } else {
+                alert('상세이미지 HTML 코드가 복사되었습니다.');
+            }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+                $target.trigger('focus').trigger('select');
+                document.execCommand('copy');
+                onSuccess();
+            });
+            return;
+        }
+
+        $target.trigger('focus').trigger('select');
+        document.execCommand('copy');
+        onSuccess();
     }
 
 </script>

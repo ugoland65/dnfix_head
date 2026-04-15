@@ -18,6 +18,15 @@ class CsRequestService
     public function getCsRequestList($criteria)
     {
         
+        $page = (int)($criteria['page'] ?? ($criteria['pn'] ?? 1));
+        if ($page < 1) {
+            $page = 1;
+        }
+        $perPage = (int)($criteria['per_page'] ?? 100);
+        if ($perPage < 1) {
+            $perPage = 100;
+        }
+
         $cs_status = $criteria['cs_status'] ?? '요청+처리중';
         $keyword = $criteria['keyword'] ?? '';
 
@@ -41,7 +50,8 @@ class CsRequestService
             ->orderBy('idx', 'desc')
             ->get();
 
-        $result = $query->toArray();
+        //$result = $query->toArray();
+        $result = $query->paginate($perPage, $page);
 
         $adminMap = AdminModel::query()
             ->select(['idx', 'ad_id', 'ad_name', 'ad_nick'])
@@ -49,7 +59,7 @@ class CsRequestService
             ->keyBy('idx')
             ->toArray();
          
-        foreach($result as &$row){
+        foreach($result['data'] as &$row){
             $row['reg_name'] = $adminMap[$row['reg_pk']]['ad_name'] ?? '';
         }
         unset($row);

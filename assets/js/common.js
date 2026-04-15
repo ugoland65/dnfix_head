@@ -141,6 +141,23 @@ function goSupplierProductEdit(id){
 	window.open("https://dnetc01.mycafe24.com/api/supplierProductEdit?product_id="+id, "supplierProductEdit_"+id, "width=800,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
+function godoMemberCrm(mem_no){
+
+	window.open(
+		"http://gdadmin.dnfix202439.godomall.com/share/member_crm.php?popupMode=yes&navTabs=summary&memNo="+ mem_no, 
+		"crm_member_"+mem_no, "width=1190,height=850,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+
+}
+
+function godoMemberSms(mem_no){
+
+	window.open(
+		"http://gdadmin.dnfix202439.godomall.com/member/sms_send.php?receiverMemNo="+ mem_no +"&receiverNm=&receiverPhone=&smsFl=", 
+		"sms_member_"+mem_no, "width=1000,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+
+}
+
+
 $(document).ready(function(){
 	$('.comma-input').keyup(function(){
 		GC.commaInput($(this).val(), $(this));

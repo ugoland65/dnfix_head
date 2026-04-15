@@ -21,7 +21,6 @@
         </ul>
     </div>
 
-
     <a href="http://gdadmin.dnfix202439.godomall.com/order/order_list_all.php" target="_blank" class="m-l-20" >
         <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm" >
             고도몰 주문통합리스트
@@ -175,21 +174,7 @@
 </div>
 <script>
 
-    function godoMemberCrm(mem_no){
 
-        window.open(
-            "http://gdadmin.dnfix202439.godomall.com/share/member_crm.php?popupMode=yes&navTabs=summary&memNo="+ mem_no, 
-            "crm_member_"+mem_no, "width=1190,height=850,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
-
-    }
-
-    function godoMemberSms(mem_no){
-
-        window.open(
-            "http://gdadmin.dnfix202439.godomall.com/member/sms_send.php?receiverMemNo="+ mem_no +"&receiverNm=&receiverPhone=&smsFl=", 
-            "sms_member_"+mem_no, "width=1000,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
-
-    }
 
     function csCreate(){
         openDialog("/admin/cs/cs_create", { mode: 'create' }, "C/S 생성", "800px");

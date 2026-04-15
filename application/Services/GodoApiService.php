@@ -27,6 +27,7 @@ class GodoApiService extends BaseClass {
 
     }
 
+
     /**
      * 고도몰 주문서 조회
      * 
@@ -247,7 +248,7 @@ class GodoApiService extends BaseClass {
                     // 추출된 옵션 코드들을 numericGoodsList에 추가
                     foreach ($optionCodes as $code) {
                         $numericGoodsList[] = $code;
-                        if($package_remove) {
+                        if( $package_remove ) {
                             if (!isset($packageRemoveList[$code])) {
                                 $packageRemoveList[$code] = 0;
                             }
@@ -604,6 +605,7 @@ class GodoApiService extends BaseClass {
 
     }
 
+
     /**
      * 고도몰 주문서 상품별 조회
      * @param array $criteria 검색 조건
@@ -717,6 +719,363 @@ class GodoApiService extends BaseClass {
         ];
     
         return $result;
+
+    }
+
+
+    /**
+     * 고도몰 주문내역 상품별 합계조회
+     */
+    public function getOrderGoodsSummary($criteria) 
+    {
+        // getOrderList/getOrderGoodsList 재사용 없이 독립적으로 조회/집계한다.
+        $mode = $criteria['mode'] ?? 'b';
+        $start_date = $criteria['start_date'] ?? date('Y-m-d');
+        $end_date = $criteria['end_date'] ?? date('Y-m-d');
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode=' . $mode . '&start_date=' . $start_date . '&end_date=' . $end_date;
+        $response = HttpClient::getData($apiUrl);
+        $apiData = json_decode($response, true);
+        if (!is_array($apiData)) {
+            $apiData = [];
+        }
+
+        //dd($apiData);
+        $goodsInfo = [];
+
+        foreach ($apiData['data'] as &$order) {
+
+            $my_scm = 'my';
+            $package_remove = false;
+            $package_remove_qty = 0;
+
+            // addField가 배열인 경우 순회하며 패키지 제거 여부 확인
+            if(isset($order['addField']) && is_array($order['addField'])) {
+                foreach($order['addField'] as $field) {
+                    if(isset($field['name']) && $field['name'] == '패키지 제거 여부' && 
+                        isset($field['data']) && $field['data'] == '패키지 제거') {
+                        $package_remove = true;
+                        $package_remove_qty = 1;
+                        break;
+                    }
+                }
+            }
+
+            $order_info = [
+                'orderNo' => $order['orderNo'],
+                'orderDate' => $order['regDt'],
+                'paymentDt' => $order['paymentDt'],
+                'settleKind' => $order['settleKind'],
+                'receiverName' => $order['receiverName'],
+                'receiverPhone' => $order['receiverPhone'],
+                'receiverCellPhone' => $order['receiverCellPhone'],
+                'receiverZipcode' => $order['receiverZipcode'],
+                'receiverZonecode' => $order['receiverZonecode'],
+                'receiverAddress' => $order['receiverAddress'],
+                'receiverAddressSub' => $order['receiverAddressSub'],
+                'orderMemo' => $order['orderMemo'],
+                'member' => $order['member']
+            ];
+
+            foreach ($order['orderGoods'] as &$goods) {
+
+                $goodsNo = $goods['goodsNo'];
+                $goodsCd = $goods['goodsCd'];
+                $goodsCnt = (float)($goods['goodsCnt'] ?? 0);
+
+                if( $goodsCd == '결제명 상품' ){
+                    continue;
+                }
+
+                $order_info['goodsCnt'] = $goodsCnt;
+                $order_info['orderGoodsSno'] = $goods['orderGoodsSno'];
+                $order_info['goodsCd'] = $goodsCd;
+                $order_info['optionInfo'] = $goods['optionInfo'];
+               
+                // 공급사가 쑈당몰인지
+                $myScmNos = [1,7,16,17,18,19,20,24,25];
+                if( in_array($goods['scmNo'], $myScmNos) ){
+                    $goods['scm'] = "my";
+                    $my_scm = 'my';
+                }else{
+                    $goods['scm'] = "not";
+                    $my_scm = 'not';
+                }
+
+                // 공급사가 쑈당몰 일경우
+                if( $my_scm == 'my' ){
+
+                    // 옵션이 실제로 있는가? (빈 배열 [] 은 옵션 없음으로 본다)
+                    if (!empty($goods['optionInfo']) && is_array($goods['optionInfo'])) {
+                        
+                        $order_info['item_type'] = "option";
+                        
+                        foreach ($goods['optionInfo'] as $option) {
+                            if (isset($option[2]) && !empty($option[2])) {
+                                $code = $option[2];
+                                
+                                // 슬래시(/)로 구분된 코드 처리
+                                if (strpos($code, '/') !== false) {
+                                    $splitCodes = explode('/', $code);
+                                    foreach ($splitCodes as $splitCode) {
+                                        if (!empty($splitCode) && ctype_digit($splitCode)) {
+                                            $optionCodes[] = $splitCode;
+                                            //$orderMargin[$i]['goods'][] = $splitCode; // 주문별 상품 코드 추가
+                                            
+                                            /*
+                                            $goodsInfo[] = [
+                                                'item_type' => 'option',
+                                                'code' => $splitCode,
+                                                'qty' => $goods['goodsCnt'],
+                                                'scm' => $goods['scm'],
+                                            ];
+                                            */
+
+                                            //수량 옵션 때문에 추가
+                                            $order_info['goods_qty'] = $goodsCnt;
+                                            
+                                            if( $package_remove == true ){
+                                                $order_info['package_remove_qty'] = $package_remove_qty;
+                                            }else{
+                                                $order_info['package_remove_qty'] = 0;
+                                            }
+
+                                            if (empty($goodsInfo['stock'][$splitCode])) {
+
+                                                $goodsInfo['stock'][$splitCode] = [
+                                                    'goodsNo' => (string)$goodsNo,
+                                                    'goodsNm' => (string)($goods['goodsNm'] ?? ''),
+                                                    'scmNo' => (string)($goods['scmNo'] ?? ''),
+                                                    'thumbImageUrl' => (string)($goods['thumbImageUrl'] ?? ''),
+                                                    'totalStock' => (int)($goods['totalStock'] ?? 0),
+                                                    'stockFl' => (string)($goods['stockFl'] ?? ''),
+                                                    'order_qty' => 1,
+                                                    'goods_qty' => $goodsCnt,
+                                                    'package_remove_qty' => $package_remove_qty,
+                                                    'order_info' => [$order_info],
+                                                ];
+                
+                                            } else {
+                                                $goodsInfo['stock'][$splitCode]['order_qty'] = (int)($goodsInfo['stock'][$splitCode]['order_qty'] ?? 0) + 1;
+                                                $goodsInfo['stock'][$splitCode]['goods_qty'] = (float)($goodsInfo['stock'][$splitCode]['goods_qty'] ?? 0) + $goodsCnt;
+                                                $goodsInfo['stock'][$splitCode]['package_remove_qty'] = (int)($goodsInfo['stock'][$splitCode]['package_remove_qty'] ?? 0) + $package_remove_qty;
+                                                $goodsInfo['stock'][$splitCode]['order_info'][] = $order_info;
+                                            }
+
+                                        }
+                                    }
+                                } 
+
+                                //수량 옵션일경우
+                                elseif (strpos($code, '@') !== false) {
+
+                                    $splitCodes = explode('@', $code);
+                                    $splitCode = $splitCodes[0];
+                                    $splitQty = $splitCodes[1] * $goodsCnt;
+                                    $optionCodes[] = $splitCode;
+
+                                    /*
+                                    $goodsInfo[] = [
+                                        'code' => $splitCodes[0],
+                                        'qty' => $splitCodes[1],
+                                        'scm' => $goods['scm'],
+                                    ];
+                                    */
+
+                                    $order_info['goods_qty'] = $splitQty;
+
+                                    if( $package_remove == true ){
+                                        $order_info['package_remove_qty'] = $splitCodes[1] * $package_remove_qty;
+                                    }else{
+                                        $order_info['package_remove_qty'] = 0;
+                                    }
+
+                                    if (empty($goodsInfo['stock'][$splitCode])) {
+
+                                        $goodsInfo['stock'][$splitCode] = [
+                                            'goodsNo' => (string)$goodsNo,
+                                            'goodsNm' => (string)($goods['goodsNm'] ?? ''),
+                                            'scmNo' => (string)($goods['scmNo'] ?? ''),
+                                            'thumbImageUrl' => (string)($goods['thumbImageUrl'] ?? ''),
+                                            'totalStock' => (int)($goods['totalStock'] ?? 0),
+                                            'stockFl' => (string)($goods['stockFl'] ?? ''),
+                                            'order_qty' => 1,
+                                            'goods_qty' => $splitQty,
+                                            'package_remove_qty' => $package_remove_qty,
+                                            'order_info' => [$order_info],
+                                        ];
+        
+                                    } else {
+                                        $goodsInfo['stock'][$splitCode]['order_qty'] = (int)($goodsInfo['stock'][$splitCode]['order_qty'] ?? 0) + 1;
+                                        $goodsInfo['stock'][$splitCode]['goods_qty'] = (float)($goodsInfo['stock'][$splitCode]['goods_qty'] ?? 0) + $splitQty;
+                                        $goodsInfo['stock'][$splitCode]['package_remove_qty'] = (int)($goodsInfo['stock'][$splitCode]['package_remove_qty'] ?? 0) + $package_remove_qty;
+                                        $goodsInfo['stock'][$splitCode]['order_info'][] = $order_info;
+                                    }
+
+
+                                }
+
+                                // 단일 코드 처리
+                                else if (ctype_digit($code)) {
+
+                                    $optionCodes[] = $code;
+                                    //$orderMargin[$i]['goods'][] = $code; // 주문별 상품 코드 추가
+
+                                    /*
+                                    $goodsInfo[] = [
+                                        'item_type' => 'main',
+                                        'code' => $code,
+                                        'qty' => $goods['goodsCnt'],
+                                        'scm' => $goods['scm'],
+                                    ];
+                                    */
+
+                                    //수량 옵션 때문에 추가
+                                    $order_info['goods_qty'] = $goodsCnt;
+
+                                    if( $package_remove == true ){
+                                        $order_info['package_remove_qty'] = $package_remove_qty;
+                                    }else{
+                                        $order_info['package_remove_qty'] = 0;
+                                    }
+
+                                    if (empty($goodsInfo['stock'][$code])) {
+
+                                        $goodsInfo['stock'][$code] = [
+                                            'goodsNo' => (string)$goodsNo,
+                                            'goodsNm' => (string)($goods['goodsNm'] ?? ''),
+                                            'scmNo' => (string)($goods['scmNo'] ?? ''),
+                                            'thumbImageUrl' => (string)($goods['thumbImageUrl'] ?? ''),
+                                            'totalStock' => (int)($goods['totalStock'] ?? 0),
+                                            'stockFl' => (string)($goods['stockFl'] ?? ''),
+                                            'order_qty' => 1,
+                                            'goods_qty' => $goodsCnt,
+                                            'package_remove_qty' => $package_remove_qty,
+                                            'order_info' => [$order_info],
+                                        ];
+        
+                                    } else {
+                                        $goodsInfo['stock'][$code]['order_qty'] = (int)($goodsInfo['stock'][$code]['order_qty'] ?? 0) + 1;
+                                        $goodsInfo['stock'][$code]['goods_qty'] = (float)($goodsInfo['stock'][$code]['goods_qty'] ?? 0) + $goodsCnt;
+                                        $goodsInfo['stock'][$code]['package_remove_qty'] = (int)($goodsInfo['stock'][$code]['package_remove_qty'] ?? 0) + $package_remove_qty;
+                                        $goodsInfo['stock'][$code]['order_info'][] = $order_info;
+                                    }
+
+
+                                }
+                            }
+                        }
+
+                    }else{
+
+                        // 숫자로만 이루어진 goodsCd
+                        if ($goodsCd !== '' && ctype_digit((string)$goodsCd)) {
+
+                            $order_info['item_type'] = "stock";
+                            $order_info['goods_qty'] = $goodsCnt;
+
+                            if( $package_remove == true ){
+                                $order_info['package_remove_qty'] = $package_remove_qty;
+                            }else{
+                                $order_info['package_remove_qty'] = 0;
+                            }
+                            
+                            if (empty($goodsInfo['stock'][$goodsCd])) {
+
+                                $goodsInfo['stock'][$goodsCd] = [
+                                    'goodsNo' => (string)$goodsNo,
+                                    'goodsNm' => (string)($goods['goodsNm'] ?? ''),
+                                    'scmNo' => (string)($goods['scmNo'] ?? ''),
+                                    'thumbImageUrl' => (string)($goods['thumbImageUrl'] ?? ''),
+                                    'totalStock' => (int)($goods['totalStock'] ?? 0),
+                                    'stockFl' => (string)($goods['stockFl'] ?? ''),
+                                    'order_qty' => 1,
+                                    'goods_qty' => $goodsCnt,
+                                    'package_remove_qty' => $package_remove_qty,
+                                    'order_info' => [$order_info],
+                                ];
+
+                            } else {
+                                $goodsInfo['stock'][$goodsCd]['order_qty'] = (int)($goodsInfo['stock'][$goodsCd]['order_qty'] ?? 0) + 1;
+                                $goodsInfo['stock'][$goodsCd]['goods_qty'] = (float)($goodsInfo['stock'][$goodsCd]['goods_qty'] ?? 0) + $goodsCnt;
+                                $goodsInfo['stock'][$goodsCd]['package_remove_qty'] = (int)($goodsInfo['stock'][$goodsCd]['package_remove_qty'] ?? 0) + $package_remove_qty;
+                                $goodsInfo['stock'][$goodsCd]['order_info'][] = $order_info;
+                            }
+                        
+                        // one 단어가 포함된 goodsCd
+                        } elseif (stripos($goodsCd, 'one') !== false) {
+
+                            //$goodsInfo['one'][] = $goodsCd;
+
+                        // set ,qty, one 단어가 포함된 goodsCd
+                        } elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false ) {
+                            //$goodsInfo['set'][] = $goodsCd;
+                        } else {
+                            $goodsInfo['error'][] = $goodsCd;
+                        }
+
+                    }
+                    
+                }else{
+                    
+                }
+
+            }
+            unset($goods);
+
+        }
+        unset($order);
+
+        //dd($goodsInfo);
+
+        $goodsNos = array_keys($goodsInfo['stock'] ?? []);
+
+        //dd($goodsNos);
+        $productStockService = new ProductStockService();
+        $productData = $productStockService->getProductStockWhereIn($goodsNos);
+
+        //dd($productData);
+
+        foreach($goodsInfo['stock'] as $key => &$stock){
+            $stock['product_data'] = $productData[$key];
+            $stock['after_goods_qty'] = $productData[$key]['ps_stock'] - $stock['goods_qty'];
+        }
+        unset($stock);
+
+        if (!empty($goodsInfo['stock']) && is_array($goodsInfo['stock'])) {
+            uasort($goodsInfo['stock'], static function ($a, $b) {
+                $aAfterQty = (float)($a['after_goods_qty'] ?? 0);
+                $bAfterQty = (float)($b['after_goods_qty'] ?? 0);
+                $aQty = (float)($a['goods_qty'] ?? 0);
+                $bQty = (float)($b['goods_qty'] ?? 0);
+
+                // 1순위: after_goods_qty < 0 (최상위)
+                // 2순위: after_goods_qty == 0
+                // 3순위: 그 외(> 0)
+                $rank = static function (float $afterQty): int {
+                    if ($afterQty < 0) {
+                        return 0;
+                    }
+                    if ($afterQty == 0.0) {
+                        return 1;
+                    }
+                    return 2;
+                };
+
+                $aRank = $rank($aAfterQty);
+                $bRank = $rank($bAfterQty);
+                if ($aRank !== $bRank) {
+                    return $aRank <=> $bRank;
+                }
+
+                // 같은 우선순위 내에서는 goods_qty 많은순
+                return $bQty <=> $aQty;
+            });
+        }
+
+        //dd($goodsInfo);
+
+        return $goodsInfo;
 
     }
 
@@ -890,6 +1249,8 @@ class GodoApiService extends BaseClass {
             $packageRemoveQty = isset($packageRemoveList[$code]) ? $packageRemoveList[$code] : 0;
             $result[] = [
                 'CD_NAME' => $product['CD_NAME'],
+                'CD_IMG' => $product['CD_IMG'] ?? null,
+                'img_mode' => $product['img_mode'] ?? null,
                 'code' => $code,
                 'qty' => $qty,
                 'stock' => $product['ps_stock'],

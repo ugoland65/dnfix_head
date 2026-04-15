@@ -39,4 +39,30 @@ class OrderGroupController extends BaseClass
         }
     }
 
+    /**
+     * 주문서 폼 그룹 수정
+     */
+    public function updateOrderGroupGroup(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+
+            $OrderGroupService = new OrderGroupService();
+            $OrderGroupService->updateOrderGroupGroup($requestData);
+
+            return response()->json([
+                'success' => true,
+                'message' => '주문서 폼 그룹 수정 완료',
+            ]);
+            
+        }
+        catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

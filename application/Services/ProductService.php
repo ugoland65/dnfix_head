@@ -1575,6 +1575,7 @@ class ProductService extends BaseClass
                 '국가' => $cdNational,
                 '주문가' => $costCalPrice,
                 '적용환율' => $costCalExchangeRate,
+                '1kg배송비' => $costCalDelivery,
                 '배송비' => $costCalDelivery,
                 '관세율' => $costCalTariff,
                 '부대비용' => $costCalIncidentalCost,
@@ -1582,12 +1583,15 @@ class ProductService extends BaseClass
             ];
         } else {
             $cdCostPriceInfoData = [
+                '주문종류' => $costCalKind,
                 'VAT' => $cdCostPriceVat,
                 '국가' => $cdNational,
+                '주문가' => $costCalPrice,
+                '적용환율' => $costCalExchangeRate,
+                '1kg배송비' => $costCalDelivery,
                 '환율' => $exRate,
                 '기준주문가' => $oprice,
                 '기준주문가코드' => $opriceKey,
-                '1kg배송비' => $kgP,
                 '중량종류' => $weightMode,
                 '중량' => $weight,
                 '관세' => $tax,

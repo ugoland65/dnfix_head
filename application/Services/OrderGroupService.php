@@ -4,6 +4,7 @@ namespace App\Services;
 
 use Exception;
 use App\Models\OrderGroupModel;
+use App\Models\OrderGroupProductModel;
 
 class OrderGroupService
 {
@@ -108,6 +109,78 @@ class OrderGroupService
         }
 
         throw new Exception("유효하지 않은 mode 값입니다.");
+    }
+
+
+    /**
+     * 주문서 폼 그룹 수정
+     * @param array $requestData
+     * @return array
+     */
+    public function updateOrderGroupGroup($requestData)
+    {
+        $idx = trim((string)($requestData['idx'] ?? ''));
+        $nameList = $requestData['name'] ?? [];
+        $oopIdxList = $requestData['oop_idx'] ?? [];
+        $activeList = $requestData['active'] ?? [];
+        $oopCode = trim((string)($requestData['oop_code'] ?? ''));
+
+        if ($idx === '') {
+            throw new Exception("주문서 폼 번호가 없습니다.");
+        }
+        if ($oopCode === '') {
+            throw new Exception("가격코드값이 비어있습니다.");
+        }
+
+        if (!is_array($nameList)) {
+            $nameList = [];
+        }
+        if (!is_array($oopIdxList)) {
+            $oopIdxList = [];
+        }
+        if (!is_array($activeList)) {
+            $activeList = [];
+        }
+
+        $dataAry = [];
+        $nameCount = count($nameList);
+        for ($i = 0; $i < $nameCount; $i++) {
+            $thisName = trim((string)($nameList[$i] ?? ''));
+            $thisOopIdx = trim((string)($oopIdxList[$i] ?? ''));
+            if ($thisName === '') {
+                continue;
+            }
+
+            if ($thisOopIdx === '') {
+                $thisOopIdx = (string)OrderGroupProductModel::query()->insertGetId([
+                    'oop_name' => $thisName,
+                    'oop_code' => $oopCode,
+                    'oop_data' => '[]',
+                ]);
+            }
+
+            $dataAry[] = [
+                'name' => $thisName,
+                'active' => (string)($activeList[$i] ?? ''),
+                'oop_idx' => $thisOopIdx,
+            ];
+        }
+
+        $oogBrand = json_encode($dataAry, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($oogBrand === false) {
+            $oogBrand = '[]';
+        }
+
+        $updated = OrderGroupModel::query()
+            ->where('oog_idx', '=', $idx)
+            ->update([
+                'oog_brand' => $oogBrand,
+            ]);
+
+        return [
+            'updated' => $updated,
+            'oog_brand' => $dataAry,
+        ];
     }
 
 }
