@@ -75,9 +75,9 @@
 	</style>
 	
 <?php if (!empty($_SESSION['_flash']['success'])): ?>
-<script>
-  alert('<?=$_SESSION['_flash']['success']?>');
-</script>
+	<script>
+	alert('<?=$_SESSION['_flash']['success']?>');
+	</script>
 <?php endif; ?>
 
 <script language="JavaScript"> 
@@ -367,6 +367,9 @@ $gnb_lang = "ko";
 						</li>
 						<li>
 							<a href="/admin/order/godo_order_list">고도몰 주문가져오기</a>
+						</li>
+						<li>
+							<a href="/admin/order/godo_order">고도몰 주문(상품)</a>
 						</li>
 						<li>
 							<a href="/admin/order/godo_order_goods_list">공급사 주문 가져오기</a>

@@ -192,9 +192,16 @@
     <div class="m-l-20">
         <select name="mode" id="mode">
             <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
+            <option value="p2" <?= $mode == 'p2' ? 'selected' : '' ?>>결제완료 - 출고일 조정</option>
             <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>준비중</option>
+            <option value="g5" <?= $mode == 'g5' ? 'selected' : '' ?>>배송준비중-핸디</option>
+            <option value="g6" <?= $mode == 'g6' ? 'selected' : '' ?>>배송준비중-공급사 주문대기</option>
+            <option value="g7" <?= $mode == 'g7' ? 'selected' : '' ?>>배송준비중- CS 처리 대기</option>
+            <option value="g8" <?= $mode == 'g8' ? 'selected' : '' ?>>배송준비중-CS 처리중</option>
+            <option value="g9" <?= $mode == 'g9' ? 'selected' : '' ?>>배송준비중-공급사 주문완료</option>
             <option value="d" <?= $mode == 'd' ? 'selected' : '' ?>>배송중</option>
             <option value="ds" <?= $mode == 'ds' ? 'selected' : '' ?>>배송완료</option>
+            <option value="s1" <?= $mode == 's1' ? 'selected' : '' ?>>구매확정</option>
         </select>
         <label class="calendar-input">
             <input type='text' name='start_date' id="start_date" value="<?= $start_date ?? date('Y-m-d') ?>">

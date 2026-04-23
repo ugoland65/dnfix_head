@@ -56,9 +56,17 @@
     <div class="m-l-20">
         <select name="mode" id="mode">
             <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
-            <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>준비중</option>
+            <option value="p2" <?= $mode == 'p2' ? 'selected' : '' ?>>결제완료 - 출고일 조정</option>
+            <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>준비중 전체</option>
+            <option value="g1" <?= $mode == 'g1' ? 'selected' : '' ?>>상품준비중</option>
+            <option value="g5" <?= $mode == 'g5' ? 'selected' : '' ?>>배송준비중-핸디</option>
+            <option value="g6" <?= $mode == 'g6' ? 'selected' : '' ?>>배송준비중-공급사 주문대기</option>
+            <option value="g7" <?= $mode == 'g7' ? 'selected' : '' ?>>배송준비중- CS 처리 대기</option>
+            <option value="g8" <?= $mode == 'g8' ? 'selected' : '' ?>>배송준비중-CS 처리중</option>
+            <option value="g9" <?= $mode == 'g9' ? 'selected' : '' ?>>배송준비중-공급사 주문완료</option>
             <option value="d" <?= $mode == 'd' ? 'selected' : '' ?>>배송중</option>
             <option value="ds" <?= $mode == 'ds' ? 'selected' : '' ?>>배송완료</option>
+            <option value="s1" <?= $mode == 's1' ? 'selected' : '' ?>>구매확정</option>
         </select>
         <label class="calendar-input">
             <input type='text' name='start_date' id="start_date" value="<?= $start_date ?? date('Y-m-d') ?>">
@@ -118,8 +126,8 @@
                                     }
                             ?>
                                 <tr class="<?= $tr_class ?>">
-                                    <td><?= $no ?></td>
-                                    <td><?= $key ?></td>
+                                    <td class="text-center"><?= $no ?></td>
+                                    <td class="text-center"><?= $key ?></td>
                                     <td class="p-5">
                                         <p onclick="onlyAD.prdView('<?=$item['product_data']['CD_IDX']?>','info');" style="cursor:pointer;" ><img src="<?=$img_path?>" style="height:50px; border:1px solid #eee !important;"></p>
                                     </td>
@@ -228,6 +236,14 @@
             </ul>
             <ul>
                 <div class="scroll-wrap">
+                    <div class="p-10">
+                        <ul>
+                            파일명 : <input type="text" id="fileName" class="width-200" value="<?= date('Ymd') ?? '' ?>_">
+                        </ul>
+                        <ul class="m-t-5">
+                            <button type="button" id="fileUploadBtn" class="btnstyle1 btnstyle1-primary ">일일재고로 업로드</button>
+                        </ul>
+                    </div>
                 </div>
             </ul>
         </div>
@@ -322,6 +338,56 @@
 		location.href = '/admin/order/godo_order' + (queryString ? '?' + queryString : '');
 	}
 
+    // 일일재고 임시저장
+    function saveDailyStockTemp() {
+        var fileName = $.trim($('#fileName').val() || '');
+        var payload = {
+            file_name: fileName,
+            mode: $('#mode').val(),
+            start_date: $('#start_date').val(),
+            end_date: $('#end_date').val()
+        };
+
+        var $button = $('#fileUploadBtn');
+        $button.prop('disabled', true).text('업로드 중...');
+
+        $.ajax({
+            url: '/admin/stock/save_daily_stock_temp',
+            type: 'POST',
+            dataType: 'json',
+            data: payload
+        }).done(function(response) {
+            if (response && response.status === 'success') {
+                var uid = response.data && response.data.uid ? response.data.uid : 0;
+                var moveUrl = '/ad/order/stock_excel' + (uid ? ('?idx=' + encodeURIComponent(uid)) : '');
+                dnConfirm(
+                    '일일재고 저장 완료',
+                    (response.message || '저장이 완료되었습니다.') + '<br>일일재고 페이지로 이동하시겠습니까?',
+                    function() {
+                        location.href = moveUrl;
+                    }
+                    ,
+                    null,
+                    'blue',
+                    '일일재고 페이지 이동',
+                    'btn-blue',
+                    '현재 페이지 유지'
+                );
+                return;
+            }
+
+            alert((response && response.message) ? response.message : '처리에 실패했습니다.');
+        }).fail(function(xhr) {
+            var message = '처리에 실패했습니다.';
+            if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                message = xhr.responseJSON.message;
+            }
+            alert(message);
+        }).always(function() {
+            $button.prop('disabled', false).text('일일재고로 업로드');
+        });
+    }
+
     $(function() {
 
         if ($(".calendar-input input").length) {
@@ -346,6 +412,10 @@
 			// 페이지 이동
 			navigateWithParams(params);
 		});
+
+        $('#fileUploadBtn').on('click', function() {
+            saveDailyStockTemp();
+        });
 
     });
 </script>

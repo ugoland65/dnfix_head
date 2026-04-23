@@ -147,7 +147,7 @@ if( $_a_mode == "day_stock" ){
 
 	$talk_massage1 = "";
 
-	if( is_array($_shortage['domestic']) ){
+	if( !empty($_shortage['domestic']) ){
 		$talk_massage1 .= "★★ 재고부족 - 국내 ★★\n\n";
 		foreach ( $_shortage['domestic'] as $key => $val ){
 			$talk_massage1 .= "(".$val['name'].") : ".$val['count']."\n";
@@ -155,12 +155,30 @@ if( $_a_mode == "day_stock" ){
 		$talk_massage1 .= "\n---------------------------\n\n";
 	}
 
-	if( is_array($_shortage['import']) ){
+	if( !empty($_shortage['import']) ){
 		$talk_massage1 .= "★★ 재고부족 - 수입 ★★\n\n";
 		foreach ( $_shortage['import'] as $key => $val ){
 			$talk_massage1 .= "(".$val['name'].") : ".$val['count']."\n";
 		}
 	}
+
+	$sendTelegramMessage = function($message) {
+		if (!$message) {
+			return;
+		}
+
+		try {
+			if (!class_exists('\App\Utils\TelegramUtils')) {
+				require_once $_SERVER['DOCUMENT_ROOT'] . '/application/Utils/TelegramUtils.php';
+			}
+
+			$telegram = new \App\Utils\TelegramUtils();
+			$chatId = "-1003968498110";
+			$telegram->sendMessage($chatId, $message);
+		} catch (\Throwable $e) {
+			// 레거시 처리 흐름을 유지하기 위해 알림 전송 실패는 무시한다.
+		}
+	};
 
 	if( $talk_massage1 ){
 
@@ -169,24 +187,14 @@ if( $_a_mode == "day_stock" ){
 		$talk_massage .= "————————————\n\n";
 		$talk_massage .= $talk_massage1;
 
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, "https://notify-api.line.me/api/notify");
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('authorization: Bearer oVmeDHRjttiAEZ6nQxIxokIN5uc6j5zaZL9gUin4lei' , 'content-type: application/x-www-form-urlencoded' ));
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_ENCODING, "");
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_TIMEOUT,30);
-		curl_setopt($ch, CURLOPT_POSTFIELDS,"message=".$talk_massage);
-		$res = curl_exec($ch);
-		curl_close($ch);
+		$sendTelegramMessage($talk_massage);
 
 	}
 
 
 	$talk_massage2 = "";
 
-	if( is_array($_soldout['domestic']) ){
+	if( !empty($_soldout['domestic']) ){
 		$talk_massage2 .= "★★ 품절 - 국내 ★★\n\n";
 		foreach ( $_soldout['domestic'] as $key => $val ){
 			$talk_massage2 .= "(".$val['name'].") : 품절\n";
@@ -194,7 +202,7 @@ if( $_a_mode == "day_stock" ){
 		$talk_massage2 .= "\n---------------------------\n\n";
 	}
 
-	if( is_array($_soldout['import']) ){
+	if( !empty($_soldout['import']) ){
 		$talk_massage2 .= "★★ 품절 - 수입 ★★\n\n";
 		foreach ( $_soldout['import'] as $key => $val ){
 			$talk_massage2 .= "(".$val['name'].") : 품절\n";
@@ -208,24 +216,14 @@ if( $_a_mode == "day_stock" ){
 		$talk_massage .= "————————————\n\n";
 		$talk_massage .= $talk_massage2;
 
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, "https://notify-api.line.me/api/notify");
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('authorization: Bearer oVmeDHRjttiAEZ6nQxIxokIN5uc6j5zaZL9gUin4lei' , 'content-type: application/x-www-form-urlencoded' ));
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_ENCODING, "");
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_TIMEOUT,30);
-		curl_setopt($ch, CURLOPT_POSTFIELDS,"message=".$talk_massage);
-		$res = curl_exec($ch);
-		curl_close($ch);
+		$sendTelegramMessage($talk_massage);
 
 	}
 
 
 	$talk_massage3 = "";
 
-	if( is_array($_stock_alarm) ){
+	if( is_array($_stock_alarm) && !empty($_stock_alarm) ){
 		$talk_massage3 .= "★★ 재고관리 대상  ★★\n\n";
 		foreach ( $_stock_alarm as $key => $val ){
 			$talk_massage3 .= "(".$val['name'].") : ".$val['count']."\n";
@@ -240,17 +238,7 @@ if( $_a_mode == "day_stock" ){
 		$talk_massage .= "————————————\n\n";
 		$talk_massage .= $talk_massage3;
 
-		$ch = curl_init();
-		curl_setopt($ch, CURLOPT_URL, "https://notify-api.line.me/api/notify");
-		curl_setopt($ch, CURLOPT_HTTPHEADER, array('authorization: Bearer oVmeDHRjttiAEZ6nQxIxokIN5uc6j5zaZL9gUin4lei' , 'content-type: application/x-www-form-urlencoded' ));
-		curl_setopt($ch, CURLOPT_POST, 1);
-		curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
-		curl_setopt($ch, CURLOPT_ENCODING, "");
-		curl_setopt($ch, CURLOPT_MAXREDIRS, 10);
-		curl_setopt($ch, CURLOPT_TIMEOUT,30);
-		curl_setopt($ch, CURLOPT_POSTFIELDS,"message=".$talk_massage);
-		$res = curl_exec($ch);
-		curl_close($ch);
+		$sendTelegramMessage($talk_massage);
 
 	}
 

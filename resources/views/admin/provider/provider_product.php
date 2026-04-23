@@ -32,6 +32,8 @@
 						<option value="">등록상태</option>
 						<option value="등록대기" <? if ($s_status == '등록대기') echo "selected"; ?>>등록대기</option>
 						<option value="등록완료" <? if ($s_status == '등록완료') echo "selected"; ?>>등록완료</option>
+						<option value="등록보류" <? if ($s_status == '등록보류') echo "selected"; ?>>등록보류</option>
+						<option value="등록취소" <? if ($s_status == '등록취소') echo "selected"; ?>>등록취소</option>
 						<option value="품절" <? if ($s_status == '품절') echo "selected"; ?>>품절</option>
 					</select>
 				</ul>

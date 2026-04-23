@@ -8,8 +8,10 @@ use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
 use App\Models\AdminModel;
+use App\Core\AuthAdmin;
 
 use App\Services\ProductService;
+use App\Services\GodoApiService;
 
 class ProductStockHistoryService
 {
@@ -40,7 +42,7 @@ class ProductStockHistoryService
         }
 
         $query = ProductStockHistoryModel::query()
-            ->select(['uid', 'file_name', 'reg_time', 'end_time', 'reg_id', 'step', 'info', 'error'])
+            ->select(['uid', 'file_name', 'reg_time', 'end_time', 'reg_id', 'step', 'info', 'error', 'source_type'])
             ->whereBetween('reg_time', [$startDateTime, $endDateTime])
             ->orderBy('uid', 'desc')
             ->get()
@@ -267,5 +269,187 @@ class ProductStockHistoryService
 
         return $result;
     }
+
+
+    /**
+     * 일일재고 임시저장
+     */
+    public function saveDailyStockTemp(array $criteria)
+    {
+        $fileName = trim((string)($criteria['file_name'] ?? ''));
+        if ($fileName === '') {
+            $fileName = date('Ymd') . '_';
+        }
+
+        $existsFileName = ProductStockHistoryModel::where('file_name', $fileName)->first();
+        if (!empty($existsFileName)) {
+            throw new Exception('이미 등록된 파일명입니다. 파일명을 변경해주세요.');
+        }
+
+        $mode = $criteria['mode'] ?? 'p';
+        $startDate = $criteria['start_date'] ?? date('Y-m-d');
+        $endDate = $criteria['end_date'] ?? date('Y-m-d');
+
+        $godoApiService = new GodoApiService();
+        $orderSummary = $godoApiService->getOrderGoodsSummary([
+            'mode' => $mode,
+            'start_date' => $startDate,
+            'end_date' => $endDate,
+        ]);
+
+        $stockRows = $this->buildStockHistoryRows($orderSummary['stock'] ?? []);
+        $errorRows = $this->buildStockErrorRows($orderSummary['error'] ?? []);
+
+        $regId = '';
+        try {
+            $regId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+        } catch (\Throwable $e) {
+            $regId = '';
+        }
+
+        $insertData = [
+            'file_name' => $fileName,
+            'source_type' => 'fetch',
+            'meta_data' => json_encode([
+                'filters' => [
+                    'mode' => (string)$mode,
+                    'start_date' => (string)$startDate,
+                    'end_date' => (string)$endDate,
+                ],
+            ], JSON_UNESCAPED_UNICODE),
+            'reg_time' => date('Y-m-d H:i:s'),
+            'end_time' => '0000-00-00 00:00:00',
+            'reg_id' => $regId,
+            'data' => json_encode($stockRows['rows'], JSON_UNESCAPED_UNICODE),
+            'step' => '1',
+            'info' => json_encode([
+                'order_count' => $stockRows['order_count'],
+                'pd_count' => count($stockRows['rows']),
+                'package_out' => $stockRows['package_out'],
+            ], JSON_UNESCAPED_UNICODE),
+            'error' => json_encode([
+                'count' => count($errorRows),
+                'result' => $errorRows,
+            ], JSON_UNESCAPED_UNICODE),
+        ];
+
+        $uid = ProductStockHistoryModel::createDailyStockTemp($insertData);
+        if ($uid <= 0) {
+            throw new Exception('일일재고 임시저장에 실패했습니다.');
+        }
+
+        return [
+            'uid' => $uid,
+        ];
+    }
+
+    /**
+     * 고도몰 집계 stock 데이터를 일일재고 저장 포맷으로 변환
+     *
+     * @param array $stockData
+     * @return array{rows: array, order_count: int, package_out: int}
+     */
+    private function buildStockHistoryRows(array $stockData): array
+    {
+        $rows = [];
+        $orderNoMap = [];
+        $packageOutTotal = 0;
+
+        foreach ($stockData as $psIdx => $stockRow) {
+            if (!is_array($stockRow)) {
+                continue;
+            }
+
+            $productData = $stockRow['product_data'] ?? [];
+            if (!is_array($productData)) {
+                $productData = [];
+            }
+
+            $oneOrderNums = [];
+            $setOrderNums = [];
+            $oneQty = 0;
+            $setQty = 0;
+
+            $orderInfoRows = $stockRow['order_info'] ?? [];
+            if (!is_array($orderInfoRows)) {
+                $orderInfoRows = [];
+            }
+
+            foreach ($orderInfoRows as $orderInfo) {
+                if (!is_array($orderInfo)) {
+                    continue;
+                }
+
+                $orderNo = (string)($orderInfo['orderNo'] ?? '');
+                if ($orderNo !== '') {
+                    $orderNoMap[$orderNo] = true;
+                }
+
+                $orderQty = (float)($orderInfo['goods_qty'] ?? 0);
+                $orderNumData = [
+                    'num' => $orderNo,
+                    'qty' => $orderQty,
+                ];
+
+                $itemType = (string)($orderInfo['item_type'] ?? '');
+                if ($itemType === 'stock') {
+                    $oneQty += $orderQty;
+                    $oneOrderNums[] = $orderNumData;
+                } else {
+                    $setQty += $orderQty;
+                    $setOrderNums[] = $orderNumData;
+                }
+            }
+
+            $packageOut = (int)($stockRow['package_remove_qty'] ?? 0);
+            $packageOutTotal += $packageOut;
+
+            $rows[] = [
+                'brand_idx' => $productData['CD_BRAND_IDX'] ?? '',
+                'cd_idx' => $productData['CD_IDX'] ?? '',
+                'ps_idx' => $productData['ps_idx'] ?? $psIdx,
+                'qty' => (float)($stockRow['goods_qty'] ?? ($oneQty + $setQty)),
+                'one' => [
+                    'name' => '단일',
+                    'qty' => $oneQty,
+                    'order_num' => $oneOrderNums,
+                ],
+                'set' => [
+                    'name' => '세트',
+                    'qty' => $setQty,
+                    'order_num' => $setOrderNums,
+                ],
+                'packageOut' => $packageOut,
+            ];
+        }
+
+        return [
+            'rows' => $rows,
+            'order_count' => count($orderNoMap),
+            'package_out' => $packageOutTotal,
+        ];
+    }
+
+    /**
+     * 고도몰 집계 error 데이터를 저장용 에러 배열로 변환
+     *
+     * @param array $errors
+     * @return array
+     */
+    private function buildStockErrorRows(array $errors): array
+    {
+        $result = [];
+
+        foreach ($errors as $error) {
+            $code = trim((string)$error);
+            if ($code === '') {
+                continue;
+            }
+            $result[] = '코드 확인: ' . $code;
+        }
+
+        return $result;
+    }
+
 
 }

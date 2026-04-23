@@ -164,21 +164,20 @@
 	*/
 
 
-
-
 	/**
 	 * 공통 Confirm 생성 함수
 	 * 
 	 * @param {string} title - 팝업 제목
 	 * @param {string} content - 팝업 내용
 	 * @param {function} onConfirm - 확인 버튼 클릭 시 실행할 함수
+	 * @param {function|null} onCancel - 취소 버튼 클릭 시 실행할 함수
 	 * @param {string} icon - 팝업 아이콘
 	 * @param {string} type - 팝업 타입
 	 * @param {string} btnText - 확인 버튼 텍스트
 	 * @param {string} btnClass - 확인 버튼 클래스
 	 * @param {string} cancelText - 취소 버튼 텍스트
 	 */
-	const dnConfirm = (title, content, onConfirm, icon = null, type = "default", btnText = '확인', btnClass = 'btn-red', cancelText = '취소') => {
+	const dnConfirm = (title, content, onConfirm, icon = null, type = "default", btnText = '확인', btnClass = 'btn-red', cancelText = '취소', onCancel = null) => {
 		$.confirm({
 			boxWidth: '400px',
 			useBootstrap: false,
@@ -196,7 +195,8 @@
 					action: onConfirm
 				},
 				cancel: {
-					text: cancelText
+					text: cancelText,
+					action: onCancel
 				}
 			}
 		});

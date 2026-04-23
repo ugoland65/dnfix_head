@@ -6,6 +6,7 @@ use Exception;
 use App\Auth\AdminAuth;
 use App\Core\AuthAdmin;
 use App\Models\ProductGroupingModel;
+use App\Models\ProductGroupingMatchModel;
 use App\Models\ProductModel;
 use App\Models\ProductPartnerModel;
 use App\Services\ProductPartnerService;
@@ -226,6 +227,7 @@ class ProductGroupingService
         //dd($prd_idxs);
 
         $data_array = [];
+        $matchStartSortNo = 0;
 
         //신규 그룹핑 생성
         if( empty($idx) ){
@@ -289,6 +291,7 @@ class ProductGroupingService
             if( !is_array($data_json) ){
                 $data_json = [];
             }
+            $matchStartSortNo = count($data_json);
 
             // 기존 그룹 데이터에 이미 포함된 idx는 prd_idxs에서 제거하고,
             // 신규로 추가해야 할 idx만 남긴다.
@@ -323,6 +326,10 @@ class ProductGroupingService
             $savedIdx = $result['idx'] ?? null;
         } elseif (empty($savedIdx) && is_object($result)) {
             $savedIdx = $result->idx ?? null;
+        }
+
+        if (!empty($savedIdx) && !empty($prd_idxs)) {
+            $this->saveGroupingMatchRows($savedIdx, $prd_mode, $prd_idxs, $matchStartSortNo);
         }
 
         return [
@@ -393,6 +400,121 @@ class ProductGroupingService
         return $rows;
     }
 
+    /**
+     * 그룹핑 매칭 테이블 저장(중복 시 updateOrCreate)
+     *
+     * @param int|string $groupingIdx
+     * @param string $prdMode
+     * @param array $prdIdxs
+     * @param int $startSortNo
+     * @return void
+     */
+    private function saveGroupingMatchRows($groupingIdx, string $prdMode, array $prdIdxs, int $startSortNo = 0): void
+    {
+        if (empty($groupingIdx) || empty($prdIdxs)) {
+            return;
+        }
+
+        $regId = '';
+        try {
+            $regId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+        } catch (\Throwable $e) {
+            $regId = '';
+        }
+
+        foreach (array_values($prdIdxs) as $offset => $targetIdx) {
+            $targetIdx = trim((string)$targetIdx);
+            if ($targetIdx === '') {
+                continue;
+            }
+
+            ProductGroupingMatchModel::updateOrCreate(
+                [
+                    'grouping_idx' => (int)$groupingIdx,
+                    'prd_mode' => $prdMode,
+                    'target_idx' => (int)$targetIdx,
+                ],
+                [
+                    'sort_no' => $startSortNo + $offset + 1,
+                    'is_active' => 1,
+                    'reg_id' => $regId,
+                ]
+            );
+        }
+    }
+
+    /**
+     * data_json 기준으로 그룹핑 매칭 테이블을 동기화한다.
+     * - 현재 목록은 upsert
+     * - 제거된 상품은 delete (prd_idx 입력이 있는 저장일 때만)
+     *
+     * @param int $groupingIdx
+     * @param string $prdMode
+     * @param array $rows
+     * @param bool $allowDelete
+     * @return void
+     */
+    private function syncGroupingMatchRowsFromData(int $groupingIdx, string $prdMode, array $rows, bool $allowDelete = false): void
+    {
+        if ($groupingIdx <= 0 || $prdMode === '') {
+            return;
+        }
+
+        $regId = '';
+        try {
+            $regId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+        } catch (\Throwable $e) {
+            $regId = '';
+        }
+
+        $targetIdxs = [];
+
+        foreach (array_values($rows) as $sortOffset => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $targetIdx = trim((string)($row['idx'] ?? ''));
+            if ($targetIdx === '') {
+                continue;
+            }
+
+            $targetIdxs[] = (int)$targetIdx;
+
+            ProductGroupingMatchModel::updateOrCreate(
+                [
+                    'grouping_idx' => $groupingIdx,
+                    'prd_mode' => $prdMode,
+                    'target_idx' => (int)$targetIdx,
+                ],
+                [
+                    'sort_no' => $sortOffset + 1,
+                    'is_active' => 1,
+                    'memo' => (string)($row['memo'] ?? ''),
+                    'reg_id' => $regId,
+                ]
+            );
+        }
+
+        if (!$allowDelete) {
+            return;
+        }
+
+        $targetIdxs = array_values(array_unique($targetIdxs));
+
+        if (empty($targetIdxs)) {
+            ProductGroupingMatchModel::where('grouping_idx', $groupingIdx)
+                ->where('prd_mode', $prdMode)
+                ->delete();
+            return;
+        }
+
+        ProductGroupingMatchModel::where('grouping_idx', $groupingIdx)
+            ->where('prd_mode', $prdMode)
+            ->whereNotIn('target_idx', $targetIdxs)
+            ->delete();
+    }
+
 
     /**
      * 그룹핑 수정저장
@@ -420,7 +542,7 @@ class ProductGroupingService
         $productGroupingData = $productGroupingData->toArray();
 
         $pg_mode = $inputData['pg_mode'] ?? 'op';
-        $prd_mode = $inputData['prd_mode'] ?? 'prdDB';
+        $prd_mode = $inputData['prd_mode'] ?? ($productGroupingData['prd_mode'] ?? 'prdDB');
         $public = $inputData['public'] ?? '공개';
         $pg_subject = $inputData['pg_subject'] ?? null;
         
@@ -638,6 +760,7 @@ class ProductGroupingService
         }
         unset($value);
 
+        $dataRowsForMatch = $data_json;
         $data_json = json_encode($data_json, JSON_UNESCAPED_UNICODE);
 
         $updateData = [
@@ -651,6 +774,13 @@ class ProductGroupingService
         ];
 
         $result = ProductGroupingModel::where('idx', $idx)->update($updateData);
+
+        $this->syncGroupingMatchRowsFromData(
+            (int)$idx,
+            (string)$prd_mode,
+            is_array($dataRowsForMatch) ? $dataRowsForMatch : [],
+            (bool)$hasPrdIdxInput
+        );
 
         return [
             'result' => $result,

@@ -68,7 +68,7 @@ try {
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
-    $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
+
 
     // 상품 그룹핑
     $router->get('/product/grouping', ProductGroupingController::class, 'productGroupingList'); //상품 그룹핑 목록
@@ -115,6 +115,7 @@ try {
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
 
+    // 재고 관리
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록
     $router->get('/stock/rack_info', RackController::class, 'rackCreate'); //랙신규등록
     $router->get('/stock/rack_info/{idx}', RackController::class, 'rackInfo'); //랙상세
@@ -122,6 +123,9 @@ try {
     $router->post('/stock/delete_rack', RackController::class, 'deleteRack'); //랙삭제
     $router->get('/stock/rack_change', RackController::class, 'rackChange'); //랙그룹변경 페이지
     $router->post('/stock/save_rack_change', RackController::class, 'saveRackChange'); //랙그룹변경 저장
+
+    $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
+    $router->post('/stock/save_daily_stock_temp', ProductStockHistoryController::class, 'saveDailyStockTemp'); //일일재고 임시저장
 
     //업무
     // C/S 관리

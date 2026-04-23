@@ -13,6 +13,7 @@ if (!is_array($data)) {
 	$data = [];
 }
 
+$meta_data = json_decode($data['meta_data'] ?? '[]', true);
 $_json_data = json_decode($data['data'] ?? '[]', true);
 $_error_data = json_decode($data['error'] ?? '{"result":[]}', true);
 
@@ -217,6 +218,32 @@ if (count($_row1) > 0) {
 		[<?= $data['uid'] ?? '' ?>] <b><?= $data['file_name'] ?? '' ?></b> |
 	</span>
 
+	<? 
+
+	$filtersModeMap = [
+		"p" => "결제완료",
+		"p2" => "결제완료 - 출고일 조정",
+		"g" => "준비중 전체",
+		"g1" => "상품준비중",
+		"g5" => "배송준비중-핸디",
+		"g6" => "배송준비중-공급사 주문대기",
+		"g7" => "배송준비중- CS 처리 대기",
+		"g8" => "배송준비중-CS 처리중",
+		"g9" => "배송준비중-공급사 주문완료",
+		"d" => "배송중",
+		"ds" => "배송완료",
+		"s1" => "구매확정",
+	];
+	if (($data['source_type'] ?? '') == "fetch") { 
+		
+		?>
+		<span class="text-red">API 등록</span>
+
+		Filters : 
+		<?= $filtersModeMap[$meta_data['filters']['mode'] ?? ''] ?? '' ?> (<?= $meta_data['filters']['mode'] ?? '' ?>)
+		<?= $meta_data['filters']['start_date'] ?? '' ?> ~
+		<?= $meta_data['filters']['end_date'] ?? '' ?>
+	<? } ?>
 	<div class="float-right">
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" disabled="disabled" onclick="stockExcel.excelDown()">엑셀 다운로드</button>
 		<iframe id="excelDown_iframe" src='' style='display:none;'></iframe>
@@ -366,7 +393,7 @@ if (count($_row1) > 0) {
 							<? } ?>
 						</td>
 						<td class="stock-mode-text">출고</td>
-						<td><input type="text" name="stock_memo[]" class="stock-memo" value="카페24 엑셀등록" /></td>
+						<td><input type="text" name="stock_memo[]" class="stock-memo" value="일일 재고관리" /></td>
 					</tr>
 					<tr class="order_num_list">
 						<td colspan="100%" >

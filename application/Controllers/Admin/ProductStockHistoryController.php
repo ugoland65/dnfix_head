@@ -51,4 +51,40 @@ class ProductStockHistoryController extends BaseClass
     }
 
 
+    /**
+     * 일일재고 임시저장
+     * 
+     * @param Request $request
+     * @return array
+     */
+    public function saveDailyStockTemp(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+
+            $payload = [
+                'file_name' => $requestData['file_name'] ?? '',
+                'mode' => $requestData['mode'] ?? 'p',
+                'start_date' => $requestData['start_date'] ?? date('Y-m-d'),
+                'end_date' => $requestData['end_date'] ?? date('Y-m-d'),
+            ];
+
+            $productStockHistoryService = new ProductStockHistoryService();
+            $result = $productStockHistoryService->saveDailyStockTemp($payload);
+
+            return response()->json([
+                'status' => 'success',
+                'message' => '일일재고 임시저장이 완료되었습니다.',
+                'data' => [
+                    'uid' => (int)($result['uid'] ?? 0),
+                ],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

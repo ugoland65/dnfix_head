@@ -72,6 +72,7 @@
                             <th class="">공급<br>입점사</th>
                             <th>공급가</th>
                             <th>배송비</th>
+                            <th>위탁가</th>
                             <th>택배사</th>
                             <th>VAT</th>
                             <th>10%</th>
@@ -166,6 +167,7 @@
                             </td>
                             <td class="text-right"><?=number_format($row['price'])?></td>
                             <td class="text-right"><?=number_format($row['delivery_fee'])?></td>
+                            <td class="text-right"><?=number_format($cost_price)?></td>
                             <td class="text-center"><?=$row['delivery_com']?></td>
                             <td class="text-center"><?=$row['is_vat']?></td>
                             <td class="text-right"><?=number_format($margin10)?><br><b><?=number_format($margin10 - $cost_price)?></b></td>

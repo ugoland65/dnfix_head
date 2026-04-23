@@ -106,6 +106,7 @@
 						<thead>
 							<tr>
 								<th>번호</th>
+								<th>모드</th>
 								<th>파일명</th>
 								<th>등록/처리</th>
 								<th>주문</th>
@@ -119,7 +120,7 @@
 						</tbody>
 						<tfoot id="stock_excel_list_tfoot">
 							<tr>
-								<th colspan="3">합계</th>
+								<th colspan="4">합계</th>
 								<th></th>
 								<th></th>
 								<th></th>
@@ -173,10 +174,11 @@
 	<tr id="tr_<%= uid %>" onclick="stockExcel.view('<%= uid %>', 'qty')" style="cursor:pointer;"
 		data-step="<%= step %>" data-name="<%= step_name %><%= file_name %> | 주문 : <%= order_count %> | 상품 : <%= pd_count %>">
 		<td class="text-center"><%= uid %></td>
+		<td class="text-center"><%= source_type_name %></td>
 		<td class="text-left"><%= step_name %><b><%= file_name %></b></td>
 		<td>
 			등록 : <%= reg_time %>
-			<% if (end_time) { %><br>처리 : <%= end_time %><% } %>
+			<% if (end_time && end_time !== '0000-00-00 00:00:00') { %><br>처리 : <%= end_time %><% } %>
 		</td>
 		<td class="text-center"><%= order_count %></td>
 		<td class="text-center"><%= pd_count %></td>
@@ -225,6 +227,12 @@
 						let total_error_count = 0;
 
 						rows.forEach(row => {
+							//source_type: row.source_type,
+							if (row.source_type == 'fetch') {
+								source_type_name = 'API';
+							} else {
+								source_type_name = '엑셀';
+							}
 							var renderedHTML = template({
 								uid: row.uid,
 								file_name: row.file_name,
@@ -237,7 +245,8 @@
 								order_count: row.info.order_count,
 								pd_count: row.info.pd_count,
 								package_out: row.info.package_out || 0,
-								error_count: row.error.count
+								error_count: row.error.count,
+								source_type_name: source_type_name
 							});
 							$("#stock_excel_list").append(renderedHTML);
 
