@@ -22,6 +22,7 @@ use App\Controllers\Admin\ProductGroupingController;
 use App\Controllers\Admin\PaymentRequestController;
 use App\Controllers\Admin\OrderGroupController;
 use App\Controllers\Admin\OrderController;
+use App\Controllers\Admin\Coupang\CoupangController;
 
 try {
 
@@ -126,6 +127,10 @@ try {
 
     $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
     $router->post('/stock/save_daily_stock_temp', ProductStockHistoryController::class, 'saveDailyStockTemp'); //일일재고 임시저장
+
+    //쿠팡관리
+    $router->get('/coupang/product_list', CoupangController::class, 'coupangProductList'); //쿠팡 상품 목록
+    $router->post('/coupang/action', CoupangController::class, 'coupangAction'); //쿠팡 처리 액션
 
     //업무
     // C/S 관리

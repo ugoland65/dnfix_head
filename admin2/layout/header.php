@@ -352,9 +352,22 @@ $gnb_lang = "ko";
 					</ul>
 				</div>
 			</li>    
+
 			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
 				<a href="/admin/provider_product/db">공급사 관리</a>
-			</li>   
+			</li>
+			
+            <li class="ko <?php if( $_pageGroup == "coupang" || $pageGroup2 == "coupang" ) echo "active"; ?> have-sub-menu">
+				쿠팡관리
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/admin/coupang/product_list">쿠팡 상품 목록</a>
+						</li>
+					</ul>
+				</div>
+			</li>
+
             <li class="ko <?php if( $_pageGroup == "order" || $pageGroup2 == "order" ) echo "active"; ?> have-sub-menu">
 				재고/발주
 				<div class="sub-menu">

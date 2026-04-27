@@ -38,6 +38,9 @@ class ProductStockModel extends BaseModel
         'ps_cafe24_sms',
         'is_sale_month',
         'is_sale_special',
+
+        'coupang_seller_product_id', // BIGINT  | 쿠팡 판매자 상품ID
+        'is_rocket', // CHAR(1) | 로켓 여부 (Y/N)
     ];
 
 }

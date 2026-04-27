@@ -24,10 +24,21 @@
                             <option value="환불" <?= $category == "환불" ? "selected" : "" ?>>환불</option>
                             <option value="불량" <?= $category == "불량" ? "selected" : "" ?>>불량(QC)</option>
                             <option value="공급사주문" <?= $category == "공급사주문" ? "selected" : "" ?>>공급사주문</option>
+                            <option value="출고지정일" <?= $category == "출고지정일" ? "selected" : "" ?>>출고지정일</option>
+                            <option value="입고후출고" <?= $category == "입고후출고" ? "selected" : "" ?>>입고후출고</option>
                             <option value="기타" <?= $category == "기타" ? "selected" : "" ?>>기타</option>
                         </select>
                     </td>
                 </tr>
+                <tr id="action_date_row">
+                    <th>출고일자</th>
+                    <td>
+                        <div class="calendar-input">
+                            <input type="text" name="action_date" id="action_date" value="<?= $actionDate ?>" placeholder="출고일자를 선택하세요.">
+                        </div>
+                    </td>
+                </tr>
+
                 <tr>
                     <th>주문번호</th>
                     <td>
@@ -148,6 +159,28 @@
                     <td><?= $csRequest['order_no'] ?></td>
                 </tr>
                 <tr>
+                    <th>분류</th>
+                    <td>
+                        <select name="category" id="category">
+                            <option value="출고준비" <?= $csRequest['category'] == "출고준비" ? "selected" : "" ?>>출고준비</option>
+                            <option value="환불" <?= $csRequest['category'] == "환불" ? "selected" : "" ?>>환불</option>
+                            <option value="불량" <?= $csRequest['category'] == "불량" ? "selected" : "" ?>>불량(QC)</option>
+                            <option value="공급사주문" <?= $csRequest['category'] == "공급사주문" ? "selected" : "" ?>>공급사주문</option>
+                            <option value="출고지정일" <?= $csRequest['category'] == "출고지정일" ? "selected" : "" ?>>출고지정일</option>
+                            <option value="입고후출고" <?= $csRequest['category'] == "입고후출고" ? "selected" : "" ?>>입고후출고</option>
+                            <option value="기타" <?= $csRequest['category'] == "기타" ? "selected" : "" ?>>기타</option>
+                        </select>
+                    </td>
+                </tr>
+                <tr id="action_date_row">
+                    <th>출고일자</th>
+                    <td>
+                        <div class="calendar-input">
+                            <input type="text" name="action_date" id="action_date" value="<?= $csRequest['action_date'] ?>" placeholder="출고일자를 선택하세요.">
+                        </div>
+                    </td>
+                </tr>
+                <tr>
                     <th>상태변경</th>
                     <td>
                         <select name="cs_status" id="cs_status">
@@ -178,8 +211,37 @@
 <script>
 
     $(function(){
+
+        $(".calendar-input input").datepicker(clareCalendar);
+
+        function toggleActionDateRow() {
+            var category = $('#category').val();
+            if (category === '출고지정일') {
+                $('#action_date_row').show();
+            } else {
+                $('#action_date_row').hide();
+                $('#action_date').val('');
+            }
+        }
+
+        if ($('#category').length) {
+            toggleActionDateRow();
+            $('#category').on('change', toggleActionDateRow);
+        }
+        
         $('#save_btn').click(function(e){
             e.preventDefault();
+
+            if ($('#category').length) {
+                var category = $('#category').val();
+                var actionDate = $.trim($('#action_date').val());
+                if (category === '출고지정일' && actionDate === '') {
+                    alert('출고지정일 분류는 출고일자 입력이 필요합니다.');
+                    $('#action_date').focus();
+                    return;
+                }
+            }
+
             var formData = $('#cs_detail_form').serializeArray();
             ajaxRequest('/admin/cs/update_cs_status', formData)
                 .then(res => {

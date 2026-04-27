@@ -13,6 +13,7 @@ class CsRequestModel extends BaseModel {
         'order_no',
         'order_date',
         'payment_date',
+        'action_date', //DATETIME | 출고일자
         'mem_no',
         'mem_id',
         'mem_name',

@@ -78,6 +78,7 @@
 								<th class="list-idx">고유번호</th>
                                 <th class="">분류</th>
 								<th class="">상태</th>
+                                <th class="">상태변경</th>
 								<th class="">주문번호</th>
 								<th class="">주문일</th>
 								<th class="">회원ID</th>
@@ -89,7 +90,7 @@
                                 <th class="">댓글</th>
                                 <th class="">등록자</th>
 								<th class="">등록일</th>
-                                <th class="">상태변경</th>
+                                
                                 <th class="">처리내용</th>
                                 <th class="">처리자</th>
                                 <th class="">처리일</th>
@@ -116,7 +117,13 @@
                                 <td><input type="checkbox" name="check_idx[]" value="<?= $row['idx'] ?>"></td>
                                 <td class="list-idx"><?= $row['idx'] ?></td>
                                 <td><?= $row['category'] ?></td>
-                                <td><?= $row['cs_status'] ?></td>
+                                <td>
+                                    <?= $row['cs_status'] ?>
+                                    <?php if( $row['action_date'] ) { ?>
+                                        <p><span class="text-danger">출고일자 : <?= date('Y.m.d', strtotime($row['action_date'])) ?></span></p>
+                                    <?php } ?>
+                                </td>
+                                <td><button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="csDetail('<?=$row['idx']?>')" >상태변경</button></td>
                                 <td><a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['order_no'] ?>" target="_blank"><b><?= $row['order_no'] ?></b></a></td>
                                 <td><?= $row['order_date'] ?></td>
                                 <td>
@@ -144,7 +151,7 @@
                                 </td>
                                 <td><?= $row['reg_name'] ?></td>
                                 <td><?= date('Y.m.d H:i', strtotime($row['created_at'])) ?></td>
-                                <td><button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="csDetail('<?=$row['idx']?>')" >상태변경</button></td>
+                                
                                 <td><?= nl2br($row['process_action']) ?></td>
                                 <td><?= $row['processor_name'] ?></td>
                                 <td>

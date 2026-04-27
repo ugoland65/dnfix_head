@@ -131,6 +131,10 @@ class CsRequestService
         $groupNm = $data['groupNm'] ?? null;
         $csBody = $data['csBody'] ?? null;
         $category = $data['category'] ?? '출고준비';
+        $actionDate = $data['actionDate'] ?? null;
+        if ($category !== '출고지정일') {
+            $actionDate = null;
+        }
 
         // 빈 필수값이 있으면 예외 반환
         /*
@@ -150,6 +154,7 @@ class CsRequestService
             'order_no' => $orderNo,
             'order_date' => $orderDate,
             'payment_date' => $paymentDt,
+            'action_date' => $actionDate,
             'mem_no' => $memNo,
             'mem_id' => $memId,
             'mem_name' => $memName,
@@ -199,6 +204,11 @@ class CsRequestService
     public function updateCsStatus($data)
     {
         $query = CsRequestModel::find($data['idx']);
+        $category = $data['category'] ?? ($query->category ?? null);
+        $actionDate = $data['action_date'] ?? null;
+        if ($category !== '출고지정일') {
+            $actionDate = null;
+        }
 
         $admin = AdminAuth::user();
 
@@ -207,7 +217,9 @@ class CsRequestService
         $processor_name = $admin["sess_name"] ?? null;
 
         $update_data = [
+            'category' => $category,
             'cs_status' => $data['cs_status'],
+            'action_date' => $actionDate,
             'processor_id' => $processor_id,
             'processor_pk' => $processor_pk,
             'processor_name' => $processor_name,
