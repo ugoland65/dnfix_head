@@ -435,7 +435,7 @@
                     </ul>
 
                     <?php if (!empty($prd_data['supplier_prd_pk']) && 
-                    ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 || $prd_data['partner_idx'] == 7 || $prd_data['partner_idx'] == 8 ) ) { ?>
+                    ( $prd_data['partner_idx'] == 3 || $prd_data['partner_idx'] == 6 || $prd_data['partner_idx'] == 7 || $prd_data['partner_idx'] == 8 || $prd_data['partner_idx'] == 10 ) ) { ?>
                         <ul class="right">
                             업데이트후 새로고침 됩니다. 저장후 이용바랍니다.
 
@@ -489,7 +489,10 @@
                 <label><input type="radio" name="is_vat" value="N" <? if ($prd_data['price_data']['is_vat'] == 'N') echo "checked"; ?>> 미포함</label>
             </td>
         </tr>
-
+        <tr>
+            <th>최저판매가</th>
+            <td><input type='text' name='min_sale_price' size='40' value="<?= number_format($prd_data['min_sale_price']) ?>" style="width:150px;" class="comma-input"></td>
+        </tr>
         <tr>
             <th>상품원가 (공급사 제공가격)</th>
             <td><input type='text' name='cost_price' size='40' value="<?= number_format($prd_data['cost_price']) ?>" style="width:150px;" class="comma-input"></td>
@@ -612,7 +615,7 @@
                     <?php
                     foreach ($prd_data['supplier_detail_img'] as $img) {
                     ?>
-                        <img src="<?= $img ?>">
+                        <img src="<?= $img ?>" style="max-width:990px; width:100%; height:auto;">
                     <?php
                     }
                     ?>

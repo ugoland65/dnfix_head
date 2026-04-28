@@ -233,6 +233,7 @@
                                 <th class="">주문상품명</th>
                                 <th class="">주문수량</th>
                                 <th class="">매칭상품</th>
+                                <th class="">공급사링크</th>
                                 <th class="">C/S 요청</th>
                                 <th class="">수령자명</th>
                                 <th class="">수령자<br>전화번호</th>
@@ -285,14 +286,20 @@
                                     <td class="text-center"><?= $order['goodsCnt'] ?></td>
                                     <td>
                                         <?php if (isset($order['ProductPartner']) && !empty($order['ProductPartner']['supplier_prd_pk'])) { ?>
-                                            <div class="partner-match-card" onclick="goSupplierProduct('<?= $order['ProductPartner']['supplier_site'] ?>', '<?= $order['ProductPartner']['supplier_prd_pk'] ?>');">
+                                            <div class="partner-match-card" onclick="prdProviderQuick('<?= $order['ProductPartner']['idx'] ?>');">
                                                 <img class="partner-match-thumb" src="<?= $order['ProductPartner']['supplier_img_src'] ?>">
                                                 <div class="partner-match-info">
                                                     <span class="partner-match-name"><?= $order['ProductPartner']['name_p'] ?></span>
                                                     주문가 : <?= number_format($order['ProductPartner']['order_price']) ?> | 원가 : <?= number_format($order['ProductPartner']['cost_price']) ?></br>
+                                                    <?php if ((int)($order['ProductPartner']['order_price'] ?? 0) <= 0 || (int)($order['ProductPartner']['cost_price'] ?? 0) <= 0) { ?>
+                                                        <span style="color:#d9534f; font-weight:700;">경고: 주문가 또는 원가가 0원입니다.</span>
+                                                    <?php } ?>
                                                 </div>
                                             </div>
                                         <?php } ?>
+                                    </td>
+                                    <td>
+                                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="goSupplierProduct('<?= $order['ProductPartner']['supplier_site'] ?>', '<?= $order['ProductPartner']['supplier_prd_pk'] ?>');">공급사링크</button>
                                     </td>
                                     <td>
                                         <button type="button" class="btnstyle1 btnstyle1-xs" 

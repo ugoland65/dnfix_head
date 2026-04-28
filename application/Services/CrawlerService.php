@@ -334,7 +334,7 @@ class CrawlerService extends BaseClass
         return $hiddenFields;
     }
     
-         /**
+    /**
       * 상품 정보 크롤링
       * 
       * @param string $goodsNo 상품코드
@@ -376,7 +376,7 @@ class CrawlerService extends BaseClass
                  echo "요청 URL: " . $productUrl . "\n";
              }
              
-                         // 상품 페이지 요청 (메인 페이지를 Referer로 설정)
+            // 상품 페이지 요청 (메인 페이지를 Referer로 설정)
             curl_setopt($this->ch, CURLOPT_URL, $productUrl);
             curl_setopt($this->ch, CURLOPT_POST, false);
             curl_setopt($this->ch, CURLOPT_REFERER, self::DOMAIN . "/main/index.php");
@@ -402,7 +402,7 @@ class CrawlerService extends BaseClass
                  throw new \Exception("상품 페이지 접속 실패: HTTP {$httpCode}");
              }
              
-                         if ($debug) {
+            if ($debug) {
                 echo "HTTP 응답 코드: " . $httpCode . "\n";
                 echo "최종 URL: " . curl_getinfo($this->ch, CURLINFO_EFFECTIVE_URL) . "\n";
                 echo "HTML 길이: " . strlen($productPageContent) . "\n";

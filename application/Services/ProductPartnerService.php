@@ -13,6 +13,7 @@ use App\Core\AuthAdmin;
 
 class ProductPartnerService extends BaseClass
 {
+    
     /**
      * 상품 공급사 목록 조회
      * 
@@ -202,6 +203,7 @@ class ProductPartnerService extends BaseClass
             $sale_price = (int)preg_replace('/[,\s]/', '', $postData['sale_price'] ?? 0); // 판매가
             $cost_price = (int)preg_replace('/[,\s]/', '', $postData['cost_price'] ?? 0); // 원가
             $order_price = (int)preg_replace('/[,\s]/', '', $postData['order_price'] ?? 0); // 주문가
+            $min_sale_price = (int)preg_replace('/[,\s]/', '', $postData['min_sale_price'] ?? 0); // 최저판매가
             $code = $postData['code'] ?? ''; // 상품 코드
 
             $is_vat = $postData['is_vat'] ?? 'Y'; // 부가세
@@ -296,6 +298,7 @@ class ProductPartnerService extends BaseClass
                 'sale_price' => $sale_price, // 판매가
                 'cost_price' => $cost_price, // 원가 (vat 포함)
                 'order_price' => $order_price, // 주문가
+                'min_sale_price' => $min_sale_price, // 최저판매가
                 'price_data' => $price_data, // 가격 데이터
                 'code' => $code, // 상품 코드
                 'img_mode' => $img_mode, // 이미지 모드 (out: 외부 이미지, this: 서버에 등록)
@@ -328,6 +331,7 @@ class ProductPartnerService extends BaseClass
                 'sale_price' => $sale_price,
                 'cost_price' => $cost_price,
                 'order_price' => $order_price,
+                'min_sale_price' => $min_sale_price,
                 'price_data' => $price_data,
                 'code' => $code,
                 'img_mode' => $img_mode,
@@ -898,4 +902,5 @@ class ProductPartnerService extends BaseClass
 
         return true;
     }
+
 }
