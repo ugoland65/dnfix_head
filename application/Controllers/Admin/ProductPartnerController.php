@@ -74,6 +74,8 @@ class ProductPartnerController extends BaseClass
             // 브랜드 셀렉트바를 위한 조회
             $brandService = new BrandService();
             $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
 
             //공급매칭 pks 수집
             $supplier_prd_idxs = [];
@@ -147,6 +149,7 @@ class ProductPartnerController extends BaseClass
                 'productPartnerList' => $productPartnerList['data'],
                 'partnerForSelect' => $partnerForSelect,
                 'brandForSelect' => $brandForSelect,
+                'prd_kind_name' => $prd_kind_name,
                 'supplierProductMap' => $supplierProductMap,
             ];
 
@@ -470,6 +473,19 @@ class ProductPartnerController extends BaseClass
                 $result = $productPartnerService->productRegisterToSupplierProduct($payload);
                 $message = '상품DB로 등록되었습니다.';
                 $errorMessage = '상품DB로 등록에 실패했습니다.';
+
+            // 선택상품 일괄수정
+            }elseif( $actionMode == 'bulk_update_brand' ){
+
+                $payload = [
+                    'pks' => $requestData['pks'] ?? [],
+                    'brand_idx' => $requestData['brand_idx'] ?? null,
+                    'kind' => $requestData['kind'] ?? null,
+                    'status' => $requestData['status'] ?? null,
+                ];
+                $result = call_user_func([$productPartnerService, 'bulkUpdateSelectedProducts'], $payload);
+                $message = $result['message'] ?? '선택상품 일괄수정이 완료되었습니다.';
+                $errorMessage = '선택상품 일괄수정에 실패했습니다.';
 
             }else{
                 throw new \Exception('지원하지 않는 action_mode 입니다.');

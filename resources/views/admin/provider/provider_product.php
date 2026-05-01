@@ -3,6 +3,47 @@
 		width: 300px;
 		white-space: normal !important;
 	}
+	.bulk-update-modal {
+		display: none;
+		position: fixed;
+		left: 0;
+		top: 0;
+		width: 100%;
+		height: 100%;
+		z-index: 9999;
+		background: rgba(0, 0, 0, 0.5);
+	}
+	.bulk-update-modal.active {
+		display: block;
+	}
+	.bulk-update-modal-content {
+		width: 520px;
+		max-width: calc(100% - 40px);
+		background: #fff;
+		border-radius: 8px;
+		margin: 80px auto 0;
+		padding: 20px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+	}
+	.bulk-update-modal-title {
+		font-size: 18px;
+		font-weight: 700;
+		margin-bottom: 16px;
+	}
+	.bulk-update-row {
+		margin-bottom: 14px;
+	}
+	.bulk-update-row label {
+		display: block;
+		font-weight: 700;
+		margin-bottom: 6px;
+	}
+	.bulk-update-actions {
+		display: flex;
+		justify-content: flex-end;
+		gap: 8px;
+		margin-top: 16px;
+	}
 </style>
 <div id="contents_head">
 	<h1>위탁 상품관리</h1>
@@ -137,7 +178,7 @@
 									<td>
 										<img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
 									</td>
-									<td class="text-center"><?= $koedge_prd_kind_name[$item['kind']] ?? "미지정" ?></td>
+									<td class="text-center"><?= $prd_kind_name[$item['kind']] ?? "미지정" ?></td>
 									<td class="prd-name">
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
 										<? if (!empty($item['memo'])) { ?>
@@ -176,17 +217,19 @@
 									<td class="text-right">
 										<?php
 										$salePrice = (float)($item['sale_price'] ?? 0);
+										// sale_price가 1이면 계산상 0과 동일 취급
+										$salePriceCalc = ((int)$salePrice === 1) ? 0 : $salePrice;
 										$costPrice = (float)($item['cost_price'] ?? 0);
 										$orderPrice = (float)($item['order_price'] ?? 0);
-										$margin = $salePrice - $costPrice;
-										$margin2 = $salePrice - $orderPrice;
+										$margin = $salePriceCalc - $costPrice;
+										$margin2 = $salePriceCalc - $orderPrice;
 
-										if ($salePrice > 0 && $costPrice > 0) {
+										if ($salePriceCalc > 0 && $costPrice > 0) {
 											echo number_format($margin);
 										} else {
 											echo '-';
 										}
-										if ($salePrice > 0 && $orderPrice > 0) {
+										if ($salePriceCalc > 0 && $orderPrice > 0) {
 											echo "<br><b>" . number_format($margin2) . "</b>";
 										} else {
 											echo '-';
@@ -195,16 +238,16 @@
 									</td>
 									<td class="text-right">
 										<?php
-										if ($salePrice > 0 && $costPrice > 0) {
-											$marginRate = ($margin / $salePrice) * 100;
+										if ($salePriceCalc > 0 && $costPrice > 0) {
+											$marginRate = ($margin / $salePriceCalc) * 100;
 											echo number_format($marginRate, 1) . '%';
 										} else {
 											echo '-';
 										}
 										?>
 										<?php
-										if ($salePrice > 0 && $orderPrice > 0) {
-											$marginRate2 = ($margin2 / $salePrice) * 100;
+										if ($salePriceCalc > 0 && $orderPrice > 0) {
+											$marginRate2 = ($margin2 / $salePriceCalc) * 100;
 											echo "<br><b>" . number_format($marginRate2, 1) . '%</b>';
 										} else {
 											echo '-';
@@ -346,8 +389,54 @@
 		선택된 상품 <span id="selected_product_count">0</span>
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택상품 업무요청</button>
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
+		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="productUpdateBtn">선택상품 일괄수정</button>
 	</div>
 </div>
+
+<div id="productBulkUpdateModal" class="bulk-update-modal">
+	<div class="bulk-update-modal-content">
+		<div class="bulk-update-modal-title">선택상품 일괄수정</div>
+		<div class="bulk-update-row">
+			<label>수정 대상 상품 수</label>
+			<div><b id="bulkUpdateSelectedCount">0</b>건</div>
+		</div>
+		<div class="bulk-update-row">
+			<label for="bulkUpdateBrandIdx">브랜드 일괄변경</label>
+			<select id="bulkUpdateBrandIdx" class="dn-select2" style="width:100%;">
+				<option value="">브랜드를 선택하세요</option>
+				<? foreach ($brandForSelect as $brand) { ?>
+					<option value="<?= $brand['BD_IDX'] ?>"><?= $brand['BD_NAME'] ?></option>
+				<? } ?>
+			</select>
+		</div>
+		<div class="bulk-update-row">
+			<label for="bulkUpdateKind">상품 구분 일괄변경</label>
+			<select id="bulkUpdateKind" style="width:100%;">
+				<option value="">상품 구분 선택</option>
+				<? foreach (($prd_kind_name ?? []) as $kind) { ?>
+					<option value="<?= $kind ?>"><?= $kind ?></option>
+				<? } ?>
+			</select>
+		</div>
+		<div class="bulk-update-row">
+			<label for="bulkUpdateStatus">고도몰 등록상태 일괄변경</label>
+			<select id="bulkUpdateStatus" style="width:100%;">
+				<option value="">고도몰 등록상태 선택</option>
+				<option value="등록대기">등록대기</option>
+				<option value="등록완료">등록완료</option>
+				<option value="등록보류">등록보류</option>
+				<option value="등록취소">등록취소</option>
+				<option value="품절">품절</option>
+				<option value="사입전용">사입전용</option>
+			</select>
+		</div>
+		<div class="bulk-update-actions">
+			<button type="button" class="btnstyle1 btnstyle1-sm" id="bulkUpdateCancelBtn">닫기</button>
+			<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="bulkUpdateApplyBtn">적용</button>
+		</div>
+	</div>
+</div>
+
 <script type="text/javascript">
 
 	const prdProvider = (function() {
@@ -355,6 +444,7 @@
 		const API_ENDPOINT = {
 			cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product',
 			productRegisterToSupplierProduct: '/admin/provider_product/action',
+			bulkUpdate: '/admin/provider_product/action',
 		};
 
 		/**
@@ -457,9 +547,20 @@
 			});
 		}
 
+		function bulkUpdateSelectedProducts(pks, payload) {
+			return ajaxRequest(API_ENDPOINT.bulkUpdate, {
+				action_mode: 'bulk_update_brand',
+				pks: pks,
+				brand_idx: payload.brand_idx || '',
+				kind: payload.kind || '',
+				status: payload.status || '',
+			});
+		}
+
 		return {
 			cancelMatchProviderProduct,
 			productRegisterToSupplierProduct,
+			bulkUpdateSelectedProducts,
 		};
 
 	})();
@@ -482,6 +583,14 @@
 	function updateSelectedCount() {
 		var count = $('input[name="check_idx[]"]:checked').length;
 		$("#selected_product_count").text(count);
+	}
+
+	function getSelectedItems() {
+		var selectedItems = [];
+		$('input[name="check_idx[]"]:checked').each(function() {
+			selectedItems.push($(this).val());
+		});
+		return selectedItems;
 	}
 
 	// 검색 파라미터 수집 공통 함수
@@ -540,10 +649,7 @@
 
 		// 선택상품 업무요청
 		$("#workRequestBtn").on('click', function() {
-			var selectedItems = [];
-			$('input[name="check_idx[]"]:checked').each(function() {
-				selectedItems.push($(this).val());
-			});
+			var selectedItems = getSelectedItems();
 
 			if (selectedItems.length === 0) {
 				alert('업무요청할 상품을 선택해주세요.');
@@ -560,10 +666,7 @@
 
 		// 선택상품 그룹핑
 		$("#groupingBtn").on('click', function() {
-			var selectedItems = [];
-			$('input[name="check_idx[]"]:checked').each(function() {
-				selectedItems.push($(this).val());
-			});
+			var selectedItems = getSelectedItems();
 
 			if (selectedItems.length === 0) {
 				alert('그룹핑할 상품을 선택해주세요.');
@@ -572,6 +675,70 @@
 
 			onlyAD.prdGrouping('provider', selectedItems);
 			
+		});
+
+		$("#productUpdateBtn").on('click', function() {
+			var selectedItems = getSelectedItems();
+			if (selectedItems.length === 0) {
+				alert('일괄수정할 상품을 선택해주세요.');
+				return;
+			}
+
+			$('#bulkUpdateSelectedCount').text(selectedItems.length);
+			$('#bulkUpdateBrandIdx').val('').trigger('change');
+			$('#bulkUpdateKind').val('');
+			$('#bulkUpdateStatus').val('');
+			$('#productBulkUpdateModal').addClass('active');
+			$('#bulkUpdateBrandIdx').select2({
+				width: '100%',
+				dropdownParent: $('#productBulkUpdateModal')
+			});
+		});
+
+		$('#bulkUpdateCancelBtn').on('click', function() {
+			$('#productBulkUpdateModal').removeClass('active');
+		});
+
+		$('#bulkUpdateApplyBtn').on('click', function() {
+			var selectedItems = getSelectedItems();
+			var brandIdx = $('#bulkUpdateBrandIdx').val();
+			var kind = $('#bulkUpdateKind').val();
+			var status = $('#bulkUpdateStatus').val();
+
+			if (selectedItems.length === 0) {
+				alert('선택된 상품이 없습니다. 다시 선택해주세요.');
+				$('#productBulkUpdateModal').removeClass('active');
+				return;
+			}
+			if (!brandIdx && !kind && !status) {
+				alert('일괄수정할 항목을 1개 이상 선택해주세요.');
+				return;
+			}
+			var changeTargets = [];
+			if (brandIdx) { changeTargets.push('브랜드'); }
+			if (kind) { changeTargets.push('상품 구분'); }
+			if (status) { changeTargets.push('고도몰 등록상태'); }
+
+			if (!confirm(selectedItems.length + '개 상품의 ' + changeTargets.join(', ') + '를 일괄 변경할까요?')) {
+				return;
+			}
+
+			prdProvider.bulkUpdateSelectedProducts(selectedItems, {
+				brand_idx: brandIdx,
+				kind: kind,
+				status: status,
+			})
+				.then(function(res) {
+					if (res.status === 'success') {
+						alert(res.message || '일괄수정이 완료되었습니다.');
+						location.reload();
+					} else {
+						alert(res.message || '일괄수정에 실패했습니다.');
+					}
+				})
+				.catch(function() {
+					alert('서버 통신에 실패했습니다.');
+				});
 		});
 
 		updateSelectedCount();

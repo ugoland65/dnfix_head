@@ -12,7 +12,7 @@ $supplier_code_data = [
         'name' => '바이담',
         'idx' => 10,
         'code' => 'byedam',
-        'scmNo' => 10,
+        'scmNo' => 6,
     ],
     'doradora' => [
         'name' => '도라도라',

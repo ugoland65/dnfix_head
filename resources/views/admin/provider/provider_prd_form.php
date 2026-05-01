@@ -132,7 +132,8 @@
             <tr>
                 <th>판매 상품명</th>
                 <td>
-                    <input type='text' name='name' size='40' value="<?= $prd_data['name'] ?>">
+                    <input type='text' name='name' id='name' size='40' value="<?= $prd_data['name'] ?>">
+                    <button type="button" class="btnstyle1 btnstyle1-xs m-t-5" onclick="copyInputValue('name', '판매 상품명')">상품명 복사</button>
                     <div class="admin-guide-text">
                         브랜드에서 명칭한 정식 상품명이 특정이 될 경우 공급사에서 제공한 상품명을 무시하고 브랜드에서 명칭한 상품명을 사용합니다.
                     </div>
@@ -140,7 +141,10 @@
             </tr>
             <tr>
                 <th>원(영문,일어,중국어) 상품명</th>
-                <td><input type='text' name='name_ori' size='40' value="<?= $prd_data['name_ori'] ?>"></td>
+                <td>
+                    <input type='text' name='name_ori' id='name_ori' size='40' value="<?= $prd_data['name_ori'] ?>">
+                    <button type="button" class="btnstyle1 btnstyle1-xs m-t-5" onclick="copyInputValue('name_ori', '원(영문,일어,중국어) 상품명')">상품명 복사</button>
+                </td>
             </tr>
             <tr>
                 <th>공급사 상품명</th>
@@ -160,6 +164,15 @@
                         $margin_rate = $margin / $prd_data['sale_price'] * 100;
                     ?>
                         마진 : <?= number_format($margin) ?>원 / 마진율 : <?= number_format($margin_rate, 2) ?>%
+                    <?php
+                    }
+                    ?>
+                    <?php
+                    if (!empty($prd_data['min_sale_price']) && !empty($prd_data['cost_price'])) {
+                        $min_margin = $prd_data['min_sale_price'] - $prd_data['cost_price'];
+                        $min_margin_rate = $min_margin / $prd_data['min_sale_price'] * 100;
+                    ?>
+                        <br>최저판매가 기준 마진 : <b><?= number_format($min_margin) ?>원</b> / 마진율 : <b><?= number_format($min_margin_rate, 2) ?>%</b>
                     <?php
                     }
                     ?>
@@ -315,9 +328,10 @@
 
                 <?php if ($prd_data['cost_price'] > 0) { ?>
                     <?php
-                    $_margin_ex_per = [10, 15, 20, 25, 30];
+                    $_margin_ex_per = [10, 15, 20, 25, 30, 35, 40, 45, 50];
                     $_cost_price_for_margin = (float)($prd_data['cost_price'] ?? 0);
                     $_order_price_for_margin = (float)($prd_data['order_price'] ?? 0);
+                    $_min_sale_price_for_margin = (float)($prd_data['min_sale_price'] ?? 0);
                     ?>
                     <div class="m-t-8" style="font-size:12px; display:flex; gap:24px; align-items:flex-start;">
                         <div>
@@ -331,7 +345,7 @@
                                 }
                                 ?>
                                 <div class="m-t-3">
-                                    <?= $_margin_per ?>% 마진: <b><?= number_format($_example_sale_price) ?></b>원
+                                    <?= $_margin_per ?>% 마진 판매가 : <b><?= number_format($_example_sale_price) ?></b>원
                                 </div>
                             <?php } ?>
                         </div>
@@ -346,10 +360,42 @@
                                 }
                                 ?>
                                 <div class="m-t-3">
-                                    <?= $_margin_per ?>% 마진: <b><?= number_format($_example_sale_price_by_order) ?></b>원
+                                    <?= $_margin_per ?>% 마진 판매가 : <b><?= number_format($_example_sale_price_by_order) ?></b>원
                                 </div>
                             <?php } ?>
                         </div>
+                        <?php if ($_min_sale_price_for_margin > 0) { ?>
+                        <div>
+                            <div><b>최저판매가 기준 마진율</b></div>
+                            <div>최저판매가 : <b><?= number_format($_min_sale_price_for_margin) ?></b>원</div>
+                            <?php
+                            $_min_margin_by_cost = $_min_sale_price_for_margin - $_cost_price_for_margin;
+                            $_min_margin_rate_by_cost = ($_cost_price_for_margin > 0)
+                                ? (($_min_margin_by_cost / $_min_sale_price_for_margin) * 100)
+                                : null;
+                            $_min_margin_by_order = $_min_sale_price_for_margin - $_order_price_for_margin;
+                            $_min_margin_rate_by_order = ($_order_price_for_margin > 0)
+                                ? (($_min_margin_by_order / $_min_sale_price_for_margin) * 100)
+                                : null;
+                            ?>
+                            <div class="m-t-3">
+                                원가 기준: 
+                                <?php if ($_min_margin_rate_by_cost !== null) { ?>
+                                    <b><?= number_format($_min_margin_rate_by_cost, 2) ?>%</b>
+                                <?php } else { ?>
+                                    <b>-</b>
+                                <?php } ?>
+                            </div>
+                            <div class="m-t-3">
+                                주문가 기준: 
+                                <?php if ($_min_margin_rate_by_order !== null) { ?>
+                                    <b><?= number_format($_min_margin_rate_by_order, 2) ?>%</b>
+                                <?php } else { ?>
+                                    <b>-</b>
+                                <?php } ?>
+                            </div>
+                        </div>
+                        <?php } ?>
                     </div>
                 <?php } ?>
 
@@ -713,6 +759,42 @@
                 showToast('상세이미지 HTML 코드가 복사되었습니다.', new Date().toLocaleTimeString());
             } else {
                 alert('상세이미지 HTML 코드가 복사되었습니다.');
+            }
+        };
+
+        if (navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(onSuccess).catch(function() {
+                $target.trigger('focus').trigger('select');
+                document.execCommand('copy');
+                onSuccess();
+            });
+            return;
+        }
+
+        $target.trigger('focus').trigger('select');
+        document.execCommand('copy');
+        onSuccess();
+    }
+
+    function copyInputValue(inputId, fieldName) {
+        var $target = $('#' + inputId);
+        if ($target.length === 0) {
+            alert('복사할 입력값을 찾을 수 없습니다.');
+            return;
+        }
+
+        var text = String($target.val() || '');
+        if (!text) {
+            alert('복사할 값이 없습니다.');
+            return;
+        }
+
+        var successMessage = (fieldName || '입력값') + '이(가) 복사되었습니다.';
+        var onSuccess = function() {
+            if (typeof showToast === 'function') {
+                showToast(successMessage, new Date().toLocaleTimeString());
+            } else {
+                alert(successMessage);
             }
         };
 

@@ -667,6 +667,113 @@ class ProductPartnerService extends BaseClass
     }
 
     /**
+     * 선택상품 일괄수정 (브랜드/상품구분/고도몰 등록상태)
+     *
+     * @param array $data
+     * @return array
+     */
+    public function bulkUpdateSelectedProducts($data)
+    {
+        $pks = $data['pks'] ?? [];
+        if (!is_array($pks)) {
+            $pks = [$pks];
+        }
+        $pks = array_values(array_filter(array_map('intval', $pks), function ($v) {
+            return $v > 0;
+        }));
+        if (empty($pks)) {
+            throw new \Exception('변경할 상품을 선택해주세요.');
+        }
+
+        $brandIdx = (int)($data['brand_idx'] ?? 0);
+        $kind = trim((string)($data['kind'] ?? ''));
+        $status = trim((string)($data['status'] ?? ''));
+
+        $updateData = [
+            'updated_at' => date('Y-m-d H:i:s'),
+        ];
+
+        $updatedFields = [];
+        if ($brandIdx > 0) {
+            $updateData['brand_idx'] = $brandIdx;
+            $updatedFields[] = '브랜드';
+        }
+        if ($kind !== '') {
+            $updateData['kind'] = $kind;
+            $updatedFields[] = '상품 구분';
+        }
+        if ($status !== '') {
+            $updateData['status'] = $status;
+            $updatedFields[] = '고도몰 등록상태';
+        }
+
+        if (count($updatedFields) === 0) {
+            throw new \Exception('일괄수정할 항목을 1개 이상 선택해주세요.');
+        }
+
+        $beforeRows = ProductPartnerModel::query()
+            ->whereIn('idx', $pks)
+            ->get()
+            ->toArray();
+
+        $beforeMap = [];
+        foreach ($beforeRows as $row) {
+            $rowIdx = (int)($row['idx'] ?? 0);
+            if ($rowIdx > 0) {
+                $beforeMap[$rowIdx] = $row;
+            }
+        }
+
+        $updatedCount = ProductPartnerModel::query()
+            ->whereIn('idx', $pks)
+            ->update($updateData);
+
+        if ((int)$updatedCount < 1) {
+            throw new \Exception('수정된 상품이 없습니다.');
+        }
+
+        $adminActionLogService = new AdminActionLogService();
+        foreach ($pks as $pk) {
+            $pk = (int)$pk;
+            if ($pk < 1 || !isset($beforeMap[$pk])) {
+                continue;
+            }
+
+            $beforeData = $beforeMap[$pk];
+            $afterData = array_merge($beforeData, $updateData);
+            $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
+
+            $adminActionLogService->log([
+                'target_type' => 'prd_partner',
+                'target_table' => 'prd_partner',
+                'target_pk' => (string)$pk,
+                'action_mode' => 'update',
+                'action_summary' => '선택상품 일괄수정 (' . implode(', ', $updatedFields) . ')',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+            ]);
+        }
+
+        return [
+            'updated_count' => (int)$updatedCount,
+            'updated_fields' => $updatedFields,
+            'message' => '일괄수정 완료 (' . implode(', ', $updatedFields) . ' / ' . (int)$updatedCount . '건)',
+        ];
+    }
+
+    /**
+     * 하위 호환: 브랜드 일괄변경
+     *
+     * @param array $data
+     * @return array
+     */
+    public function bulkUpdateBrand($data)
+    {
+        return $this->bulkUpdateSelectedProducts($data);
+    }
+
+    /**
      * 고도몰 정보로 상품 정보 갱신
      * 
      * @param array $data
@@ -722,13 +829,17 @@ class ProductPartnerService extends BaseClass
         $sale_price = $godoGoods['goodsPrice'] ?? null;
         $img_src = $godoGoods['thumbImageUrl'] ?? null;
 
-        if( !empty($brandCd) ){
+        // 기존 브랜드가 이미 지정되어 있으면 고도몰 갱신 시에도 유지
+        $existingBrandIdx = (int)($productPartner['brand_idx'] ?? 0);
+        if ($existingBrandIdx > 0) {
+            $brand_idx = $existingBrandIdx;
+        } elseif (!empty($brandCd)) {
             $brandService = new BrandService();
             $brand_idx = $brandService->getBrandIdxByGodoCateCode($brandCd);
-            if( empty($brand_idx) ){
+            if (empty($brand_idx)) {
                 $brand_idx = null;
             }
-        }else{
+        } else {
             $brand_idx = null;
         }
         
