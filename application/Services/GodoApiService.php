@@ -55,9 +55,12 @@ class GodoApiService extends BaseClass {
         $mode = $criteria['mode'] ?? 'b';
         $start_date = $criteria['start_date'] ?? date('Y-m-d');
         $end_date = $criteria['end_date'] ?? date('Y-m-d');
+        $sort = $criteria['sort'] ?? 'reg_dt';
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date.'&sort='.$sort;
         $response = HttpClient::getData($apiUrl);
+
+        
 
         $apiData = json_decode($response, true);
 
@@ -742,6 +745,38 @@ class GodoApiService extends BaseClass {
 
         //dd($apiData);
         $goodsInfo = [];
+        $formatOptionLabel = static function (array $option): string {
+            $name = trim((string)($option[0] ?? ''));
+            $value = trim((string)($option[1] ?? ''));
+            $code = trim((string)($option[2] ?? ''));
+
+            if ($name !== '' && $value !== '') {
+                return $name . '=' . $value;
+            }
+            if ($value !== '') {
+                return $value;
+            }
+            if ($name !== '') {
+                return $name;
+            }
+            if ($code !== '') {
+                return $code;
+            }
+            return '';
+        };
+        $appendOptionError = static function (array &$target, array $orderInfo, array $goods, string $reason, string $optionCode = '', string $selectedOption = ''): void {
+            $target['error'][] = sprintf(
+                '[옵션매칭실패] 주문번호:%s, 주문상품SNO:%s, 상품번호:%s, 상품명:%s, 상품코드:%s, 옵션코드:%s, 선택옵션:%s, 사유:%s',
+                (string)($orderInfo['orderNo'] ?? ''),
+                (string)($orderInfo['orderGoodsSno'] ?? ''),
+                (string)($goods['goodsNo'] ?? ''),
+                (string)($goods['goodsNm'] ?? ''),
+                (string)($goods['goodsCd'] ?? ''),
+                $optionCode !== '' ? $optionCode : '(빈값)',
+                $selectedOption !== '' ? $selectedOption : '(없음)',
+                $reason
+            );
+        };
 
         foreach ($apiData['data'] as &$order) {
 
@@ -809,16 +844,30 @@ class GodoApiService extends BaseClass {
                     if (!empty($goods['optionInfo']) && is_array($goods['optionInfo'])) {
                         
                         $order_info['item_type'] = "option";
+                        $hasMatchedOption = false;
+                        $selectedOptionValues = [];
                         
                         foreach ($goods['optionInfo'] as $option) {
-                            if (isset($option[2]) && !empty($option[2])) {
-                                $code = $option[2];
+                            $selectedOptionLabel = $formatOptionLabel(is_array($option) ? $option : []);
+                            if ($selectedOptionLabel !== '') {
+                                $selectedOptionValues[] = $selectedOptionLabel;
+                            }
+
+                            $code = trim((string)($option[2] ?? ''));
+                            if ($code === '') {
+                                $appendOptionError($goodsInfo, $order_info, $goods, 'optionInfo 코드가 비어있음', '', $selectedOptionLabel);
+                                continue;
+                            }
+                            $matchedCurrentOption = false;
+                            $optionErrorLogged = false;
                                 
                                 // 슬래시(/)로 구분된 코드 처리
                                 if (strpos($code, '/') !== false) {
                                     $splitCodes = explode('/', $code);
                                     foreach ($splitCodes as $splitCode) {
                                         if (!empty($splitCode) && ctype_digit($splitCode)) {
+                                            $matchedCurrentOption = true;
+                                            $hasMatchedOption = true;
                                             $optionCodes[] = $splitCode;
                                             //$orderMargin[$i]['goods'][] = $splitCode; // 주문별 상품 코드 추가
                                             
@@ -864,14 +913,26 @@ class GodoApiService extends BaseClass {
 
                                         }
                                     }
+                                    if ($matchedCurrentOption === false) {
+                                        $appendOptionError($goodsInfo, $order_info, $goods, '슬래시 옵션코드에 숫자 코드가 없음', $code, $selectedOptionLabel);
+                                        $optionErrorLogged = true;
+                                    }
                                 } 
 
                                 //수량 옵션일경우
                                 elseif (strpos($code, '@') !== false) {
 
                                     $splitCodes = explode('@', $code);
+                                    if (count($splitCodes) !== 2 || !ctype_digit((string)$splitCodes[0]) || !is_numeric((string)$splitCodes[1])) {
+                                        $appendOptionError($goodsInfo, $order_info, $goods, '@ 옵션코드 형식 오류', $code, $selectedOptionLabel);
+                                        $optionErrorLogged = true;
+                                        continue;
+                                    }
+
                                     $splitCode = $splitCodes[0];
-                                    $splitQty = $splitCodes[1] * $goodsCnt;
+                                    $splitQty = (float)$splitCodes[1] * $goodsCnt;
+                                    $matchedCurrentOption = true;
+                                    $hasMatchedOption = true;
                                     $optionCodes[] = $splitCode;
 
                                     /*
@@ -917,6 +978,8 @@ class GodoApiService extends BaseClass {
 
                                 // 단일 코드 처리
                                 else if (ctype_digit($code)) {
+                                    $matchedCurrentOption = true;
+                                    $hasMatchedOption = true;
 
                                     $optionCodes[] = $code;
                                     //$orderMargin[$i]['goods'][] = $code; // 주문별 상품 코드 추가
@@ -963,7 +1026,12 @@ class GodoApiService extends BaseClass {
 
 
                                 }
-                            }
+                                if ($matchedCurrentOption === false && $optionErrorLogged === false) {
+                                    $appendOptionError($goodsInfo, $order_info, $goods, '옵션코드가 숫자/슬래시/@ 규칙과 불일치', $code, $selectedOptionLabel);
+                                }
+                        }
+                        if ($hasMatchedOption === false) {
+                            $appendOptionError($goodsInfo, $order_info, $goods, '옵션상품 매칭된 코드 없음', '', implode(' / ', array_values(array_unique($selectedOptionValues))));
                         }
 
                     }else{
@@ -1011,7 +1079,14 @@ class GodoApiService extends BaseClass {
                         } elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false ) {
                             //$goodsInfo['set'][] = $goodsCd;
                         } else {
-                            $goodsInfo['error'][] = $goodsCd;
+                            $goodsInfo['error'][] = sprintf(
+                                '[상품코드매칭실패] 주문번호:%s, 주문상품SNO:%s, 상품번호:%s, 상품명:%s, 상품코드:%s',
+                                (string)($order_info['orderNo'] ?? ''),
+                                (string)($order_info['orderGoodsSno'] ?? ''),
+                                (string)($goods['goodsNo'] ?? ''),
+                                (string)($goods['goodsNm'] ?? ''),
+                                (string)$goodsCd
+                            );
                         }
 
                     }
@@ -1091,8 +1166,9 @@ class GodoApiService extends BaseClass {
         $mode = $criteria['mode'] ?? 'b';
         $start_date = $criteria['start_date'] ?? date('Y-m-d');
         $end_date = $criteria['end_date'] ?? date('Y-m-d');
+        $sort = $criteria['sort'] ?? 'reg_dt';
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date.'&sort='.$sort;
         $response = HttpClient::getData($apiUrl);
         
         $apiData = json_decode($response, true);

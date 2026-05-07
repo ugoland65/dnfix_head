@@ -28,11 +28,7 @@ class OrderController extends BaseClass {
             $requestData = $request->all();
 
             $today = date('Y-m-d');
-            $dayOfWeek = date('N'); // 1(월)~7(일)
-            // 월요일이면 지난주 금요일(-3일), 그 외는 전날(-1일)
-            $default_start_date = ($dayOfWeek == 1)
-                ? date('Y-m-d', strtotime('-3 days'))
-                : date('Y-m-d', strtotime('-1 day'));
+            $default_start_date = date('Y-m-d', strtotime('-7 days'));
 
             $start_date = $requestData['start_date'] ?? $default_start_date;
             $end_date = $requestData['end_date'] ?? $today;
@@ -87,9 +83,7 @@ class OrderController extends BaseClass {
         return $data;
     }
 
-
-
-
+    
     /**
      * @deprecated 2026-01-11
      * 

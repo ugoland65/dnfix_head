@@ -49,7 +49,107 @@
             }
         }
     }
+
+    .order-error-list {
+        margin-bottom: 10px;
+        border: 1px solid #e5b7b7;
+        background: #fff8f8;
+    }
+
+    .order-error-list .title {
+        padding: 10px;
+        font-weight: bold;
+        color: #b30000;
+        border-bottom: 1px solid #f0d0d0;
+    }
+
+    .order-error-list ul {
+        margin: 0;
+        padding: 10px 25px 10px 30px;
+    }
+
+    .order-error-list li {
+        color: #444;
+        line-height: 1.5;
+    }
+
+    .order-error-list.right-panel {
+        margin-top: 10px;
+        margin-bottom: 0;
+        background: #fff;
+    }
+
+    .order-error-list .error-list-wrap {
+        max-height: 360px;
+        overflow: auto;
+    }
+
+    .order-error-list .error-items {
+        list-style: none;
+        margin: 0;
+        padding: 10px;
+    }
+
+    .order-error-list .error-item {
+        border: 1px solid #e6e6e6;
+        background: #fafafa;
+        border-radius: 4px;
+        padding: 10px;
+        margin-bottom: 8px;
+    }
+
+    .order-error-list .error-item:last-child {
+        margin-bottom: 0;
+    }
+
+    .order-error-list .error-top {
+        display: flex;
+        justify-content: space-between;
+        gap: 8px;
+        margin-bottom: 6px;
+        font-size: 12px;
+    }
+
+    .order-error-list .error-order-link {
+        font-weight: bold;
+    }
+
+    .order-error-list .error-type {
+        color: #777;
+    }
+
+    .order-error-list .error-row {
+        line-height: 1.5;
+        margin-top: 2px;
+    }
+
+    .order-error-list .error-reason {
+        margin-top: 6px;
+        color: #b30000;
+        font-weight: bold;
+    }
+
+    .order-error-list .error-actions {
+        margin-top: 8px;
+    }
+
+    .order-error-list .error-raw {
+        margin-top: 8px;
+        color: #666;
+        font-size: 11px;
+    }
 </style>
+
+<?php
+$mode = (string)($mode ?? 'p');
+$end_date = (string)($end_date ?? date('Y-m-d'));
+$start_date = (string)($start_date ?? date('Y-m-d', strtotime('-7 days')));
+
+$definedVars = get_defined_vars();
+$orderList = (isset($definedVars['orderList']) && is_array($definedVars['orderList'])) ? $definedVars['orderList'] : [];
+$orderList['stock'] = is_array($orderList['stock'] ?? null) ? $orderList['stock'] : [];
+$orderList['error'] = is_array($orderList['error'] ?? null) ? $orderList['error'] : [];
+?>
 
 <div id="contents_head">
     <h1>고도몰 주문 상품별 가져오기</h1>
@@ -82,6 +182,7 @@
 <div id="contents_body">
     <div id="contents_body_wrap">
 
+        <?php $errorList = $orderList['error'] ?? []; ?>
         <div class="layout-style1">
             <ul>
                 <div class="scroll-wrap">
@@ -244,6 +345,137 @@
                             <button type="button" id="fileUploadBtn" class="btnstyle1 btnstyle1-primary ">일일재고로 업로드</button>
                         </ul>
                     </div>
+                    <?php
+                        $groupedErrorItems = [];
+                        foreach ($errorList as $errorItem) {
+                            $errorText = (string)$errorItem;
+                            $orderNo = '';
+                            $goodsNo = '';
+                            $goodsName = '';
+                            $goodsCode = '';
+                            $optionCode = '';
+                            $selectedOption = '';
+                            $reason = '';
+                            $errorType = '';
+
+                            if (preg_match('/^\[([^\]]+)\]/u', $errorText, $matchType)) {
+                                $errorType = trim((string)$matchType[1]);
+                            }
+                            if (preg_match('/주문번호:([0-9]+)/u', $errorText, $matchOrderNo)) {
+                                $orderNo = (string)$matchOrderNo[1];
+                            }
+                            if (preg_match('/상품번호:([0-9]+)/u', $errorText, $matchGoodsNo)) {
+                                $goodsNo = (string)$matchGoodsNo[1];
+                            }
+                            if (preg_match('/상품명:([^,]+)/u', $errorText, $matchGoodsName)) {
+                                $goodsName = trim((string)$matchGoodsName[1]);
+                            }
+                            if (preg_match('/상품코드:([^,]+)/u', $errorText, $matchGoodsCode)) {
+                                $goodsCode = trim((string)$matchGoodsCode[1]);
+                            }
+                            if (preg_match('/옵션코드:([^,]+)/u', $errorText, $matchOptionCode)) {
+                                $optionCode = trim((string)$matchOptionCode[1]);
+                            }
+                            if (preg_match('/선택옵션:(.*?), 사유:/u', $errorText, $matchSelectedOption)) {
+                                $selectedOption = trim((string)$matchSelectedOption[1]);
+                            }
+                            if (preg_match('/사유:(.+)$/u', $errorText, $matchReason)) {
+                                $reason = trim((string)$matchReason[1]);
+                            }
+
+                            $productKey = $goodsNo !== '' ? $goodsNo : ($goodsCode !== '' ? $goodsCode : $goodsName);
+                            $groupKey = ($orderNo !== '' ? $orderNo : '-') . '|' . ($productKey !== '' ? $productKey : '-');
+
+                            if (!isset($groupedErrorItems[$groupKey])) {
+                                $groupedErrorItems[$groupKey] = [
+                                    'orderNo' => $orderNo,
+                                    'goodsNo' => $goodsNo,
+                                    'goodsName' => $goodsName,
+                                    'goodsCode' => $goodsCode,
+                                    'reasons' => [],
+                                    'optionCodes' => [],
+                                    'selectedOptions' => [],
+                                    'errorTypes' => [],
+                                    'rawTexts' => [],
+                                ];
+                            }
+
+                            if ($groupedErrorItems[$groupKey]['goodsNo'] === '' && $goodsNo !== '') {
+                                $groupedErrorItems[$groupKey]['goodsNo'] = $goodsNo;
+                            }
+                            if ($groupedErrorItems[$groupKey]['goodsName'] === '' && $goodsName !== '') {
+                                $groupedErrorItems[$groupKey]['goodsName'] = $goodsName;
+                            }
+                            if ($groupedErrorItems[$groupKey]['goodsCode'] === '' && $goodsCode !== '') {
+                                $groupedErrorItems[$groupKey]['goodsCode'] = $goodsCode;
+                            }
+                            if ($groupedErrorItems[$groupKey]['orderNo'] === '' && $orderNo !== '') {
+                                $groupedErrorItems[$groupKey]['orderNo'] = $orderNo;
+                            }
+
+                            if ($reason !== '') {
+                                $groupedErrorItems[$groupKey]['reasons'][$reason] = $reason;
+                            }
+                            if ($optionCode !== '' && $optionCode !== '(빈값)') {
+                                $groupedErrorItems[$groupKey]['optionCodes'][$optionCode] = $optionCode;
+                            }
+                            if ($selectedOption !== '' && $selectedOption !== '(없음)') {
+                                $groupedErrorItems[$groupKey]['selectedOptions'][$selectedOption] = $selectedOption;
+                            }
+                            if ($errorType !== '') {
+                                $groupedErrorItems[$groupKey]['errorTypes'][$errorType] = $errorType;
+                            }
+                            $groupedErrorItems[$groupKey]['rawTexts'][] = $errorText;
+                        }
+                    ?>
+                    <?php if (!empty($errorList)) { ?>
+                        <div class="order-error-list right-panel">
+                            <div class="title">매칭 실패 리스트 (<?= count($groupedErrorItems) ?>건)</div>
+                            <div class="error-list-wrap">
+                                <ul class="error-items">
+                                    <?php foreach ($groupedErrorItems as $errorGroup) { ?>
+                                        <li class="error-item">
+                                            <div class="error-top">
+                                                <span class="error-order-link">
+                                                    <?php if ($errorGroup['orderNo'] !== '') { ?>
+                                                        <a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= urlencode($errorGroup['orderNo']) ?>" target="_blank">주문번호:<?= htmlspecialchars($errorGroup['orderNo'], ENT_QUOTES, 'UTF-8') ?></a>
+                                                    <?php } else { ?>
+                                                        주문번호:-
+                                                    <?php } ?>
+                                                </span>
+                                                <?php if (!empty($errorGroup['errorTypes'])) { ?>
+                                                    <span class="error-type"><?= htmlspecialchars(implode(', ', array_values($errorGroup['errorTypes'])), ENT_QUOTES, 'UTF-8') ?></span>
+                                                <?php } ?>
+                                            </div>
+
+                                            <div class="error-row"><b>상품번호</b> : <?= $errorGroup['goodsNo'] !== '' ? htmlspecialchars($errorGroup['goodsNo'], ENT_QUOTES, 'UTF-8') : '-' ?></div>
+                                            <div class="error-row"><b>상품명</b> : <?= $errorGroup['goodsName'] !== '' ? htmlspecialchars($errorGroup['goodsName'], ENT_QUOTES, 'UTF-8') : '-' ?></div>
+                                            <div class="error-row"><b>상품코드</b> : <?= $errorGroup['goodsCode'] !== '' ? htmlspecialchars($errorGroup['goodsCode'], ENT_QUOTES, 'UTF-8') : '-' ?></div>
+                                            <div class="error-row"><b>옵션코드</b> : <?= !empty($errorGroup['optionCodes']) ? htmlspecialchars(implode(' / ', array_values($errorGroup['optionCodes'])), ENT_QUOTES, 'UTF-8') : '-' ?></div>
+                                            <div class="error-row"><b>선택옵션</b> : <?= !empty($errorGroup['selectedOptions']) ? htmlspecialchars(implode(' / ', array_values($errorGroup['selectedOptions'])), ENT_QUOTES, 'UTF-8') : '-' ?></div>
+
+                                            <?php if (!empty($errorGroup['reasons'])) { ?>
+                                                <div class="error-reason">사유: <?= htmlspecialchars(implode(' / ', array_values($errorGroup['reasons'])), ENT_QUOTES, 'UTF-8') ?></div>
+                                            <?php } ?>
+
+                                            <?php if ($errorGroup['goodsNo'] !== '') { ?>
+                                                <div class="error-actions">
+                                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= htmlspecialchars($errorGroup['goodsNo'], ENT_QUOTES, 'UTF-8') ?>);">관리자 상품보기</button>
+                                                </div>
+                                            <?php } ?>
+
+                                            <details class="error-raw">
+                                                <summary>원문 보기</summary>
+                                                <?php foreach ($errorGroup['rawTexts'] as $rawText) { ?>
+                                                    <div><?= htmlspecialchars((string)$rawText, ENT_QUOTES, 'UTF-8') ?></div>
+                                                <?php } ?>
+                                            </details>
+                                        </li>
+                                    <?php } ?>
+                                </ul>
+                            </div>
+                        </div>
+                    <?php } ?>
                 </div>
             </ul>
         </div>

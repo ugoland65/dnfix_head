@@ -81,22 +81,26 @@ class SalesController extends BaseClass
             $mode = $requestData['mode'] ?? 'g1';
             $startDate = $requestData['start_date'] ?? $default_start_date;
             $endDate = $requestData['end_date'] ?? $default_end_date;
+            $sort = $requestData['sort'] ?? 'reg_dt';
 
             $payload = [
                 'start_date' => $startDate,
                 'end_date' => $endDate,
                 'mode' => $mode,
+                'sort' => $sort,
             ];
 
             $godoApiService = new GodoApiService();
             $packingList = $godoApiService->getOrderPackingList($payload);
 
+            //dd($packingList);
             //dump($packingList);
 
             $data = [
                 'mode' => $mode,
                 'start_date' => $startDate,
                 'end_date' => $endDate,
+                'sort' => $sort,
                 'packingList' => $packingList,
             ];
 

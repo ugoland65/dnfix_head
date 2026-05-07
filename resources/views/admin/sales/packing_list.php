@@ -313,6 +313,16 @@
         cursor: pointer;
     }
 </style>
+<?php
+$mode = (string)($mode ?? 'g1');
+$start_date = (string)($start_date ?? date('Y-m-d'));
+$end_date = (string)($end_date ?? date('Y-m-d'));
+$sort = (string)($sort ?? 'reg_dt');
+$definedVars = get_defined_vars();
+$packingList = (isset($definedVars['packingList']) && is_array($definedVars['packingList'])) ? $definedVars['packingList'] : [];
+$packingList['data'] = is_array($packingList['data'] ?? null) ? $packingList['data'] : [];
+$packingList['total'] = (int)($packingList['total'] ?? 0);
+?>
     <div class="order-print-header">
         <ul>
             <select name="mode" id="mode">
@@ -328,6 +338,10 @@
             <div class="calendar-input">
                 <input type="text" name="end_date" value="<?=$end_date?>" placeholder="종료일">
             </div>
+            <select name="sort" id="sort">
+                <option value="reg_dt" <?= $sort == 'reg_dt' ? 'selected' : '' ?>>주문일자순</option>
+                <option value="reg_dt_desc" <?= $sort == 'reg_dt_desc' ? 'selected' : '' ?>>주문일자역순</option>
+            </select>
             <button class="search-button" onclick="searchOrders()">주문 검색</button>
         </ul>
         <ul class="right">
@@ -357,7 +371,11 @@
                 <h1><span>주문번호</span><br><?=$order['orderNo']?></h1>
                 <svg class="order-no-barcode" data-order-no="<?=$order['orderNo']?>"></svg>
             </div>
-            <h1>주문일자 : <?=$order['regDt']?> ( <b style="color:#ff0000"><?=$index_count?></b> / <?=$packingList['total']?> )</h1>
+            <h1>
+                <span style="color:#999;">주문일자 : <?=$order['regDt']?></span><br>
+                결제일자 : <?=$order['paymentDt']?>
+            </h1>
+            <h1> ( <b style="color:#ff0000"><?=$index_count?></b> / <?=$packingList['total']?> )</h1>
         </div>
         <div class="order-goods-list">
             <?php
@@ -689,6 +707,7 @@
         const mode = document.querySelector('select[name="mode"]').value;
         const startDate = document.querySelector('input[name="start_date"]').value;
         const endDate = document.querySelector('input[name="end_date"]').value;
+        const sort = document.querySelector('select[name="sort"]').value;
         
         // 현재 URL의 기본 경로 가져오기
         const currentUrl = window.location.pathname;
@@ -703,6 +722,9 @@
         }
         if (endDate) {
             params.append('end_date', endDate);
+        }
+        if (sort) {
+            params.append('sort', sort);
         }
 
         
