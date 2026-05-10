@@ -40,12 +40,43 @@
             <tr>
                 <th>중량</th>
                 <td>
-                    상품중량 : <input type='text' name='cd_weight_1' id='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>">
-                    전체중량 : <input type='text' name='cd_weight_2' id='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
-                    실측중량 : <input type='text' name='cd_weight_3' id='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+
+                    <table class="table-style border01">
+                        <colgroup>
+                            <col width="150px" />
+                            <col />
+                        </colgroup>
+                        <tr>
+                            <th>상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 상품중량 ( 패키지 미포함 )
+                                <div class="admin-guide-text">
+                                    - 쑈당몰 카테고리 지정시 브랜드 제공 중량으로 표기해야 고객이 혼선없음
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 패키지를 포함한 전체 중량 (없다면 생략 가능)
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>실측 전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>"> g
+                                ※ 패키지를 포함한 실제 측정한 중량
+                            </td>
+                        </tr>
+                    </table>
+
                     <div class="admin-guide-text">
-                        - 단위 g (숫자만 등록할것)
+                        - 단위 g (숫자만 등록할것)<br>
+                        - 실측 전체중량시 개체별 차이가 있으니 오차범위 있음 ( 10g 이내 )
                     </div>
+
                 </td>
             </tr>
             <tr>
@@ -82,6 +113,10 @@
                         <?php } ?>
                     <?php } ?>
 
+                    <span class="grade-badge grade-<?=$productData['margin_grade']?>">
+                        <?=$productData['margin_grade']?>
+                    </span>
+
                 </td>
             </tr>
 
@@ -105,7 +140,7 @@
                     <div>
                         <?php
                         foreach ($productData['cd_price_fn'] as $key => $val) {
-                            if ($key) {
+                            if ($key && $key != 'invoice') {
                         ?>
                                 <ul>
                                     <label>
@@ -339,8 +374,8 @@
             var normalVatAmount = Math.round((purchaseCostKrw + normalDutyAmount) * 0.1);
             var normalTaxTotal = normalDutyAmount + normalVatAmount;
 
-            var additionalCost = $("#cost_cal_incidental_cost").val() * 1;
-            var deliveryCostInput = $("#cost_cal_delivery").val() * 1;
+            var additionalCost = Number(GC.uncomma($("#cost_cal_incidental_cost").val() || "0"));
+            var deliveryCostInput = Number(GC.uncomma($("#cost_cal_delivery").val() || "0"));
 
             var additionalCostDisplayText = "";
             var deliveryCostDisplayText = "";
@@ -407,14 +442,14 @@
                     return false;
                 }
 
-                var totalWeightG = $("#cd_weight_2").val();
-                var measuredWeightG = $("#cd_weight_3").val();
+                var totalWeightG = Number(GC.uncomma($("input[name='cd_weight_2']").val() || "0"));
+                var measuredWeightG = Number(GC.uncomma($("input[name='cd_weight_3']").val() || "0"));
 
                 /*
                 if( !measuredWeightG ){ alert("실측중량 정보가 없습니다."); return false; }
                 */
-                var appliedWeightG = "";
-                if (measuredWeightG == "" && totalWeightG > 0) {
+                var appliedWeightG = 0;
+                if (measuredWeightG <= 0 && totalWeightG > 0) {
 
                     appliedWeightG = totalWeightG;
                     resultHtml += "<input type='hidden' name='weight_mode' value='전체중량' >";

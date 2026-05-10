@@ -976,6 +976,7 @@ class ProductService extends BaseClass
         }
         $productData = is_array($productData) ? $productData : $productData->toArray();
 
+
         // JSON 데이터 디코딩 처리
         if ($productData) {
 
@@ -1056,6 +1057,57 @@ class ProductService extends BaseClass
             }
 
         }
+
+        if( !empty($productData['cd_sale_price']) ){
+			
+            //$_margin_per = round($prd_data['margin_per'],2) ?? 0;
+    
+            if( $productData['cd_sale_price'] > 0 && $productData['cd_cost_price'] > 0 ){
+                if( $productData['cd_sale_price'] < 29999 ){
+                    $_margin_per =  round( ($productData['cd_sale_price'] - $productData['cd_cost_price'] ) / $productData['cd_sale_price'] * 100, 2);
+                }else{
+                    $_margin_per =  round( ($productData['cd_sale_price'] - ($productData['cd_cost_price'] + 2500) ) / $productData['cd_sale_price'] * 100, 2);
+                }
+            }
+    
+            // 등급 계산 (40% 기준, 5단위)
+            $grade = '';
+            $gradeColor = '';
+            if ($_margin_per > 39) {
+                $grade = 'A';
+                $gradeColor = '#28a745'; // 초록색
+            } elseif ($_margin_per >= 35) {
+                $grade = 'B';
+                $gradeColor = '#20c997'; // 연두색
+            } elseif ($_margin_per >= 30) {
+                $grade = 'C';
+                $gradeColor = '#17a2b8'; // 청록색
+            } elseif ($_margin_per >= 25) {
+                $grade = 'D';
+                $gradeColor = '#0dcaf0'; // 하늘색
+            } elseif ($_margin_per >= 20) {
+                $grade = 'E';
+                $gradeColor = '#ffc107'; // 노란색
+            } elseif ($_margin_per >= 15) {
+                $grade = 'F';
+                $gradeColor = '#fd7e14'; // 오렌지색
+            } elseif ($_margin_per >= 10) {
+                $grade = 'G';
+                $gradeColor = '#dc3545'; // 빨간색
+            } elseif ($_margin_per >= 5) {
+                $grade = 'H';
+                $gradeColor = '#d63384'; // 진한 빨강
+            } elseif ($_margin_per > 0) {
+                $grade = 'I';
+                $gradeColor = '#6c757d'; // 회색
+            }
+
+            $productData['margin_per'] = $_margin_per;
+            $productData['margin_grade'] = $grade;
+            $productData['margin_grade_color'] = $gradeColor;
+    
+        }
+
 
         return $productData;
     }

@@ -392,6 +392,39 @@
                     </div>
                 </td>
             </tr>
+
+            <?php if (!empty($productData['cd_sale_price'])) { ?>
+            <tr>
+                <th>고도몰 판매가</th>
+                <td>
+
+                    <table class="table-style border01">
+                        <tr>
+                            <th>쑈당몰 판매가</th>
+                            <td>
+                                <b><?= number_format($productData['cd_sale_price']) ?> 원</b>
+                            </td>
+                            <th>책정 원가</th>
+                            <td>
+                                <b><?= number_format($productData['cd_cost_price']) ?> 원</b>
+                            </td>
+                            <th>마진율</th>
+                            <td>
+                                <b><?= number_format($productData['margin_per']) ?> %</b>
+                                <span class="grade-badge grade-<?=$productData['margin_grade']?>">
+                                    <?=$productData['margin_grade']?>
+                                </span>
+                            </td>
+      
+                        </tr>
+                    </table>
+
+
+                    
+                </td>
+            </tr>
+            <?php } ?>
+
         </tbody>
 
         <tbody>
@@ -481,12 +514,43 @@
             <tr>
                 <th>중량</th>
                 <td>
-                    상품중량 : <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>">
-                    전체중량 : <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>">
-                    실측중량 : <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>">
+
+                    <table class="table-style border01">
+                        <colgroup>
+                            <col width="150px" />
+                            <col />
+                        </colgroup>
+                        <tr>
+                            <th>상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 상품중량 ( 패키지 미포함 )
+                                <div class="admin-guide-text">
+                                    - 쑈당몰 카테고리 지정시 브랜드 제공 중량으로 표기해야 고객이 혼선없음
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 패키지를 포함한 전체 중량 (없다면 생략 가능)
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>실측 전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>"> g
+                                ※ 패키지를 포함한 실제 측정한 중량
+                            </td>
+                        </tr>
+                    </table>
+
                     <div class="admin-guide-text">
-                        - 단위 g (숫자만 등록할것)
+                        - 단위 g (숫자만 등록할것)<br>
+                        - 실측 전체중량시 개체별 차이가 있으니 오차범위 있음 ( 10g 이내 )
                     </div>
+
                 </td>
             </tr>
             <tr>

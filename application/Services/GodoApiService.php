@@ -737,6 +737,8 @@ class GodoApiService extends BaseClass {
         $end_date = $criteria['end_date'] ?? date('Y-m-d');
 
         $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?mode=' . $mode . '&start_date=' . $start_date . '&end_date=' . $end_date;
+
+        //dd($apiUrl);
         $response = HttpClient::getData($apiUrl);
         $apiData = json_decode($response, true);
         if (!is_array($apiData)) {
@@ -748,19 +750,11 @@ class GodoApiService extends BaseClass {
         $formatOptionLabel = static function (array $option): string {
             $name = trim((string)($option[0] ?? ''));
             $value = trim((string)($option[1] ?? ''));
-            $code = trim((string)($option[2] ?? ''));
-
-            if ($name !== '' && $value !== '') {
-                return $name . '=' . $value;
-            }
             if ($value !== '') {
                 return $value;
             }
             if ($name !== '') {
                 return $name;
-            }
-            if ($code !== '') {
-                return $code;
             }
             return '';
         };
@@ -840,6 +834,13 @@ class GodoApiService extends BaseClass {
                 // 공급사가 쑈당몰 일경우
                 if( $my_scm == 'my' ){
 
+                    /*
+                    if( $order['orderNo'] == '2605020130239211' ){
+
+                        dd($goods['optionInfo']);
+                    }
+                    */
+
                     // 옵션이 실제로 있는가? (빈 배열 [] 은 옵션 없음으로 본다)
                     if (!empty($goods['optionInfo']) && is_array($goods['optionInfo'])) {
                         
@@ -855,7 +856,6 @@ class GodoApiService extends BaseClass {
 
                             $code = trim((string)($option[2] ?? ''));
                             if ($code === '') {
-                                $appendOptionError($goodsInfo, $order_info, $goods, 'optionInfo 코드가 비어있음', '', $selectedOptionLabel);
                                 continue;
                             }
                             $matchedCurrentOption = false;
