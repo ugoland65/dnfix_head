@@ -24,8 +24,14 @@ use App\Controllers\Admin\ShowdangController;
 
 $showdangController = new ShowdangController(); 
 
-$viewData = $showdangController->godoHbtiStatisticsIndex();
+$mode = $_GET['mode'] ?? 'hbti';
+$viewData = $showdangController->godoHbtiStatisticsIndex($mode);
 
+if( $mode == 'hbti' ){
+    $key = 'hbti';
+}elseif( $mode == 'ssi' ){
+    $key = 'ssi';
+}
 ?>
 <div id="contents_head">
 	<h1>HBTI 통계</h1>
@@ -55,7 +61,7 @@ $viewData = $showdangController->godoHbtiStatisticsIndex();
                             ?>
                             <tr>
                                 <td><?=$i?></td>
-                                <td><?=$value['hbti']?></td>
+                                <td><?=$value[$key]?></td>
                                 <td><?=$value['cnt']?></td>
                             </tr>
                             <?php } ?>

@@ -15,10 +15,10 @@ class GodoApiService extends BaseClass {
      * 고도몰 회원 HBTI 통계 조회
      * @return array
      */
-    public function getHbtiStatistics()
+    public function getHbtiStatistics($mode='hbti')
     {
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/member_hbti_reports_api.php';
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/member_hbti_reports_api.php?mode='.$mode;
         $response = HttpClient::getData($apiUrl);
         
         $apiData = json_decode($response, true);

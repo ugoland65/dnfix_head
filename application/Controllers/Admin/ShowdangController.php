@@ -11,11 +11,13 @@ class ShowdangController extends BaseClass {
         parent::__construct();
     }
 
-    public function godoHbtiStatisticsIndex() {
+    public function godoHbtiStatisticsIndex($mode='hbti') {
 
         $godoApiService = new GodoApiService();
-        $result = $godoApiService->getHbtiStatistics();
+
+        $result = $godoApiService->getHbtiStatistics($mode);
         
+        //dd($result);
         $data = [
             'hbtiCount' => $result
         ];
