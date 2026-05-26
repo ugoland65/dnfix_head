@@ -146,6 +146,16 @@
                     <button type="button" class="btnstyle1 btnstyle1-xs m-t-5" onclick="copyInputValue('name_ori', '원(영문,일어,중국어) 상품명')">상품명 복사</button>
                 </td>
             </tr>
+
+            <tr>
+                <th>한줄 간략설명 </th>
+                <td>
+                    <input type='text' name='short_desc' id='short_desc' size='80' maxlength='255' value="<?= $prd_data['short_desc'] ?? '' ?>" placeholder="예: 부드러운 촉감의 입문용 제품">
+                    <button type="button" class="btnstyle1 btnstyle1-xs m-t-5" onclick="copyInputValue('short_desc', '한줄 간략설명')">상품명 복사</button>
+                </td>
+            </tr>
+
+
             <tr>
                 <th>공급사 상품명</th>
                 <td><?= $prd_data['name_p'] ?? '' ?></td>
@@ -183,13 +193,49 @@
                 <td>
                     <p><?= number_format($prd_data['order_price']) ?></p>
                     <?php
-                    if (!empty($prd_data['sale_price']) && !empty($prd_data['order_price'])) {
-                        $margin = $prd_data['sale_price'] - $prd_data['order_price'];
-                        $margin_rate = $margin / $prd_data['sale_price'] * 100;
+                        if (!empty($prd_data['sale_price']) && !empty($prd_data['order_price'])) {
+                            $margin = $prd_data['sale_price'] - $prd_data['order_price'];
+                            $margin_rate = $margin / $prd_data['sale_price'] * 100;
+
+                            $grade = '';
+                            $gradeColor = '';
+                            if ($margin_rate > 39) {
+                                $grade = 'A';
+                                $gradeColor = '#28a745'; // 초록색
+                            } elseif ($margin_rate >= 35) {
+                                $grade = 'B';
+                                $gradeColor = '#20c997'; // 연두색
+                            } elseif ($margin_rate >= 30) {
+                                $grade = 'C';
+                                $gradeColor = '#17a2b8'; // 청록색
+                            } elseif ($margin_rate >= 25) {
+                                $grade = 'D';
+                                $gradeColor = '#0dcaf0'; // 하늘색
+                            } elseif ($margin_rate >= 20) {
+                                $grade = 'E';
+                                $gradeColor = '#ffc107'; // 노란색
+                            } elseif ($margin_rate >= 15) {
+                                $grade = 'F';
+                                $gradeColor = '#fd7e14'; // 오렌지색
+                            } elseif ($margin_rate >= 10) {
+                                $grade = 'G';
+                                $gradeColor = '#dc3545'; // 빨간색
+                            } elseif ($margin_rate >= 5) {
+                                $grade = 'H';
+                                $gradeColor = '#d63384'; // 진한 빨강
+                            } elseif ($margin_rate > 0) {
+                                $grade = 'I';
+                                $gradeColor = '#6c757d'; // 회색
+                            }
                     ?>
-                        마진 : <?= number_format($margin) ?>원 / 마진율 : <?= number_format($margin_rate, 2) ?>%
+                        마진 : <?= number_format($margin) ?>원 / 
+                        마진율 : <b><?= number_format($margin_rate, 2) ?></b>%
+                        마진등급 : 
+                        <span class="grade-badge grade-<?=$grade?>">
+                            <?=$grade?>
+                        </span>
                     <?php
-                    }
+                        }
                     ?>
                 </td>
             </tr>
@@ -207,7 +253,15 @@
 
             <tr>
                 <th>리스트 메모</th>
-                <td><input type='text' name='memo' value="<?= $prd_data['memo'] ?? '' ?>"></td>
+                <td>
+                    <input type='text' name='memo' id='memo' value="<?= $prd_data['memo'] ?? '' ?>">
+                    <div class="m-t-6">
+                        <select id="quickMemoSelect" style="width:260px;" onchange="applyQuickMemo(this.value)">
+                            <option value="">자주 쓰는 메모 선택</option>
+                            <option value="입고예정후 판매전환 예정">입고예정후 판매전환 예정</option>
+                        </select>
+                    </div>
+                </td>
             </tr>
 
             <tr>
@@ -216,11 +270,50 @@
                     <textarea name='memo_work' rows='5'><?= $prd_data['memo_work'] ?? '' ?></textarea>
                 </td>
             </tr>
+
+            <tr>
+                <th>상세분류</th>
+                <td>
+                    <?php
+                        $selectedDepth1 = $prd_data['godo_cate_depth1'] ?? ($prd_data['godo_cate1'] ?? '');
+                        $selectedDepth2 = $prd_data['godo_cate_depth2'] ?? ($prd_data['godo_cate2'] ?? '');
+                        $selectedDepth3 = $prd_data['godo_cate_depth3'] ?? ($prd_data['godo_cate3'] ?? '');
+                        $initialSelectedCategoryItems = $prd_data['cate_json'] ?? [];
+                        if (!is_array($initialSelectedCategoryItems)) {
+                            $initialSelectedCategoryItems = [];
+                        }
+                    ?>
+                    <div id="godoCateSelectorWrap" style="display:none;">
+                        <select name="godo_cate_depth1" id="godo_cate_depth1" style="width:180px;">
+                            <option value="">1차 분류 선택</option>
+                        </select>
+                        <select name="godo_cate_depth2" id="godo_cate_depth2" style="width:180px; margin-left:4px;" disabled>
+                            <option value="">2차 분류 선택</option>
+                        </select>
+                        <select name="godo_cate_depth3" id="godo_cate_depth3" style="width:180px; margin-left:4px;" disabled>
+                            <option value="">3차 분류 선택</option>
+                        </select>
+
+                        <button type="button" id="addGodoCategoryBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm">
+                            분류선택
+                        </button>
+
+                        <div id="selectedGodoCategoryList" style="margin-top:8px;"></div>
+                        <div id="selectedGodoCategoryInputs">
+                            <input type="hidden" name="cate_json" id="cate_json" value="">
+                        </div>
+                    </div>
+                    <div id="godoCateSelectorGuide" class="admin-guide-text">
+                        상품 구분이 BDSM일 때 상세분류를 선택할 수 있습니다.
+                    </div>
+                </td>
+            </tr>
+
         <tbody>
 
-            <?php
+        <?php
             if ($prd_data['kind'] == "ONAHOLE") {
-            ?>
+        ?>
         <tbody>
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
@@ -247,14 +340,12 @@
                 </td>
             </tr>
         </tbody>
-    <?php
-            }
-    ?>
+    <?php } ?>
 
 
     <tbody>
         <tr>
-            <td colspan="2" class="none-bg" style="height:10px;"></td>
+            <td colspan="2" class="none-bg" style="height:30px;"></td>
         </tr>
         <tr>
             <td colspan="2" class="none-bg title">
@@ -265,13 +356,20 @@
 
                     <?php if (!empty($prd_data['godo_goodsNo'])) { ?>
                         <ul class="right">
-                            <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm"
-                                onclick="goGodoMall(<?= $prd_data['godo_goodsNo'] ?>);">고도몰 상품보기</button>
+                            <button type="button" class="btnstyle1 btnstyle1-sm"
+                                onclick="goGodoMall(<?= $prd_data['godo_goodsNo'] ?>);">쑈당몰 상품보기</button>
+
+                            <button type="button" class="btnstyle1 btnstyle1-sm" onclick="goGodoMallAdmin(<?= $prd_data['godo_goodsNo'] ?>);">관리자 상품보기</button>
+
+                            <?php if (!empty($prd_data['godo_loaded_at'])) { ?>
+                                ( 최근 고도몰 로드일 : <?= $prd_data['godo_loaded_at'] ?> )
+                            <?php } ?>
 
                             <button type="button" id="loadGodoGoodsInfoBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm"
                                 data-prd-idx="<?= $prd_data['idx'] ?>"
                                 data-godo-goods-no="<?= $prd_data['godo_goodsNo'] ?>">
-                                고도몰 정보로 반영
+                                고도몰 데이터 로드
+                                <i class="fas fa-download"></i>
                             </button>
                         </ul>
                     <?php } ?>
@@ -405,9 +503,12 @@
 
 
         <?php
-        $godoOptionNames = $prd_data['godo_option']['name'] ?? [];
-        $godoOptionItems = $prd_data['godo_option']['items'] ?? [];
-        if (!empty($prd_data['godo_is_option']) && is_array($godoOptionNames) && is_array($godoOptionItems)) {
+
+            if( !empty($prd_data['godo_goodsNo']) ){ 
+                
+                $godoOptionNames = $prd_data['godo_option']['name'] ?? [];
+                $godoOptionItems = $prd_data['godo_option']['items'] ?? [];
+                if (!empty($prd_data['godo_is_option']) && is_array($godoOptionNames) && is_array($godoOptionItems)) {
         ?>
             <tr>
                 <th>고도몰 옵션</th>
@@ -455,6 +556,65 @@
         <?php
         }
         ?>
+
+        <tr>
+            <th>고도몰 카테고리</th>
+            <td>
+                <?php
+                    $godoCateRows = $prd_data['godo_cate_json'] ?? [];
+                    if (is_string($godoCateRows)) {
+                        $decodedGodoCateRows = json_decode($godoCateRows, true);
+                        $godoCateRows = is_array($decodedGodoCateRows) ? $decodedGodoCateRows : [];
+                    } elseif (!is_array($godoCateRows)) {
+                        $godoCateRows = [];
+                    }
+                    usort($godoCateRows, function ($a, $b) {
+                        $codeA = (string)($a['cateCd'] ?? ($a['code'] ?? ''));
+                        $codeB = (string)($b['cateCd'] ?? ($b['code'] ?? ''));
+                        return strcmp($codeA, $codeB);
+                    });
+                ?>
+                <table class="table-style ">
+                    <colgroup>
+                        <col />
+                        <col width="100px" />
+                    </colgroup>
+                    <thead>
+                        <tr>
+                            <th>카테고리명</th>
+                            <th>카테고리코드</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <?php foreach ($godoCateRows as $cate) { ?>
+                            <tr>
+                                <td>
+                                    <?php
+                                        $pathParts = [];
+                                        foreach (($cate['path'] ?? []) as $pathNode) {
+                                            $pathName = trim((string)($pathNode['cateNm'] ?? ''));
+                                            if ($pathName !== '') {
+                                                $pathParts[] = $pathName;
+                                            }
+                                        }
+                                        $cateName = trim((string)($cate['cateNm'] ?? ($cate['name'] ?? '')));
+                                        if (empty($pathParts) && $cateName !== '') {
+                                            $pathParts[] = $cateName;
+                                        }
+                                        echo implode(' > ', $pathParts);
+                                    ?>
+                                </td>
+                                <td><?= $cate['cateCd'] ?? ($cate['code'] ?? '') ?></td>
+                            </tr>
+                        <?php } ?>
+                    </tbody>
+                </table>
+            </td>
+        </tr>
+
+        <?php } ?>
+
+
         <tr>
             <th>이미지 모드</th>
             <td>
@@ -691,7 +851,326 @@
 <script>
     $(document).ready(function() {
         $('.dn-select2').select2();
+        initGodoCategorySelector();
     });
+
+    const godoCateTree = <?= json_encode($godo_cate ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const selectedGodoCate = <?= json_encode([
+        'depth1' => $selectedDepth1,
+        'depth2' => $selectedDepth2,
+        'depth3' => $selectedDepth3,
+    ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialSelectedGodoCategoryItems = <?= json_encode($initialSelectedCategoryItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let hasAppliedInitialGodoCate = false;
+    const selectedGodoCategoryItems = Array.isArray(initialSelectedGodoCategoryItems) ? initialSelectedGodoCategoryItems.slice() : [];
+
+    function normalizeGodoCategoryItems(items) {
+        if (!Array.isArray(items)) {
+            return [];
+        }
+
+        const normalizedItems = [];
+        const dedupMap = {};
+
+        items.forEach(function(item) {
+            if (!item || typeof item !== 'object') {
+                return;
+            }
+
+            const depth1Code = String(item.depth1Code || '').trim();
+            const depth2Code = String(item.depth2Code || '').trim();
+            const depth3Code = String(item.depth3Code || '').trim();
+            const selectedCode = String(item.selectedCode || item.key || depth3Code || depth2Code || depth1Code).trim();
+            const pathLabel = String(item.pathLabel || '').trim();
+
+            if (!selectedCode || dedupMap[selectedCode]) {
+                return;
+            }
+
+            dedupMap[selectedCode] = true;
+            normalizedItems.push({
+                key: String(item.key || selectedCode).trim(),
+                depth1Code: depth1Code,
+                depth2Code: depth2Code,
+                depth3Code: depth3Code,
+                selectedCode: selectedCode,
+                pathLabel: pathLabel
+            });
+        });
+
+        return normalizedItems;
+    }
+
+    function getDepth1CategoryMapByKind(kindName) {
+        const targetKind = String(kindName || '').trim();
+        if (!targetKind) {
+            return {};
+        }
+
+        const depth1Map = {};
+        Object.entries(godoCateTree || {}).forEach(function(entry) {
+            const code = entry[0];
+            const node = entry[1] || {};
+            if (String(node.name || '').trim() === targetKind) {
+                depth1Map[code] = node;
+            }
+        });
+
+        return depth1Map;
+    }
+
+    function resetSelectOptions($select, placeholderText) {
+        $select.empty();
+        $select.append($('<option>', {
+            value: '',
+            text: placeholderText
+        }));
+    }
+
+    function fillSelectOptions($select, options, placeholderText, selectedValue) {
+        resetSelectOptions($select, placeholderText);
+
+        const optionEntries = Object.entries(options || {});
+        optionEntries.forEach(function(entry) {
+            const code = entry[0];
+            const node = entry[1] || {};
+            $select.append($('<option>', {
+                value: code,
+                text: node.name || code
+            }));
+        });
+
+        if (selectedValue && options && options[selectedValue]) {
+            $select.val(selectedValue);
+        } else if (optionEntries.length === 1) {
+            $select.val(optionEntries[0][0]);
+        } else {
+            $select.val('');
+        }
+
+        $select.prop('disabled', optionEntries.length === 0);
+    }
+
+    function updateDepth2AndDepth3(depth2Code, depth3Code) {
+        const depth1Code = $('#godo_cate_depth1').val();
+        const kindName = $('select[name="kind"]').val();
+        const depth1Map = getDepth1CategoryMapByKind(kindName);
+        const depth1Node = (depth1Map && depth1Map[depth1Code]) ? depth1Map[depth1Code] : null;
+        const depth2Map = depth1Node && depth1Node.children ? depth1Node.children : {};
+
+        fillSelectOptions($('#godo_cate_depth2'), depth2Map, '2차 분류 선택', depth2Code);
+
+        const selectedDepth2Code = $('#godo_cate_depth2').val();
+        const depth2Node = (depth2Map && depth2Map[selectedDepth2Code]) ? depth2Map[selectedDepth2Code] : null;
+        const depth3Map = depth2Node && depth2Node.children ? depth2Node.children : {};
+
+        fillSelectOptions($('#godo_cate_depth3'), depth3Map, '3차 분류 선택', depth3Code);
+    }
+
+    function updateGodoCategorySelector() {
+        const kindName = $('select[name="kind"]').val();
+        const depth1Map = getDepth1CategoryMapByKind(kindName);
+        const hasCategory = Object.keys(depth1Map).length > 0;
+
+        if (!hasCategory) {
+            $('#godoCateSelectorWrap').hide();
+            $('#godoCateSelectorGuide').show();
+            resetSelectOptions($('#godo_cate_depth1'), '1차 분류 선택');
+            resetSelectOptions($('#godo_cate_depth2'), '2차 분류 선택');
+            resetSelectOptions($('#godo_cate_depth3'), '3차 분류 선택');
+            $('#godo_cate_depth1, #godo_cate_depth2, #godo_cate_depth3').prop('disabled', true);
+            selectedGodoCategoryItems.length = 0;
+            renderSelectedGodoCategoryItems();
+            return;
+        }
+
+        $('#godoCateSelectorWrap').show();
+        $('#godoCateSelectorGuide').hide();
+
+        const initDepth1 = (!hasAppliedInitialGodoCate ? selectedGodoCate.depth1 : '');
+        const initDepth2 = (!hasAppliedInitialGodoCate ? selectedGodoCate.depth2 : '');
+        const initDepth3 = (!hasAppliedInitialGodoCate ? selectedGodoCate.depth3 : '');
+
+        fillSelectOptions($('#godo_cate_depth1'), depth1Map || {}, '1차 분류 선택', initDepth1);
+        updateDepth2AndDepth3(initDepth2, initDepth3);
+
+        hasAppliedInitialGodoCate = true;
+    }
+
+    function getCurrentGodoCategorySelection() {
+        const depth1Code = String($('#godo_cate_depth1').val() || '').trim();
+        const depth2Code = String($('#godo_cate_depth2').val() || '').trim();
+        const depth3Code = String($('#godo_cate_depth3').val() || '').trim();
+
+        if (!depth1Code) {
+            return null;
+        }
+
+        const depth1Name = String($('#godo_cate_depth1 option:selected').text() || '').trim();
+        const depth2Name = depth2Code ? String($('#godo_cate_depth2 option:selected').text() || '').trim() : '';
+        const depth3Name = depth3Code ? String($('#godo_cate_depth3 option:selected').text() || '').trim() : '';
+
+        const key = depth3Code || depth2Code || depth1Code;
+        const pathNames = [depth1Name, depth2Name, depth3Name].filter(Boolean);
+        const pathLabel = pathNames.join(' > ');
+
+        return {
+            key: key,
+            depth1Code: depth1Code,
+            depth2Code: depth2Code,
+            depth3Code: depth3Code,
+            depth1Name: depth1Name,
+            depth2Name: depth2Name,
+            depth3Name: depth3Name,
+            selectedCode: key,
+            pathLabel: pathLabel
+        };
+    }
+
+    function getGodoCategoryItemsToAdd(selectedItem) {
+        const items = [];
+
+        if (!selectedItem || !selectedItem.depth1Code) {
+            return items;
+        }
+
+        items.push({
+            key: selectedItem.depth1Code,
+            depth1Code: selectedItem.depth1Code,
+            depth2Code: '',
+            depth3Code: '',
+            selectedCode: selectedItem.depth1Code,
+            pathLabel: selectedItem.depth1Name || selectedItem.depth1Code
+        });
+
+        if (selectedItem.depth2Code) {
+            items.push({
+                key: selectedItem.depth2Code,
+                depth1Code: selectedItem.depth1Code,
+                depth2Code: selectedItem.depth2Code,
+                depth3Code: '',
+                selectedCode: selectedItem.depth2Code,
+                pathLabel: [selectedItem.depth1Name, selectedItem.depth2Name].filter(Boolean).join(' > ')
+            });
+        }
+
+        if (selectedItem.depth3Code) {
+            items.push({
+                key: selectedItem.depth3Code,
+                depth1Code: selectedItem.depth1Code,
+                depth2Code: selectedItem.depth2Code,
+                depth3Code: selectedItem.depth3Code,
+                selectedCode: selectedItem.depth3Code,
+                pathLabel: [selectedItem.depth1Name, selectedItem.depth2Name, selectedItem.depth3Name].filter(Boolean).join(' > ')
+            });
+        }
+
+        return items;
+    }
+
+    function renderSelectedGodoCategoryItems() {
+        const $list = $('#selectedGodoCategoryList');
+        const $inputs = $('#selectedGodoCategoryInputs');
+        $list.empty();
+        $inputs.empty();
+        $inputs.append('<input type="hidden" name="cate_json" id="cate_json" value="">');
+
+        if (selectedGodoCategoryItems.length === 0) {
+            $list.append('<div class="admin-guide-text">선택된 분류가 없습니다.</div>');
+            return;
+        }
+
+        selectedGodoCategoryItems.forEach(function(item, index) {
+            const displayLabel = '[' + String(item.selectedCode || item.key || '') + '] ' + String(item.pathLabel || '');
+            const itemHtml = ''
+                + '<div style="display:flex; align-items:center; gap:6px; margin-top:6px;">'
+                + '  <span style="display:inline-block; padding:4px 8px; background:#f5f5f5; border:1px solid #ddd; border-radius:3px;">'
+                +      $('<div>').text(displayLabel).html()
+                + '  </span>'
+                + '  <button type="button" class="btnstyle1 btnstyle1-default btnstyle1-xs remove-godo-cate-btn" data-index="' + index + '">삭제</button>'
+                + '</div>';
+            $list.append(itemHtml);
+
+            $inputs.append('<input type="hidden" name="godo_cate_selected[]" value="' + $('<div>').text(item.selectedCode || '').html() + '">');
+            $inputs.append('<input type="hidden" name="godo_cate_selected_depth1[]" value="' + $('<div>').text(item.depth1Code || '').html() + '">');
+            $inputs.append('<input type="hidden" name="godo_cate_selected_depth2[]" value="' + $('<div>').text(item.depth2Code || '').html() + '">');
+            $inputs.append('<input type="hidden" name="godo_cate_selected_depth3[]" value="' + $('<div>').text(item.depth3Code || '').html() + '">');
+        });
+
+        $('#cate_json').val(JSON.stringify(selectedGodoCategoryItems));
+    }
+
+    function addSelectedGodoCategory() {
+        const selectedItem = getCurrentGodoCategorySelection();
+        if (!selectedItem) {
+            alert('1차 분류를 선택해주세요.');
+            return;
+        }
+
+        const candidates = getGodoCategoryItemsToAdd(selectedItem);
+        let addedCount = 0;
+
+        candidates.forEach(function(candidate) {
+            const exists = selectedGodoCategoryItems.some(function(item) {
+                return item.key === candidate.key;
+            });
+            if (!exists) {
+                selectedGodoCategoryItems.push(candidate);
+                addedCount += 1;
+            }
+        });
+
+        if (addedCount === 0) {
+            alert('이미 추가된 분류입니다.');
+            return;
+        }
+
+        renderSelectedGodoCategoryItems();
+    }
+
+    function initGodoCategorySelector() {
+        const normalized = normalizeGodoCategoryItems(selectedGodoCategoryItems);
+        selectedGodoCategoryItems.length = 0;
+        normalized.forEach(function(item) {
+            selectedGodoCategoryItems.push(item);
+        });
+
+        $('select[name="kind"]').on('change', function() {
+            updateGodoCategorySelector();
+        });
+
+        $('#godo_cate_depth1').on('change', function() {
+            updateDepth2AndDepth3('', '');
+        });
+
+        $('#godo_cate_depth2').on('change', function() {
+            const kindName = $('select[name="kind"]').val();
+            const depth1Map = getDepth1CategoryMapByKind(kindName);
+            const depth1Code = $('#godo_cate_depth1').val();
+            const depth2Code = $('#godo_cate_depth2').val();
+            const depth1Node = (depth1Map && depth1Map[depth1Code]) ? depth1Map[depth1Code] : null;
+            const depth2Map = depth1Node && depth1Node.children ? depth1Node.children : {};
+            const depth2Node = (depth2Map && depth2Map[depth2Code]) ? depth2Map[depth2Code] : null;
+            const depth3Map = depth2Node && depth2Node.children ? depth2Node.children : {};
+            fillSelectOptions($('#godo_cate_depth3'), depth3Map, '3차 분류 선택', '');
+        });
+
+        $('#addGodoCategoryBtn').on('click', function() {
+            addSelectedGodoCategory();
+        });
+
+        $(document).on('click', '.remove-godo-cate-btn', function() {
+            const index = Number($(this).data('index'));
+            if (Number.isNaN(index) || index < 0 || index >= selectedGodoCategoryItems.length) {
+                return;
+            }
+            selectedGodoCategoryItems.splice(index, 1);
+            renderSelectedGodoCategoryItems();
+        });
+
+        renderSelectedGodoCategoryItems();
+        updateGodoCategorySelector();
+    }
 
     /**
      * 공급사 사이트 디테일 크롤링후 업데이트
@@ -810,6 +1289,16 @@
         $target.trigger('focus').trigger('select');
         document.execCommand('copy');
         onSuccess();
+    }
+
+    function applyQuickMemo(memoText) {
+        var $memo = $('input[name="memo"]');
+        if ($memo.length === 0 || !memoText) {
+            return;
+        }
+
+        $memo.val(String(memoText));
+        $memo.trigger('focus');
     }
 
 </script>

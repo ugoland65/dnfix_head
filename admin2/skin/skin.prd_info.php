@@ -586,7 +586,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				ajaxUrl = "/ad/ajax/prd_info_price";
 
 			} else if (mode == "saleLog") { //할인 로그
-				ajaxUrl = "/ad/ajax/prd_info_salelog";
+				//ajaxUrl = "/ad/ajax/prd_info_salelog";
+				ajaxMethod = "GET";
+				ajaxUrl = "/admin/product/detail_sale_log";
+				data = {
+					"prd_idx": prd_idx,
+					"prd_mode": "prdDB"
+				};
 
 			} else if (mode == "stock_chart") { //재고 챠트
 				ajaxUrl = "/ad/ajax/prd_info_stock_chart";

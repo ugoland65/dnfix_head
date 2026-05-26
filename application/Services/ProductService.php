@@ -389,6 +389,7 @@ class ProductService extends BaseClass
             'sale_count' => count($product['ps_sale_log']) ?? 0,
             'sale_subject' => $product['ps_sale_log'][0]['pg_subject'] ?? '',
             'sale_per' => $product['ps_sale_log'][0]['sale_per'] ?? 0,
+            'grouping_idx' => $product['ps_sale_log'][0]['grouping_idx'] ?? 0,
         ];
 
         $product['prd_kind_name'] = $prdKindName[$product['CD_KIND_CODE']] ?? '미지정';

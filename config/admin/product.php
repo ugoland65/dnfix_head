@@ -7,6 +7,7 @@ $prd_kind_name = [
     'REALDOLL' => "리얼돌",
     'MAN' => "남성용품",
     'WOMAN' => "여성용품",
+    'VIBRATOR' => "바이브레이터",
     'SIDE' => "보조용품",
     'GEL' => "윤활젤",
     'CONDOM' => "콘돔",

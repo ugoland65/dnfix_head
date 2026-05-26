@@ -120,6 +120,16 @@ class CsRequestService
         $orderDate = $data['orderDate'] ?? null;
         $paymentDt = $data['paymentDt'] ?? null;
         $memNo = $data['memNo'] ?? null;
+        if (is_string($memNo)) {
+            $memNo = trim($memNo);
+        }
+        if ($memNo === '' || $memNo === null) {
+            $memNo = null;
+        } elseif (is_numeric($memNo)) {
+            $memNo = (int)$memNo;
+        } else {
+            $memNo = null;
+        }
         $memId = trim((string)($data['memId'] ?? ''));
         if ($memId === '') {
             $memId = trim((string)($memNo ?? ''));

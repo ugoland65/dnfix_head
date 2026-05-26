@@ -11,6 +11,7 @@ use App\Services\ProductService;
 use App\Services\BrandService;
 use App\Services\ProductPartnerService;
 use App\Services\PartnersService;
+use App\Services\ProductStockSaleLogService;
 use App\Utils\Pagination;
 class ProductController extends BaseClass 
 {
@@ -289,6 +290,43 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 할인 로그 목록 화면
+     */
+    public function prdDetailSaleLogPage(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = $requestData['prd_idx'] ?? null;
+            $prdMode = $requestData['prd_mode'] ?? 'prdDB';
+
+            $productStockSaleLogService = new ProductStockSaleLogService();
+            $saleLogPageData = $productStockSaleLogService->getSaleLogPageData($prdIdx);
+            $recentSaleLog = $productStockSaleLogService->getRecentSaleLogByPrdIdx($prdIdx);
+
+            $productData = [];
+            if ($prdMode === 'prdDB') {
+                $productService = new ProductService();
+                $productData = $productService->getProductDataForAdmin($prdIdx);
+            }
+
+            $data = [
+                'prd_idx' => $prdIdx,
+                'prd_mode' => $prdMode,
+                'productData' => $productData,
+                'saleLogRows' => $saleLogPageData['rows'] ?? [],
+                'recentSaleLog' => $recentSaleLog,
+            ];
+
+            return view('admin.product.prd_detail_sale_log', $data);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
      * 상품 베이직 저장
      */
     public function saveProduct(Request $request)
@@ -354,6 +392,30 @@ class ProductController extends BaseClass
                 'success' => false,
                 'message' => $e->getMessage(),
             ], 500);
+        }
+    }
+
+    
+    /**
+     * 상품 할인 로그 저장
+     */
+    public function saveProductSaleLog(Request $request)
+    {
+        try{
+            $requestData = $request->all();
+            $productStockSaleLogService = new ProductStockSaleLogService();
+            $result = $productStockSaleLogService->updateRecentSaleDate($requestData);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '저장되었습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

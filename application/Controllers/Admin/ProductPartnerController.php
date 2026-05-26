@@ -328,6 +328,9 @@ class ProductPartnerController extends BaseClass
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
 
+            $config_godo_cate = config('admin.godo_cate');
+            $godo_cate = $config_godo_cate ?? [];
+
             // 브랜드 셀렉트바
             $extraData = ['listActive' => true];
             $brandService = new BrandService();
@@ -339,6 +342,7 @@ class ProductPartnerController extends BaseClass
             $partnerForSelect = $partnersService->getPartnersForSelect($extraData);
 
             $data = [
+                'godo_cate' => $godo_cate,
                 'prd_kind_name' => $prd_kind_name,
                 'brandForSelect' => $brandForSelect,
                 'partnerForSelect' => $partnerForSelect,
@@ -367,6 +371,8 @@ class ProductPartnerController extends BaseClass
         try{
 
             $requestData = $request->all();
+            // 상세분류 JSON은 문자열 그대로 받아 파싱한다.
+            $requestData['cate_json'] = $request->input('cate_json', '[]', FILTER_UNSAFE_RAW);
             $prd_idx = $requestData['prd_idx'] ?? null;
 
             if(empty($prd_idx)){

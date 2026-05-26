@@ -66,6 +66,8 @@ try {
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
     $router->get('/product/detail_basic', ProductController::class, 'prdDetailBasicPage'); //상품 디테일 (베이직)
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
+    $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
+    $router->post('/product/detail_sale_log/save', ProductController::class, 'saveProductSaleLog'); //상품 디테일 (할인 로그 저장)
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회

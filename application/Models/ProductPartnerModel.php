@@ -11,6 +11,7 @@ class ProductPartnerModel extends BaseModel
 
 	protected $fillable = [
 		'name',
+		'short_desc',
 		'name_p',
 		'name_ori',
 		'status',
@@ -39,11 +40,14 @@ class ProductPartnerModel extends BaseModel
 		'godo_goodsNo',
 		'godo_option',
 		'godo_is_option',
+		'godo_loaded_at',
 		'kind',
 		'hbti_type',
 		'matching_code',
 		'matching_option',
 		'matching_data',
+		'cate_json',
+		'godo_cate_json',
 		'memo',
 		'memo_work',
 		'sold_out_date',

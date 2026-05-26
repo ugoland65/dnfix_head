@@ -526,6 +526,7 @@ class ProductGroupingService
     {
 
         $inputData = is_array($inputData) ? $inputData : [];
+        $productStockSaleLogService = new ProductStockSaleLogService();
 
         $idx = $inputData['idx'] ?? null;
 
@@ -725,6 +726,12 @@ class ProductGroupingService
                         }else{
                             $ps_sale_log_data = array($sale_log_unit);
                         }
+
+                        // 기존 prd_stock.ps_sale_log 적재를 유지하면서 신규 로그 테이블에도 동시 적재
+                        $newSaleLogPayload = $sale_log_unit;
+                        $newSaleLogPayload['ps_idx'] = (int)$_ps_idx;
+                        $newSaleLogPayload['prd_mode'] = $prd_mode;
+                        $productStockSaleLogService->createSaleLog($newSaleLogPayload);
 
                     }
 

@@ -138,6 +138,7 @@
 								<th class="">상품원가<br>/주문가</th>
 								<th class="">마진</th>
 								<th class="">마진율</th>
+								<th class="">마진등급</th>
 								<th class="">공급사<br>이미지</th>
 								<th class="prd-name">공급사<br>상품명</th>
 								<th class="">API매칭</th>
@@ -162,6 +163,42 @@
 									}else{
 										$tr_class = '';
 									}
+
+									if (!empty($item['sale_price']) && !empty($item['order_price'])) {
+										$margin = $item['sale_price'] - $item['order_price'];
+										$margin_rate = $margin / $item['sale_price'] * 100;
+			
+										$grade = '';
+										$gradeColor = '';
+										if ($margin_rate > 39) {
+											$grade = 'A';
+											$gradeColor = '#28a745'; // 초록색
+										} elseif ($margin_rate >= 35) {
+											$grade = 'B';
+											$gradeColor = '#20c997'; // 연두색
+										} elseif ($margin_rate >= 30) {
+											$grade = 'C';
+											$gradeColor = '#17a2b8'; // 청록색
+										} elseif ($margin_rate >= 25) {
+											$grade = 'D';
+											$gradeColor = '#0dcaf0'; // 하늘색
+										} elseif ($margin_rate >= 20) {
+											$grade = 'E';
+											$gradeColor = '#ffc107'; // 노란색
+										} elseif ($margin_rate >= 15) {
+											$grade = 'F';
+											$gradeColor = '#fd7e14'; // 오렌지색
+										} elseif ($margin_rate >= 10) {
+											$grade = 'G';
+											$gradeColor = '#dc3545'; // 빨간색
+										} elseif ($margin_rate >= 5) {
+											$grade = 'H';
+											$gradeColor = '#d63384'; // 진한 빨강
+										} elseif ($margin_rate > 0) {
+											$grade = 'I';
+											$gradeColor = '#6c757d'; // 회색
+										}
+									}
 							?>
 								<tr class="<?= $tr_class ?>">
 									<td><input type="checkbox" name="check_idx[]" value="<?= $item['idx'] ?>"></td>
@@ -178,7 +215,9 @@
 									<td>
 										<img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
 									</td>
-									<td class="text-center"><?= $prd_kind_name[$item['kind']] ?? "미지정" ?></td>
+									<td class="text-center">
+										<?= $item['kind'] ?? "미지정" ?>
+									</td>
 									<td class="prd-name">
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
 										<? if (!empty($item['memo'])) { ?>
@@ -238,21 +277,34 @@
 									</td>
 									<td class="text-right">
 										<?php
-										if ($salePriceCalc > 0 && $costPrice > 0) {
-											$marginRate = ($margin / $salePriceCalc) * 100;
-											echo number_format($marginRate, 1) . '%';
-										} else {
-											echo '-';
-										}
+											if ($salePriceCalc > 0 && $costPrice > 0) {
+												$marginRate = ($margin / $salePriceCalc) * 100;
+												echo number_format($marginRate, 1) . '%';
+											} else {
+												echo '-';
+											}
 										?>
 										<?php
-										if ($salePriceCalc > 0 && $orderPrice > 0) {
-											$marginRate2 = ($margin2 / $salePriceCalc) * 100;
-											echo "<br><b>" . number_format($marginRate2, 1) . '%</b>';
-										} else {
-											echo '-';
-										}
+											if ($salePriceCalc > 0 && $orderPrice > 0) {
+												$marginRate2 = ($margin2 / $salePriceCalc) * 100;
+												echo "<br><b>" . number_format($marginRate2, 1) . '%</b>';
+											} else {
+												echo '-';
+											}
 										?>
+
+									</td>
+									
+									<td class="text-center">
+										<?php
+											if ($salePriceCalc > 0 && $orderPrice > 0) {
+										?>
+										<span class="grade-badge grade-<?=$grade?>">
+											<?=$grade?>
+										</span>
+										<?php } else { ?>
+											-
+										<?php } ?>
 									</td>
 
 									<td class="text-center">

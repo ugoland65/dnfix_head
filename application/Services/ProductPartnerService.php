@@ -157,6 +157,14 @@ class ProductPartnerService extends BaseClass
         $result['godo_option'] = !empty($result['godo_option']) ? json_decode($result['godo_option'], true) : [];
         $result['supplier_option_data'] = !empty($result['supplier_option_data']) ? json_decode($result['supplier_option_data'], true) : [];
         $result['supplier_detail_img'] = !empty($result['supplier_detail_img']) ? json_decode($result['supplier_detail_img'], true) : [];
+        $result['cate_json'] = !empty($result['cate_json']) ? json_decode($result['cate_json'], true) : [];
+        $result['godo_cate_json'] = !empty($result['godo_cate_json']) ? json_decode($result['godo_cate_json'], true) : [];
+        if (!is_array($result['cate_json'])) {
+            $result['cate_json'] = [];
+        }
+        if (!is_array($result['godo_cate_json'])) {
+            $result['godo_cate_json'] = [];
+        }
         
         return $result;
 
@@ -261,6 +269,7 @@ class ProductPartnerService extends BaseClass
             $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
 
             $name = $postData['name'] ?? '';
+            $short_desc = trim((string)($postData['short_desc'] ?? ''));
             $name_ori = $postData['name_ori'] ?? '';
             $name_p = $postData['name_p'] ?? '';
             $kind = $postData['kind'] ?? '';
@@ -278,8 +287,61 @@ class ProductPartnerService extends BaseClass
             $hbti_type = $postData['hbti_type'] ?? '';
             $godo_goodsNo = $toIntOrNull($postData['godo_goodsNo'] ?? null);
 
+            $cateItemsRaw = [];
+            $cateJsonRaw = $postData['cate_json'] ?? '[]';
+            if (is_string($cateJsonRaw) && trim($cateJsonRaw) !== '') {
+                $cateJsonRaw = html_entity_decode($cateJsonRaw, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $decodedCateJson = json_decode($cateJsonRaw, true);
+                if (is_array($decodedCateJson)) {
+                    $cateItemsRaw = $decodedCateJson;
+                }
+            }
+
+            $cateItems = [];
+            $cateDedupMap = [];
+            foreach ($cateItemsRaw as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $depth1Code = trim((string)($item['depth1Code'] ?? ''));
+                $depth2Code = trim((string)($item['depth2Code'] ?? ''));
+                $depth3Code = trim((string)($item['depth3Code'] ?? ''));
+                $selectedCode = trim((string)($item['selectedCode'] ?? ''));
+                $pathLabel = trim((string)($item['pathLabel'] ?? ''));
+                $key = trim((string)($item['key'] ?? ''));
+
+                if ($selectedCode === '') {
+                    $selectedCode = $key !== '' ? $key : ($depth3Code !== '' ? $depth3Code : ($depth2Code !== '' ? $depth2Code : $depth1Code));
+                }
+
+                if ($selectedCode === '') {
+                    continue;
+                }
+
+                if (isset($cateDedupMap[$selectedCode])) {
+                    continue;
+                }
+                $cateDedupMap[$selectedCode] = true;
+
+                if ($key === '') {
+                    $key = $selectedCode;
+                }
+
+                $cateItems[] = [
+                    'key' => $key,
+                    'depth1Code' => $depth1Code,
+                    'depth2Code' => $depth2Code,
+                    'depth3Code' => $depth3Code,
+                    'selectedCode' => $selectedCode,
+                    'pathLabel' => $pathLabel,
+                ];
+            }
+            $cateJson = json_encode($cateItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
             $inputData = [
                 'name' => $name, // 판매 상품명
+                'short_desc' => $short_desc, // 한줄 간략설명
                 'name_ori' => $name_ori, // 원(영문,일어,중국어) 상품명
                 'name_p' => $name_p, // 공급사 상품명
                 'status' => $status, // 상품 상태
@@ -305,6 +367,7 @@ class ProductPartnerService extends BaseClass
                 'img_src' => $img_src, // 이미지 URL 또는 경로
                 'hbti_type' => $hbti_type, // HBTI 타입 정보
                 'godo_goodsNo' => $godo_goodsNo, // 고도몰 상품코드
+                'cate_json' => $cateJson, // 내부 상세분류(JSON)
                 'matching_code' => $matching_code, // 공급사 매칭코드
                 'memo' => $memo, // 메모
                 'memo_work' => $memo_work, // 작업지시 메모
@@ -313,6 +376,7 @@ class ProductPartnerService extends BaseClass
             $updateData = [];
             $fieldMap = [
                 'name' => $name,
+                'short_desc' => $short_desc,
                 'name_ori' => $name_ori,
                 'name_p' => $name_p,
                 'status' => $status,
@@ -338,6 +402,7 @@ class ProductPartnerService extends BaseClass
                 'img_src' => $img_src,
                 'hbti_type' => $hbti_type,
                 'godo_goodsNo' => $godo_goodsNo,
+                'cate_json' => $cateJson,
                 'matching_code' => $matching_code,
                 'memo' => $memo,
                 'memo_work' => $memo_work,
@@ -773,6 +838,7 @@ class ProductPartnerService extends BaseClass
         return $this->bulkUpdateSelectedProducts($data);
     }
 
+
     /**
      * 고도몰 정보로 상품 정보 갱신
      * 
@@ -809,6 +875,8 @@ class ProductPartnerService extends BaseClass
             'godo_goodsNo' => $productPartner['godo_goodsNo'] ?? null,
             'godo_is_option' => $productPartner['godo_is_option'] ?? null,
             'godo_option' => $productPartner['godo_option'] ?? null,
+            'godo_cate_json' => $productPartner['godo_cate_json'] ?? null,
+            'godo_loaded_at' => $productPartner['godo_loaded_at'] ?? null,
         ];
 
         /*
@@ -820,6 +888,43 @@ class ProductPartnerService extends BaseClass
         "goodsPrice":"46000.00",
         "purchaseGoodsNm":"","optionFl":"n","optionDisplayFl":"s","optionName":"","cateNm":"기타 브랜드",
         "thumbImageUrl":"https:\/\/godomall-storage.cdn-nhncommerce.com\/2f93719188848c1c1cec14525d2ccc5b\/goods\/1000003629\/image\/list\/thumb\/1000003629_list_093.jpg","options":[{"optionNo":1,"optionCode":"","optionPrice":0,"optionValue1":"","optionValue2":"","optionValue3":"","optionValue4":"","optionValue5":""}]}
+        "options": [
+    {
+      "optionNo": 1,
+      "optionCode": "",
+      "optionPrice": 0,
+      "optionValue1": "",
+      "optionValue2": "",
+      "optionValue3": "",
+      "optionValue4": "",
+      "optionValue5": ""
+    }
+  ],
+  "categories": [
+    {
+      "cateCd": "006002",
+      "cateNm": "체벌/스팽킹",
+      "depth": 2,
+      "parents": [
+        {
+          "cateCd": "006",
+          "cateNm": "BDSM",
+          "depth": 1
+        }
+      ],
+      "path": [
+        {
+          "cateCd": "006",
+          "cateNm": "BDSM",
+          "depth": 1
+        },
+        {
+          "cateCd": "006002",
+          "cateNm": "체벌/스팽킹",
+          "depth": 2
+        }
+      ]
+    },
         */
         $name = $godoGoods['goodsNm'] ?? null;
         $code = $godoGoods['goodsCd'] ?? null;
@@ -850,6 +955,13 @@ class ProductPartnerService extends BaseClass
 
         $godo_is_option = 'N';
         $godo_option = [];
+        $optionData = [];
+        $godoCategories = $godoGoods['categories'] ?? [];
+        if (!is_array($godoCategories)) {
+            $godoCategories = [];
+        }
+        $godo_cate_json = json_encode($godoCategories, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $godo_loaded_at = date('Y-m-d H:i:s');
 
         $optionFl = strtolower($godoGoods['optionFl'] ?? 'n');
         
@@ -874,6 +986,8 @@ class ProductPartnerService extends BaseClass
             'godo_goodsNo' => $godo_goodsNo,
             'godo_is_option' => $godo_is_option,
             'godo_option' => $godo_option,
+            'godo_cate_json' => $godo_cate_json,
+            'godo_loaded_at' => $godo_loaded_at,
         ];
 
         $result = ProductPartnerModel::where('idx', $prd_idx)->update($updateData);

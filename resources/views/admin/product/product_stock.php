@@ -113,8 +113,8 @@
                     <option value="release_date" <? if( $sort_mode == "release_date" ) echo "selected";?> >출시일 최근순</option>
                     <option value="old_release_date" <? if( $sort_mode == "old_release_date" ) echo "selected";?> >출시일 오랜순</option>
                     <option value="old_sale_date" <? if( $sort_mode == "old_sale_date" ) echo "selected";?> >판매일 오랜순</option>
-                    <option value="new_dis_date" <? if( $sort_mode == "old_dis_date" ) echo "selected";?> >할인일 최근</option>
-                    <option value="old_dis_date" <? if( $sort_mode == "new_dis_date" ) echo "selected";?> >할인일 오랜순</option>
+                    <option value="new_dis_date" <? if( $sort_mode == "new_dis_date" ) echo "selected";?> >할인일 최근</option>
+                    <option value="old_dis_date" <? if( $sort_mode == "old_dis_date" ) echo "selected";?> >할인일 오랜순</option>
                 </select>
             </ul>
         </div>
@@ -375,7 +375,13 @@
                                             <div>
                                                 <ul class="text-center"><?=date('y.m.d', $ts)?></ul>
                                                 <ul class="text-center m-t-5" style="font-size:12px;">총 할인수 : <?=$product['last_sale']['sale_count'] ?? 0?></ul>
-                                                <ul class="text-center" style="font-size:11px;"><?=$product['last_sale']['sale_subject'] ?? ''?></ul>
+                                                <ul class="text-center" style="font-size:11px;">
+                                                    <?php if( !empty($product['last_sale']['grouping_idx']) ){ ?>
+                                                        <a href="/admin/product/grouping_view/<?=$product['last_sale']['grouping_idx']?>" target="_blank"><?=$product['last_sale']['sale_subject'] ?? ''?></a>
+                                                    <?php } else { ?>
+                                                        <?=$product['last_sale']['sale_subject'] ?? ''?>
+                                                    <?php } ?>
+                                                </ul>
                                                 <ul class="text-center"><?=$product['last_sale']['sale_per'] ?? 0?>%</ul>
                                             </div>
                                         <?php
