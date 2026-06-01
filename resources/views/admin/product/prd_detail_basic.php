@@ -233,6 +233,12 @@
                         <?php } else { ?>
                             <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'special')">특가할인 지정</button>
                         <?php } ?>
+
+                        할인대상 :
+                        <label><input type="radio" name="ps_discount_target_yn" value="Y" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'Y') echo "checked"; ?>> 해당대상</label>
+                        <label><input type="radio" name="ps_discount_target_yn" value="N" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'N') echo "checked"; ?>> 할인대상 제외</label>
+
+
                     </td>
                 </tr>
             <?php } ?>
@@ -419,8 +425,6 @@
                         </tr>
                     </table>
 
-
-                    
                 </td>
             </tr>
             <?php } ?>

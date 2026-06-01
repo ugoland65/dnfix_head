@@ -964,7 +964,7 @@ class ProductService extends BaseClass
         $query = ProductModel::query()
             ->select([
                 'COMPARISON_DB.*',
-                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
+                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
                 'BRAND_DB.BD_NAME'
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
@@ -985,6 +985,7 @@ class ProductService extends BaseClass
             $productData['ps_rack_code'] = $productData['ps_rack_code'] ?? '';
             $productData['ps_stock_object'] = $productData['ps_stock_object'] ?? '';
             $productData['ps_alarm_count'] = $productData['ps_alarm_count'] ?? 0;
+            $productData['ps_discount_target_yn'] = $productData['ps_discount_target_yn'] ?? 'Y';
             $productData['is_sale_month'] = $productData['is_sale_month'] ?? 0;
             $productData['is_sale_special'] = $productData['is_sale_special'] ?? 0;
 
@@ -1333,6 +1334,10 @@ class ProductService extends BaseClass
         $psRackCode = (string)($postData['ps_rack_code'] ?? '');
         $psStockObject = (string)($postData['ps_stock_object'] ?? '');
         $psAlarmCount = (string)($postData['ps_alarm_count'] ?? '');
+        $psDiscountTargetYn = strtoupper(trim((string)($postData['ps_discount_target_yn'] ?? 'Y')));
+        if (!in_array($psDiscountTargetYn, ['Y', 'N'], true)) {
+            $psDiscountTargetYn = 'Y';
+        }
         $invoiceSizeW = (string)($postData['invoice_size_w'] ?? '');
         $invoiceSizeH = (string)($postData['invoice_size_h'] ?? '');
         $invoiceSizeD = (string)($postData['invoice_size_d'] ?? '');
@@ -1466,28 +1471,37 @@ class ProductService extends BaseClass
                     'ps_rack_code' => $psRackCode,
                     'ps_stock_object' => $psStockObject,
                     'ps_alarm_count' => $psAlarmCount,
+                    'ps_discount_target_yn' => $psDiscountTargetYn,
                 ]);
         }
 
         $beforeData = $oldProduct;
+        $beforeDiscountTargetYn = 'Y';
         if (!empty($psIdx)) {
+            $beforeDiscountTargetYn = (string)($beforeStockData['ps_discount_target_yn'] ?? 'Y');
             $beforeData['prd_stock'] = [
                 'ps_idx' => (string)($beforeStockData['ps_idx'] ?? ''),
                 'ps_rack_code' => (string)($beforeStockData['ps_rack_code'] ?? ''),
                 'ps_stock_object' => (string)($beforeStockData['ps_stock_object'] ?? ''),
                 'ps_alarm_count' => (string)($beforeStockData['ps_alarm_count'] ?? ''),
+                'ps_discount_target_yn' => $beforeDiscountTargetYn,
             ];
         }
+        $beforeData['ps_discount_target_yn'] = $beforeDiscountTargetYn;
 
         $afterData = array_merge($oldProduct, $updateData);
+        $afterDiscountTargetYn = $beforeDiscountTargetYn;
         if (!empty($psIdx)) {
+            $afterDiscountTargetYn = $psDiscountTargetYn;
             $afterData['prd_stock'] = [
                 'ps_idx' => (string)$psIdx,
                 'ps_rack_code' => $psRackCode,
                 'ps_stock_object' => $psStockObject,
                 'ps_alarm_count' => $psAlarmCount,
+                'ps_discount_target_yn' => $afterDiscountTargetYn,
             ];
         }
+        $afterData['ps_discount_target_yn'] = $afterDiscountTargetYn;
 
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
@@ -1495,6 +1509,9 @@ class ProductService extends BaseClass
         $actionSummary = (string)($postData['action_summary'] ?? '');
         if ($actionSummary === '') {
             $actionSummary = '상품 베이직 수정';
+        }
+        if ($beforeDiscountTargetYn !== $afterDiscountTargetYn) {
+            $actionSummary .= ' (할인대상 변경)';
         }
         $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
         try {

@@ -19,7 +19,7 @@ class OrderController extends BaseClass {
     }
 
     /**
-     * 고도몰 주문내역 가져오기
+     * 고도몰 주문 상품별 가져오기
      */
     public function getGodoOrderList(Request $request)
     {

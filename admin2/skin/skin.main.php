@@ -182,9 +182,9 @@ var calendar = function() {
 			*/
 			
 			$.ajax({
-				url: "/ad/ajax/calendar",
+				url: "/admin/main/calendar",
 				data: { "y":y, "m":m, "calendar_view":calendarView },
-				type: "POST",
+				type: "GET",
 				dataType: "html",
 				success: function(res){
 					$("#calendar_wrap").html(res);
@@ -215,10 +215,10 @@ var calendar = function() {
 				content:function () {
 					var self = this;
 					return $.ajax({
-						url: '/ad/ajax/calendar_reg',
+						url: '/admin/main/calendar/reg',
 						data: { "y":y, "m":m, "d":d, },
 						dataType: 'html',
-						method: 'POST'
+						method: 'GET'
 					}).done(function (response) {
 						self.setContent(response);
 					}).fail(function(){
@@ -252,10 +252,10 @@ var calendar = function() {
 				content:function () {
 					var self = this;
 					return $.ajax({
-						url: '/ad/ajax/calendar_reg',
+						url: '/admin/main/calendar/reg',
 						data: { "idx":idx },
 						dataType: 'html',
-						method: 'POST'
+						method: 'GET'
 					}).done(function (response) {
 						self.setContent(response);
 					}).fail(function(){

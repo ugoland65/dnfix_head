@@ -611,6 +611,7 @@ class GodoApiService extends BaseClass {
 
     /**
      * 고도몰 주문서 상품별 조회
+     * 
      * @param array $criteria 검색 조건
      * @return array
      */
@@ -625,6 +626,8 @@ class GodoApiService extends BaseClass {
         $response = HttpClient::getData($apiUrl);
 
         $apiData = json_decode($response, true);
+
+        //dd($apiData);
 
         $scmMapping = [
             0  => '오류',
@@ -688,6 +691,7 @@ class GodoApiService extends BaseClass {
                 }
 
                 $order['optionInfo'] = $normalizedOptionInfo;
+
             } elseif (!isset($order['optionInfo']) || !is_array($order['optionInfo'])) {
                 $order['optionInfo'] = [];
             }
@@ -727,7 +731,7 @@ class GodoApiService extends BaseClass {
 
 
     /**
-     * 고도몰 주문내역 상품별 합계조회
+     * 고도몰 주문 상품별 가져오기
      */
     public function getOrderGoodsSummary($criteria) 
     {
@@ -835,11 +839,16 @@ class GodoApiService extends BaseClass {
                 if( $my_scm == 'my' ){
 
                     /*
-                    if( $order['orderNo'] == '2605020130239211' ){
-
-                        dd($goods['optionInfo']);
+                    if( $order['orderNo'] == '2605270554577335' ){
+                        dd($goods);
+                        //dd($goods['optionInfo']);
                     }
-                    */
+
+                    if( $order['orderNo'] == '2605270554577335' && $goods['goodsNo'] == '1618' ){
+                        dd($goods);
+                        //dd($goods['optionInfo']);
+                    }
+                    */ 
 
                     // 옵션이 실제로 있는가? (빈 배열 [] 은 옵션 없음으로 본다)
                     if (!empty($goods['optionInfo']) && is_array($goods['optionInfo'])) {
@@ -923,14 +932,28 @@ class GodoApiService extends BaseClass {
                                 elseif (strpos($code, '@') !== false) {
 
                                     $splitCodes = explode('@', $code);
-                                    if (count($splitCodes) !== 2 || !ctype_digit((string)$splitCodes[0]) || !is_numeric((string)$splitCodes[1])) {
+                                    $splitCode = trim((string)($splitCodes[0] ?? ''));
+                                    $splitQtyRaw = trim((string)($splitCodes[1] ?? ''));
+
+                                    if (count($splitCodes) !== 2 || $splitCode === '' || $splitQtyRaw === '') {
                                         $appendOptionError($goodsInfo, $order_info, $goods, '@ 옵션코드 형식 오류', $code, $selectedOptionLabel);
                                         $optionErrorLogged = true;
                                         continue;
                                     }
 
-                                    $splitCode = $splitCodes[0];
-                                    $splitQty = (float)$splitCodes[1] * $goodsCnt;
+                                    // one006@2155 같은 값은 재고코드가 숫자가 아니므로 에러로 적재
+                                    if (!ctype_digit($splitCode)) {
+                                        $appendOptionError($goodsInfo, $order_info, $goods, '@ 옵션코드의 재고코드는 숫자만 허용', $code, $selectedOptionLabel);
+                                        $optionErrorLogged = true;
+                                        continue;
+                                    }
+                                    if (!is_numeric($splitQtyRaw)) {
+                                        $appendOptionError($goodsInfo, $order_info, $goods, '@ 옵션코드 수량 형식 오류', $code, $selectedOptionLabel);
+                                        $optionErrorLogged = true;
+                                        continue;
+                                    }
+
+                                    $splitQty = (float)$splitQtyRaw * $goodsCnt;
                                     $matchedCurrentOption = true;
                                     $hasMatchedOption = true;
                                     $optionCodes[] = $splitCode;
@@ -946,7 +969,7 @@ class GodoApiService extends BaseClass {
                                     $order_info['goods_qty'] = $splitQty;
 
                                     if( $package_remove == true ){
-                                        $order_info['package_remove_qty'] = $splitCodes[1] * $package_remove_qty;
+                                        $order_info['package_remove_qty'] = $splitQtyRaw * $package_remove_qty;
                                     }else{
                                         $order_info['package_remove_qty'] = 0;
                                     }
@@ -1070,14 +1093,78 @@ class GodoApiService extends BaseClass {
                                 $goodsInfo['stock'][$goodsCd]['order_info'][] = $order_info;
                             }
                         
+                        
                         // one 단어가 포함된 goodsCd
                         } elseif (stripos($goodsCd, 'one') !== false) {
+                            
+                            $codeExplode = explode('@', $goodsCd);
+                            $codesSplit = trim((string)($codeExplode[1] ?? ''));
+                            $codes = $codesSplit !== '' ? explode('/', $codesSplit) : [];
+                            $hasMatchedOneCode = false;
 
-                            //$goodsInfo['one'][] = $goodsCd;
+                            foreach($codes as $code){
+                                $code = trim((string)$code);
+                                if ($code === '' || !ctype_digit($code)) {
+                                    continue;
+                                }
+
+                                $hasMatchedOneCode = true;
+                                $order_info['item_type'] = "stock";
+                                $order_info['goods_qty'] = $goodsCnt;
+
+                                if( $package_remove == true ){
+                                    $order_info['package_remove_qty'] = $package_remove_qty;
+                                }else{
+                                    $order_info['package_remove_qty'] = 0;
+                                }
+
+                                if (empty($goodsInfo['stock'][$code])) {
+
+                                    $goodsInfo['stock'][$code] = [
+                                        'goodsNo' => (string)$goodsNo,
+                                        'goodsNm' => (string)($goods['goodsNm'] ?? ''),
+                                        'scmNo' => (string)($goods['scmNo'] ?? ''),
+                                        'thumbImageUrl' => (string)($goods['thumbImageUrl'] ?? ''),
+                                        'totalStock' => (int)($goods['totalStock'] ?? 0),
+                                        'stockFl' => (string)($goods['stockFl'] ?? ''),
+                                        'order_qty' => 1,
+                                        'goods_qty' => $goodsCnt,
+                                        'package_remove_qty' => $package_remove_qty,
+                                        'order_info' => [$order_info],
+                                    ];
+
+                                } else {
+                                    $goodsInfo['stock'][$code]['order_qty'] = (int)($goodsInfo['stock'][$code]['order_qty'] ?? 0) + 1;
+                                    $goodsInfo['stock'][$code]['goods_qty'] = (float)($goodsInfo['stock'][$code]['goods_qty'] ?? 0) + $goodsCnt;
+                                    $goodsInfo['stock'][$code]['package_remove_qty'] = (int)($goodsInfo['stock'][$code]['package_remove_qty'] ?? 0) + $package_remove_qty;
+                                    $goodsInfo['stock'][$code]['order_info'][] = $order_info;
+                                }
+                            }
+
+
+                            if ($hasMatchedOneCode === false) {
+                                $goodsInfo['error'][] = sprintf(
+                                    '[상품코드매칭실패] 주문번호:%s, 주문상품SNO:%s, 상품번호:%s, 상품명:%s, 상품코드:%s, 사유:%s',
+                                    (string)($order_info['orderNo'] ?? ''),
+                                    (string)($order_info['orderGoodsSno'] ?? ''),
+                                    (string)($goods['goodsNo'] ?? ''),
+                                    (string)($goods['goodsNm'] ?? ''),
+                                    (string)$goodsCd,
+                                    'one 패턴에서 숫자 재고코드 추출 실패'
+                                );
+                            }
 
                         // set ,qty, one 단어가 포함된 goodsCd
                         } elseif (stripos($goodsCd, 'set') !== false || stripos($goodsCd, 'qty') !== false ) {
-                            //$goodsInfo['set'][] = $goodsCd;
+                            $goodsInfo['error'][] = sprintf(
+                                '[상품코드매칭실패] 주문번호:%s, 주문상품SNO:%s, 상품번호:%s, 상품명:%s, 상품코드:%s, 사유:%s',
+                                (string)($order_info['orderNo'] ?? ''),
+                                (string)($order_info['orderGoodsSno'] ?? ''),
+                                (string)($goods['goodsNo'] ?? ''),
+                                (string)($goods['goodsNm'] ?? ''),
+                                (string)$goodsCd,
+                                'goodsCd에 set/qty 패턴 포함'
+                            );
                         } else {
                             $goodsInfo['error'][] = sprintf(
                                 '[상품코드매칭실패] 주문번호:%s, 주문상품SNO:%s, 상품번호:%s, 상품명:%s, 상품코드:%s',
@@ -1157,6 +1244,7 @@ class GodoApiService extends BaseClass {
 
     /**
      * 패킹리스트 조회
+     * 
      * @param array $criteria 검색 조건
      * @return array
      */
@@ -1309,6 +1397,7 @@ class GodoApiService extends BaseClass {
 
     /**
      * 상품코드별 수량을 계산하는 함수
+     * 
      * @param array $goodsList 상품 코드 배열
      * @param array $productData 상품 데이터 배열
      * @param array $packageRemoveList 패키지 제거 여부 배열
@@ -1347,6 +1436,7 @@ class GodoApiService extends BaseClass {
 
     /**
      * 고도몰 상품 정보 조회
+     * 
      * @param string $goodsNo 상품번호
      * @return array
      */
@@ -1367,7 +1457,84 @@ class GodoApiService extends BaseClass {
 
 
     /**
+     * 고도몰 상품 재고코드로 상품 정보 조회
+     * 
+     * @param string $codes 재고코드
+     * @return array
+     */
+    public function getGodoGoodsInfoByStockCodes($codes) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes='.$codes;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        return $responseData;
+    }
+
+    /**
+     * 고도몰 상품코드(goodsNo)로 상품 정보 조회
+     * 
+     * @param string $goodsNo 상품코드
+     * @return array
+     */
+    public function getGodoGoodsInfoByGoodsNo($goodsNos) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos='.$goodsNos;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        return $responseData;
+    }
+
+
+
+    /**
+     * 고도몰 상품 원가 업데이트
+     * 
+     * @param string $goodsNo 상품번호
+     * @param string $costPrice 원가
+     * @return array
+     */
+    public function updateGodoGoodsCostPrice($goodsNo, $costPrice) 
+    {
+
+        if(empty($goodsNo)){
+            throw new \Exception('상품번호가 비어있습니다.');
+        }
+        if(empty($costPrice)){
+            throw new \Exception('원가가 비어있습니다.');
+        }
+
+        $goodsNo = trim((string)$goodsNo);
+        if (!preg_match('/^\d+$/', $goodsNo)) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $costPriceRaw = str_replace(',', '', trim((string)$costPrice));
+        if (!preg_match('/^\d+$/', $costPriceRaw)) {
+            throw new \Exception('원가는 숫자만 입력 가능합니다.');
+        }
+        $costPrice = (string)((int)$costPriceRaw);
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=costUpdate&goodsNo='.$goodsNo.'&costPrice='.$costPrice;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+
+        //dd($responseData);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+
+        return $responseData;
+    }
+
+    /**
      * 고도몰 주문 정보 조회
+     * 
      * @param string $goodsNo 상품번호
      * @return array
      */
@@ -1389,6 +1556,53 @@ class GodoApiService extends BaseClass {
 
     }
 
+    /**
+     * 고도몰 타임세일 생성
+     * 
+     * @param array $requestData
+     * @return array
+     */
+    public function createGodoTimeSale(array $requestData): array
+    {
+
+        $startDt = trim((string)($requestData['startDt'] ?? ''));
+        $endDt = trim((string)($requestData['endDt'] ?? ''));
+        $tsKind = strtoupper(trim((string)($requestData['tsKind'] ?? ($requestData['tsMode'] ?? 'D'))));
+        $discountRate = trim((string)($requestData['discountRate'] ?? ''));
+        $goodsNos = trim((string)($requestData['goodsNos'] ?? ''));
+
+        if ($startDt === '' || $endDt === '') {
+            throw new \InvalidArgumentException('타임세일 시작/종료일이 비어있습니다.');
+        }
+        if ($discountRate === '') {
+            throw new \InvalidArgumentException('타임세일 할인율이 비어있습니다.');
+        }
+        if ($goodsNos === '') {
+            throw new \InvalidArgumentException('타임세일 대상 goodsNos가 비어있습니다.');
+        }
+        if (!in_array($tsKind, ['D', 'W', 'M'], true)) {
+            $tsKind = 'D';
+        }
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=timeSaleCreate'
+            . '&startDt=' . urlencode($startDt)
+            . '&endDt=' . urlencode($endDt)
+            . '&tsKind=' . urlencode($tsKind)
+            . '&tsMode=' . urlencode($tsKind)
+            . '&discountRate=' . urlencode($discountRate)
+            . '&goodsNos=' . urlencode($goodsNos);
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+
+        if (!is_array($responseData)) {
+            throw new \Exception('고도몰 타임세일 API 응답 파싱 실패');
+        }
+        if (($responseData['status'] ?? '') !== 'success') {
+            throw new \Exception('고도몰 타임세일 API 실패: ' . (string)($responseData['message'] ?? '알 수 없는 오류'));
+        }
+
+        return $responseData;
+    }
 
 
 }

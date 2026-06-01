@@ -1,15 +1,4 @@
 <style>
-    .grouping-view-form-wrap {
-        padding: 20px 30px;
-        display: flex;
-        flex-direction: column;
-        gap: 10px;
-
-        input[type="text"] {
-            width: 100%;
-        }
-    }
-
     .pg-memo {
         width: 200px;
         height: 80px;

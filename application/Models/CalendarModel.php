@@ -9,6 +9,7 @@ class CalendarModel extends BaseModel {
 	//protected $primaryKey = 'idx';  //기본값 idx
 
 	protected $fillable = [
+        'idx',
         'subject',
         'open',
         'target_idx',
@@ -23,6 +24,8 @@ class CalendarModel extends BaseModel {
         'memo',
         'reg',
         'comment_count',
+        'created_at',
+        'updated_at',
     ];
 
 }

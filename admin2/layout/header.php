@@ -344,6 +344,9 @@ $gnb_lang = "ko";
 							<a href="/admin/provider_product/list">위탁상품 관리</a>
 						</li>
 						<li>
+							<a href="/admin/sale/history">상품 할인관리</a>
+						</li>
+						<li>
 							<a href="/admin/product/grouping">상품 그룹핑</a>
 						</li>
 						<li>

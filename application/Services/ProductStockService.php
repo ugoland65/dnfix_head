@@ -133,6 +133,38 @@ class ProductStockService extends BaseClass
         return $prdStockList;
     }
 
+    /**
+     * 재고코드 로 상품 재고 1건 조회
+     * 
+     * @param string $code
+     * @return array
+     */
+    public function getProductStockWhereInCode($code)
+    {
+        $psIdx = (int)trim((string)$code);
+        if ($psIdx <= 0) {
+            return [];
+        }
+
+        $row = ProductStockModel::select([
+                'prd_stock.ps_idx',
+                'prd_stock.ps_prd_idx',
+                'prd_stock.ps_stock',
+                'cd.CD_IDX',
+                'cd.CD_CODE',
+                'cd.CD_NAME',
+            ])
+            ->join('COMPARISON_DB as cd', 'prd_stock.ps_prd_idx', '=', 'cd.CD_IDX', 'LEFT')
+            ->where('prd_stock.ps_idx', $psIdx)
+            ->first();
+
+        if (empty($row)) {
+            return [];
+        }
+
+        return $row->toArray();
+    }
+
 
     /**
      * 상품 세일 설정

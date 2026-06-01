@@ -47,22 +47,37 @@ $.datepicker.setDefaults({
 //loading('','white');
 function loading(active, mode, msg) {
 
-	if( !msg ) msg = "처리중"; 
+	if( !msg ) msg = "처리중";
+	var safeMsg = String(msg)
+		.replace(/&/g, '&amp;')
+		.replace(/</g, '&lt;')
+		.replace(/>/g, '&gt;')
+		.replace(/"/g, '&quot;')
+		.replace(/'/g, '&#39;');
+
 	if( active == "off" ){
 		if( mode == "white" ){
-			$('#back_mask').hide().removeClass('white-back-mask');
+			$('#back_mask').hide().removeClass('white-back-mask loading-back-mask').empty();
 		}else{
-			$('#back_mask').hide();
+			$('#back_mask').hide().removeClass('loading-back-mask').empty();
 		}
 	}else{
 		if( mode == "white" ){
-			$('#back_mask').addClass('white-back-mask').html('<div id="loading"><ul><img src="/ad/img/loading11.gif" /></ul></div>').show();
+			$('#back_mask')
+				.addClass('white-back-mask loading-back-mask')
+				.html('<div id="loading" class="loading-box" style="min-width:180px; max-width:360px; padding:20px 28px; border-radius:10px; text-align:center; background:#ffffff; color:#2f3542; border:1px solid #d9dde3; box-shadow:0 8px 24px rgba(0,0,0,0.18);"><i class="fas fa-spinner fa-spin loading-icon" aria-hidden="true" style="display:block; font-size:30px; line-height:1; margin-bottom:10px; color:#2f80ed;"></i><div class="loading-text" style="font-size:14px; font-weight:600; line-height:1.5;">처리중</div></div>')
+				.show();
 		}else{
-			$('#back_mask').html('<div id="loading"><ul><img src="/ad/img/loading8.gif" /></ul><ul>'+msg+'</ul></div>').show();
+			$('#back_mask')
+				.removeClass('white-back-mask')
+				.addClass('loading-back-mask')
+				.html('<div id="loading" class="loading-box" style="min-width:180px; max-width:360px; padding:20px 28px; border-radius:10px; text-align:center; background:rgba(34,34,34,0.92); color:#ffffff; box-shadow:0 8px 24px rgba(0,0,0,0.28);"><i class="fas fa-spinner fa-spin loading-icon" aria-hidden="true" style="display:block; font-size:30px; line-height:1; margin-bottom:10px; color:#4fa3ff;"></i><div class="loading-text" style="font-size:14px; font-weight:600; line-height:1.5;">'+safeMsg+'</div></div>')
+				.show();
 		}
 	}
 
 }
+
 
 function showPopup(w, h, mode){
 	var spWidth = ($(window).width() - (w*1))/2;

@@ -12,7 +12,7 @@ class ProductStockModel extends BaseModel
     protected $fillable = [
         'ps_prd_idx',
         'ps_rack_code',
-        'ps_stock',
+        'ps_stock', //현재 재고량
         'ps_stock_hold',
         'ps_stock_all',
         'ps_income',
@@ -21,7 +21,7 @@ class ProductStockModel extends BaseModel
         'ps_in_date',
         'ps_last_date',
         'ps_soldout_date',
-        'ps_sale_date',
+        'ps_sale_date', //마지막 할인일
         'ps_sale_log',
         'ps_sale_data',
         'ps_in_sale_s',
@@ -38,6 +38,7 @@ class ProductStockModel extends BaseModel
         'ps_cafe24_sms',
         'is_sale_month',
         'is_sale_special',
+        'ps_discount_target_yn', // 할인 대상 여부 (Y: 포함, N: 제외)
 
         'coupang_seller_product_id', // BIGINT  | 쿠팡 판매자 상품ID
         'is_rocket', // CHAR(1) | 로켓 여부 (Y/N)

@@ -354,6 +354,8 @@ $packingList['total'] = (int)($packingList['total'] ?? 0);
     <?php 
     foreach ($packingList['data'] as $index => $order) { 
         $index_count = $index + 1;
+
+        //dd($order);
     ?>
 
     <div class="order-container">
@@ -417,9 +419,13 @@ $packingList['total'] = (int)($packingList['total'] ?? 0);
                                         $_bar_code_normal = substr($goods['bar_code'], 0, -5);
                                         $_bar_code_point = substr($goods['bar_code'], -5);
                                     ?>
-                                    <ul class="goods-barcode m-t-5">
-                                        <b><?=$_bar_code_normal?> <span style="color:#0000ff;"><?=$_bar_code_point?></span></b>
-                                    </ul>
+                                        <ul class="goods-barcode m-t-5">
+                                            <b><?=$_bar_code_normal?> <span style="color:#0000ff;"><?=$_bar_code_point?></span></b>
+                                        </ul>
+                                    <?php }else{ ?>
+                                        <ul class="goods-barcode m-t-5">
+                                            <b><?=$goods['goodsCd']?></b>
+                                        </ul>
                                     <?php } ?>
 
                                     <ul class="goods-code m-t-5">

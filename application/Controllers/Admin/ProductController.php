@@ -294,7 +294,9 @@ class ProductController extends BaseClass
      */
     public function prdDetailSaleLogPage(Request $request)
     {
+
         try {
+
             $requestData = $request->all();
             $prdIdx = $requestData['prd_idx'] ?? null;
             $prdMode = $requestData['prd_mode'] ?? 'prdDB';
@@ -318,6 +320,7 @@ class ProductController extends BaseClass
             ];
 
             return view('admin.product.prd_detail_sale_log', $data);
+
         } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),

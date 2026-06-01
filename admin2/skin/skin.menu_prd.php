@@ -37,11 +37,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>상품 관리</ul>
 </div>
 <div class="left-menu-wrap">
-
-	<?php /*
-	<ul <? if( $_pageN == "prd_grouping" || $_pageN == "prd_grouping_view" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_grouping'"><li>상품 그룹핑 (구)</li></ul>
-	*/ ?>
-	
+	<ul <? if( $pageNameCode == "sale_history_list" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/sale/history'"><li>상품 할인관리</li></ul>
 	<ul <? if( $pageNameCode == "product_grouping_list" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/grouping'"><li>상품 그룹핑</li></ul>
 	<ul <? if( $_pageN == "set_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/set_prd'"><li>세트 상품</li></ul>
 	<ul <? if( $_pageN == "hbti_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/hbti_prd'"><li>HBTI 상품/관리</li></ul>

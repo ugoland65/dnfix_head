@@ -10,6 +10,7 @@ use App\Services\ProductPartnerApiService;
 use App\Services\GodoApiService;
 use App\Services\BrandService;
 use App\Core\AuthAdmin;
+use App\Services\ProductStockService;
 
 class ProductPartnerService extends BaseClass
 {
@@ -950,7 +951,38 @@ class ProductPartnerService extends BaseClass
         
 
         if( $productPartner['partner_idx'] != $partner_idx ){
-            throw new \Exception('고도몰에 등록한 상품의 공급사와 현재 공급사가 다릅니다.');
+
+            // 공급사가 쑈당몰인지
+            $myScmNos = [1,7,16,17,18,19,20,24,25];
+            if( in_array($scmNo, $myScmNos) ){
+
+                //공급사가 쑈당몰이고 재고코드가 등록되있다면
+                $codeText = trim((string)$code);
+                if( !empty($code) || ($codeText !== '' && preg_match('/^\d+$/', $codeText) === 1) ){
+
+                    $productStockService = new ProductStockService();
+                    $productStock = $productStockService->getProductStockWhereInCode($code);
+                    if(empty($productStock)){
+                        throw new \Exception('코드['.$code.'] : 공급사가 본사이지만 재고코드에 해당하는 상품이 없습니다.');
+                    }
+
+                    //재고수량이 존재할경우
+                    $stockQty = (int)($productStock['ps_stock'] ?? 0);
+                    if ($stockQty > 0) {
+                        throw new \Exception('고도몰 데이터로드 실패 사유 : 재고 코드['.$code.'] : 해당상품은 현재 상품DB에 보유상품으로 등록되어 있고 재고코드도 존재하며 재고수량이 ('.$stockQty.')개 존재합니다. 이상품은 상품 DB가 우선 고도몰 상품을 점유합니다.');
+                    }else{
+                        throw new \Exception('고도몰 데이터로드 실패 사유 : 재고 코드['.$code.'] : 해당상품은 현재 상품DB에 보유상품으로 등록되어 있고 고도몰에도 재고코드로 등록되어 있으나 재고가 없는 상태입니다. 다시 사입할 예정이 없다면 공급사 정보를 변경해주세요.');
+                    }
+
+                }else{
+                    throw new \Exception('공급사가 본사로 되어있지만 고도몰에 등록한 상품의 재고코드가 비어있습니다.');
+                }
+
+            }else{
+                throw new \Exception('고도몰에 등록한 상품의 공급사와 현재 공급사가 다릅니다.');
+            }
+
+            //throw new \Exception('고도몰에 등록한 상품의 공급사와 현재 공급사가 다릅니다.');
         }
 
         $godo_is_option = 'N';

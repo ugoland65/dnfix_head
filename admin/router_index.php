@@ -23,6 +23,8 @@ use App\Controllers\Admin\PaymentRequestController;
 use App\Controllers\Admin\OrderGroupController;
 use App\Controllers\Admin\OrderController;
 use App\Controllers\Admin\Coupang\CoupangController;
+use App\Controllers\Admin\CalendarController;
+use App\Controllers\Admin\SaleHistoryController;
 
 try {
 
@@ -30,6 +32,13 @@ try {
 
     // 어드민 공용 액션 로그 목록 조회
     $router->get('/admin_action_log/list', AdminActionLogController::class, 'adminActionLogList'); //어드민 공용 액션 로그 목록 조회
+
+    //메인
+    $router->get('/main/calendar', CalendarController::class, 'calendar'); //메인 달력
+    $router->get('/main/calendar/reg', CalendarController::class, 'calendarReg'); //메인 달력 신규생성 페이지
+    $router->post('/main/calendar/create', CalendarController::class, 'createCalendar'); //메인 달력 신규생성
+    $router->post('/main/calendar/save', CalendarController::class, 'saveCalendar'); //메인 달력 수정
+    $router->post('/main/calendar/delete', CalendarController::class, 'deleteCalendar'); //메인 달력 삭제
 
     // 인사/업무
     $router->get('/work/TaskRequest', WorkController::class, 'taskRequest'); //업무 로그
@@ -72,6 +81,13 @@ try {
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
 
+    // 할인 관리
+    $router->get('/sale/history', SaleHistoryController::class, 'saleHistoryList'); //할인 이력 목록
+    $router->get('/sale/history/create', SaleHistoryController::class, 'saleHistoryCreate'); //할인 이력 생성 페이지
+    $router->post('/sale/history/action', SaleHistoryController::class, 'saleHistoryAction'); //할인 이력 랜덤 상품 불러오기
+    $router->get('/sale/history/detail/{idx}', SaleHistoryController::class, 'saleHistoryDetail'); //할인 이력 상세
+    $router->post('/sale/history/save', SaleHistoryController::class, 'saveSaleHistory'); //할인 이력 저장
+    $router->post('/sale/history/delete', SaleHistoryController::class, 'deleteSaleHistory'); //할인 이력 삭제
 
     // 상품 그룹핑
     $router->get('/product/grouping', ProductGroupingController::class, 'productGroupingList'); //상품 그룹핑 목록

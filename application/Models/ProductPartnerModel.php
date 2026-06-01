@@ -52,6 +52,8 @@ class ProductPartnerModel extends BaseModel
 		'memo_work',
 		'sold_out_date',
 		'detail_crawler_date',
+		'discount_target_yn', // 할인대상 여부 (Y/N)
+		'last_sale_date', // 마지막 할인일
 	];	
 
 }
