@@ -6,6 +6,8 @@ use App\Core\BaseClass;
 use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
+use App\Models\ProductWorkCheckItemModel;
+use App\Models\ProductWorkCheckStatusModel;
 use App\Auth\AdminAuth;
 use App\Classes\ImageStorage;
 use App\Services\AdminActionLogService;
@@ -108,6 +110,8 @@ class ProductService extends BaseClass
         $s_prd_kind = $criteria['s_prd_kind'] ?? null;
         $s_importing_country = $criteria['s_importing_country'] ?? null;
         $s_margin_group = $criteria['s_margin_group'] ?? null;
+        $s_work_task_code = trim((string)($criteria['s_work_task_code'] ?? ''));
+        $s_work_task_done = strtoupper(trim((string)($criteria['s_work_task_done'] ?? '')));
         $search_value = $criteria['search_value'] ?? null;
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
@@ -212,6 +216,40 @@ class ProductService extends BaseClass
             ";
 
             $query->whereRaw("{$marginGradeSql} = ?", [$s_margin_group]);
+        }
+
+        if ($s_work_task_code !== '') {
+            $safeTaskCode = addslashes($s_work_task_code);
+            if ($s_work_task_done === 'Y') {
+                $query->whereRaw("
+                    EXISTS (
+                        SELECT 1
+                        FROM prd_work_check_status WCS
+                        WHERE WCS.prd_idx = A.CD_IDX
+                          AND WCS.task_code = '{$safeTaskCode}'
+                          AND WCS.is_checked = 'Y'
+                    )
+                ");
+            } elseif ($s_work_task_done === 'N') {
+                $query->whereRaw("
+                    NOT EXISTS (
+                        SELECT 1
+                        FROM prd_work_check_status WCS
+                        WHERE WCS.prd_idx = A.CD_IDX
+                          AND WCS.task_code = '{$safeTaskCode}'
+                          AND WCS.is_checked = 'Y'
+                    )
+                ");
+            } else {
+                $query->whereRaw("
+                    EXISTS (
+                        SELECT 1
+                        FROM prd_work_check_status WCS
+                        WHERE WCS.prd_idx = A.CD_IDX
+                          AND WCS.task_code = '{$safeTaskCode}'
+                    )
+                ");
+            }
         }
         
         // 기본적으로 재고 테이블은 항상 조인한다.
@@ -946,6 +984,8 @@ class ProductService extends BaseClass
                     $productData['cd_weight_fn'] = [];
                 }
             }
+
+            $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
         }
 
         return $productData;
@@ -1052,6 +1092,12 @@ class ProductService extends BaseClass
                     $productData['cd_hbti_data'] = [];
                 }
             }
+
+            $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
+            $productData['work_check_list'] = $this->getWorkCheckListForProduct(
+                (int)($productData['CD_IDX'] ?? 0),
+                (string)($productData['CD_KIND_CODE'] ?? '')
+            );
 
             // hbti_target 설정
             if (!isset($productData['hbti_target'])) {
@@ -1315,6 +1361,7 @@ class ProductService extends BaseClass
         $cdWeight1 = (string)($postData['cd_weight_1'] ?? '');
         $cdWeight2 = (string)($postData['cd_weight_2'] ?? '');
         $cdWeight3 = (string)($postData['cd_weight_3'] ?? '');
+        $cdWeight4 = (string)($postData['cd_weight_4'] ?? '');
         $cdCode = (string)($postData['cd_code'] ?? '');
         $cdCode2 = (string)($postData['cd_code2'] ?? '');
         $cdCode3 = (string)($postData['cd_code3'] ?? '');
@@ -1348,6 +1395,11 @@ class ProductService extends BaseClass
         $importHscode = (string)($postData['import_hscode'] ?? '');
         $importHscode1 = (string)($postData['import_hscode1'] ?? '');
         $importHscode2 = (string)($postData['import_hscode2'] ?? '');
+        $referenceLinkTitles = $postData['reference_link_title'] ?? [];
+        $referenceLinkUrls = $postData['reference_link_url'] ?? [];
+        $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
+        $workTaskCodes = $postData['work_task_codes'] ?? [];
+        $workTaskDoneMap = $postData['work_task_done'] ?? [];
 
         $cdCodeData['jan'] = $cdCode;
         $cdCodeData['pcode'] = $cdCode2;
@@ -1391,7 +1443,7 @@ class ProductService extends BaseClass
         ];
         $cdSizeFn = json_encode($cdSizeFnData);
 
-        $cdWeightData = ['1' => $cdWeight1, '2' => $cdWeight2, '3' => $cdWeight3];
+        $cdWeightData = ['1' => $cdWeight1, '2' => $cdWeight2, '3' => $cdWeight3, '4' => $cdWeight4];
         $cdWeightFn = json_encode($cdWeightData);
 
         $cdRegData = json_decode($oldProduct['cd_reg'] ?? '{}', true);
@@ -1452,11 +1504,13 @@ class ProductService extends BaseClass
             'cd_hbti_data' => $cdHbtiData,
             'cd_hbti' => $cdHbt,
             'cd_site_show' => $cdSiteShow,
+            'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
 
         ProductModel::query()
             ->where('CD_IDX', '=', $idx)
             ->update($updateData);
+        $beforeWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
 
         $beforeStockData = [];
         if (!empty($psIdx)) {
@@ -1488,6 +1542,10 @@ class ProductService extends BaseClass
             ];
         }
         $beforeData['ps_discount_target_yn'] = $beforeDiscountTargetYn;
+        $beforeData['work_check_list'] = $beforeWorkCheckList;
+
+        $this->syncProductWorkChecks($idx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
+        $afterWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
 
         $afterData = array_merge($oldProduct, $updateData);
         $afterDiscountTargetYn = $beforeDiscountTargetYn;
@@ -1502,6 +1560,7 @@ class ProductService extends BaseClass
             ];
         }
         $afterData['ps_discount_target_yn'] = $afterDiscountTargetYn;
+        $afterData['work_check_list'] = $afterWorkCheckList;
 
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
@@ -1512,6 +1571,9 @@ class ProductService extends BaseClass
         }
         if ($beforeDiscountTargetYn !== $afterDiscountTargetYn) {
             $actionSummary .= ' (할인대상 변경)';
+        }
+        if (json_encode($beforeWorkCheckList, JSON_UNESCAPED_UNICODE) !== json_encode($afterWorkCheckList, JSON_UNESCAPED_UNICODE)) {
+            $actionSummary .= ' (작업체크 변경)';
         }
         $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
         try {
@@ -1567,6 +1629,11 @@ class ProductService extends BaseClass
         $cdWeight1 = (string)($postData['cd_weight_1'] ?? '');
         $cdWeight2 = (string)($postData['cd_weight_2'] ?? '');
         $cdWeight3 = (string)($postData['cd_weight_3'] ?? '');
+        $oldWeightFnData = json_decode($oldProduct['cd_weight_fn'] ?? '{}', true);
+        if (!is_array($oldWeightFnData)) {
+            $oldWeightFnData = [];
+        }
+        $cdWeight4 = (string)($postData['cd_weight_4'] ?? ($oldWeightFnData['4'] ?? ''));
         $cdSalePriceRaw = (string)($postData['cd_sale_price'] ?? '0');
         $costCalKind = (string)($postData['cost_cal_kind'] ?? '');
         $cdNational = (string)($postData['cd_national'] ?? '');
@@ -1623,6 +1690,7 @@ class ProductService extends BaseClass
             '1' => $cdWeight1,
             '2' => $cdWeight2,
             '3' => $cdWeight3,
+            '4' => $cdWeight4,
         ]);
 
         $cdSalePrice = (int)str_replace(',', '', $cdSalePriceRaw);
@@ -1722,6 +1790,235 @@ class ProductService extends BaseClass
         ];
     }
 
+    /**
+     * 체크리스트 항목 조회 (분류 필터 지원)
+     *
+     * @param string|null $kindCode
+     * @return array
+     */
+    public function getWorkCheckItemsForFilter($kindCode = null): array
+    {
+        $kindCode = trim((string)$kindCode);
+        try {
+            $rows = ProductWorkCheckItemModel::query()
+                ->select(['id', 'task_code', 'task_label', 'target_kind_codes', 'is_active', 'sort_no'])
+                ->where('is_active', 'Y')
+                ->orderBy('sort_no', 'asc')
+                ->orderBy('id', 'asc')
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (empty($rows)) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            $taskCode = trim((string)($row['task_code'] ?? ''));
+            if ($taskCode === '') {
+                continue;
+            }
+            $targetKinds = $this->decodeTaskTargetKinds($row['target_kind_codes'] ?? '[]');
+            if ($kindCode !== '' && !empty($targetKinds) && !in_array($kindCode, $targetKinds, true)) {
+                continue;
+            }
+            $result[] = [
+                'id' => (int)($row['id'] ?? 0),
+                'task_code' => $taskCode,
+                'task_label' => (string)($row['task_label'] ?? ''),
+                'target_kind_codes' => $targetKinds,
+                'sort_no' => (int)($row['sort_no'] ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * 상품별 작업체크 리스트(체크상태 포함) 반환
+     *
+     * @param int $prdIdx
+     * @param string $kindCode
+     * @return array
+     */
+    public function getWorkCheckListForProduct(int $prdIdx, string $kindCode): array
+    {
+        $items = $this->getWorkCheckItemsForFilter($kindCode);
+        if (empty($items)) {
+            return [];
+        }
+
+        $statusMap = $this->getWorkCheckStatusMap($prdIdx);
+        foreach ($items as &$item) {
+            $code = (string)($item['task_code'] ?? '');
+            $status = $statusMap[$code] ?? null;
+            $item['is_checked'] = ($status['is_checked'] ?? 'N') === 'Y';
+            $item['checked_at'] = (string)($status['checked_at'] ?? '');
+            $item['checked_by'] = (string)($status['checked_by'] ?? '');
+        }
+        unset($item);
+
+        return $items;
+    }
+
+    /**
+     * 상품 작업체크 상태 저장
+     *
+     * @param int $prdIdx
+     * @param string $kindCode
+     * @param mixed $taskCodes
+     * @param mixed $taskDoneMap
+     * @param array $auth
+     * @return void
+     */
+    private function syncProductWorkChecks(int $prdIdx, string $kindCode, $taskCodes, $taskDoneMap, array $auth = []): void
+    {
+        if ($prdIdx <= 0) {
+            return;
+        }
+
+        if (!is_array($taskCodes)) {
+            $taskCodes = [$taskCodes];
+        }
+        if (!is_array($taskDoneMap)) {
+            $taskDoneMap = [];
+        }
+
+        $taskCodes = array_values(array_unique(array_filter(array_map(function ($code) {
+            return trim((string)$code);
+        }, $taskCodes), function ($code) {
+            return $code !== '';
+        })));
+
+        if (empty($taskCodes)) {
+            return;
+        }
+
+        $allowedItems = $this->getWorkCheckItemsForFilter($kindCode);
+        $allowedCodes = array_map(function ($item) {
+            return (string)($item['task_code'] ?? '');
+        }, $allowedItems);
+        $allowedCodes = array_values(array_filter(array_unique($allowedCodes), function ($code) {
+            return $code !== '';
+        }));
+
+        $targetCodes = array_values(array_intersect($taskCodes, $allowedCodes));
+        if (empty($targetCodes)) {
+            return;
+        }
+        try {
+            $existingRows = ProductWorkCheckStatusModel::query()
+                ->select(['id', 'task_code'])
+                ->where('prd_idx', $prdIdx)
+                ->whereIn('task_code', $targetCodes)
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        $existingMap = [];
+        foreach ($existingRows as $row) {
+            $existingMap[(string)($row['task_code'] ?? '')] = (int)($row['id'] ?? 0);
+        }
+
+        $checkedBy = !empty($auth['sess_idx']) ? (int)$auth['sess_idx'] : null;
+        $now = date('Y-m-d H:i:s');
+
+        foreach ($targetCodes as $taskCode) {
+            $isChecked = isset($taskDoneMap[$taskCode]) ? 'Y' : 'N';
+            $payload = [
+                'prd_idx' => $prdIdx,
+                'task_code' => $taskCode,
+                'is_checked' => $isChecked,
+                'checked_at' => $isChecked === 'Y' ? $now : null,
+                'checked_by' => $isChecked === 'Y' ? $checkedBy : null,
+            ];
+            try {
+                if (!empty($existingMap[$taskCode])) {
+                    ProductWorkCheckStatusModel::query()
+                        ->where('id', $existingMap[$taskCode])
+                        ->update($payload);
+                } else {
+                    ProductWorkCheckStatusModel::query()->insert($payload);
+                }
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+    }
+
+    /**
+     * 상품 작업체크 상태 맵 조회
+     *
+     * @param int $prdIdx
+     * @return array
+     */
+    private function getWorkCheckStatusMap(int $prdIdx): array
+    {
+        if ($prdIdx <= 0) {
+            return [];
+        }
+        try {
+            $rows = ProductWorkCheckStatusModel::query()
+                ->select(['task_code', 'is_checked', 'checked_at', 'checked_by'])
+                ->where('prd_idx', $prdIdx)
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($rows as $row) {
+            $code = trim((string)($row['task_code'] ?? ''));
+            if ($code === '') {
+                continue;
+            }
+            $map[$code] = [
+                'is_checked' => strtoupper(trim((string)($row['is_checked'] ?? 'N'))) === 'Y' ? 'Y' : 'N',
+                'checked_at' => (string)($row['checked_at'] ?? ''),
+                'checked_by' => (string)($row['checked_by'] ?? ''),
+            ];
+        }
+
+        return $map;
+    }
+
+    /**
+     * 타겟 분류 코드(JSON/문자열) 정규화
+     *
+     * @param mixed $raw
+     * @return array
+     */
+    private function decodeTaskTargetKinds($raw): array
+    {
+        if (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = json_decode((string)$raw, true);
+            if (!is_array($decoded)) {
+                $text = trim((string)$raw);
+                if ($text === '') {
+                    $decoded = [];
+                } else {
+                    $decoded = array_map('trim', explode(',', $text));
+                }
+            }
+        }
+
+        $decoded = array_values(array_unique(array_filter(array_map(function ($v) {
+            return trim((string)$v);
+        }, $decoded), function ($v) {
+            return $v !== '';
+        })));
+
+        return $decoded;
+    }
+
 
     private function deleteUploadedFile(string $uploadsDir, string $filename): void
     {
@@ -1733,6 +2030,86 @@ class ProductService extends BaseClass
         if (is_file($fullPath)) {
             @unlink($fullPath);
         }
+    }
+
+    /**
+     * 자료참고 링크 JSON 디코딩
+     *
+     * @param mixed $raw
+     * @return array
+     */
+    private function decodeReferenceLinks($raw): array
+    {
+        if (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = json_decode((string)$raw, true);
+        }
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($decoded as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $title = trim((string)($item['title'] ?? ''));
+            $url = trim((string)($item['url'] ?? ''));
+            if ($title === '' && $url === '') {
+                continue;
+            }
+            $normalized[] = [
+                'title' => $title,
+                'url' => $url,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * 입력 배열을 자료참고 링크 JSON 구조로 정규화
+     *
+     * @param mixed $titles
+     * @param mixed $urls
+     * @return array
+     */
+    private function buildReferenceLinks($titles, $urls): array
+    {
+        if (!is_array($titles)) {
+            $titles = [$titles];
+        }
+        if (!is_array($urls)) {
+            $urls = [$urls];
+        }
+
+        $max = max(count($titles), count($urls));
+        $rows = [];
+        for ($i = 0; $i < $max; $i++) {
+            $title = trim((string)($titles[$i] ?? ''));
+            $url = trim((string)($urls[$i] ?? ''));
+            if ($title === '' && $url === '') {
+                continue;
+            }
+
+            if ($url !== '' && preg_match('#^https?://#i', $url) !== 1) {
+                $url = 'https://' . $url;
+            }
+
+            if ($title === '' && $url !== '') {
+                $host = parse_url($url, PHP_URL_HOST);
+                $title = is_string($host) && $host !== '' ? $host : $url;
+            }
+
+            $rows[] = [
+                'title' => $title,
+                'url' => $url,
+            ];
+        }
+
+        return $rows;
     }
 
     /**

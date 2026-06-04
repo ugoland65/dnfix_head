@@ -177,9 +177,20 @@ class SaleHistoryController extends BaseClass
                     $result = $saleHistoryService->updateGodoGoodsCostPriceBulkFromInspection($requestData);
                     $message = '판매가/원가 일괄 반영 완료';
                     break;
+
                 case 'create_godo_time_sale_from_history':
                     $result = $saleHistoryService->createGodoTimeSaleFromHistory($requestData);
                     $message = '고도몰 타임세일 등록 완료';
+                    break;
+
+                case 'create_godo_time_sale_group_from_history':
+                    $result = $saleHistoryService->createGodoTimeSaleGroupFromHistory($requestData);
+                    $message = '고도몰 타임세일 그룹 등록 완료';
+                    break;
+                    
+                case 'restore_sale_date_from_history_upload':
+                    $result = $saleHistoryService->restoreSaleDateFromHistoryUpload($requestData);
+                    $message = '할인일 원상복구 완료';
                     break;
 
                 default:

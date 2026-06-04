@@ -24,6 +24,7 @@ class SaleService
 
         $s_date = $criteria['s_date'] ?? date('Y-m-01');
         $e_date = $criteria['e_date'] ?? date('Y-m-d');
+        $s_kind = trim((string)($criteria['s_kind'] ?? ''));
         $limit = (int)($criteria['limit'] ?? 0);
 
         $query = ProductStockUnitModel::query()
@@ -58,6 +59,10 @@ class SaleService
                 'cd.CD_BRAND_IDX',
             ])
             ->orderByRaw('sold_qty DESC');
+
+        if ($s_kind !== '') {
+            $query->where('cd.CD_KIND_CODE', '=', $s_kind);
+        }
 
         if ($limit > 0) {
             $query->limit($limit);

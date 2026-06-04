@@ -119,6 +119,7 @@ include ($docRoot."/admin2/layout/header_popup.php");
 
 	<div class="crm-menu m-t-10">
 		<ul class="<? if( $requestData['vmode'] == 'info' ) echo "active" ?>" data-mode="info">상품정보</ul>
+        <ul class="<? if( $requestData['vmode'] == 'discount_sale_log' ) echo "active" ?>" data-mode="discount_sale_log">할인내역</ul>
 		<ul class="<? if( $requestData['vmode'] == 'match' ) echo "active" ?>" data-mode="match">검색매칭</ul>
         <ul class="<? if( $requestData['vmode'] == 'log' ) echo "active" ?>" data-mode="log">수정로그</ul>
 	</div>
@@ -155,6 +156,7 @@ const prdProviderInfo = (function(){
         //info: '/ad/ajax/prd_provider_info_form',
         procSave: '/admin/provider_product/save',
         info: '/admin/provider_product/detail',
+        discount_sale_log: '/admin/provider_product/discount_sale_log',
         match: '/ad/ajax/prd_provider_info_match',
         cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product/',
         loadGodoGoodsInfo: '/router/loadGodoGoodsInfo/',
@@ -173,6 +175,9 @@ const prdProviderInfo = (function(){
 
         if( mode == 'info'){
             endPoint = API_ENDPOINTS.info;
+            payload = { prd_idx : prd_idx };
+        }else if( mode == 'discount_sale_log'){
+            endPoint = API_ENDPOINTS.discount_sale_log;
             payload = { prd_idx : prd_idx };
         }else if( mode == 'match'){
             endPoint = API_ENDPOINTS.match;
@@ -294,9 +299,17 @@ $(function(){
     ?>
         prdProviderInfo.view('info');
     <?
+        }elseif( isset($requestData['vmode']) && $requestData['vmode'] == 'discount_sale_log'){
+    ?>
+        prdProviderInfo.view('discount_sale_log');
+    <?
         }elseif( isset($requestData['vmode']) && $requestData['vmode'] == 'match'){
     ?>
         prdProviderInfo.view('match');
+    <?php
+        }elseif( isset($requestData['vmode']) && $requestData['vmode'] == 'log'){
+    ?>
+        prdProviderInfo.view('log');
     <?php } ?>
 
     $('.crm-menu ul').on('click', function(){

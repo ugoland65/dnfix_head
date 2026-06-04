@@ -40,6 +40,25 @@
                 </select>
             </ul>
             <ul>
+                <select name="s_work_task_code" id="s_work_task_code">
+                    <option value="">작업체크 항목</option>
+                    <?php foreach (($workTaskItemOptions ?? []) as $taskItem) { ?>
+                        <?php $taskCode = (string)($taskItem['task_code'] ?? ''); ?>
+                        <?php if ($taskCode === '') { continue; } ?>
+                        <option value="<?= htmlspecialchars($taskCode, ENT_QUOTES, 'UTF-8') ?>" <?php if ($taskCode === (string)($s_work_task_code ?? '')) echo 'selected'; ?>>
+                            <?= htmlspecialchars((string)($taskItem['task_label'] ?? $taskCode), ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </ul>
+            <ul>
+                <select name="s_work_task_done" id="s_work_task_done">
+                    <option value="">작업체크 상태</option>
+                    <option value="Y" <?php if ((string)($s_work_task_done ?? '') === 'Y') echo 'selected'; ?>>완료</option>
+                    <option value="N" <?php if ((string)($s_work_task_done ?? '') === 'N') echo 'selected'; ?>>미완료</option>
+                </select>
+            </ul>
+            <ul>
                 <select name="s_importing_country" id="s_importing_country" >
                     <option value="">수입국</option>
                     <?
@@ -436,14 +455,18 @@ function select_all() {
 
 		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
 		var fields = {
-			's_partner': $("#s_partner").val(),
-			's_godo_match': $("#s_godo_match").val(),
-			's_supplier_match': $("#s_supplier_match").val(),
+			's_prd_kind': $("#s_prd_kind").val(),
 			'search_value': $("#search_value").val(),
 			's_brand': $("#s_brand").val(),
+			's_importing_country': $("#s_importing_country").val(),
+			's_margin_group': $("#s_margin_group").val(),
+            's_sale_mode': $("#s_sale_mode").val(),
+            's_work_task_code': $("#s_work_task_code").val(),
+            's_work_task_done': $("#s_work_task_done").val(),
 			'sort_mode': $("#sort_kind").val(),
-			's_godo_sale_status': $("#s_godo_sale_status").val(),
 			's_discontinued': $("#s_discontinued").val(),
+            'rack_code': $("#rack_code").val(),
+            'in_stock': $("#in_stock").val(),
 		};
 
 		// 추가 파라미터가 있으면 병합

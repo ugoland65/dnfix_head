@@ -148,6 +148,16 @@
         line-height: 1.4;
     }
 
+    .inspect-weekly-discount-keyword {
+        display: inline-block;
+        padding: 0 4px;
+        margin: 0 2px;
+        border-radius: 3px;
+        background: #ffde59;
+        color: #111;
+        font-weight: 700;
+    }
+
     .inspect-godo-buttons {
         margin-top: 6px;
     }
@@ -239,7 +249,7 @@
             고도몰 상품 검수
         </button>
         <button type="button" id="godo_bulk_cost_apply_btn" class="btn btnstyle1 btnstyle1-danger btnstyle1-sm m-l-5" style="display:none;">
-            판매가/원가 일괄반영
+            고도몰검수 일괄처리
         </button>
         <button type="button" id="refresh_current_btn" class="btn btnstyle1 btnstyle1-inverse btnstyle1-sm m-l-5" style="display:none;">
             현재 목록 새로고침
@@ -467,6 +477,12 @@
             .replace(/>/g, '&gt;')
             .replace(/"/g, '&quot;')
             .replace(/'/g, '&#39;');
+    }
+
+    // 검수상품명에서 [주간할인] 키워드를 강조한다.
+    function highlightWeeklyDiscountKeyword(value) {
+        var safeText = escapeHtml(value);
+        return safeText.replace(/\[주간할인\]/g, '<span class="inspect-weekly-discount-keyword">[주간할인]</span>');
     }
 
     // 마지막 할인일 표시값을 정규화한다.
@@ -1143,7 +1159,7 @@
         return notPassedCount;
     }
 
-    // 검수 결과 불일치(판매가/원가) 일괄반영 대상 목록을 만든다.
+    // 검수 결과 불일치(판매가/원가/고도상품번호) 일괄처리 대상 목록을 만든다.
     function collectInspectionMismatchTargets() {
         var targets = [];
 
@@ -1155,6 +1171,8 @@
             }
 
             var goodsNo = String(godoGoods.goodsNo || '').trim();
+            var localGodoCode = String(item.godo_goods_no || item.godo_goodsNo || item.godoNo || '').trim();
+            var itemSource = String(item.item_source || 'have');
             var prdIdx = String(item.prd_idx || '').trim();
             var localSalePriceCmp = parseMoney(item.sale_price);
             var godoSalePriceCmp = parseMoney(godoGoods.goodsPrice);
@@ -1165,28 +1183,31 @@
             var canApplySaleMismatch = (prdIdx !== '' && Number(prdIdx) > 0);
             var effectiveSaleMismatch = (!saleMatched && canApplySaleMismatch);
             var effectiveCostMismatch = !costMatched;
+            var effectiveGodoCodeMismatch = (itemSource === 'have' && goodsNo !== '' && localGodoCode !== goodsNo);
 
-            if (!effectiveSaleMismatch && !effectiveCostMismatch) {
+            if (!effectiveSaleMismatch && !effectiveCostMismatch && !effectiveGodoCodeMismatch) {
                 return;
             }
 
             targets.push({
                 item_key: String(item.item_key || key),
-                item_source: String(item.item_source || 'have'),
+                item_source: itemSource,
                 ps_idx: String(item.ps_idx || key),
                 prd_idx: prdIdx,
                 goods_no: goodsNo,
+                local_godo_code: localGodoCode,
                 cost_price: String(localCostPriceCmp),
                 godo_sale_price: String(godoSalePriceCmp),
                 cost_mismatch: effectiveCostMismatch ? 'Y' : 'N',
-                sale_mismatch: effectiveSaleMismatch ? 'Y' : 'N'
+                sale_mismatch: effectiveSaleMismatch ? 'Y' : 'N',
+                godo_code_mismatch: effectiveGodoCodeMismatch ? 'Y' : 'N'
             });
         });
 
         return targets;
     }
 
-    // 판매가/원가 일괄반영 버튼 노출 여부를 갱신한다.
+    // 고도몰검수 일괄처리 버튼 노출 여부를 갱신한다.
     function toggleGodoBulkCostApplyButton() {
         if (collectInspectionMismatchTargets().length > 0) {
             $('#godo_bulk_cost_apply_btn').show();
@@ -1362,24 +1383,113 @@
         if (fromResponse > 0) {
             return fromResponse;
         }
-        var fromInput = Number($('#have_product_qty').val() || $('#total_product_qty').val() || 0);
+        var haveQty = Number($('#have_product_qty').val() || 0);
+        var providerQty = Number($('#provider_product_qty').val() || 0);
+        var fromInput = haveQty + providerQty;
+        if (fromInput <= 0) {
+            fromInput = Number($('#total_product_qty').val() || 0);
+        }
         return fromInput > 0 ? fromInput : 0;
     }
 
+    // 화면/응답 기준 목표 source별 수량을 계산한다.
+    function getTargetSourceCounts(data) {
+        var condition = (data || {}).condition || {};
+        var haveQty = Number(condition.have_product_qty || 0);
+        var providerQty = Number(condition.provider_product_qty || 0);
+
+        if (isNaN(haveQty) || haveQty < 0) {
+            haveQty = 0;
+        }
+        if (isNaN(providerQty) || providerQty < 0) {
+            providerQty = 0;
+        }
+
+        if (haveQty <= 0 && providerQty <= 0) {
+            haveQty = Number($('#have_product_qty').val() || 0);
+            providerQty = Number($('#provider_product_qty').val() || 0);
+            if (isNaN(haveQty) || haveQty < 0) {
+                haveQty = 0;
+            }
+            if (isNaN(providerQty) || providerQty < 0) {
+                providerQty = 0;
+            }
+        }
+
+        return {
+            have: haveQty,
+            provider: providerQty
+        };
+    }
+
     // 유지 상품과 신규 상품을 합쳐 최종 표시 리스트를 만든다.
-    function mergePinnedAndNewItems(newItems, targetCount) {
+    function mergePinnedAndNewItems(newItems, targetCount, targetSourceCounts) {
         var merged = [];
         var used = {};
+        var sourceCounts = targetSourceCounts || { have: 0, provider: 0 };
+        var mergedHaveCount = 0;
+        var mergedProviderCount = 0;
 
         Object.keys(pinnedItemsMap).forEach(function (key) {
             if (!pinnedItemsMap[key]) {
                 return;
             }
-            merged.push(pinnedItemsMap[key]);
+            var pinnedItem = pinnedItemsMap[key];
+            var pinnedSource = String((pinnedItem || {}).item_source || 'have');
+            merged.push(pinnedItem);
             used[key] = true;
+            if (pinnedSource === 'provider') {
+                mergedProviderCount++;
+            } else {
+                mergedHaveCount++;
+            }
         });
 
+        var needHave = Math.max(sourceCounts.have - mergedHaveCount, 0);
+        var needProvider = Math.max(sourceCounts.provider - mergedProviderCount, 0);
+
+        var appendBySource = function (targetSource, needCount) {
+            if (needCount <= 0) {
+                return 0;
+            }
+            var added = 0;
+            for (var i = 0; i < newItems.length; i++) {
+                var item = newItems[i] || {};
+                var source = String(item.item_source || 'have');
+                if (source !== targetSource) {
+                    continue;
+                }
+                var key = String(item.item_key || item.ps_idx || '');
+                if (!key || used[key]) {
+                    continue;
+                }
+                merged.push(item);
+                used[key] = true;
+                added++;
+                if (targetSource === 'provider') {
+                    mergedProviderCount++;
+                } else {
+                    mergedHaveCount++;
+                }
+                if (added >= needCount) {
+                    break;
+                }
+                if (targetCount > 0 && merged.length >= targetCount) {
+                    break;
+                }
+            }
+            return added;
+        };
+
+        // source별 목표 수량을 우선 채운다.
+        appendBySource('have', needHave);
+        appendBySource('provider', needProvider);
+
+        // 목표 수량 미설정/후보부족 등 예외 상황에서는 남은 슬롯을 소스 무관 채운다.
         for (var i = 0; i < newItems.length; i++) {
+            if (targetCount > 0 && merged.length >= targetCount) {
+                break;
+            }
             var item = newItems[i] || {};
             var key = String(item.item_key || item.ps_idx || '');
             if (!key || used[key]) {
@@ -1387,9 +1497,6 @@
             }
             merged.push(item);
             used[key] = true;
-            if (targetCount > 0 && merged.length >= targetCount) {
-                break;
-            }
         }
 
         return merged;
@@ -1757,7 +1864,7 @@
         return dfd.promise();
     }
 
-    // 판매가/원가 일괄반영 실행
+    // 고도몰검수 일괄처리 실행
     function runGodoBulkApplyProcess() {
         var dfd = $.Deferred();
         var targets = collectInspectionMismatchTargets();
@@ -1783,7 +1890,7 @@
 
             var target = targets[index++];
             setSaleHistoryProcessingMaskMessage(
-                '원터치 처리중\n판매가/원가 반영 ' + index + '/' + targets.length + ' (성공 ' + successCount + ' / 실패 ' + failCount + ')'
+                '원터치 처리중\n고도몰검수 일괄처리 ' + index + '/' + targets.length + ' (성공 ' + successCount + ' / 실패 ' + failCount + ')'
             );
 
             $.ajax({
@@ -1795,10 +1902,12 @@
                     ps_idx: String(target.ps_idx || ''),
                     prd_idx: String(target.prd_idx || ''),
                     goods_no: String(target.goods_no || ''),
+                    local_godo_code: String(target.local_godo_code || ''),
                     cost_price: String(target.cost_price || ''),
                     godo_sale_price: String(target.godo_sale_price || ''),
                     cost_mismatch: String(target.cost_mismatch || 'N'),
-                    sale_mismatch: String(target.sale_mismatch || 'N')
+                    sale_mismatch: String(target.sale_mismatch || 'N'),
+                    godo_code_mismatch: String(target.godo_code_mismatch || 'N')
                 }
             }).done(function (response) {
                 if (!response || response.status !== 'success') {
@@ -1818,6 +1927,9 @@
                 if (currentItemsMap[itemKey] && applied.sale_price_updated === true) {
                     currentItemsMap[itemKey].sale_price = parseMoney(applied.godo_sale_price);
                 }
+                if (currentItemsMap[itemKey] && applied.godo_code_updated === true) {
+                    currentItemsMap[itemKey].godo_goods_no = String(applied.goods_no || '');
+                }
             }).fail(function () {
                 failCount++;
             }).always(function () {
@@ -1829,7 +1941,7 @@
         return dfd.promise();
     }
 
-    // 원터치 자동 처리(랜덤불러오기 -> 데이터검수/교체 -> 고도몰검수/일괄반영)를 실행한다.
+    // 원터치 자동 처리(랜덤불러오기 -> 데이터검수/교체 -> 고도몰검수/일괄처리)를 실행한다.
     function runOneTouchRandomProcess() {
         var dfd = $.Deferred();
         var MAX_PROVIDER_LOOP = 8;
@@ -1922,7 +2034,7 @@
 
                             var mismatchTargets = collectInspectionMismatchTargets();
                             if (mismatchTargets.length > 0) {
-                                setSaleHistoryProcessingMaskMessage('원터치 처리중\n5/5 판매가/원가 일괄반영중 (' + mismatchTargets.length + '건)');
+                                setSaleHistoryProcessingMaskMessage('원터치 처리중\n5/5 고도몰검수 일괄처리중 (' + mismatchTargets.length + '건)');
                                 runGodoBulkApplyProcess().always(function () {
                                     runGodoLoopEntry();
                                 });
@@ -2113,7 +2225,8 @@
         }
         var forceExactList = !!((data || {}).force_exact_list);
         var targetCount = getTargetDisplayCount(data);
-        var items = forceExactList ? newItems : mergePinnedAndNewItems(newItems, targetCount);
+        var targetSourceCounts = getTargetSourceCounts(data);
+        var items = forceExactList ? newItems : mergePinnedAndNewItems(newItems, targetCount, targetSourceCounts);
         var html = '';
 
         currentItemsMap = {};
@@ -2193,11 +2306,14 @@
                 saleMatched = Math.abs(localSalePriceCmp - godoSalePriceCmp) < 0.0001;
                 costMatched = Math.abs(localCostPriceCmp - godoCostPriceCmp) < 0.0001;
             }
+            var localGodoCode = String(item.godo_goods_no || item.godo_goodsNo || item.godoNo || '').trim();
+            var inspectGoodsNo = godoGoods ? String(godoGoods.goodsNo || '').trim() : '';
+            var godoCodeMismatch = (itemSource === 'have' && inspectGoodsNo !== '' && localGodoCode !== inspectGoodsNo);
             var inspectNameHtml = '';
             var inspectGoodsButtonsHtml = '';
             var inspectGoodsInfoHtml = '';
             if (godoGoods && godoGoods.goodsNm) {
-                inspectNameHtml = '<div class="inspect-godo-name">검수상품 : ' + escapeHtml(godoGoods.goodsNm) + '</div>';
+                inspectNameHtml = '<div class="inspect-godo-name">검수상품 : ' + highlightWeeklyDiscountKeyword(godoGoods.goodsNm) + '</div>';
             }
             if (godoGoods && godoGoods.goodsNo !== undefined && godoGoods.goodsNo !== null && String(godoGoods.goodsNo).trim() !== '') {
                 var godoGoodsNo = String(godoGoods.goodsNo).trim().replace(/'/g, "\\'");
@@ -2221,22 +2337,29 @@
             }
             var inspectResultHtml = '-';
             if (godoGoods) {
-                var isMatched = (saleMatched === true) && (costMatched === true);
+                var isMatched = (saleMatched === true) && (costMatched === true) && !godoCodeMismatch;
                 if (isMatched) {
                     inspectResultHtml = '<span style="color:#198754; font-weight:bold;">검수 통과</span>';
                 } else {
                     var goodsNo = String(godoGoods.goodsNo || '').trim();
                     var localCostPriceForApply = parseMoney(item.cost_price);
                     var godoSalePriceForApply = parseMoney(godoGoods.goodsPrice);
+                    var godoCodeMismatchHtml = '';
+                    if (godoCodeMismatch) {
+                        godoCodeMismatchHtml = '<div class="m-t-4" style="font-size:11px; color:#dc3545;">goodsNo 불일치 (API: ' + escapeHtml(goodsNo || '-') + ' / DB: ' + escapeHtml(localGodoCode || '-') + ')</div>';
+                    }
                     inspectResultHtml = '<span style="color:#dc3545; font-weight:bold;">검수 불합격</span>'
+                        + godoCodeMismatchHtml
                         + '<div class="m-t-5"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs apply-godo-cost-btn"'
                         + ' data-ps-idx="' + itemKey + '"'
                         + ' data-prd-idx="' + String(item.prd_idx || '').trim() + '"'
                         + ' data-goods-no="' + goodsNo + '"'
+                        + ' data-local-godo-code="' + localGodoCode + '"'
                         + ' data-cost-price="' + localCostPriceForApply + '"'
                         + ' data-godo-sale-price="' + godoSalePriceForApply + '"'
                         + ' data-cost-mismatch="' + ((costMatched === false) ? 'Y' : 'N') + '"'
                         + ' data-sale-mismatch="' + ((saleMatched === false) ? 'Y' : 'N') + '"'
+                        + ' data-godo-code-mismatch="' + (godoCodeMismatch ? 'Y' : 'N') + '"'
                         + '>판매가/원가 반영</button></div>';
                 }
             } else if (latestInspectRequestedKeyMap[itemKey]) {
@@ -2276,7 +2399,10 @@
             html += '<tr' + rowClass + ' data-item-key="' + itemKey + '">'
                 + '<td class="text-center"><input type="checkbox" name="keep_product_ps_idxs[]" value="' + itemKey + '" ' + (isPinned ? 'checked' : '') + '></td>'
                 + '<td class="text-center"><button type="button" class="btnstyle1 btnstyle1-xs exclude-row-btn" data-item-key="' + itemKey + '" data-item-source="' + itemSource + '" data-target-idx="' + String(item.ps_idx || '') + '">할인대상 제외</button></td>'
-                + '<td class="text-center"><button type="button" class="btnstyle1 btnstyle1-xs replace-row-btn" data-item-key="' + itemKey + '" data-item-source="' + itemSource + '" data-target-idx="' + String(item.ps_idx || '') + '">교체</button></td>'
+                + '<td class="text-center">'
+                + '<button type="button" class="btnstyle1 btnstyle1-sm replace-row-btn" data-item-key="' + itemKey + '" data-item-source="' + itemSource + '" data-target-idx="' + String(item.ps_idx || '') + '"><i class="fas fa-sync-alt"></i> 교체</button>'
+                + '<div class="m-t-5"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-sm remove-row-btn" data-item-key="' + itemKey + '">- 제거</button></div>'
+                + '</td>'
                 + '<td class="text-center"><span class="sale-item-label ' + (itemSource === 'provider' ? 'sale-item-label-provider' : 'sale-item-label-have') + '">' + (itemSource === 'provider' ? '위탁상품' : '보유상품') + '</span>' + (itemSource === 'have' ? '<div class="m-t-3">재고코드 : ' + String(item.ps_idx || '') + '</div>' : '') + '</td>'
                 + '<td class="text-center">' + (itemSource === 'provider' ? String(item.ps_idx || '') : String(item.prd_idx || '')) + '</td>'
                 
@@ -2410,7 +2536,7 @@
             // 3) 고도몰 검수 불합격 항목 체크
             var inspectionMismatchTargets = collectInspectionMismatchTargets();
             if (inspectionMismatchTargets.length > 0) {
-                alert('고도몰 상품 검수 결과 "검수 불합격" 항목이 있습니다. 불합격 항목을 먼저 처리해 주세요.\n[판매가/원가 일괄반영] 버튼으로 일괄처리가 가능합니다.');
+                alert('고도몰 상품 검수 결과 "검수 불합격" 항목이 있습니다. 불합격 항목을 먼저 처리해 주세요.\n[고도몰검수 일괄처리] 버튼으로 처리할 수 있습니다.');
                 e.preventDefault();
                 e.stopImmediatePropagation();
                 return false;
@@ -2707,9 +2833,28 @@
             if ($btn.prop('disabled')) {
                 return;
             }
-            if (!confirm('원터치 자동 처리(랜덤불러오기 → 데이터검수/교체 → 고도몰검수/일괄반영)를 실행하시겠습니까?')) {
+            var checkedKeepCount = $('input[name="keep_product_ps_idxs[]"]:checked').length;
+            var confirmMessage = '';
+            if (checkedKeepCount > 0) {
+                confirmMessage = '[원터치 랜덤 할인상품 불러오기]를 하시면 전체가 전부 초기화됩니다. 선택된 상품도 교체 됩니다.\n진행하시겠습니까?';
+            } else {
+                confirmMessage = '원터치 자동 처리(랜덤불러오기 → 데이터검수/교체 → 고도몰검수/일괄반영)를 실행하시겠습니까?';
+            }
+
+            if (!confirm(confirmMessage)) {
                 return;
             }
+
+            // 원터치는 항상 처음부터 다시 시작하도록 유지/검수 상태를 초기화한다.
+            pinnedItemsMap = {};
+            discountRateInputMap = {};
+            latestGodoGoodsResult = { stock_codes: [], count: 0, items: [] };
+            latestGodoGoodsMap = {};
+            latestInspectRequestedKeyMap = {};
+            providerDataInspectBulkAttempted = false;
+            $('input[name="keep_product_ps_idxs[]"]').prop('checked', false);
+            $('#keep_all_checkbox').prop('checked', false).prop('indeterminate', false);
+            syncKeepAllCheckbox();
 
             $btn.prop('disabled', true).text('원터치 처리중...');
             runOneTouchRandomProcess().always(function () {
@@ -3054,8 +3199,57 @@
 
                 showToast('상품 교체 완료', new Date().toLocaleTimeString());
             }).always(function () {
-                $btn.prop('disabled', false).text('교체');
+                $btn.prop('disabled', false).html('<i class="fas fa-sync-alt"></i> 교체');
             });
+        });
+
+        $(document).on('click', '.remove-row-btn', function () {
+            var itemKey = String($(this).data('item-key') || '').trim();
+            if (!itemKey) {
+                showToast('제거할 상품 정보가 없습니다.', new Date().toLocaleTimeString());
+                return;
+            }
+
+            if (!currentItemsMap[itemKey]) {
+                showToast('이미 제거된 상품입니다.', new Date().toLocaleTimeString());
+                return;
+            }
+
+            delete currentItemsMap[itemKey];
+            delete pinnedItemsMap[itemKey];
+            delete discountRateInputMap[itemKey];
+            delete latestGodoGoodsMap[itemKey];
+            delete latestInspectRequestedKeyMap[itemKey];
+
+            var orderedKeys = getRenderedItemKeysInOrder();
+            var remainItems = [];
+            var used = {};
+            for (var i = 0; i < orderedKeys.length; i++) {
+                var key = String(orderedKeys[i] || '').trim();
+                if (!key || key === itemKey || used[key] || !currentItemsMap[key]) {
+                    continue;
+                }
+                remainItems.push(currentItemsMap[key]);
+                used[key] = true;
+            }
+            Object.keys(currentItemsMap).forEach(function (key) {
+                if (!key || used[key]) {
+                    return;
+                }
+                remainItems.push(currentItemsMap[key]);
+                used[key] = true;
+            });
+
+            renderRandomProducts({
+                items: remainItems,
+                total_count: remainItems.length,
+                force_exact_list: true,
+                condition: {
+                    total_product_qty: remainItems.length
+                }
+            });
+
+            showToast('상품 라인이 제거되었습니다.', new Date().toLocaleTimeString());
         });
 
         $('#godo_inspect_btn').on('click', function () {
@@ -3102,16 +3296,16 @@
 
             var targets = collectInspectionMismatchTargets();
             if (!targets.length) {
-                alert('일괄 반영할 판매가/원가 불일치 항목이 없습니다.');
+                alert('고도몰검수 일괄처리 대상이 없습니다.');
                 return;
             }
 
-            if (!confirm('판매가 불일치는 우리 DB 판매가를 고도몰 값으로 변경하고, 원가 불일치는 고도몰 원가를 반영합니다.\n총 ' + numberWithComma(targets.length) + '건 일괄 반영하시겠습니까?')) {
+            if (!confirm('판매가 불일치는 우리 DB 판매가를 고도몰 값으로 변경하고, 원가 불일치는 고도몰 원가를 반영합니다.\n보유상품 goodsNo 불일치 건은 cd_godo_code를 API goodsNo로 보정합니다.\n총 ' + numberWithComma(targets.length) + '건 고도몰검수 일괄처리하시겠습니까?')) {
                 return;
             }
 
             var $btn = $(this);
-            $btn.prop('disabled', true).text('일괄 반영중...');
+            $btn.prop('disabled', true).text('고도몰검수 일괄처리중...');
             setSaleHistoryProcessingMask(true, '데이터 처리중입니다.\n총 ' + targets.length + '건 준비중...');
 
             var index = 0;
@@ -3122,10 +3316,10 @@
                 if (index >= targets.length) {
                     rerenderCurrentStageRows();
                     setSaleHistoryProcessingMask(false);
-                    $btn.prop('disabled', false).text('판매가/원가 일괄반영');
+                    $btn.prop('disabled', false).text('고도몰검수 일괄처리');
                     toggleGodoBulkCostApplyButton();
 
-                    var doneMsg = '일괄 반영 완료 (성공 ' + numberWithComma(successCount) + '건';
+                    var doneMsg = '고도몰검수 일괄처리 완료 (성공 ' + numberWithComma(successCount) + '건';
                     if (failCount > 0) {
                         doneMsg += ', 실패 ' + numberWithComma(failCount) + '건';
                     }
@@ -3148,10 +3342,12 @@
                         ps_idx: String(target.ps_idx || ''),
                         prd_idx: String(target.prd_idx || ''),
                         goods_no: String(target.goods_no || ''),
+                        local_godo_code: String(target.local_godo_code || ''),
                         cost_price: String(target.cost_price || ''),
                         godo_sale_price: String(target.godo_sale_price || ''),
                         cost_mismatch: String(target.cost_mismatch || 'N'),
-                        sale_mismatch: String(target.sale_mismatch || 'N')
+                        sale_mismatch: String(target.sale_mismatch || 'N'),
+                        godo_code_mismatch: String(target.godo_code_mismatch || 'N')
                     }
                 }).done(function (response) {
                     if (!response || response.status !== 'success') {
@@ -3172,6 +3368,9 @@
                     if (currentItemsMap[itemKey] && applied.sale_price_updated === true) {
                         currentItemsMap[itemKey].sale_price = parseMoney(applied.godo_sale_price);
                     }
+                    if (currentItemsMap[itemKey] && applied.godo_code_updated === true) {
+                        currentItemsMap[itemKey].godo_goods_no = String(applied.goods_no || '');
+                    }
                 }).fail(function () {
                     failCount++;
                 }).always(function () {
@@ -3187,13 +3386,15 @@
             var psIdx = String($btn.data('ps-idx') || '').trim();
             var prdIdx = String($btn.data('prd-idx') || '').trim();
             var goodsNo = String($btn.data('goods-no') || '').trim();
+            var localGodoCode = String($btn.data('local-godo-code') || '').trim();
             var costPrice = String($btn.data('cost-price') || '').trim();
             var godoSalePrice = String($btn.data('godo-sale-price') || '').trim();
             var isCostMismatch = String($btn.data('cost-mismatch') || 'N') === 'Y';
             var isSaleMismatch = String($btn.data('sale-mismatch') || 'N') === 'Y';
+            var isGodoCodeMismatch = String($btn.data('godo-code-mismatch') || 'N') === 'Y';
 
-            if (!isCostMismatch && !isSaleMismatch) {
-                alert('판매가/원가 불일치 항목이 아닙니다.');
+            if (!isCostMismatch && !isSaleMismatch && !isGodoCodeMismatch) {
+                alert('판매가/원가/goodsNo 불일치 항목이 아닙니다.');
                 return;
             }
 
@@ -3207,7 +3408,12 @@
                 return;
             }
 
-            if (!confirm('판매가 불일치는 우리 DB 판매가를 고도몰 값으로 변경하고, 원가 불일치는 고도몰 원가를 반영하시겠습니까?')) {
+            if (isGodoCodeMismatch && !goodsNo) {
+                alert('고도몰 상품번호가 없어 cd_godo_code 보정을 진행할 수 없습니다.');
+                return;
+            }
+
+            if (!confirm('판매가 불일치는 우리 DB 판매가를 고도몰 값으로 변경하고, 원가 불일치는 고도몰 원가를 반영합니다.\ngoodsNo 불일치 건은 cd_godo_code를 API goodsNo로 보정합니다.\n반영하시겠습니까?')) {
                 return;
             }
 
@@ -3222,10 +3428,12 @@
                     ps_idx: psIdx,
                     prd_idx: prdIdx,
                     goods_no: goodsNo,
+                    local_godo_code: localGodoCode,
                     cost_price: costPrice,
                     godo_sale_price: godoSalePrice,
                     cost_mismatch: isCostMismatch ? 'Y' : 'N',
-                    sale_mismatch: isSaleMismatch ? 'Y' : 'N'
+                    sale_mismatch: isSaleMismatch ? 'Y' : 'N',
+                    godo_code_mismatch: isGodoCodeMismatch ? 'Y' : 'N'
                 },
                 success: function (response) {
                     if (!response || response.status !== 'success') {
@@ -3238,6 +3446,9 @@
                     }
                     if (currentItemsMap[psIdx] && isSaleMismatch) {
                         currentItemsMap[psIdx].sale_price = parseMoney(godoSalePrice);
+                    }
+                    if (currentItemsMap[psIdx] && response.data && response.data.godo_code_updated === true) {
+                        currentItemsMap[psIdx].godo_goods_no = String(response.data.goods_no || goodsNo || '');
                     }
                     rerenderCurrentStageRows();
                     alert((response && response.message) ? response.message : '판매가/원가 반영 완료');

@@ -17,6 +17,16 @@
                 <input type='text' name="e_date" id="e_date" value="<?= $e_date ?>">
             </ul>
             <ul>
+                <select name="s_kind" id="s_kind" style="height:30px;">
+                    <option value="">전체 분류</option>
+                    <?php foreach (($prd_kind_name ?? []) as $kindCode => $kindName) { ?>
+                        <option value="<?= htmlspecialchars((string)$kindCode, ENT_QUOTES, 'UTF-8') ?>" <?= ((string)($s_kind ?? '') === (string)$kindCode) ? 'selected' : '' ?>>
+                            <?= htmlspecialchars((string)$kindName, ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </ul>
+            <ul>
                 <button type="button" id="search_btn" class="btnstyle1 btnstyle1-inverse3 btnstyle1-sm" >기간검색</button>
             </ul>
         </div>
@@ -29,6 +39,7 @@
                         <thead>
                             <tr class="list">
                                 <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
+                                <th>순위</th>
                                 <th class="list-idx">고유번호</th>
                                 <th class="list-idx">재고코드</th>
                                 <th>이미지</th>
@@ -46,6 +57,7 @@
                         </thead>
                         <tbody>
                         <?php
+                            $rank = 1;
                             foreach ($salesDaily as $row) {
 
                                 $img_path = "";
@@ -55,6 +67,7 @@
                         ?>
                             <tr>
                                 <td><input type="checkbox" name="check_idx[]" value="<?= $row['ps_idx'] ?>"></td>
+                                <td class="text-center"><?= $rank ?></td>
                                 <td class="list-idx"><?= $row['ps_idx'] ?></td>
                                 <td class="list-idx"><?= $row['prd_idx'] ?></td>
                                 <td class="p-5">
@@ -111,7 +124,10 @@
                                     ?>
                                 </td>
                             </tr>
-                        <?php } ?>
+                        <?php
+                                $rank++;
+                            }
+                        ?>
                         </tbody>
                     </table>
 
@@ -132,7 +148,8 @@ $(document).ready(function(){
     $('#search_btn').click(function(){
         var s_date = $('#s_date').val();
         var e_date = $('#e_date').val();
-        location.href = '/admin/sales/sales_ranking_by_period?s_date=' + s_date + '&e_date=' + e_date;
+        var s_kind = $('#s_kind').val();
+        location.href = '/admin/sales/sales_ranking_by_period?s_date=' + encodeURIComponent(s_date) + '&e_date=' + encodeURIComponent(e_date) + '&s_kind=' + encodeURIComponent(s_kind);
     });
 
 });

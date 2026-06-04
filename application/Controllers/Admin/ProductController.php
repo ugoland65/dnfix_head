@@ -54,6 +54,8 @@ class ProductController extends BaseClass
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null;
+            $s_work_task_code = $requestData['s_work_task_code'] ?? null;
+            $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
             //서비스로 넘겨주는 값
             $payload = [
@@ -70,6 +72,8 @@ class ProductController extends BaseClass
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
                 's_discontinued' => $s_discontinued,
+                's_work_task_code' => $s_work_task_code,
+                's_work_task_done' => $s_work_task_done,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -91,6 +95,7 @@ class ProductController extends BaseClass
             $config_product = config('admin.product');
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
+            $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
                 's_brand' => $s_brand,
@@ -99,6 +104,8 @@ class ProductController extends BaseClass
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
                 's_discontinued' => $s_discontinued,
+                's_work_task_code' => $s_work_task_code,
+                's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
                 'in_stock' => $in_stock,
                 'search_value' => $search_value,
@@ -106,6 +113,7 @@ class ProductController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
+                'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
                 'paginationArray' => $paginationArray
@@ -150,6 +158,8 @@ class ProductController extends BaseClass
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종여부
+            $s_work_task_code = $requestData['s_work_task_code'] ?? null;
+            $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
             //서비스로 넘겨주는 값
             $payload = [
@@ -167,6 +177,8 @@ class ProductController extends BaseClass
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
                 's_discontinued' => $s_discontinued,
+                's_work_task_code' => $s_work_task_code,
+                's_work_task_done' => $s_work_task_done,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -188,6 +200,7 @@ class ProductController extends BaseClass
             $config_product = config('admin.product');
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
+            $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
                 's_brand' => $s_brand,
@@ -195,6 +208,9 @@ class ProductController extends BaseClass
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
+                's_discontinued' => $s_discontinued,
+                's_work_task_code' => $s_work_task_code,
+                's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
                 'in_stock' => $in_stock,
                 'search_value' => $search_value,
@@ -202,6 +218,7 @@ class ProductController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
+                'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
                 'paginationArray' => $paginationArray

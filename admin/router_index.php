@@ -105,7 +105,7 @@ try {
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
     $router->post('/product/action', ProductController::class, 'productAction'); //상품 처리 액션
 
-    //공급사
+    //공급사/위탁상품
     $router->get('/provider_product/list', ProductPartnerController::class, 'getProductPartnerList'); //공급사 상품 목록
     $router->post('/provider_product/proc/match_provider_product', ProductPartnerController::class, 'matchProviderProduct'); //공급사 상품 매칭
     $router->post('/provider_product/proc/cancel_match_provider_product', ProductPartnerController::class, 'cancelMatchProviderProduct'); //공급사 상품 매칭 취소
@@ -115,6 +115,7 @@ try {
     $router->post('/provider_product/action', ProductPartnerController::class, 'providerProductAction'); //공급사 상품 액션
     $router->get('/provider_product/detail', ProductPartnerController::class, 'getProductPartnerDetail'); //공급사 상품 상세
     $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
+    $router->get('/provider_product/discount_sale_log', ProductPartnerController::class, 'productPartnerDiscountSaleLog'); //공급사 상품 할인 내역 로그
 
 
     // 재고/발주 관리

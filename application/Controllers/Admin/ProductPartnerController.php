@@ -15,13 +15,14 @@ use App\Services\ProductPartnerApiService;
 use App\Services\ProductSupplierPyApiService;
 use App\Services\PartnersService;
 use App\Services\BrandService;
+use App\Services\SaleHistoryService;
 use App\Utils\Pagination;
 
 class ProductPartnerController extends BaseClass 
 {
 
     /**
-     * 공급사 상품 관리
+     * 위탁 상품 관리
      * 
      * @param Request $request
      * @return view
@@ -283,7 +284,7 @@ class ProductPartnerController extends BaseClass
 
 
     /**
-     * 공급사 상품 상세 
+     * 위탁 상품 상세 
      * 
      * @param Request $request
      */
@@ -362,7 +363,7 @@ class ProductPartnerController extends BaseClass
 
 
     /**
-     * 공급사 상품 상세 저장
+     * 위탁 상품 상세 저장
      * 
      * @param Request $request
      */
@@ -401,7 +402,37 @@ class ProductPartnerController extends BaseClass
 
 
     /**
-     * 공급사 상품 액션
+     * 위탁 상품 할인 내역 로그
+     */
+    public function productPartnerDiscountSaleLog( Request $request ) 
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            if ($prdIdx <= 0) {
+                throw new \InvalidArgumentException('위탁상품 고유번호가 비어있습니다.');
+            }
+
+            $saleHistoryService = new SaleHistoryService();
+            $pageData = $saleHistoryService->getProviderDiscountSaleLogPageData($prdIdx);
+
+            $data = [
+                'prd_idx' => $prdIdx,
+                'saleLogRows' => $pageData['rows'] ?? [],
+                'recentSaleLog' => $pageData['recent_sale_log'] ?? [],
+                'providerName' => $pageData['provider_name'] ?? '',
+            ];
+
+            return view('admin.provider.discount_sale_log', $data);
+        } catch (Throwable $e) {
+            return '<div class="text-danger p-10">할인내역 조회 실패: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
+        }
+    }
+
+
+
+    /**
+     * 위탁 상품 액션
      * 
      * @param Request $request
      * @return array
@@ -434,7 +465,7 @@ class ProductPartnerController extends BaseClass
                 $message = '등록대기 처리되었습니다.';
                 $errorMessage = '등록대기 처리에 실패했습니다.';
 
-            // 공급사 상품 매칭제외로 처리
+            // 위탁 상품 매칭제외로 처리
             }elseif( $actionMode == 'product_match_excluded' ){
                 
                 $db1_idx = $requestData['db1_idx'] ?? null;
@@ -470,7 +501,7 @@ class ProductPartnerController extends BaseClass
                 $errorMessage = '업데이트에 실패했습니다.';
                 */
 
-            // 공급사 상품 -> 상품DB로 등록후 매칭
+            // 위탁 상품 -> 상품DB로 등록후 매칭
             }elseif( $actionMode == 'product_register_to_supplier_product' ){
                 
                 $payload = [
@@ -492,6 +523,29 @@ class ProductPartnerController extends BaseClass
                 $result = call_user_func([$productPartnerService, 'bulkUpdateSelectedProducts'], $payload);
                 $message = $result['message'] ?? '선택상품 일괄수정이 완료되었습니다.';
                 $errorMessage = '선택상품 일괄수정에 실패했습니다.';
+
+            }elseif( $actionMode == 'update_recent_sale_date' ){
+
+                $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+                $lastSaleDate = trim((string)($requestData['last_sale_date'] ?? ''));
+                if ($prdIdx <= 0) {
+                    throw new \Exception('위탁상품 고유번호가 없습니다.');
+                }
+                if ($lastSaleDate === '') {
+                    throw new \Exception('최근 할인일을 입력해주세요.');
+                }
+                if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $lastSaleDate)) {
+                    throw new \Exception('최근 할인일 형식이 올바르지 않습니다.');
+                }
+
+                ProductPartnerModel::query()
+                    ->where('idx', $prdIdx)
+                    ->update([
+                        'last_sale_date' => $lastSaleDate,
+                    ]);
+                $result = true;
+                $message = '최근 할인일이 저장되었습니다.';
+                $errorMessage = '최근 할인일 저장에 실패했습니다.';
 
             }else{
                 throw new \Exception('지원하지 않는 action_mode 입니다.');
@@ -517,7 +571,7 @@ class ProductPartnerController extends BaseClass
     }
         
     /**
-     * 공급사 상품 매칭
+     * 위탁 상품 매칭
      * @return array
      */
     public function matchProviderProduct( Request $request ) 
@@ -646,7 +700,7 @@ class ProductPartnerController extends BaseClass
 
 
     /**
-     * 공급사 상품 매칭 취소
+     * 위탁 상품 매칭 취소
      * 
      * @param Request $request
      * @return array

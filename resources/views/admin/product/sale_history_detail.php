@@ -120,6 +120,33 @@ if (!empty($discountGroupedProducts)) {
         return (float)$b <=> (float)$a;
     });
 }
+
+$groupUploadStatusMap = [];
+$rawGroupUploadStatusMap = $metaData['godo_group_upload_status'] ?? [];
+if (is_array($rawGroupUploadStatusMap)) {
+    foreach ($rawGroupUploadStatusMap as $rateKey => $statusRow) {
+        if (!is_array($statusRow)) {
+            continue;
+        }
+        $normalizedRate = rtrim(rtrim(number_format((float)$rateKey, 2, '.', ''), '0'), '.');
+        if ($normalizedRate === '') {
+            $normalizedRate = rtrim(rtrim(number_format((float)($statusRow['discount_rate'] ?? 0), 2, '.', ''), '0'), '.');
+        }
+        if ($normalizedRate === '') {
+            continue;
+        }
+        $groupUploadStatusMap[$normalizedRate] = $statusRow;
+    }
+}
+$groupTotalCount = count($discountGroupedProducts);
+$groupRegisteredCount = 0;
+foreach (array_keys($discountGroupedProducts) as $rateKey) {
+    $status = (string)(($groupUploadStatusMap[$rateKey]['status'] ?? ''));
+    if ($status === 'success') {
+        $groupRegisteredCount++;
+    }
+}
+$groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
 ?>
 
 <style>
@@ -146,6 +173,11 @@ if (!empty($discountGroupedProducts)) {
     .sale-detail-group-head { padding:10px 12px; background:#f3f4f6; border-bottom:1px solid #e5e7eb; font-weight:700; display:flex; justify-content:space-between; align-items:center; }
     .sale-detail-group-title { color:#111827; }
     .sale-detail-group-count { color:#374151; font-size:12px; }
+    .sale-detail-group-right { display:flex; align-items:center; gap:8px; }
+    .sale-detail-group-status { font-size:12px; color:#374151; }
+    .sale-detail-group-status-ok { color:#198754; font-weight:700; }
+    .sale-detail-group-status-fail { color:#dc3545; font-weight:700; }
+    .sale-detail-group-meta { font-size:11px; color:#6b7280; }
 </style>
 
 <div id="contents_head">
@@ -186,11 +218,20 @@ if (!empty($discountGroupedProducts)) {
                     id="register_godo_time_sale_btn"
                     class="btn btnstyle1 btnstyle1-primary btnstyle1-sm"
                     data-seq="<?= (int)($saleHistory['seq'] ?? 0) ?>"
+                    data-remaining-count="<?= (int)$groupRemainingCount ?>"
                 >
-                    고도몰 등록 하기
+                    전체 그룹 등록
                 </button>
                 <span style="font-size:12px; color:#6b7280;">
-                    sale_status = wait 상태에서 할인율 그룹 수만큼 타임세일 등록됩니다.
+                    sale_status = wait 상태에서 할인율 그룹 등록을 수행합니다. (완료 그룹 자동 제외: <?= (int)$groupRegisteredCount ?>/<?= (int)$groupTotalCount ?>)
+                </span>
+            </div>
+        <?php } ?>
+        <?php if ((string)($saleHistory['sale_status'] ?? '') === 'upload' && !empty($saleHistory['uploaded_at'])) { ?>
+            <div class="sale-detail-view-mode-wrap">
+                <span style="font-size:12px; color:#2563eb;">
+                    업로드 등록시간 : <b><?= htmlspecialchars($text($saleHistory['uploaded_at'] ?? '', '-'), ENT_QUOTES, 'UTF-8') ?></b>
+                    / 등록자 : <b><?= htmlspecialchars($text($saleHistory['uploaded_by_name'] ?? ($saleHistory['uploaded_by'] ?? ''), '-'), ENT_QUOTES, 'UTF-8') ?></b>
                 </span>
             </div>
         <?php } ?>
@@ -239,6 +280,7 @@ if (!empty($discountGroupedProducts)) {
                         <th>공급사</th>
                         <th>바로가기</th>
                         <th>재고/상태</th>
+                        <th>마지막 할인일</th>
                         <th>판매가</th>
                         <th>원가</th>
                         <th>마진율</th>
@@ -342,6 +384,7 @@ if (!empty($discountGroupedProducts)) {
                                         <?= $number($item['stock_qty'] ?? 0) ?>
                                     <?php } ?>
                                 </td>
+                                <td class="text-center"><?= $text($item['last_sale_date'] ?? '', '-') ?></td>
                                 <td class="text-right"><?= $number($item['sale_price'] ?? 0) ?></td>
                                 <td class="text-right"><?= $number($item['cost_price'] ?? 0) ?></td>
                                 <td class="text-center"><?= $percent($item['margin_per'] ?? 0) ?></td>
@@ -362,7 +405,7 @@ if (!empty($discountGroupedProducts)) {
                         <?php } ?>
                     <?php } else { ?>
                         <tr>
-                            <td colspan="17" class="text-center" style="padding:30px;">저장된 상품 데이터가 없습니다.</td>
+                            <td colspan="18" class="text-center" style="padding:30px;">저장된 상품 데이터가 없습니다.</td>
                         </tr>
                     <?php } ?>
                     </tbody>
@@ -373,10 +416,44 @@ if (!empty($discountGroupedProducts)) {
         <div class="sale-detail-group-wrap" id="sale_detail_group_view">
             <?php if (!empty($discountGroupedProducts)) { ?>
                 <?php foreach ($discountGroupedProducts as $discountRate => $groupItems) { ?>
+                    <?php
+                    $groupStatus = $groupUploadStatusMap[$discountRate] ?? [];
+                    $groupStatusCode = (string)($groupStatus['status'] ?? '');
+                    $groupUploadedAt = $text($groupStatus['uploaded_at'] ?? '', '-');
+                    $groupUploadedByName = $text($groupStatus['uploaded_by_name'] ?? '', '-');
+                    $groupStatusMessage = $text($groupStatus['message'] ?? '', '');
+                    ?>
                     <div class="sale-detail-group-box">
                         <div class="sale-detail-group-head">
                             <span class="sale-detail-group-title">할인율 <?= htmlspecialchars($discountRate, ENT_QUOTES, 'UTF-8') ?>% 그룹</span>
-                            <span class="sale-detail-group-count"><?= number_format(count($groupItems)) ?>건</span>
+                            <div class="sale-detail-group-right">
+                                <span class="sale-detail-group-count"><?= number_format(count($groupItems)) ?>건</span>
+                                <?php if ($groupStatusCode === 'success') { ?>
+                                    <span class="sale-detail-group-status sale-detail-group-status-ok">등록완료</span>
+                                    <span class="sale-detail-group-meta">
+                                        <?= htmlspecialchars($groupUploadedAt, ENT_QUOTES, 'UTF-8') ?> / <?= htmlspecialchars($groupUploadedByName, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                <?php } elseif ($groupStatusCode === 'failed') { ?>
+                                    <span class="sale-detail-group-status sale-detail-group-status-fail">등록실패</span>
+                                    <?php if ($groupStatusMessage !== '') { ?>
+                                        <span class="sale-detail-group-meta"><?= htmlspecialchars($groupStatusMessage, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php } ?>
+                                <?php } else { ?>
+                                    <span class="sale-detail-group-status">미등록</span>
+                                <?php } ?>
+                                <?php if ((string)($saleHistory['sale_status'] ?? '') === 'wait') { ?>
+                                    <?php if ($groupStatusCode !== 'success') { ?>
+                                        <button
+                                            type="button"
+                                            class="btn btnstyle1 btnstyle1-primary btnstyle1-xs register_godo_group_btn"
+                                            data-seq="<?= (int)($saleHistory['seq'] ?? 0) ?>"
+                                            data-discount-rate="<?= htmlspecialchars($discountRate, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                            그룹 등록
+                                        </button>
+                                    <?php } ?>
+                                <?php } ?>
+                            </div>
                         </div>
                         <div class="table-wrap5">
                             <div class="">
@@ -393,6 +470,7 @@ if (!empty($discountGroupedProducts)) {
                                         <th>공급사</th>
                                         <th>바로가기</th>
                                         <th>재고/상태</th>
+                                        <th>마지막 할인일</th>
                                         <th>판매가</th>
                                         <th>원가</th>
                                         <th>마진율</th>
@@ -499,6 +577,7 @@ if (!empty($discountGroupedProducts)) {
                                                     <?= $number($item['stock_qty'] ?? 0) ?>
                                                 <?php } ?>
                                             </td>
+                                            <td class="text-center"><?= $text($item['last_sale_date'] ?? '', '-') ?></td>
                                             <td class="text-right"><?= $number($item['sale_price'] ?? 0) ?></td>
                                             <td class="text-right"><?= $number($item['cost_price'] ?? 0) ?></td>
                                             <td class="text-center"><?= $percent($item['margin_per'] ?? 0) ?></td>
@@ -519,7 +598,7 @@ if (!empty($discountGroupedProducts)) {
                                     <?php } ?>
                                     <?php if (empty(array_filter($groupItems, 'is_array'))) { ?>
                                         <tr>
-                                            <td colspan="17" class="text-center" style="padding:20px;">표시할 상품 데이터가 없습니다.</td>
+                                            <td colspan="18" class="text-center" style="padding:20px;">표시할 상품 데이터가 없습니다.</td>
                                         </tr>
                                     <?php } ?>
                                     </tbody>
@@ -557,6 +636,7 @@ if (!empty($discountGroupedProducts)) {
         var $listView = $('#sale_detail_list_view');
         var $groupView = $('#sale_detail_group_view');
         var $registerBtn = $('#register_godo_time_sale_btn');
+        var $groupRegisterBtns = $('.register_godo_group_btn');
 
         var applyViewMode = function () {
             var mode = String($mode.val() || 'discount_group');
@@ -579,11 +659,11 @@ if (!empty($discountGroupedProducts)) {
                 return;
             }
 
-            if (!confirm('할인율 그룹별로 고도몰 타임세일을 등록하시겠습니까?')) {
+            if (!confirm('미등록 할인율 그룹만 고도몰 타임세일로 전체 등록하시겠습니까?')) {
                 return;
             }
 
-            $registerBtn.prop('disabled', true).text('고도몰 등록중...');
+            $registerBtn.prop('disabled', true).text('전체 그룹 등록중...');
 
             $.ajax({
                 url: '/admin/sale/history/action',
@@ -605,16 +685,45 @@ if (!empty($discountGroupedProducts)) {
                     }
 
                     var result = response.data || {};
-                    var doneMessage = '고도몰 등록 완료 (성공 '
-                        + Number(result.success_group_count || 0)
+                    var skippedGroupCount = Number(result.skipped_group_count || 0);
+                    var successGroupCount = Number(result.success_group_count || 0);
+                    var failedGroupCount = Number(result.failed_group_count || 0);
+                    var doneMessage = '전체 그룹 등록 완료 (성공 '
+                        + successGroupCount
+                        + '그룹 / 제외 '
+                        + skippedGroupCount
                         + '그룹 / 실패 '
-                        + Number(result.failed_group_count || 0)
+                        + failedGroupCount
                         + '그룹)';
+
+                    if (failedGroupCount > 0) {
+                        var failedGroups = Array.isArray(result.failed_groups) ? result.failed_groups : [];
+                        var failLines = [];
+                        for (var i = 0; i < failedGroups.length; i++) {
+                            var row = failedGroups[i] || {};
+                            var rate = String(row.discount_rate || '-');
+                            var msg = String(row.message || '알 수 없는 오류');
+                            failLines.push('- 할인율 ' + rate + '%: ' + msg);
+                        }
+                        var detailMessage = doneMessage
+                            + '\n\n실패 원인'
+                            + (failLines.length ? '\n' + failLines.join('\n') : '\n- 상세 오류 정보가 없습니다.');
+
+                        if (typeof showToast === 'function') {
+                            showToast(doneMessage, new Date().toLocaleTimeString());
+                        }
+                        alert(detailMessage);
+                        return;
+                    }
+
                     if (typeof showToast === 'function') {
                         showToast(doneMessage, new Date().toLocaleTimeString());
                     } else {
                         alert(doneMessage);
                     }
+                    setTimeout(function () {
+                        location.reload();
+                    }, 300);
                 },
                 error: function (xhr) {
                     var message = '고도몰 등록에 실패했습니다.';
@@ -628,7 +737,75 @@ if (!empty($discountGroupedProducts)) {
                     }
                 },
                 complete: function () {
-                    $registerBtn.prop('disabled', false).text('고도몰 등록 하기');
+                    $registerBtn.prop('disabled', false).text('전체 그룹 등록');
+                }
+            });
+        });
+
+        $groupRegisterBtns.on('click', function () {
+            var $btn = $(this);
+            var seq = String($btn.data('seq') || '').trim();
+            var discountRate = String($btn.data('discount-rate') || '').trim();
+            if (!seq || !discountRate) {
+                alert('그룹 등록 정보가 부족합니다.');
+                return;
+            }
+
+            if (!confirm('할인율 ' + discountRate + '% 그룹만 고도몰 타임세일로 등록하시겠습니까?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('그룹 등록중...');
+
+            $.ajax({
+                url: '/admin/sale/history/action',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action_mode: 'create_godo_time_sale_group_from_history',
+                    seq: seq,
+                    discount_rate: discountRate
+                },
+                success: function (response) {
+                    if (!response || response.status !== 'success') {
+                        var failMsg = (response && response.message) ? response.message : '그룹 등록에 실패했습니다.';
+                        if (typeof showToast === 'function') {
+                            showToast(failMsg, new Date().toLocaleTimeString());
+                        } else {
+                            alert(failMsg);
+                        }
+                        return;
+                    }
+
+                    var result = response.data || {};
+                    var alreadyRegistered = (result.already_registered === true);
+                    var doneMessage = alreadyRegistered
+                        ? ('할인율 ' + discountRate + '% 그룹은 이미 등록완료 상태입니다.')
+                        : ('할인율 ' + discountRate + '% 그룹 등록 완료');
+
+                    if (typeof showToast === 'function') {
+                        showToast(doneMessage, new Date().toLocaleTimeString());
+                    } else {
+                        alert(doneMessage);
+                    }
+
+                    setTimeout(function () {
+                        location.reload();
+                    }, 250);
+                },
+                error: function (xhr) {
+                    var message = '그룹 등록에 실패했습니다.';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(message, new Date().toLocaleTimeString());
+                    } else {
+                        alert(message);
+                    }
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).text('그룹 등록');
                 }
             });
         });

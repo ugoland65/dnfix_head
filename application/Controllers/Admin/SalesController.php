@@ -131,17 +131,24 @@ class SalesController extends BaseClass
             // 기본값: 시작일은 당월 1일, 종료일은 오늘
             $s_date = $requestData['s_date'] ?? date('Y-m-01');
             $e_date = $requestData['e_date'] ?? date('Y-m-d');
+            $s_kind = trim((string)($requestData['s_kind'] ?? ''));
 
             $salesService = new SaleService();
             $payload = [
                 's_date' => $s_date,
                 'e_date' => $e_date,
+                's_kind' => $s_kind,
             ];
             $salesDaily = $salesService->getSalesRankingByPeriod($payload);
+
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
 
             $data = [
                 's_date' => $s_date,
                 'e_date' => $e_date,
+                's_kind' => $s_kind,
+                'prd_kind_name' => $prd_kind_name,
                 'salesDaily' => $salesDaily,
             ];
 

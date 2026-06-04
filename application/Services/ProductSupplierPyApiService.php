@@ -86,8 +86,12 @@ class ProductSupplierPyApiService
             ];
 
             $in_stock = $responseData['in_stock'] ?? null;
+            $sale_status = trim((string)($responseData['sale_status'] ?? ''));
             
-            if( $in_stock > 0 ){
+            if ($sale_status === '판매중단') {
+                $status = '판매중단';
+                $supplier_status_date = date('Y-m-d H:i:s');
+            } elseif( $in_stock > 0 ){
                 $status = '판매중';
                 $supplier_status_date = null;
             }else{

@@ -218,6 +218,48 @@
                 <td colspan="2" class="none-bg" style="height:15px;"></td>
             </tr>
 
+            <tr>
+                <th>작업체크</th>
+                <td>
+                    <?php
+                        $workCheckList = $productData['work_check_list'] ?? [];
+                    ?>
+                    <?php if (!empty($workCheckList)) { ?>
+
+                        <!--
+                        <div class="admin-guide-text m-b-8">
+                            - 분류에 맞는 작업 체크리스트입니다. 항목 추가/수정은 `prd_work_check_item` 테이블에서 관리합니다.
+                        </div>
+                        -->
+
+                        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                            <?php foreach ($workCheckList as $task) { ?>
+                                <?php
+                                    $taskCode = (string)($task['task_code'] ?? '');
+                                    $taskLabel = (string)($task['task_label'] ?? $taskCode);
+                                    $isChecked = !empty($task['is_checked']);
+                                    if ($taskCode === '') {
+                                        continue;
+                                    }
+                                ?>
+                                <label class="work-check-chip <?= $isChecked ? 'is-done' : 'is-todo' ?>" style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid <?= $isChecked ? '#22c55e' : '#d1d5db' ?>; background:<?= $isChecked ? '#f0fdf4' : '#f9fafb' ?>; min-width:220px;">
+                                    <input type="hidden" name="work_task_codes[]" value="<?= htmlspecialchars($taskCode, ENT_QUOTES, 'UTF-8') ?>">
+                                    <input type="checkbox" name="work_task_done[<?= htmlspecialchars($taskCode, ENT_QUOTES, 'UTF-8') ?>]" value="Y" <?= $isChecked ? 'checked' : '' ?>>
+                                    <span style="font-weight:600; color:#111827;"><?= htmlspecialchars($taskLabel, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <span class="work-check-state" style="margin-left:auto; font-size:11px; font-weight:700; color:<?= $isChecked ? '#15803d' : '#6b7280' ?>;">
+                                        <?= $isChecked ? '완료' : '미완료' ?>
+                                    </span>
+                                </label>
+                            <?php } ?>
+                        </div>
+                    <?php } else { ?>
+                        <div class="admin-guide-text">
+                            - 현재 분류에 연결된 작업체크 항목이 없습니다. `prd_work_check_item`에 항목을 추가해 주세요.
+                        </div>
+                    <?php } ?>
+                </td>
+            </tr>
+
             <?php if (!empty($productData['ps_idx'])) { ?>
                 <tr>
                     <th>할인중 설정</th>
@@ -279,6 +321,75 @@
                     <input type='text' name='cd_search_term' value="<?= $productData['CD_SEARCH_TERM'] ?? '' ?>">
                     <div class="admin-guide-text">
                         - 인트라넷, 오나디비 검색시 가능한 추가 검색어
+                    </div>
+                </td>
+            </tr>
+        </tbody>
+
+        <tbody>
+            <tr>
+                <td colspan="2" class="none-bg" style="height:10px;"></td>
+            </tr>
+            <tr>
+                <td colspan="2" class="none-bg title">
+                    <h1>참고자료</h1>
+                </td>
+            </tr>
+        </tbody>
+        <tbody>
+            <tr>
+                <th>자료참고 링크</th>
+                <td>
+                    <?php
+                        $referenceLinks = $productData['cd_reference_links'] ?? [];
+                        if (!is_array($referenceLinks)) {
+                            $referenceLinks = [];
+                        }
+                        if (empty($referenceLinks)) {
+                            $referenceLinks = [['title' => '', 'url' => '']];
+                        }
+                    ?>
+                    <div id="reference_links_wrap">
+                        <table class="table-style border01 width-full">
+                            <colgroup>
+                                <col width="200px" />
+                                <col />
+                                <col width="95px" />
+                                <col width="80px" />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-center">링크명</th>
+                                    <th class="text-center">URL</th>
+                                    <th class="text-center">바로가기</th>
+                                    <th class="text-center">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="reference_links_tbody">
+                                <?php foreach ($referenceLinks as $link) { ?>
+                                    <tr class="reference-link-row">
+                                        <td>
+                                            <input type="text" name="reference_link_title[]" value="<?= htmlspecialchars((string)($link['title'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="예: 공급사 상세페이지" style="width:100%;">
+                                        </td>
+                                        <td>
+                                            <input type="text" name="reference_link_url[]" value="<?= htmlspecialchars((string)($link['url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="https://example.com" style="width:100%;">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btnstyle1 btnstyle1-xs reference-link-open-btn">바로가기</button>
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-reference-link-btn">삭제</button>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="m-t-8">
+                        <button type="button" id="add_reference_link_btn" class="btnstyle1 btnstyle1-sm">링크 추가</button>
+                    </div>
+                    <div class="admin-guide-text">
+                        - 여러 링크를 추가할 수 있으며 상품정보를 수집할 수 있는 참고자료 URL를 입력해주세요. 예) 엠즈,NLS등등
                     </div>
                 </td>
             </tr>
@@ -539,6 +650,13 @@
                             <td>
                                 <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>"> g
                                 ※ 제공된 상품 상세페이지에 기재된 패키지를 포함한 전체 중량 (없다면 생략 가능)
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>실측 상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_4' style='width:80px;' value="<?= $productData['cd_weight_fn']['4'] ?? '' ?>"> g
+                                ※ 패키지를 제외한 상품만 실제 측정한 중량
                             </td>
                         </tr>
                         <tr>
@@ -844,6 +962,7 @@
             const weightFields = [
                 { name: 'cd_weight_1', label: '상품중량' },
                 { name: 'cd_weight_2', label: '전체중량' },
+                { name: 'cd_weight_4', label: '실측 상품중량' },
                 { name: 'cd_weight_3', label: '실측중량' },
             ];
 
@@ -904,6 +1023,56 @@
     }();
 
     $(function() {
+        $(document).on('change', 'input[type="checkbox"][name^="work_task_done["]', function() {
+            var $chip = $(this).closest('.work-check-chip');
+            var isDone = $(this).is(':checked');
+            $chip
+                .toggleClass('is-done', isDone)
+                .toggleClass('is-todo', !isDone)
+                .css({
+                    borderColor: isDone ? '#22c55e' : '#d1d5db',
+                    background: isDone ? '#f0fdf4' : '#f9fafb'
+                });
+            $chip.find('.work-check-state')
+                .text(isDone ? '완료' : '미완료')
+                .css('color', isDone ? '#15803d' : '#6b7280');
+        });
+
+        function buildReferenceLinkRow(title, url) {
+            var safeTitle = String(title || '').replace(/"/g, '&quot;');
+            var safeUrl = String(url || '').replace(/"/g, '&quot;');
+            return '' +
+                '<tr class="reference-link-row">' +
+                    '<td><input type="text" name="reference_link_title[]" value="' + safeTitle + '" placeholder="예: 공급사 상세페이지" style="width:100%;"></td>' +
+                    '<td><input type="text" name="reference_link_url[]" value="' + safeUrl + '" placeholder="https://example.com" style="width:100%;"></td>' +
+                    '<td class="text-center"><button type="button" class="btnstyle1 btnstyle1-xs reference-link-open-btn">바로가기</button></td>' +
+                    '<td class="text-center"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-reference-link-btn">삭제</button></td>' +
+                '</tr>';
+        }
+
+        function normalizeReferenceUrl(urlText) {
+            var url = String(urlText || '').trim();
+            if (!url) {
+                return '';
+            }
+            if (!/^https?:\/\//i.test(url)) {
+                url = 'https://' + url;
+            }
+            return url;
+        }
+
+        function extractDomainLabel(urlText) {
+            var normalized = normalizeReferenceUrl(urlText);
+            if (!normalized) {
+                return '';
+            }
+            try {
+                var parsed = new URL(normalized);
+                return parsed.hostname || normalized;
+            } catch (e) {
+                return normalized;
+            }
+        }
 
         $(".dn-select2").select2();
 
@@ -923,6 +1092,7 @@
         }
 
         const $weight3 = $('input[name="cd_weight_3"]');
+        const $weight4 = $('input[name="cd_weight_4"]');
         const $importPlastic = $('input[name="import_plastic"]');
         const $importPlasticAmount = $('input[name="import_plastic_amount"]');
 
@@ -936,9 +1106,12 @@
         }
 
         function updateImportPlasticAmount() {
-            const weightText = String($weight3.val() || '').trim();
+            const weight4Text = String($weight4.val() || '').trim();
+            const weight3Text = String($weight3.val() || '').trim();
             const percentText = String($importPlastic.val() || '').trim();
-            const weightValue = parseFloat(weightText);
+            const weight4Value = parseFloat(weight4Text);
+            const weight3Value = parseFloat(weight3Text);
+            const weightValue = Number.isFinite(weight4Value) ? weight4Value : weight3Value;
             const percentValue = parseFloat(percentText);
 
             // 실측중량/퍼센트가 모두 숫자일 때만 자동 계산
@@ -962,8 +1135,46 @@
             updateImportPlasticAmount();
         });
 
+        $weight4.on('input', function() {
+            updateImportPlasticAmount();
+        });
+
         $hbtiTargetCheckbox.on('change', toggleHbtiConfigRow);
         toggleHbtiConfigRow();
+
+        $('#add_reference_link_btn').on('click', function() {
+            $('#reference_links_tbody').append(buildReferenceLinkRow('', ''));
+        });
+
+        $(document).on('click', '.remove-reference-link-btn', function() {
+            $(this).closest('tr').remove();
+        });
+
+        $(document).on('click', '.reference-link-open-btn', function() {
+            var $row = $(this).closest('tr');
+            var $urlInput = $row.find('input[name="reference_link_url[]"]');
+            var normalizedUrl = normalizeReferenceUrl($urlInput.val());
+            if (!normalizedUrl) {
+                alert('URL을 입력해주세요.');
+                $urlInput.focus();
+                return;
+            }
+            $urlInput.val(normalizedUrl);
+            window.open(normalizedUrl, '_blank');
+        });
+
+        // 링크명이 비어있고 URL 입력 시, 링크명에 도메인 자동 채움
+        $(document).on('blur', 'input[name="reference_link_url[]"]', function() {
+            var $row = $(this).closest('tr');
+            var $titleInput = $row.find('input[name="reference_link_title[]"]');
+            if (String($titleInput.val() || '').trim() !== '') {
+                return;
+            }
+            var domainLabel = extractDomainLabel($(this).val());
+            if (domainLabel) {
+                $titleInput.val(domainLabel);
+            }
+        });
 
     });
 </script>

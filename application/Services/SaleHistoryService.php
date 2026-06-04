@@ -104,6 +104,20 @@ class SaleHistoryService
         }
 
         $adminMap = $this->getAdminMapFromRows([$saleHistory]);
+        $metaGroupStatusMap = $this->getGodoGroupUploadStatusMapFromMeta($saleHistory['meta_json'] ?? []);
+        foreach ($metaGroupStatusMap as $statusRow) {
+            $uploadedByIdx = (int)($statusRow['uploaded_by'] ?? 0);
+            if ($uploadedByIdx > 0 && !isset($adminMap[$uploadedByIdx])) {
+                $adminRow = AdminModel::query()
+                    ->select(['idx', 'ad_name', 'ad_id'])
+                    ->where('idx', $uploadedByIdx)
+                    ->first();
+                if ($adminRow) {
+                    $adminRow = is_array($adminRow) ? $adminRow : $adminRow->toArray();
+                    $adminMap[$uploadedByIdx] = (string)($adminRow['ad_name'] ?? ($adminRow['ad_id'] ?? '-'));
+                }
+            }
+        }
         $saleHistory['sale_status_text'] = $this->saleStatusText[(string)($saleHistory['sale_status'] ?? '')] ?? (string)($saleHistory['sale_status'] ?? '');
         $saleHistory['sale_mode_text'] = $this->saleModeText[(string)($saleHistory['sale_mode'] ?? '')] ?? (string)($saleHistory['sale_mode'] ?? '');
         $decodedProductList = $this->decodeProductJson($saleHistory['product_json'] ?? '[]');
@@ -111,6 +125,18 @@ class SaleHistoryService
         $saleHistory['product_list'] = $this->hydrateSaleHistoryProductListFromDb($saleHistory['product_list']);
         $saleHistory['product_count'] = count($saleHistory['product_list']);
         $saleHistory['created_by_name'] = $adminMap[(int)($saleHistory['created_by'] ?? 0)] ?? '-';
+        $saleHistory['uploaded_by_name'] = $adminMap[(int)($saleHistory['uploaded_by'] ?? 0)] ?? '-';
+        if (!empty($metaGroupStatusMap)) {
+            foreach ($metaGroupStatusMap as $rateKey => $statusRow) {
+                $uploadedByIdx = (int)($statusRow['uploaded_by'] ?? 0);
+                if ($uploadedByIdx > 0) {
+                    $metaGroupStatusMap[$rateKey]['uploaded_by_name'] = $adminMap[$uploadedByIdx] ?? (string)($statusRow['uploaded_by_name'] ?? '-');
+                }
+            }
+            $meta = $this->decodeMetaJsonToArray($saleHistory['meta_json'] ?? []);
+            $meta['godo_group_upload_status'] = $metaGroupStatusMap;
+            $saleHistory['meta_json'] = $meta;
+        }
 
         return $saleHistory;
     }
@@ -983,15 +1009,17 @@ class SaleHistoryService
     public function updateGodoGoodsCostPriceFromInspection(array $requestData): array
     {
         $goodsNo = trim((string)($requestData['goods_no'] ?? ''));
+        $localGodoCode = trim((string)($requestData['local_godo_code'] ?? ''));
         $costPrice = trim((string)($requestData['cost_price'] ?? ''));
         $psIdx = trim((string)($requestData['ps_idx'] ?? ''));
         $prdIdx = (int)($requestData['prd_idx'] ?? 0);
         $godoSalePrice = trim((string)($requestData['godo_sale_price'] ?? ''));
         $isCostMismatch = strtoupper(trim((string)($requestData['cost_mismatch'] ?? 'N'))) === 'Y';
         $isSaleMismatch = strtoupper(trim((string)($requestData['sale_mismatch'] ?? 'N'))) === 'Y';
+        $isGodoCodeMismatch = strtoupper(trim((string)($requestData['godo_code_mismatch'] ?? 'N'))) === 'Y';
 
-        if (!$isCostMismatch && !$isSaleMismatch) {
-            throw new \InvalidArgumentException('판매가/원가 불일치 항목이 없습니다.');
+        if (!$isCostMismatch && !$isSaleMismatch && !$isGodoCodeMismatch) {
+            throw new \InvalidArgumentException('판매가/원가/goodsNo 불일치 항목이 없습니다.');
         }
 
         $salePriceUpdated = false;
@@ -1033,20 +1061,44 @@ class SaleHistoryService
             $costPriceUpdated = true;
         }
 
+        $godoCodeUpdated = false;
+        if ($isGodoCodeMismatch) {
+            if ($prdIdx <= 0) {
+                throw new \InvalidArgumentException('cd_godo_code 보정 대상 상품 IDX가 없습니다.');
+            }
+            if ($goodsNo === '') {
+                throw new \InvalidArgumentException('고도몰 상품번호가 비어있어 cd_godo_code를 보정할 수 없습니다.');
+            }
+
+            ProductModel::query()
+                ->where('CD_IDX', $prdIdx)
+                ->update([
+                    'cd_godo_code' => $goodsNo,
+                ]);
+            $godoCodeUpdated = true;
+        }
+
         return [
             'goods_no' => $goodsNo,
+            'local_godo_code' => $localGodoCode,
             'cost_price' => $costPrice,
             'ps_idx' => $psIdx,
             'prd_idx' => $prdIdx,
             'godo_sale_price' => $updatedSalePrice,
             'sale_price_updated' => $salePriceUpdated,
             'cost_price_updated' => $costPriceUpdated,
+            'godo_code_updated' => $godoCodeUpdated,
             'api_result' => $apiResult,
         ];
     }
 
     /**
-     * 고도몰 원가 일괄 반영 (검수 화면)
+     * 고도몰검수 일괄처리 (검수 화면)
+     *
+     * 처리 내용:
+     * 1) 판매가 불일치(sale_mismatch=Y): 우리 DB 상품 판매가(cd_sale_price)를 고도몰 판매가로 보정
+     * 2) 원가 불일치(cost_mismatch=Y): 고도몰 API를 호출해 고도몰 원가를 우리 기준 원가로 반영
+     * 3) goodsNo 불일치(godo_code_mismatch=Y): 보유상품 cd_godo_code를 API goodsNo로 보정
      *
      * @param array $requestData
      * @return array
@@ -1055,7 +1107,7 @@ class SaleHistoryService
     {
         $rows = $requestData['rows'] ?? [];
         if (!is_array($rows)) {
-            throw new \InvalidArgumentException('일괄 반영 대상 형식이 올바르지 않습니다.');
+            throw new \InvalidArgumentException('고도몰검수 일괄처리 대상 형식이 올바르지 않습니다.');
         }
 
         // 고도몰 API 과부하 방지용 보호값
@@ -1069,30 +1121,34 @@ class SaleHistoryService
             }
 
             $goodsNo = trim((string)($row['goods_no'] ?? ''));
+            $localGodoCode = trim((string)($row['local_godo_code'] ?? ''));
             $costPrice = trim((string)($row['cost_price'] ?? ''));
             $psIdx = trim((string)($row['ps_idx'] ?? ''));
             $prdIdx = (int)($row['prd_idx'] ?? 0);
             $godoSalePrice = trim((string)($row['godo_sale_price'] ?? ''));
             $isCostMismatch = strtoupper(trim((string)($row['cost_mismatch'] ?? 'N'))) === 'Y';
             $isSaleMismatch = strtoupper(trim((string)($row['sale_mismatch'] ?? 'N'))) === 'Y';
+            $isGodoCodeMismatch = strtoupper(trim((string)($row['godo_code_mismatch'] ?? 'N'))) === 'Y';
 
-            if (!$isCostMismatch && !$isSaleMismatch) {
+            if (!$isCostMismatch && !$isSaleMismatch && !$isGodoCodeMismatch) {
                 continue;
             }
 
             $targets[] = [
                 'goods_no' => $goodsNo,
+                'local_godo_code' => $localGodoCode,
                 'cost_price' => $costPrice,
                 'ps_idx' => $psIdx,
                 'prd_idx' => $prdIdx,
                 'godo_sale_price' => $godoSalePrice,
                 'cost_mismatch' => $isCostMismatch,
                 'sale_mismatch' => $isSaleMismatch,
+                'godo_code_mismatch' => $isGodoCodeMismatch,
             ];
         }
 
         if (empty($targets)) {
-            throw new \InvalidArgumentException('일괄 반영할 판매가/원가 불일치 항목이 없습니다.');
+            throw new \InvalidArgumentException('고도몰검수 일괄처리할 판매가/원가/goodsNo 불일치 항목이 없습니다.');
         }
 
         // 실제 고도몰 API 호출 건수 기준으로 제한
@@ -1116,7 +1172,7 @@ class SaleHistoryService
         }
 
         if ($apiCount > $maxBulkCount) {
-            throw new \InvalidArgumentException('일괄 반영은 한 번에 최대 ' . $maxBulkCount . '건까지 가능합니다. 건수를 나눠서 진행해주세요.');
+            throw new \InvalidArgumentException('고도몰검수 일괄처리는 한 번에 최대 ' . $maxBulkCount . '건까지 가능합니다. 건수를 나눠서 진행해주세요.');
         }
 
         $godoApiService = new GodoApiService();
@@ -1124,17 +1180,20 @@ class SaleHistoryService
         $failedItems = [];
         $saleDedupe = [];
         $costDedupe = [];
+        $godoCodeDedupe = [];
         $apiCallIndex = 0;
 
         foreach ($targets as $target) {
             $resultItem = [
                 'goods_no' => (string)($target['goods_no'] ?? ''),
+                'local_godo_code' => (string)($target['local_godo_code'] ?? ''),
                 'cost_price' => (string)($target['cost_price'] ?? ''),
                 'ps_idx' => (string)($target['ps_idx'] ?? ''),
                 'prd_idx' => (int)($target['prd_idx'] ?? 0),
                 'godo_sale_price' => (string)($target['godo_sale_price'] ?? ''),
                 'sale_price_updated' => false,
                 'cost_price_updated' => false,
+                'godo_code_updated' => false,
                 'api_result' => [],
             ];
 
@@ -1191,10 +1250,34 @@ class SaleHistoryService
                     $resultItem['cost_price_updated'] = true;
                 }
 
+                if ($target['godo_code_mismatch'] ?? false) {
+                    $prdIdx = (int)($target['prd_idx'] ?? 0);
+                    $goodsNo = trim((string)($target['goods_no'] ?? ''));
+                    if ($prdIdx <= 0) {
+                        throw new \InvalidArgumentException('cd_godo_code 보정 대상 상품 IDX가 없습니다.');
+                    }
+                    if ($goodsNo === '') {
+                        throw new \InvalidArgumentException('고도몰 상품번호가 비어있어 cd_godo_code를 보정할 수 없습니다.');
+                    }
+
+                    $dedupeKey = $prdIdx . '|' . $goodsNo;
+                    if (!isset($godoCodeDedupe[$dedupeKey])) {
+                        ProductModel::query()
+                            ->where('CD_IDX', $prdIdx)
+                            ->update([
+                                'cd_godo_code' => $goodsNo,
+                            ]);
+                        $godoCodeDedupe[$dedupeKey] = true;
+                    }
+
+                    $resultItem['godo_code_updated'] = true;
+                }
+
                 $successItems[] = $resultItem;
             } catch (\Throwable $e) {
                 $failedItems[] = [
                     'goods_no' => (string)($target['goods_no'] ?? ''),
+                    'local_godo_code' => (string)($target['local_godo_code'] ?? ''),
                     'cost_price' => (string)($target['cost_price'] ?? ''),
                     'ps_idx' => (string)($target['ps_idx'] ?? ''),
                     'prd_idx' => (int)($target['prd_idx'] ?? 0),
@@ -1215,18 +1298,18 @@ class SaleHistoryService
         ];
     }
 
-    
+
     /**
-     * 할인 이력 기준 고도몰 타임세일 일괄 등록
+     * 할인 이력 기준 고도몰 타임세일 전체 등록
      * - sale_status=wait 상태에서만 허용
-     * - 할인율 그룹별 1회씩 API 호출
+     * - 이미 그룹별 개별 등록 완료된 할인율 그룹은 자동 제외
+     * - 모든 그룹 성공 시 sale_status=upload 로 전환
      *
      * @param array $requestData
      * @return array
      */
     public function createGodoTimeSaleFromHistory(array $requestData): array
     {
-
         $seq = (int)($requestData['seq'] ?? ($requestData['sale_history_seq'] ?? 0));
         if ($seq <= 0) {
             throw new \InvalidArgumentException('유효한 할인 이력 번호가 없습니다.');
@@ -1238,6 +1321,252 @@ class SaleHistoryService
             throw new \InvalidArgumentException('sale_status가 wait 상태일 때만 고도몰 등록이 가능합니다.');
         }
 
+        $context = $this->buildGodoTimeSaleContextFromHistory($saleHistory);
+        $grouped = $context['grouped'];
+        if (empty($grouped)) {
+            throw new \InvalidArgumentException('할인율/고도몰상품번호 기준 등록 가능한 상품이 없습니다.');
+        }
+
+        $groupStatusMap = $this->getGodoGroupUploadStatusMapFromMeta($saleHistory['meta_json'] ?? []);
+        $targetGrouped = [];
+        $skippedGroups = [];
+        foreach ($grouped as $discountRate => $goodsNoMap) {
+            $statusRow = $groupStatusMap[$discountRate] ?? [];
+            if (($statusRow['status'] ?? '') === 'success') {
+                $skippedGroups[] = [
+                    'discount_rate' => $discountRate,
+                    'goods_count' => count(array_keys($goodsNoMap)),
+                    'uploaded_at' => (string)($statusRow['uploaded_at'] ?? ''),
+                    'uploaded_by' => (int)($statusRow['uploaded_by'] ?? 0),
+                    'uploaded_by_name' => (string)($statusRow['uploaded_by_name'] ?? ''),
+                ];
+                continue;
+            }
+            $targetGrouped[$discountRate] = $goodsNoMap;
+        }
+
+        $godoApiService = new GodoApiService();
+        $successGroups = [];
+        $failedGroups = [];
+        $uploadedBy = (int)($requestData['uploaded_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
+        $uploadedByName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+
+        foreach ($targetGrouped as $discountRate => $goodsNoMap) {
+            $goodsNos = array_keys($goodsNoMap);
+            $goodsNosCsv = implode(',', $goodsNos);
+            try {
+                $apiResult = $godoApiService->createGodoTimeSale([
+                    'startDt' => $context['start_dt'],
+                    'endDt' => $context['end_dt'],
+                    'tsKind' => $context['ts_kind'],
+                    'discountRate' => $discountRate,
+                    'goodsNos' => $goodsNosCsv,
+                ]);
+
+                $statusAt = date('Y-m-d H:i:s');
+                $groupStatusMap[$discountRate] = [
+                    'status' => 'success',
+                    'discount_rate' => $discountRate,
+                    'goods_count' => count($goodsNos),
+                    'goods_nos' => $goodsNos,
+                    'uploaded_at' => $statusAt,
+                    'uploaded_by' => $uploadedBy > 0 ? $uploadedBy : null,
+                    'uploaded_by_name' => $uploadedByName,
+                    'source_mode' => 'bulk',
+                    'message' => '',
+                ];
+
+                $successGroups[] = [
+                    'discount_rate' => $discountRate,
+                    'goods_count' => count($goodsNos),
+                    'goods_nos' => $goodsNos,
+                    'api_result' => $apiResult,
+                ];
+            } catch (\Throwable $e) {
+                $statusAt = date('Y-m-d H:i:s');
+                $groupStatusMap[$discountRate] = [
+                    'status' => 'failed',
+                    'discount_rate' => $discountRate,
+                    'goods_count' => count($goodsNos),
+                    'goods_nos' => $goodsNos,
+                    'uploaded_at' => $statusAt,
+                    'uploaded_by' => $uploadedBy > 0 ? $uploadedBy : null,
+                    'uploaded_by_name' => $uploadedByName,
+                    'source_mode' => 'bulk',
+                    'message' => $e->getMessage(),
+                ];
+
+                $failedGroups[] = [
+                    'discount_rate' => $discountRate,
+                    'goods_count' => count($goodsNos),
+                    'goods_nos' => $goodsNos,
+                    'message' => $e->getMessage(),
+                ];
+            }
+        }
+
+        $meta = $this->saveGodoGroupUploadStatusMeta($seq, $saleHistory, $groupStatusMap);
+        $saleHistory['meta_json'] = $meta;
+
+        $finalizeResult = $this->finalizeGodoTimeSaleUploadIfCompleted(
+            $seq,
+            $saleHistory,
+            $context,
+            $groupStatusMap,
+            $requestData
+        );
+
+        return [
+            'seq' => $seq,
+            'sale_status' => $finalizeResult['sale_status'],
+            'start_dt' => $context['start_dt'],
+            'end_dt' => $context['end_dt'],
+            'ts_kind' => $context['ts_kind'],
+            'requested_group_count' => count($grouped),
+            'target_group_count' => count($targetGrouped),
+            'skipped_group_count' => count($skippedGroups),
+            'success_group_count' => count($successGroups),
+            'failed_group_count' => count($failedGroups),
+            'is_upload_completed' => $finalizeResult['is_upload_completed'],
+            'uploaded_at' => $finalizeResult['uploaded_at'],
+            'uploaded_by' => $finalizeResult['uploaded_by'],
+            'success_groups' => $successGroups,
+            'failed_groups' => $failedGroups,
+            'skipped_groups' => $skippedGroups,
+            'sale_record_result' => $finalizeResult['sale_record_result'],
+            'rollback_snapshot' => $finalizeResult['rollback_snapshot'],
+        ];
+    }
+
+    /**
+     * 할인 이력 기준 고도몰 타임세일 그룹별 개별 등록
+     * - sale_status=wait 상태에서만 허용
+     * - 이미 성공 등록된 그룹은 재등록하지 않고 건너뜀
+     * - 마지막 남은 그룹까지 성공하면 sale_status=upload 로 전환
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function createGodoTimeSaleGroupFromHistory(array $requestData): array
+    {
+        $seq = (int)($requestData['seq'] ?? ($requestData['sale_history_seq'] ?? 0));
+        if ($seq <= 0) {
+            throw new \InvalidArgumentException('유효한 할인 이력 번호가 없습니다.');
+        }
+
+        $discountRateInput = trim((string)($requestData['discount_rate'] ?? ''));
+        $discountRate = $this->normalizeDiscountRateKey($discountRateInput);
+        if ($discountRate === '') {
+            throw new \InvalidArgumentException('유효한 할인율 그룹 값이 없습니다.');
+        }
+
+        $saleHistory = $this->getSaleHistoryDetail($seq);
+        $saleStatus = trim((string)($saleHistory['sale_status'] ?? ''));
+        if ($saleStatus !== 'wait') {
+            throw new \InvalidArgumentException('sale_status가 wait 상태일 때만 고도몰 등록이 가능합니다.');
+        }
+
+        $context = $this->buildGodoTimeSaleContextFromHistory($saleHistory);
+        $grouped = $context['grouped'];
+        if (empty($grouped[$discountRate])) {
+            throw new \InvalidArgumentException('요청한 할인율 그룹의 등록 대상 상품이 없습니다.');
+        }
+
+        $groupStatusMap = $this->getGodoGroupUploadStatusMapFromMeta($saleHistory['meta_json'] ?? []);
+        $existingStatus = $groupStatusMap[$discountRate] ?? [];
+        if (($existingStatus['status'] ?? '') === 'success') {
+            $finalizeResult = $this->finalizeGodoTimeSaleUploadIfCompleted(
+                $seq,
+                $saleHistory,
+                $context,
+                $groupStatusMap,
+                $requestData
+            );
+
+            return [
+                'seq' => $seq,
+                'discount_rate' => $discountRate,
+                'already_registered' => true,
+                'group_status' => $existingStatus,
+                'sale_status' => $finalizeResult['sale_status'],
+                'is_upload_completed' => $finalizeResult['is_upload_completed'],
+                'uploaded_at' => $finalizeResult['uploaded_at'],
+                'uploaded_by' => $finalizeResult['uploaded_by'],
+                'sale_record_result' => $finalizeResult['sale_record_result'],
+            ];
+        }
+
+        $goodsNos = array_keys($grouped[$discountRate]);
+        $godoApiService = new GodoApiService();
+        $uploadedBy = (int)($requestData['uploaded_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
+        $uploadedByName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        $statusAt = date('Y-m-d H:i:s');
+
+        $apiResult = [];
+        $status = 'success';
+        $message = '';
+        try {
+            $apiResult = $godoApiService->createGodoTimeSale([
+                'startDt' => $context['start_dt'],
+                'endDt' => $context['end_dt'],
+                'tsKind' => $context['ts_kind'],
+                'discountRate' => $discountRate,
+                'goodsNos' => implode(',', $goodsNos),
+            ]);
+        } catch (\Throwable $e) {
+            $status = 'failed';
+            $message = $e->getMessage();
+        }
+
+        $groupStatusMap[$discountRate] = [
+            'status' => $status,
+            'discount_rate' => $discountRate,
+            'goods_count' => count($goodsNos),
+            'goods_nos' => $goodsNos,
+            'uploaded_at' => $statusAt,
+            'uploaded_by' => $uploadedBy > 0 ? $uploadedBy : null,
+            'uploaded_by_name' => $uploadedByName,
+            'source_mode' => 'group',
+            'message' => $message,
+        ];
+
+        $meta = $this->saveGodoGroupUploadStatusMeta($seq, $saleHistory, $groupStatusMap);
+        $saleHistory['meta_json'] = $meta;
+
+        if ($status !== 'success') {
+            throw new \RuntimeException($message !== '' ? $message : '할인율 그룹 등록에 실패했습니다.');
+        }
+
+        $finalizeResult = $this->finalizeGodoTimeSaleUploadIfCompleted(
+            $seq,
+            $saleHistory,
+            $context,
+            $groupStatusMap,
+            $requestData
+        );
+
+        return [
+            'seq' => $seq,
+            'discount_rate' => $discountRate,
+            'already_registered' => false,
+            'group_status' => $groupStatusMap[$discountRate],
+            'api_result' => $apiResult,
+            'sale_status' => $finalizeResult['sale_status'],
+            'is_upload_completed' => $finalizeResult['is_upload_completed'],
+            'uploaded_at' => $finalizeResult['uploaded_at'],
+            'uploaded_by' => $finalizeResult['uploaded_by'],
+            'sale_record_result' => $finalizeResult['sale_record_result'],
+        ];
+    }
+
+    /**
+     * 할인 이력에서 고도몰 등록 컨텍스트를 구성한다.
+     *
+     * @param array $saleHistory
+     * @return array
+     */
+    private function buildGodoTimeSaleContextFromHistory(array $saleHistory): array
+    {
         $startDt = trim((string)($saleHistory['sale_start_date'] ?? ''));
         $endDt = trim((string)($saleHistory['sale_end_date'] ?? ''));
         if ($startDt === '' || $endDt === '') {
@@ -1263,17 +1592,9 @@ class SaleHistoryService
                 continue;
             }
 
-            $discountRateRaw = trim((string)($item['discount_rate'] ?? ''));
-            $discountRateNum = is_numeric($discountRateRaw) ? (float)$discountRateRaw : 0;
-            if ($discountRateNum <= 0) {
-                continue;
-            }
-            $discountRate = rtrim(rtrim(number_format($discountRateNum, 2, '.', ''), '0'), '.');
+            $discountRate = $this->normalizeDiscountRateKey($item['discount_rate'] ?? '');
             if ($discountRate === '') {
                 continue;
-            }
-            if (!isset($grouped[$discountRate])) {
-                $grouped[$discountRate] = [];
             }
 
             $goodsNo = trim((string)($item['godo_goods_no'] ?? ($item['godo_goodsNo'] ?? ($item['godoNo'] ?? ''))));
@@ -1281,46 +1602,128 @@ class SaleHistoryService
                 continue;
             }
 
+            if (!isset($grouped[$discountRate])) {
+                $grouped[$discountRate] = [];
+            }
             $grouped[$discountRate][$goodsNo] = true;
         }
 
-        if (empty($grouped)) {
-            throw new \InvalidArgumentException('할인율/고도몰상품번호 기준 등록 가능한 상품이 없습니다.');
+        return [
+            'start_dt' => $startDt,
+            'end_dt' => $endDt,
+            'sale_mode' => $saleMode,
+            'ts_kind' => $tsKind,
+            'product_list' => $productList,
+            'grouped' => $grouped,
+        ];
+    }
+
+    /**
+     * 할인율 키를 고정 문자열 형태로 정규화한다.
+     *
+     * @param mixed $value
+     * @return string
+     */
+    private function normalizeDiscountRateKey($value): string
+    {
+        $raw = trim((string)$value);
+        $num = is_numeric($raw) ? (float)$raw : 0.0;
+        if ($num <= 0) {
+            return '';
         }
 
-        $godoApiService = new GodoApiService();
-        $successGroups = [];
-        $failedGroups = [];
+        return rtrim(rtrim(number_format($num, 2, '.', ''), '0'), '.');
+    }
 
-        foreach ($grouped as $discountRate => $goodsNoMap) {
-            $goodsNos = array_keys($goodsNoMap);
-            $goodsNosCsv = implode(',', $goodsNos);
-            try {
-                $apiResult = $godoApiService->createGodoTimeSale([
-                    'startDt' => $startDt,
-                    'endDt' => $endDt,
-                    'tsKind' => $tsKind,
-                    'discountRate' => $discountRate,
-                    'goodsNos' => $goodsNosCsv,
-                ]);
+    /**
+     * meta_json에서 할인율 그룹 업로드 상태맵을 읽는다.
+     *
+     * @param mixed $metaJson
+     * @return array
+     */
+    private function getGodoGroupUploadStatusMapFromMeta($metaJson): array
+    {
+        $meta = $this->decodeMetaJsonToArray($metaJson);
+        $statusMap = [];
+        $rawMap = $meta['godo_group_upload_status'] ?? [];
+        if (!is_array($rawMap)) {
+            return [];
+        }
 
-                $successGroups[] = [
-                    'discount_rate' => $discountRate,
-                    'goods_count' => count($goodsNos),
-                    'goods_nos' => $goodsNos,
-                    'api_result' => $apiResult,
-                ];
-            } catch (\Throwable $e) {
-                $failedGroups[] = [
-                    'discount_rate' => $discountRate,
-                    'goods_count' => count($goodsNos),
-                    'goods_nos' => $goodsNos,
-                    'message' => $e->getMessage(),
-                ];
+        foreach ($rawMap as $rate => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $normalizedRate = $this->normalizeDiscountRateKey($row['discount_rate'] ?? $rate);
+            if ($normalizedRate === '') {
+                continue;
+            }
+            $statusMap[$normalizedRate] = [
+                'status' => (string)($row['status'] ?? ''),
+                'discount_rate' => $normalizedRate,
+                'goods_count' => (int)($row['goods_count'] ?? 0),
+                'goods_nos' => (isset($row['goods_nos']) && is_array($row['goods_nos'])) ? array_values($row['goods_nos']) : [],
+                'uploaded_at' => (string)($row['uploaded_at'] ?? ''),
+                'uploaded_by' => (int)($row['uploaded_by'] ?? 0),
+                'uploaded_by_name' => (string)($row['uploaded_by_name'] ?? ''),
+                'source_mode' => (string)($row['source_mode'] ?? ''),
+                'message' => (string)($row['message'] ?? ''),
+            ];
+        }
+
+        return $statusMap;
+    }
+
+    /**
+     * 할인율 그룹 업로드 상태맵을 meta_json에 저장한다.
+     *
+     * @param int $seq
+     * @param array $saleHistory
+     * @param array $groupStatusMap
+     * @return array 저장된 meta 배열
+     */
+    private function saveGodoGroupUploadStatusMeta(int $seq, array $saleHistory, array $groupStatusMap): array
+    {
+        $meta = $this->decodeMetaJsonToArray($saleHistory['meta_json'] ?? []);
+        $meta['godo_group_upload_status'] = $groupStatusMap;
+
+        ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->update([
+                'meta_json' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+        return $meta;
+    }
+
+    /**
+     * 할인율 그룹 등록상태가 모두 성공이면 sale_status를 upload로 전환한다.
+     *
+     * @param int $seq
+     * @param array $saleHistory
+     * @param array $context
+     * @param array $groupStatusMap
+     * @param array $requestData
+     * @return array
+     */
+    private function finalizeGodoTimeSaleUploadIfCompleted(
+        int $seq,
+        array $saleHistory,
+        array $context,
+        array $groupStatusMap,
+        array $requestData
+    ): array {
+        $grouped = $context['grouped'] ?? [];
+        $allSuccess = !empty($grouped);
+        foreach (array_keys($grouped) as $rate) {
+            $status = (string)(($groupStatusMap[$rate] ?? [])['status'] ?? '');
+            if ($status !== 'success') {
+                $allSuccess = false;
+                break;
             }
         }
 
-        $isUploadCompleted = (count($failedGroups) === 0 && count($successGroups) === count($grouped) && count($successGroups) > 0);
+        $saleStatus = trim((string)($saleHistory['sale_status'] ?? 'wait'));
         $uploadedAt = null;
         $uploadedBy = null;
         $saleRecordResult = [
@@ -1329,45 +1732,74 @@ class SaleHistoryService
             'provider_target_count' => 0,
             'provider_updated_count' => 0,
         ];
-        if ($isUploadCompleted) {
-            // 고도몰 타임세일 업로드 완료 시, 보유/위탁 상품에 할인 시작일을 기록한다.
-            $saleRecordResult = $this->recordSaleStartDateToSourceProducts(
-                $seq,
-                $saleMode,
-                $startDt,
-                $endDt,
-                $productList
-            );
-
-            $uploadedAt = date('Y-m-d H:i:s');
-            $uploadedBy = (int)($requestData['uploaded_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
-            ProductSaleHistoryModel::query()
-                ->where('seq', $seq)
-                ->update([
-                    'sale_status' => 'upload',
-                    'uploaded_at' => $uploadedAt,
-                    'uploaded_by' => $uploadedBy > 0 ? $uploadedBy : null,
-                ]);
-            $saleStatus = 'upload';
-        }
-
-        return [
-            'seq' => $seq,
-            'sale_status' => $saleStatus,
-            'start_dt' => $startDt,
-            'end_dt' => $endDt,
-            'ts_kind' => $tsKind,
-            'requested_group_count' => count($grouped),
-            'success_group_count' => count($successGroups),
-            'failed_group_count' => count($failedGroups),
-            'is_upload_completed' => $isUploadCompleted,
-            'uploaded_at' => $uploadedAt,
-            'uploaded_by' => $uploadedBy,
-            'success_groups' => $successGroups,
-            'failed_groups' => $failedGroups,
-            'sale_record_result' => $saleRecordResult,
+        $rollbackSnapshot = [
+            'have_count' => 0,
+            'provider_count' => 0,
         ];
 
+        if (!$allSuccess) {
+            return [
+                'is_upload_completed' => false,
+                'sale_status' => $saleStatus,
+                'uploaded_at' => $uploadedAt,
+                'uploaded_by' => $uploadedBy,
+                'sale_record_result' => $saleRecordResult,
+                'rollback_snapshot' => $rollbackSnapshot,
+            ];
+        }
+
+        if ($saleStatus === 'upload') {
+            return [
+                'is_upload_completed' => true,
+                'sale_status' => $saleStatus,
+                'uploaded_at' => (string)($saleHistory['uploaded_at'] ?? ''),
+                'uploaded_by' => (int)($saleHistory['uploaded_by'] ?? 0),
+                'sale_record_result' => $saleRecordResult,
+                'rollback_snapshot' => $rollbackSnapshot,
+            ];
+        }
+
+        $rollbackRaw = $this->buildSaleHistoryRollbackSnapshot($context['product_list'] ?? []);
+        $rollbackSnapshot = [
+            'have_count' => (int)($rollbackRaw['have_count'] ?? 0),
+            'provider_count' => (int)($rollbackRaw['provider_count'] ?? 0),
+        ];
+
+        $saleRecordResult = $this->recordSaleStartDateToSourceProducts(
+            $seq,
+            (string)($context['sale_mode'] ?? 'day'),
+            (string)($context['start_dt'] ?? ''),
+            (string)($context['end_dt'] ?? ''),
+            (array)($context['product_list'] ?? [])
+        );
+
+        $uploadedAt = date('Y-m-d H:i:s');
+        $uploadedBy = (int)($requestData['uploaded_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
+        ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->update([
+                'sale_status' => 'upload',
+                'uploaded_at' => $uploadedAt,
+                'uploaded_by' => $uploadedBy > 0 ? $uploadedBy : null,
+            ]);
+
+        $this->saveUploadRollbackSnapshotMeta(
+            $seq,
+            $saleHistory,
+            $rollbackRaw,
+            $uploadedAt,
+            $uploadedBy,
+            $saleRecordResult
+        );
+
+        return [
+            'is_upload_completed' => true,
+            'sale_status' => 'upload',
+            'uploaded_at' => $uploadedAt,
+            'uploaded_by' => $uploadedBy,
+            'sale_record_result' => $saleRecordResult,
+            'rollback_snapshot' => $rollbackSnapshot,
+        ];
     }
 
 
@@ -1448,10 +1880,11 @@ class SaleHistoryService
 
                 $item = $haveItemMap[$psIdx];
                 $beforeSaleDate = trim((string)($stockRow['ps_sale_date'] ?? ''));
-                $nextSaleDate = $saleStartDate;
+                // 마지막 할인일은 할인 종료일 기준으로 기록한다.
+                $nextSaleDate = $saleEndDate;
                 if ($beforeSaleDate !== '' && $beforeSaleDate !== '0000-00-00') {
                     $beforeTs = strtotime($beforeSaleDate);
-                    $nextTs = strtotime($saleStartDate);
+                    $nextTs = strtotime($saleEndDate);
                     if ($beforeTs !== false && $nextTs !== false && $beforeTs > $nextTs) {
                         $nextSaleDate = date('Y-m-d', $beforeTs);
                     }
@@ -1548,10 +1981,11 @@ class SaleHistoryService
                 }
 
                 $beforeSaleDate = trim((string)($providerRow['last_sale_date'] ?? ''));
-                $nextSaleDate = $saleStartDate;
+                // 마지막 할인일은 할인 종료일 기준으로 기록한다.
+                $nextSaleDate = $saleEndDate;
                 if ($beforeSaleDate !== '' && $beforeSaleDate !== '0000-00-00') {
                     $beforeTs = strtotime($beforeSaleDate);
-                    $nextTs = strtotime($saleStartDate);
+                    $nextTs = strtotime($saleEndDate);
                     if ($beforeTs !== false && $nextTs !== false && $beforeTs > $nextTs) {
                         $nextSaleDate = date('Y-m-d', $beforeTs);
                     }
@@ -1577,6 +2011,215 @@ class SaleHistoryService
             'sale_start_date' => $saleStartDate,
             'sale_start_datetime' => $saleStartDateTime,
             'sale_end_datetime' => $saleEndDateTime,
+        ];
+    }
+
+    /**
+     * 고도몰 등록 전, 원복용 할인 상태 스냅샷을 구성한다.
+     *
+     * @param array $productList
+     * @return array
+     */
+    private function buildSaleHistoryRollbackSnapshot(array $productList): array
+    {
+        $havePsIdxs = [];
+        $providerIdxs = [];
+        foreach ($productList as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $itemSource = trim((string)($item['item_source'] ?? ''));
+            $itemKey = trim((string)($item['item_key'] ?? ''));
+            if ($itemSource === '') {
+                $itemSource = ($itemKey !== '' && strpos($itemKey, 'provider_') === 0) ? 'provider' : 'have';
+            }
+
+            $idx = (int)($item['ps_idx'] ?? 0);
+            if ($idx <= 0) {
+                continue;
+            }
+
+            if ($itemSource === 'provider') {
+                $providerIdxs[$idx] = true;
+            } else {
+                $havePsIdxs[$idx] = true;
+            }
+        }
+
+        $haveRows = [];
+        if (!empty($havePsIdxs)) {
+            $haveRows = ProductStockModel::query()
+                ->select([
+                    'ps_idx',
+                    'ps_sale_date',
+                    'ps_in_sale_s',
+                    'ps_in_sale_e',
+                    'ps_in_sale_data',
+                    'ps_sale_log',
+                ])
+                ->whereIn('ps_idx', array_keys($havePsIdxs))
+                ->get()
+                ->toArray();
+        }
+
+        $providerRows = [];
+        if (!empty($providerIdxs)) {
+            $providerRows = ProductPartnerModel::query()
+                ->select(['idx', 'last_sale_date'])
+                ->whereIn('idx', array_keys($providerIdxs))
+                ->get()
+                ->toArray();
+        }
+
+        return [
+            'saved_at' => date('Y-m-d H:i:s'),
+            'have_count' => count($haveRows),
+            'provider_count' => count($providerRows),
+            'have_rows' => $haveRows,
+            'provider_rows' => $providerRows,
+        ];
+    }
+
+    /**
+     * 업로드 직전 스냅샷을 sale_history.meta_json에 저장한다.
+     *
+     * @param int $seq
+     * @param array $saleHistory
+     * @param array $snapshot
+     * @param string $uploadedAt
+     * @param int|null $uploadedBy
+     * @param array $saleRecordResult
+     * @return void
+     */
+    private function saveUploadRollbackSnapshotMeta(
+        int $seq,
+        array $saleHistory,
+        array $snapshot,
+        string $uploadedAt,
+        ?int $uploadedBy,
+        array $saleRecordResult
+    ): void {
+        $meta = $this->decodeMetaJsonToArray($saleHistory['meta_json'] ?? []);
+        $meta['upload_rollback'] = [
+            'is_restored' => false,
+            'snapshot' => $snapshot,
+            'uploaded_at' => $uploadedAt,
+            'uploaded_by' => $uploadedBy,
+            'sale_record_result' => $saleRecordResult,
+        ];
+
+        ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->update([
+                'meta_json' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+    }
+
+    /**
+     * 고도몰 등록 후 할인일 변경분 원상복구
+     * - 보유: ps_sale_date/ps_in_sale_s,ps_in_sale_e,ps_in_sale_data,ps_sale_log
+     * - 위탁: last_sale_date
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function restoreSaleDateFromHistoryUpload(array $requestData): array
+    {
+        $seq = (int)($requestData['seq'] ?? ($requestData['sale_history_seq'] ?? 0));
+        if ($seq <= 0) {
+            throw new \InvalidArgumentException('유효한 할인 이력 번호가 없습니다.');
+        }
+
+        $saleHistory = $this->getSaleHistoryDetail($seq);
+        $meta = $this->decodeMetaJsonToArray($saleHistory['meta_json'] ?? []);
+        $rollbackMeta = $meta['upload_rollback'] ?? [];
+        if (!is_array($rollbackMeta) || empty($rollbackMeta['snapshot']) || !is_array($rollbackMeta['snapshot'])) {
+            throw new \InvalidArgumentException('원상복구 가능한 스냅샷 데이터가 없습니다.');
+        }
+        if (!empty($rollbackMeta['is_restored'])) {
+            throw new \InvalidArgumentException('이미 원상복구가 완료된 이력입니다.');
+        }
+
+        $snapshot = $rollbackMeta['snapshot'];
+        $haveRows = (isset($snapshot['have_rows']) && is_array($snapshot['have_rows'])) ? $snapshot['have_rows'] : [];
+        $providerRows = (isset($snapshot['provider_rows']) && is_array($snapshot['provider_rows'])) ? $snapshot['provider_rows'] : [];
+
+        $haveRestored = 0;
+        foreach ($haveRows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $psIdx = (int)($row['ps_idx'] ?? 0);
+            if ($psIdx <= 0) {
+                continue;
+            }
+
+            $updated = ProductStockModel::query()
+                ->where('ps_idx', $psIdx)
+                ->update([
+                    'ps_sale_date' => (string)($row['ps_sale_date'] ?? ''),
+                    'ps_in_sale_s' => (string)($row['ps_in_sale_s'] ?? ''),
+                    'ps_in_sale_e' => (string)($row['ps_in_sale_e'] ?? ''),
+                    'ps_in_sale_data' => (string)($row['ps_in_sale_data'] ?? ''),
+                    'ps_sale_log' => (string)($row['ps_sale_log'] ?? '[]'),
+                ]);
+            if ((int)$updated > 0) {
+                $haveRestored++;
+            }
+        }
+
+        $providerRestored = 0;
+        foreach ($providerRows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $providerIdx = (int)($row['idx'] ?? 0);
+            if ($providerIdx <= 0) {
+                continue;
+            }
+
+            $updated = ProductPartnerModel::query()
+                ->where('idx', $providerIdx)
+                ->update([
+                    'last_sale_date' => (string)($row['last_sale_date'] ?? ''),
+                ]);
+            if ((int)$updated > 0) {
+                $providerRestored++;
+            }
+        }
+
+        $restoredAt = date('Y-m-d H:i:s');
+        $restoredBy = (int)($requestData['restored_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
+        $rollbackMeta['is_restored'] = true;
+        $rollbackMeta['restored_at'] = $restoredAt;
+        $rollbackMeta['restored_by'] = $restoredBy > 0 ? $restoredBy : null;
+        $rollbackMeta['restored_result'] = [
+            'have_target_count' => count($haveRows),
+            'have_restored_count' => $haveRestored,
+            'provider_target_count' => count($providerRows),
+            'provider_restored_count' => $providerRestored,
+        ];
+        $meta['upload_rollback'] = $rollbackMeta;
+
+        ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->update([
+                'sale_status' => 'wait',
+                'uploaded_at' => null,
+                'uploaded_by' => null,
+                'meta_json' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+        return [
+            'seq' => $seq,
+            'sale_status' => 'wait',
+            'restored_at' => $restoredAt,
+            'restored_by' => $restoredBy > 0 ? $restoredBy : null,
+            'have_target_count' => count($haveRows),
+            'have_restored_count' => $haveRestored,
+            'provider_target_count' => count($providerRows),
+            'provider_restored_count' => $providerRestored,
         ];
     }
 
@@ -2043,6 +2686,109 @@ class SaleHistoryService
     }
 
     /**
+     * 위탁상품 할인 로그 화면용 데이터 조회
+     * - 할인이력(product_json)에서 해당 위탁상품(idx) 로그를 역추적
+     *
+     * @param int|string $providerIdx
+     * @return array
+     */
+    public function getProviderDiscountSaleLogPageData($providerIdx): array
+    {
+        $providerIdx = (int)$providerIdx;
+        if ($providerIdx <= 0) {
+            throw new \InvalidArgumentException('위탁상품 고유번호가 비어있습니다.');
+        }
+
+        $provider = ProductPartnerModel::query()
+            ->select(['idx', 'name', 'sale_price', 'order_price', 'last_sale_date'])
+            ->where('idx', $providerIdx)
+            ->first();
+        if (empty($provider)) {
+            throw new \RuntimeException('위탁상품 정보를 찾을 수 없습니다.');
+        }
+        $provider = $provider->toArray();
+
+        $historyRows = ProductSaleHistoryModel::query()
+            ->select(['seq', 'sale_mode', 'sale_start_date', 'sale_end_date', 'created_at', 'product_json'])
+            ->orderBy('seq', 'desc')
+            ->limit(500)
+            ->get()
+            ->toArray();
+
+        $rows = [];
+        foreach ($historyRows as $historyRow) {
+            $decoded = $this->decodeProductJson($historyRow['product_json'] ?? '[]');
+            $productList = $this->normalizeSaleHistoryProductList($decoded);
+            if (empty($productList)) {
+                continue;
+            }
+
+            foreach ($productList as $item) {
+                if (!is_array($item)) {
+                    continue;
+                }
+
+                $itemSource = trim((string)($item['item_source'] ?? ''));
+                $itemKey = trim((string)($item['item_key'] ?? ''));
+                if ($itemSource === '') {
+                    $itemSource = ($itemKey !== '' && strpos($itemKey, 'provider_') === 0) ? 'provider' : 'have';
+                }
+                if ($itemSource !== 'provider') {
+                    continue;
+                }
+
+                $itemProviderIdx = (int)($item['ps_idx'] ?? 0);
+                if ($itemProviderIdx <= 0 && preg_match('/^provider_(\d+)$/', $itemKey, $m) === 1) {
+                    $itemProviderIdx = (int)$m[1];
+                }
+                if ($itemProviderIdx !== $providerIdx) {
+                    continue;
+                }
+
+                $saleMode = trim((string)($historyRow['sale_mode'] ?? ''));
+                $saleModeText = $this->saleModeText[$saleMode] ?? $saleMode;
+                $startDate = trim((string)($historyRow['sale_start_date'] ?? ''));
+                $endDate = trim((string)($historyRow['sale_end_date'] ?? ''));
+
+                $displayDay = $endDate;
+                if ($saleMode === 'period' && $startDate !== '' && $endDate !== '') {
+                    $displayDay = $startDate . ' ~<br>' . $endDate;
+                }
+
+                $originalPrice = (int)($item['sale_price'] ?? ($provider['sale_price'] ?? 0));
+                $costPrice = (int)($item['cost_price'] ?? ($provider['order_price'] ?? 0));
+                $marginPre = 0;
+                if ($originalPrice > 0) {
+                    $marginPre = round((($originalPrice - $costPrice) / $originalPrice) * 100, 2);
+                }
+
+                $rows[] = [
+                    'sale_mode_text' => $saleModeText,
+                    'display_day' => $displayDay,
+                    'original_price' => $originalPrice,
+                    'cost_price' => $costPrice,
+                    'margin_pre' => $marginPre,
+                    'sale_per' => (string)($item['discount_rate'] ?? 0),
+                    'sale_price' => (int)($item['discount_sale_price'] ?? 0),
+                    'margin_price' => (int)($item['discount_margin_amount'] ?? 0),
+                    'margin_per' => (string)($item['discount_margin_per'] ?? 0),
+                    'reg_date' => (string)($historyRow['created_at'] ?? ''),
+                    'sale_history_seq' => (int)($historyRow['seq'] ?? 0),
+                ];
+            }
+        }
+
+        return [
+            'provider_idx' => $providerIdx,
+            'provider_name' => (string)($provider['name'] ?? ''),
+            'recent_sale_log' => [
+                'last_sale_date' => (string)($provider['last_sale_date'] ?? ''),
+            ],
+            'rows' => $rows,
+        ];
+    }
+
+    /**
      * 할인 이력 저장 (신규/수정)
      *
      * @param array $requestData
@@ -2177,6 +2923,27 @@ class SaleHistoryService
         return '{}';
     }
 
+    /**
+     * meta_json 값을 배열로 안전하게 변환
+     *
+     * @param mixed $value
+     * @return array
+     */
+    private function decodeMetaJsonToArray($value): array
+    {
+        if (is_array($value)) {
+            return $value;
+        }
+
+        $text = trim((string)$value);
+        if ($text === '') {
+            return [];
+        }
+
+        $decoded = json_decode(html_entity_decode($text, ENT_QUOTES | ENT_HTML5, 'UTF-8'), true);
+        return is_array($decoded) ? $decoded : [];
+    }
+
     private function decodeProductJson($value): array
     {
         $decoded = is_array($value) ? $value : json_decode((string)$value, true);
@@ -2241,6 +3008,10 @@ class SaleHistoryService
             $createdBy = (int)($row['created_by'] ?? 0);
             if ($createdBy > 0) {
                 $adminIdxs[] = $createdBy;
+            }
+            $uploadedBy = (int)($row['uploaded_by'] ?? 0);
+            if ($uploadedBy > 0) {
+                $adminIdxs[] = $uploadedBy;
             }
         }
 
