@@ -187,6 +187,11 @@ class SaleHistoryController extends BaseClass
                     $result = $saleHistoryService->createGodoTimeSaleGroupFromHistory($requestData);
                     $message = '고도몰 타임세일 그룹 등록 완료';
                     break;
+
+                case 'move_sale_history_discount_group_item':
+                    $result = $saleHistoryService->moveSaleHistoryDiscountGroupItem($requestData);
+                    $message = '할인율 그룹 이동 저장 완료';
+                    break;
                     
                 case 'restore_sale_date_from_history_upload':
                     $result = $saleHistoryService->restoreSaleDateFromHistoryUpload($requestData);

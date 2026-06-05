@@ -1560,6 +1560,173 @@ class SaleHistoryService
     }
 
     /**
+     * 할인 상세에서 특정 상품의 할인율 그룹을 다른 그룹으로 이동 저장한다.
+     * - 대상: sale_status=wait 상태의 할인 이력만 허용
+     * - 저장: prd_sale_history.product_json 내부 discount_rate/할인가/할인후마진 재계산 후 반영
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function moveSaleHistoryDiscountGroupItem(array $requestData): array
+    {
+        $seq = (int)($requestData['seq'] ?? ($requestData['sale_history_seq'] ?? 0));
+        if ($seq <= 0) {
+            throw new \InvalidArgumentException('유효한 할인 이력 번호가 없습니다.');
+        }
+
+        $targetRate = $this->normalizeDiscountRateKey($requestData['target_discount_rate'] ?? '');
+        if ($targetRate === '') {
+            throw new \InvalidArgumentException('이동할 할인율 그룹이 올바르지 않습니다.');
+        }
+
+        $itemKey = trim((string)($requestData['item_key'] ?? ''));
+        $itemSource = trim((string)($requestData['item_source'] ?? ''));
+        $psIdx = (int)($requestData['ps_idx'] ?? 0);
+        $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+
+        $row = ProductSaleHistoryModel::find($seq);
+        if (!$row) {
+            throw new \RuntimeException('할인 이력을 찾을 수 없습니다.');
+        }
+        $saleHistory = $row->toArray();
+
+        $saleStatus = trim((string)($saleHistory['sale_status'] ?? ''));
+        if ($saleStatus !== 'wait') {
+            throw new \InvalidArgumentException('sale_status가 wait 상태일 때만 그룹 이동이 가능합니다.');
+        }
+
+        $rawProductJson = $this->decodeProductJson($saleHistory['product_json'] ?? '[]');
+        $containerKey = null;
+        $productList = [];
+        if (isset($rawProductJson['products']) && is_array($rawProductJson['products'])) {
+            $containerKey = 'products';
+            $productList = array_values($rawProductJson['products']);
+        } elseif (isset($rawProductJson['data']) && is_array($rawProductJson['data'])) {
+            $containerKey = 'data';
+            $productList = array_values($rawProductJson['data']);
+        } else {
+            $productList = $this->normalizeSaleHistoryProductList($rawProductJson);
+        }
+
+        if (empty($productList)) {
+            throw new \InvalidArgumentException('할인 이력 상품 데이터가 비어있습니다.');
+        }
+
+        $targetIndex = null;
+        $beforeRate = '';
+        foreach ($productList as $idx => $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+
+            $rowItemKey = trim((string)($item['item_key'] ?? ''));
+            $rowSource = trim((string)($item['item_source'] ?? ''));
+            if ($rowSource === '') {
+                $rowSource = ($rowItemKey !== '' && strpos($rowItemKey, 'provider_') === 0) ? 'provider' : 'have';
+            }
+            $rowPsIdx = (int)($item['ps_idx'] ?? 0);
+            $rowPrdIdx = (int)($item['prd_idx'] ?? 0);
+
+            $matched = false;
+            if ($itemKey !== '' && $rowItemKey !== '' && $itemKey === $rowItemKey) {
+                $matched = true;
+            } elseif ($psIdx > 0 && $rowPsIdx > 0 && $psIdx === $rowPsIdx) {
+                if ($itemSource === '' || $rowSource === $itemSource) {
+                    $matched = true;
+                }
+            } elseif ($prdIdx > 0 && $rowPrdIdx > 0 && $prdIdx === $rowPrdIdx) {
+                $matched = true;
+            }
+
+            if (!$matched) {
+                continue;
+            }
+
+            $targetIndex = $idx;
+            $beforeRate = $this->normalizeDiscountRateKey($item['discount_rate'] ?? '');
+            break;
+        }
+
+        if ($targetIndex === null) {
+            throw new \InvalidArgumentException('이동할 상품을 할인 이력에서 찾지 못했습니다.');
+        }
+
+        if ($beforeRate === $targetRate) {
+            return [
+                'seq' => $seq,
+                'item_key' => $itemKey,
+                'before_discount_rate' => $beforeRate,
+                'target_discount_rate' => $targetRate,
+                'moved' => false,
+            ];
+        }
+
+        $targetItem = $productList[$targetIndex];
+        $salePrice = (float)($targetItem['sale_price'] ?? 0);
+        $costPrice = (float)($targetItem['cost_price'] ?? 0);
+        $targetRateNum = (float)$targetRate;
+
+        $discountSalePrice = (int)round($salePrice * (100 - $targetRateNum) / 100);
+        if ($discountSalePrice < 0) {
+            $discountSalePrice = 0;
+        }
+        $discountMarginAmount = $discountSalePrice - (int)round($costPrice);
+        $discountMarginPer = 0.0;
+        if ($discountSalePrice > 0) {
+            $discountMarginPer = (($discountSalePrice - $costPrice) / $discountSalePrice) * 100;
+        }
+        $discountMarginPer = round($discountMarginPer, 2);
+
+        $productList[$targetIndex]['discount_rate'] = (float)$targetRate;
+        $productList[$targetIndex]['discount_sale_price'] = $discountSalePrice;
+        $productList[$targetIndex]['discount_margin_amount'] = $discountMarginAmount;
+        $productList[$targetIndex]['discount_margin_per'] = $discountMarginPer;
+
+        if ($containerKey === 'products') {
+            $rawProductJson['products'] = $productList;
+            $saveProductJson = $rawProductJson;
+        } elseif ($containerKey === 'data') {
+            $rawProductJson['data'] = $productList;
+            $saveProductJson = $rawProductJson;
+        } else {
+            $saveProductJson = $productList;
+        }
+
+        $meta = $this->decodeMetaJsonToArray($saleHistory['meta_json'] ?? []);
+        // 그룹 이동 시 기존 그룹 등록상태(성공/실패)는 기준이 달라지므로 초기화한다.
+        $meta['godo_group_upload_status'] = [];
+        $meta['group_move_log'][] = [
+            'moved_at' => date('Y-m-d H:i:s'),
+            'moved_by' => (int)(AuthAdmin::getSession('sess_idx') ?? 0),
+            'moved_by_name' => (string)(AuthAdmin::getSession('sess_name') ?? ''),
+            'item_key' => (string)($productList[$targetIndex]['item_key'] ?? $itemKey),
+            'item_source' => (string)($productList[$targetIndex]['item_source'] ?? $itemSource),
+            'ps_idx' => (int)($productList[$targetIndex]['ps_idx'] ?? 0),
+            'prd_idx' => (int)($productList[$targetIndex]['prd_idx'] ?? 0),
+            'before_discount_rate' => $beforeRate,
+            'target_discount_rate' => $targetRate,
+        ];
+
+        ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->update([
+                'product_json' => json_encode($saveProductJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'meta_json' => json_encode($meta, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+        return [
+            'seq' => $seq,
+            'item_key' => (string)($productList[$targetIndex]['item_key'] ?? $itemKey),
+            'before_discount_rate' => $beforeRate,
+            'target_discount_rate' => $targetRate,
+            'discount_sale_price' => $discountSalePrice,
+            'discount_margin_amount' => $discountMarginAmount,
+            'discount_margin_per' => $discountMarginPer,
+            'moved' => true,
+        ];
+    }
+
+    /**
      * 할인 이력에서 고도몰 등록 컨텍스트를 구성한다.
      *
      * @param array $saleHistory

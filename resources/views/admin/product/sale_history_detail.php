@@ -120,6 +120,16 @@ if (!empty($discountGroupedProducts)) {
         return (float)$b <=> (float)$a;
     });
 }
+$discountRateOptions = [];
+foreach (array_keys($discountGroupedProducts) as $rateKey) {
+    $discountRateOptions[(string)$rateKey] = (string)$rateKey;
+}
+foreach (['30', '25', '20', '15', '10', '5'] as $baseRate) {
+    $discountRateOptions[$baseRate] = $baseRate;
+}
+uksort($discountRateOptions, static function ($a, $b) {
+    return ((float)$b <=> (float)$a);
+});
 
 $groupUploadStatusMap = [];
 $rawGroupUploadStatusMap = $metaData['godo_group_upload_status'] ?? [];
@@ -288,6 +298,7 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                         <th>할인판매가</th>
                         <th>할인후마진</th>
                         <th>데이터검수</th>
+                        <th>그룹이동</th>
                     </tr>
                     </thead>
                     <tbody>
@@ -298,6 +309,7 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                             $isProvider = $itemSource === 'provider';
                             $itemPsIdx = trim((string)($item['ps_idx'] ?? ''));
                             $itemPrdIdx = trim((string)($item['prd_idx'] ?? ''));
+                            $itemKey = trim((string)($item['item_key'] ?? ''));
                             $itemName = (string)($item['prd_name'] ?? '');
                             $imgPath = trim((string)($item['img_path'] ?? ''));
                             $godoGoodsNo = trim((string)($item['godo_goods_no'] ?? ''));
@@ -401,11 +413,38 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                                         <?= implode('<br>', array_map('htmlspecialchars', $dataInspectLines)) ?>
                                     <?php } ?>
                                 </td>
+                                <td class="text-center">
+                                    <?php if ((string)($saleHistory['sale_status'] ?? '') === 'wait') { ?>
+                                        <div class="sale-detail-action-wrap">
+                                            <select
+                                                class="move-discount-group-select"
+                                                data-item-key="<?= htmlspecialchars($itemKey, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-item-source="<?= htmlspecialchars($itemSource, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-ps-idx="<?= htmlspecialchars($itemPsIdx, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-prd-idx="<?= htmlspecialchars($itemPrdIdx, ENT_QUOTES, 'UTF-8') ?>"
+                                            >
+                                                <?php foreach ($discountRateOptions as $rateOption) { ?>
+                                                    <?php
+                                                    $optionValue = (string)$rateOption;
+                                                    $currentRate = rtrim(rtrim(number_format((float)($item['discount_rate'] ?? 0), 2, '.', ''), '0'), '.');
+                                                    $isSelected = ($currentRate === $optionValue);
+                                                    ?>
+                                                    <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8') ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8') ?>%
+                                                    </option>
+                                                <?php } ?>
+                                            </select>
+                                            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs move-discount-group-btn">이동저장</button>
+                                        </div>
+                                    <?php } else { ?>
+                                        -
+                                    <?php } ?>
+                                </td>
                             </tr>
                         <?php } ?>
                     <?php } else { ?>
                         <tr>
-                            <td colspan="18" class="text-center" style="padding:30px;">저장된 상품 데이터가 없습니다.</td>
+                            <td colspan="19" class="text-center" style="padding:30px;">저장된 상품 데이터가 없습니다.</td>
                         </tr>
                     <?php } ?>
                     </tbody>
@@ -478,6 +517,7 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                                         <th>할인판매가</th>
                                         <th>할인후마진</th>
                                         <th>데이터검수</th>
+                                        <th>그룹이동</th>
                                     </tr>
                                     </thead>
                                     <tbody>
@@ -491,6 +531,7 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                                         $isProvider = $itemSource === 'provider';
                                         $itemPsIdx = trim((string)($item['ps_idx'] ?? ''));
                                         $itemPrdIdx = trim((string)($item['prd_idx'] ?? ''));
+                                        $itemKey = trim((string)($item['item_key'] ?? ''));
                                         $itemName = (string)($item['prd_name'] ?? '');
                                         $imgPath = trim((string)($item['img_path'] ?? ''));
                                         $godoGoodsNo = trim((string)($item['godo_goods_no'] ?? ''));
@@ -594,11 +635,38 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                                                     <?= implode('<br>', array_map('htmlspecialchars', $dataInspectLines)) ?>
                                                 <?php } ?>
                                             </td>
+                                            <td class="text-center">
+                                                <?php if ((string)($saleHistory['sale_status'] ?? '') === 'wait') { ?>
+                                                    <div class="sale-detail-action-wrap">
+                                                        <select
+                                                            class="move-discount-group-select"
+                                                            data-item-key="<?= htmlspecialchars($itemKey, ENT_QUOTES, 'UTF-8') ?>"
+                                                            data-item-source="<?= htmlspecialchars($itemSource, ENT_QUOTES, 'UTF-8') ?>"
+                                                            data-ps-idx="<?= htmlspecialchars($itemPsIdx, ENT_QUOTES, 'UTF-8') ?>"
+                                                            data-prd-idx="<?= htmlspecialchars($itemPrdIdx, ENT_QUOTES, 'UTF-8') ?>"
+                                                        >
+                                                            <?php foreach ($discountRateOptions as $rateOption) { ?>
+                                                                <?php
+                                                                $optionValue = (string)$rateOption;
+                                                                $currentRate = rtrim(rtrim(number_format((float)($item['discount_rate'] ?? 0), 2, '.', ''), '0'), '.');
+                                                                $isSelected = ($currentRate === $optionValue);
+                                                                ?>
+                                                                <option value="<?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8') ?>" <?= $isSelected ? 'selected' : '' ?>>
+                                                                    <?= htmlspecialchars($optionValue, ENT_QUOTES, 'UTF-8') ?>%
+                                                                </option>
+                                                            <?php } ?>
+                                                        </select>
+                                                        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs move-discount-group-btn">이동저장</button>
+                                                    </div>
+                                                <?php } else { ?>
+                                                    -
+                                                <?php } ?>
+                                            </td>
                                         </tr>
                                     <?php } ?>
                                     <?php if (empty(array_filter($groupItems, 'is_array'))) { ?>
                                         <tr>
-                                            <td colspan="18" class="text-center" style="padding:20px;">표시할 상품 데이터가 없습니다.</td>
+                                            <td colspan="19" class="text-center" style="padding:20px;">표시할 상품 데이터가 없습니다.</td>
                                         </tr>
                                     <?php } ?>
                                     </tbody>
@@ -637,6 +705,7 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
         var $groupView = $('#sale_detail_group_view');
         var $registerBtn = $('#register_godo_time_sale_btn');
         var $groupRegisterBtns = $('.register_godo_group_btn');
+        var saleHistorySeq = '<?= (int)($saleHistory['seq'] ?? 0) ?>';
 
         var applyViewMode = function () {
             var mode = String($mode.val() || 'discount_group');
@@ -806,6 +875,90 @@ $groupRemainingCount = max($groupTotalCount - $groupRegisteredCount, 0);
                 },
                 complete: function () {
                     $btn.prop('disabled', false).text('그룹 등록');
+                }
+            });
+        });
+
+        $(document).on('click', '.move-discount-group-btn', function () {
+            var $btn = $(this);
+            var $wrap = $btn.closest('.sale-detail-action-wrap');
+            var $select = $wrap.find('.move-discount-group-select');
+            if (!$select.length) {
+                alert('그룹이동 대상 정보가 없습니다.');
+                return;
+            }
+
+            var targetRate = String($select.val() || '').trim();
+            var itemKey = String($select.data('item-key') || '').trim();
+            var itemSource = String($select.data('item-source') || '').trim();
+            var psIdx = String($select.data('ps-idx') || '').trim();
+            var prdIdx = String($select.data('prd-idx') || '').trim();
+
+            if (!saleHistorySeq) {
+                alert('할인 이력 번호가 없습니다.');
+                return;
+            }
+            if (!targetRate) {
+                alert('이동할 할인율 그룹을 선택해 주세요.');
+                return;
+            }
+
+            if (!confirm('선택한 상품을 할인율 ' + targetRate + '% 그룹으로 이동 저장하시겠습니까?')) {
+                return;
+            }
+
+            $btn.prop('disabled', true).text('저장중...');
+            $select.prop('disabled', true);
+
+            $.ajax({
+                url: '/admin/sale/history/action',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action_mode: 'move_sale_history_discount_group_item',
+                    seq: saleHistorySeq,
+                    item_key: itemKey,
+                    item_source: itemSource,
+                    ps_idx: psIdx,
+                    prd_idx: prdIdx,
+                    target_discount_rate: targetRate
+                },
+                success: function (response) {
+                    if (!response || response.status !== 'success') {
+                        var failMsg = (response && response.message) ? response.message : '그룹 이동 저장에 실패했습니다.';
+                        if (typeof showToast === 'function') {
+                            showToast(failMsg, new Date().toLocaleTimeString());
+                        } else {
+                            alert(failMsg);
+                        }
+                        return;
+                    }
+
+                    var doneMsg = (response && response.message) ? response.message : ('할인율 ' + targetRate + '% 그룹으로 이동 저장되었습니다.');
+                    if (typeof showToast === 'function') {
+                        showToast(doneMsg, new Date().toLocaleTimeString());
+                    } else {
+                        alert(doneMsg);
+                    }
+
+                    setTimeout(function () {
+                        location.reload();
+                    }, 200);
+                },
+                error: function (xhr) {
+                    var message = '그룹 이동 저장에 실패했습니다.';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    if (typeof showToast === 'function') {
+                        showToast(message, new Date().toLocaleTimeString());
+                    } else {
+                        alert(message);
+                    }
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).text('이동저장');
+                    $select.prop('disabled', false);
                 }
             });
         });

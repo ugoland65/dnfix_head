@@ -396,6 +396,19 @@
                                 <label><input type="checkbox" name="exclude_brand_idxs[]" value="34" checked> 텐가</label>
                                 <label><input type="checkbox" name="exclude_brand_idxs[]" value="37" checked> 로마</label>
                             </div>
+                            
+                            <div>
+                                <div class="sale-history-condition-row sale-history-checkbox-wrap">
+                                    <span class="sale-history-inline-label">랜덤 할인율</span>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="30"> 30%</label>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="25"> 25%</label>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="20" checked> 20%</label>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="15" checked> 15%</label>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="10" checked> 10%</label>
+                                    <label><input type="checkbox" name="random_discount_rates[]" value="5" checked> 5%</label>
+                                </div>
+                            </div>
+                            
                             <div class="sale-history-condition-row">
                                 <label><input type="checkbox" name="min_sale_price_exclude" id="min_sale_price_exclude" value="1"> 최저 판매가 존재시 제외</label>
                                 <div class="sale-history-guide">마지막 할인일이 오래된 상품(또는 할인일 없는 상품) 우선으로 추천됩니다.</div>
@@ -778,6 +791,31 @@
         return Math.round(rate * 100) / 100;
     }
 
+    // 랜덤 할인율 체크박스에서 선택된 할인율 목록을 가져온다.
+    function getSelectedRandomDiscountRates() {
+        var rates = [];
+        $('input[name="random_discount_rates[]"]:checked').each(function () {
+            var rate = normalizeDiscountRate($(this).val());
+            if (rate > 0) {
+                rates.push(rate);
+            }
+        });
+
+        // 중복 제거 + 높은 할인율부터 정렬
+        var uniqueMap = {};
+        var uniqueRates = [];
+        for (var i = 0; i < rates.length; i++) {
+            var key = String(rates[i]);
+            if (uniqueMap[key]) {
+                continue;
+            }
+            uniqueMap[key] = true;
+            uniqueRates.push(rates[i]);
+        }
+        uniqueRates.sort(function (a, b) { return b - a; });
+        return uniqueRates;
+    }
+
     // 상품 소스(보유/위탁)에 맞는 최소 마진 방어값을 가져온다.
     function getMarginDefenseBySource(itemSource) {
         var targetInput = (itemSource === 'provider') ? '#provider_product_margin_per' : '#have_product_margin_per';
@@ -809,23 +847,45 @@
         return ((sale - cost) / sale) * 100;
     }
 
-    // 마진 방어 조건을 만족하는 추천 할인율(30/25/20/15/10)을 반환한다.
+    // 마진 방어 조건을 만족하는 랜덤 할인율(체크된 후보군 기준)을 반환한다.
     function recommendDiscountRate(item, itemSource) {
-        var candidates = [30, 25, 20, 15, 10];
+        var candidates = getSelectedRandomDiscountRates();
+        if (!candidates.length) {
+            candidates = [20, 15, 10, 5];
+        }
+
+        // 보유상품 재고 3개 이하일 때는 10%/5%만 허용
+        if (String(itemSource || 'have') === 'have') {
+            var stockQty = Number(item.stock_qty || 0);
+            if (!isNaN(stockQty) && stockQty <= 3) {
+                var lowStockCandidates = candidates.filter(function (rate) {
+                    return rate === 10 || rate === 5;
+                });
+                candidates = lowStockCandidates.length ? lowStockCandidates : [10, 5];
+            }
+        }
+
         var salePrice = parseMoney(item.sale_price);
         var costPrice = parseMoney(item.cost_price);
         var minMargin = getMarginDefenseBySource(itemSource);
+        var validCandidates = [];
 
         for (var i = 0; i < candidates.length; i++) {
             var rate = candidates[i];
             var discountedSale = getDiscountedSalePrice(salePrice, rate);
             var discountedMargin = calcMarginPerByPrice(discountedSale, costPrice);
             if (discountedMargin >= minMargin) {
-                return rate;
+                validCandidates.push(rate);
             }
         }
 
-        return 10;
+        if (validCandidates.length > 0) {
+            var randomIndex = Math.floor(Math.random() * validCandidates.length);
+            return validCandidates[randomIndex];
+        }
+
+        // 마진 조건이 모두 미달이면 가장 보수적인(최저 할인율) 값을 사용
+        return Math.min.apply(null, candidates);
     }
 
     // 할인 관련 표시값(할인율/할인가/마진율/마진금액)을 계산한다.
@@ -1542,6 +1602,7 @@
         $('input[name="selected_kind_codes[]"]:checked').each(function () {
             selectedKindCodes.push($(this).val());
         });
+        var randomDiscountRates = getSelectedRandomDiscountRates();
 
         return {
             total_product_qty: $('#total_product_qty').val(),
@@ -1552,7 +1613,8 @@
             provider_product_margin_per: $('#provider_product_margin_per').val(),
             sale_duplicate_mode: $('#sale_duplicate_mode').val(),
             exclude_brand_idxs: excludeBrandIdxs,
-            selected_kind_codes: selectedKindCodes
+            selected_kind_codes: selectedKindCodes,
+            random_discount_rates: randomDiscountRates
         };
     }
 
