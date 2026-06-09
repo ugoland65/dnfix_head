@@ -150,6 +150,35 @@ class OrderSheetController extends BaseClass
         }
     }
 
+    /**
+     * 주문서 재고 일괄등록 팝업
+     *
+     * @param Request $request
+     * @return mixed
+     */
+    public function orderSheetStock(Request $request)
+    {
+        try{
+            $requestData = $request->all();
+            $idx = (int)($requestData['idx'] ?? 0);
+            if ($idx <= 0) {
+                throw new Exception('주문서 번호가 없습니다.');
+            }
+
+            $orderSheetService = new OrderSheetService();
+            $popupData = $orderSheetService->getOrderSheetStockPopupData($idx);
+
+            //dump($popupData);
+            return view('admin.order_sheet.order_sheet_stock', $popupData)
+                ->extends('admin.layout.popup_layout', [
+                    'headTitle' => '재고 등록하기',
+                ]);
+        }
+        catch (Throwable $e) {
+            return $e->getMessage();
+        }
+    }
+
 
     /**
      * 주문서 저장
@@ -346,6 +375,18 @@ class OrderSheetController extends BaseClass
 
                 $result = $orderSheetService->orderSheetProductSoldOut($requestData);
                 $message = $result['message'] ?? $result['msg'] ?? "주문서 상품 단종 처리되었습니다.";
+
+            // 주문서 재고 일괄등록
+            }elseif( $actionMode == 'orderSheetAllStock' ){
+
+                $result = $orderSheetService->orderSheetAllStock($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "재고가 일괄 등록되었습니다.";
+
+            // 주문서 재고 팝업 - 고도몰 단건 처리
+            }elseif( $actionMode == 'orderSheetSingleGodoInspection' ){
+
+                $result = $orderSheetService->orderSheetSingleGodoInspection($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "고도몰 처리가 완료되었습니다.";
 
             }else{
                 throw new Exception('유효하지 않은 action_mode 입니다.');

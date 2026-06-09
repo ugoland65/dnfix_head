@@ -1462,9 +1462,17 @@ class GodoApiService extends BaseClass {
      * @param string $codes 재고코드
      * @return array
      */
-    public function getGodoGoodsInfoByStockCodes($codes) 
+    public function getGodoGoodsInfoByStockCodes($codes, $withCategory = null)
     {
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes='.$codes;
+
+        if($withCategory == "Y"){
+            $withCategoryParam = "&withCategory=Y";
+        }else{
+            $withCategoryParam = "";
+        }
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes='.$codes.$withCategoryParam;
+
         $response = HttpClient::getData($apiUrl);
         $responseData = json_decode($response, true);
         if(!is_array($responseData)){
@@ -1472,6 +1480,7 @@ class GodoApiService extends BaseClass {
         }
         return $responseData;
     }
+
 
     /**
      * 고도몰 상품코드(goodsNo)로 상품 정보 조회
@@ -1490,6 +1499,30 @@ class GodoApiService extends BaseClass {
         return $responseData;
     }
 
+
+    /**
+     * 고도몰 상품코드(goodsNo)로 재입고 알림 신청 목록 조회
+     * 
+     * @param string $goodsNos 상품코드
+     * @param string $mode 모드 (list, count)
+     * @return array
+     */
+    public function getGodoGoodsRestockByGoodsNos($goodsNos, $mode = 'list') 
+    {
+        $mode = strtolower(trim((string)$mode));
+        if ($mode !== 'count' && $mode !== 'list') {
+            $mode = 'list';
+        }
+
+        // goods_api.php 쪽에서 mode=count|list 를 직접 허용하도록 확장된 구조 사용
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode='.$mode.'&goodsNos='.$goodsNos;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        return $responseData;
+    }
 
 
     /**
@@ -1604,5 +1637,105 @@ class GodoApiService extends BaseClass {
         return $responseData;
     }
 
+    /**
+     * 고도몰 자동재고등록 및 검수 사항 자동적용
+     *
+     * 고도몰 API(mode=autoRestockWithCheck)로 전달되는 파라미터 정리
+     * - goodsNo (필수): 고도몰 상품번호
+     * - stockQty (선택): 재고 수량. 숫자일 때만 전송, 미전송 시 재고 변경 없음
+     * - updateColumns (선택): 검수 반영 컬럼 변경값 CSV (key=value,key=value)
+     *   예) godo_only_adult_fl=y,godo_goods_model_no=1234567890,godo_cost_price=10000
+     *   updateColumns key 매핑 (인트라넷 key => 고도몰 원본 컬럼/필드):
+     *   - godo_only_adult_fl => onlyAdultFl : 성인인증 여부
+     *   - godo_goods_model_no => goodsModelNo : 모델번호(현행 바코드 동기화 용도)
+     *   - godo_cost_price => costPrice : 원가
+     *   - godo_goods_price => goodsPrice : 판매가 (정책상 전송 제외)
+     * - addCategoryCds (선택): 추가할 카테고리 코드 CSV
+     *   예) 001002,003004
+     * - deleteCategoryCds (선택): 삭제할 카테고리 코드 CSV
+     *   예) 005006,007008
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function autoStockUpdateAndInspection($requestData) 
+    {
+
+        $goodsNo = trim((string)($requestData['goodsNo'] ?? ''));
+        $stockQty = null;
+        if (is_array($requestData) && array_key_exists('stockQty', $requestData)) {
+            $stockQtyRaw = trim((string)$requestData['stockQty']);
+            if ($stockQtyRaw !== '' && is_numeric($stockQtyRaw)) {
+                $stockQty = (int)$stockQtyRaw;
+            }
+        }
+        $columnUpdates = trim((string)($requestData['columnUpdates'] ?? ''));
+        // 정책상 판매가(goodsPrice)는 고도몰로 전송하지 않는다.
+        $columnUpdates = $this->removeColumnUpdateKey($columnUpdates, 'godo_goods_price');
+        $addCategoryCds = trim((string)($requestData['addCategoryCds'] ?? ''));
+        $deleteCategoryCds = trim((string)($requestData['deleteCategoryCds'] ?? ''));
+
+        // mode=autoRestockWithCheck 호출 기본 URL (goodsNo는 항상 포함)
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=autoRestockWithCheck&goodsNo='.$goodsNo;
+        if ($stockQty !== null) {
+            // 재고 수량 반영
+            $apiUrl .= '&stockQty=' . $stockQty;
+        }
+        if ($columnUpdates !== '') {
+            // 검수 항목 기반 컬럼 동기화
+            $apiUrl .= '&updateColumns=' . urlencode($columnUpdates);
+        }
+        if ($addCategoryCds !== '') {
+            // 카테고리 추가
+            $apiUrl .= '&addCategoryCds=' . urlencode($addCategoryCds);
+        }
+        if ($deleteCategoryCds !== '') {
+            // 카테고리 제거
+            $apiUrl .= '&deleteCategoryCds=' . urlencode($deleteCategoryCds);
+        }
+
+        if ($apiUrl === '' || strpos($apiUrl, 'mode=autoRestockWithCheck') === false) {
+            throw new \Exception('고도몰 API URL 생성 실패');
+        }
+
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        return $responseData;
+    }
+
+    /**
+     * updateColumns CSV에서 특정 key를 제거한다.
+     * 예: a=1,godo_goods_price=1000,b=2 -> a=1,b=2
+     *
+     * @param string $columnUpdatesCsv
+     * @param string $removeKey
+     * @return string
+     */
+    private function removeColumnUpdateKey(string $columnUpdatesCsv, string $removeKey): string
+    {
+        if ($columnUpdatesCsv === '') {
+            return '';
+        }
+
+        $pairs = explode(',', $columnUpdatesCsv);
+        $filteredPairs = [];
+        foreach ($pairs as $pair) {
+            $pair = trim($pair);
+            if ($pair === '') {
+                continue;
+            }
+            $kv = explode('=', $pair, 2);
+            $key = trim((string)($kv[0] ?? ''));
+            if ($key === '' || $key === $removeKey) {
+                continue;
+            }
+            $filteredPairs[] = $pair;
+        }
+
+        return implode(',', $filteredPairs);
+    }
 
 }

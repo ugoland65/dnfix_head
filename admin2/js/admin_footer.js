@@ -130,3 +130,47 @@ function productGroupingProductOrderChange(idx) {
 	});
 
 }
+
+var koegAd = function() {
+
+	return {
+		init : function() {
+
+		},
+		brandModify : function(idx) {
+			window.open("/admin2/product2/popup.brand_view.php?idx="+idx, "brand_view_"+idx, "width=1000,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		},
+	};
+
+}();
+
+const footerGlobal = (function() {
+
+	/*
+	const API_ENDPOINTS = {
+		wishListDel: "/user2/proc/WishList/delWishlist",
+	};
+	*/
+
+	return {
+		// 초기화
+		init() {
+			console.log('wishList module initialized.');
+		},
+		comment(mode="", idx="", dayCode="") {
+			var width = "1000px";
+			openDialog("/ad/ajax/comment_main",{ mode, idx, dayCode  },"Comment",width); 
+		},
+	}
+
+})();	
+
+$(function(){
+	
+	$("#admin_language").mouseover(function(e) {
+		$("#flag").show();
+	}).mouseout(function(e) {
+        $("#flag").hide();
+	});
+
+});

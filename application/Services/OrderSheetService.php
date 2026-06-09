@@ -11,6 +11,8 @@ use App\Classes\UploadedFile;
 use App\Services\AdminActionLogService;
 use App\Models\OrderGroupProductModel;
 use App\Models\ProductModel;
+use App\Models\ProductStockModel;
+use App\Models\ProductStockUnitModel;
 
 class OrderSheetService
 {
@@ -216,6 +218,654 @@ class OrderSheetService
 
 
         return $result;
+    }
+
+    /**
+     * 주문서 재고 일괄등록 팝업 데이터 조회
+     *
+     * @param int $idx
+     * @return array
+     */
+    public function getOrderSheetStockPopupData(int $idx): array
+    {
+
+        if ($idx <= 0) {
+            throw new Exception('주문서 번호가 없습니다.');
+        }
+
+        $orderSheet = OrderSheetModel::query()
+            ->select(['oo_idx', 'oo_name', 'oo_json', 'oo_stock'])
+            ->where('oo_idx', '=', $idx)
+            ->first();
+        if (!$orderSheet) {
+            throw new Exception('주문서 정보를 찾을 수 없습니다.');
+        }
+        $orderSheet = $orderSheet->toArray();
+
+        $orderJson = json_decode((string)($orderSheet['oo_json'] ?? '[]'), true);
+        if (!is_array($orderJson)) {
+            $orderJson = [];
+        }
+        $stockState = json_decode((string)($orderSheet['oo_stock'] ?? '{}'), true);
+        if (!is_array($stockState)) {
+            $stockState = [];
+        }
+
+        $selpdRows = [];
+        foreach ($orderJson as $groupRow) {
+            if (!is_array($groupRow)) {
+                continue;
+            }
+            $selpd = $groupRow['selpd'] ?? [];
+            if (!is_array($selpd)) {
+                continue;
+            }
+
+            foreach ($selpd as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $pidx = (int)($row['pidx'] ?? 0);
+                if ($pidx <= 0) {
+                    continue;
+                }
+                $selpdRows[] = [
+                    'pidx' => $pidx,
+                    'qty' => (int)($row['qty'] ?? 0),
+                    'is_false' => !empty($row['false']),
+                ];
+            }
+        }
+
+        $pidxList = array_values(array_unique(array_map(static function ($row) {
+            return (int)($row['pidx'] ?? 0);
+        }, $selpdRows)));
+        $pidxList = array_values(array_filter($pidxList, static function ($v) {
+            return $v > 0;
+        }));
+
+        $productMap = [];
+        if (!empty($pidxList)) {
+            $productRows = ProductModel::query()
+                ->from('COMPARISON_DB as A')
+                ->leftJoin('prd_stock as B', 'B.ps_prd_idx', '=', 'A.CD_IDX')
+                ->leftJoin('BRAND_DB as C', 'C.BD_IDX', '=', 'A.CD_BRAND_IDX')
+                ->whereIn('A.CD_IDX', $pidxList)
+                ->select([
+                    'A.CD_IDX',
+                    'A.CD_KIND_CODE',
+                    'A.CD_NAME',
+                    'A.CD_IMG',
+                    'A.CD_CODE',
+                    'A.CD_SIZE2',
+                    'A.cd_hbti',
+                    'A.cd_sale_price',
+                    'A.cd_cost_price',
+                    'A.cd_godo_code',
+                    'A.cd_weight_fn',
+                    'A.is_discontinued',
+                    'B.ps_idx',
+                    'B.ps_stock',
+                    'B.is_sale_month',
+                    'B.is_sale_special',
+                    'C.BD_NAME',
+                ])
+                ->get()
+                ->toArray();
+
+            foreach ($productRows as $row) {
+                $productMap[(int)($row['CD_IDX'] ?? 0)] = $row;
+            }
+        }
+
+        $godoApiStartAt = microtime(true);
+        $godoGoodsMap = [];
+        $godoApiErrorMessage = '';
+        $godoRestockApiErrorMessage = '';
+        $restockCountByGoodsNo = [];
+        $stockCodes = [];
+        foreach ($productMap as $row) {
+            $psIdx = trim((string)($row['ps_idx'] ?? ''));
+            if ($psIdx !== '') {
+                $stockCodes[] = $psIdx;
+            }
+        }
+        $stockCodes = array_values(array_unique($stockCodes));
+        if (!empty($stockCodes)) {
+            try {
+
+                $godoApiService = new GodoApiService();
+                $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes(implode(',', $stockCodes), "Y");
+
+                //dump($godoGoodsRows);
+                if (!is_array($godoGoodsRows)) {
+                    $godoGoodsRows = [];
+                }
+
+                foreach ($godoGoodsRows as $godoRow) {
+                    if (!is_array($godoRow)) {
+                        continue;
+                    }
+                    $goodsCd = trim((string)($godoRow['goodsCd'] ?? ''));
+                    if ($goodsCd === '') {
+                        continue;
+                    }
+                    $godoGoodsMap[$goodsCd] = $godoRow;
+                }
+            } catch (\Throwable $e) {
+                $godoApiErrorMessage = $e->getMessage();
+            }
+        }
+
+        $goodsNos = [];
+        foreach ($godoGoodsMap as $godoRow) {
+            if (!is_array($godoRow)) {
+                continue;
+            }
+            $goodsNo = trim((string)($godoRow['goodsNo'] ?? ''));
+            if ($goodsNo !== '') {
+                $goodsNos[] = $goodsNo;
+            }
+        }
+        $goodsNos = array_values(array_unique($goodsNos));
+        if (!empty($goodsNos)) {
+            try {
+                $godoApiService = $godoApiService ?? new GodoApiService();
+                $restockRows = $godoApiService->getGodoGoodsRestockByGoodsNos(implode(',', $goodsNos), 'count');
+                if (!is_array($restockRows)) {
+                    $restockRows = [];
+                }
+                $restockCountByGoodsNo = $this->buildGodoRestockCountMap($restockRows);
+            } catch (\Throwable $e) {
+                $godoRestockApiErrorMessage = $e->getMessage();
+            }
+        }
+
+        $productService = new ProductService();
+        $stockItems = [];
+        foreach ($selpdRows as $row) {
+            $pidx = (int)($row['pidx'] ?? 0);
+            $product = $productMap[$pidx] ?? [];
+            if (empty($product)) {
+                continue;
+            }
+
+            $cdImg = trim((string)($product['CD_IMG'] ?? ''));
+            $imgPath = $cdImg !== '' ? ('/data/comparion/' . $cdImg) : '';
+            $psIdx = (int)($product['ps_idx'] ?? 0);
+            $psIdxKey = (string)$psIdx;
+            $cdKindCode = trim((string)($product['CD_KIND_CODE'] ?? ''));
+            $cdGodoCode = trim((string)($product['cd_godo_code'] ?? ''));
+            $godoGoods = $godoGoodsMap[$psIdxKey] ?? [];
+            $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
+            $onlyAdultFl = strtolower(trim((string)($godoGoods['onlyAdultFl'] ?? '')));
+            $goodsModelNo = trim((string)($godoGoods['goodsModelNo'] ?? ''));
+            $goodsPrice = trim((string)($godoGoods['goodsPrice'] ?? ''));
+            $costPrice = trim((string)($godoGoods['costPrice'] ?? ''));
+            $cdWeightData = json_decode($product['cd_weight_fn'] ?? '{}', true);
+            if (!is_array($cdWeightData)) {
+                $cdWeightData = [];
+            }
+            $marginInfo = $productService->calculateMarginInfo(
+                (float)($product['cd_sale_price'] ?? 0),
+                (float)($product['cd_cost_price'] ?? 0)
+            );
+            $godoCategoryLines = $this->buildGodoCategoryLines(
+                (isset($godoGoods['categories']) && is_array($godoGoods['categories'])) ? $godoGoods['categories'] : []
+            );
+            $godoStockQty = 0;
+
+            // 고도몰 현재고는 totalStock 컬럼을 우선 기준으로 사용
+            if (isset($godoGoods['totalStock']) && is_numeric($godoGoods['totalStock'])) {
+                $godoStockQty = (int)$godoGoods['totalStock'];
+            } elseif (isset($godoGoods['stockCnt']) && is_numeric($godoGoods['stockCnt'])) {
+                $godoStockQty = (int)$godoGoods['stockCnt'];
+            } elseif (isset($godoGoods['stock']) && is_numeric($godoGoods['stock'])) {
+                $godoStockQty = (int)$godoGoods['stock'];
+            } elseif (isset($godoGoods['goodsStock']) && is_numeric($godoGoods['goodsStock'])) {
+                $godoStockQty = (int)$godoGoods['goodsStock'];
+            }
+            $isGodoCodeMatched = ($godoGoodsNo !== '' && $cdGodoCode !== '' && $godoGoodsNo === $cdGodoCode);
+            $restockRequestCount = 0;
+            if ($godoGoodsNo !== '' && isset($restockCountByGoodsNo[$godoGoodsNo])) {
+                $restockRequestCount = (int)$restockCountByGoodsNo[$godoGoodsNo];
+            }
+
+            $stockItems[] = [
+                'pidx' => $pidx,
+                'ps_idx' => $psIdx,
+                'qty' => (int)($row['qty'] ?? 0),
+                'is_false' => !empty($row['is_false']),
+                'cd_kind_code' => $cdKindCode,
+                'brand_name' => (string)($product['BD_NAME'] ?? ''),
+                'name' => (string)($product['CD_NAME'] ?? ''),
+                'barcode' => (string)($product['CD_CODE'] ?? ''),
+                'cd_hbti' => (string)($product['cd_hbti'] ?? ''),
+                'goods_price' => (string)($product['cd_sale_price'] ?? ''),
+                'cost_price' => (string)($product['cd_cost_price'] ?? ''),
+                'goods_weight' => (string)($cdWeightData['1'] ?? 0),
+                'inner_length' => (string)($product['CD_SIZE2'] ?? ''),
+                'margin_per' => (float)($marginInfo['margin_per'] ?? 0),
+                'margin_grade' => (string)($marginInfo['margin_grade'] ?? ''),
+                'stock_qty' => (int)($product['ps_stock'] ?? 0),
+                'is_sale_month' => !empty($product['is_sale_month']),
+                'is_sale_special' => !empty($product['is_sale_special']),
+                'is_discontinued' => !empty($product['is_discontinued']),
+                'img_path' => $imgPath,
+                'cd_godo_code' => $cdGodoCode,
+                'godo_goods_no' => $godoGoodsNo,
+                'godo_stock_qty' => $godoStockQty,
+                'godo_code_matched' => $isGodoCodeMatched,
+                'godo_goods_found' => !empty($godoGoods),
+                'godo_only_adult_fl' => $onlyAdultFl,
+                'godo_goods_model_no' => $goodsModelNo,
+                'godo_goods_price' => $goodsPrice,
+                'godo_cost_price' => $costPrice,
+                'restock_request_count' => $restockRequestCount,
+                'godo_category_lines' => $godoCategoryLines,
+            ];
+        }
+
+        $godoInfoLoadedAt = date('Y-m-d H:i:s');
+        $godoInfoLoadMs = (int)round((microtime(true) - $godoApiStartAt) * 1000);
+
+        return [
+            'orderSheetIdx' => $idx,
+            'orderSheetName' => (string)($orderSheet['oo_name'] ?? ''),
+            'orderSheetStockState' => $stockState,
+            'stockItems' => $stockItems,
+            'godoApiErrorMessage' => $godoApiErrorMessage,
+            'godoRestockApiErrorMessage' => $godoRestockApiErrorMessage,
+            'godoInfoLoadedAt' => $godoInfoLoadedAt,
+            'godoInfoLoadMs' => $godoInfoLoadMs,
+            'defaultStockDay' => date('Y-m-d'),
+            'defaultStockMemo' => ((string)($orderSheet['oo_name'] ?? '') . ' 입고'),
+        ];
+    }
+
+    
+
+    /**
+     * 고도몰 재입고 알림 API 응답에서 goodsNo별 신청 수를 집계한다.
+     * 응답 키/필드명이 환경마다 다를 수 있어 다중 키를 허용한다.
+     *
+     * @param array $restockRows
+     * @return array<string,int>
+     */
+    private function buildGodoRestockCountMap(array $restockRows): array
+    {
+        $result = [];
+
+        // count 모드 표준 응답: { status, mode, totalCount, goodsCounts:[{goodsNo,count}, ...] }
+        if (isset($restockRows['goodsCounts']) && is_array($restockRows['goodsCounts'])) {
+            foreach ($restockRows['goodsCounts'] as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $goodsNo = trim((string)($row['goodsNo'] ?? ''));
+                if ($goodsNo === '') {
+                    continue;
+                }
+                $result[$goodsNo] = (int)($row['count'] ?? 0);
+            }
+            return $result;
+        }
+
+        foreach ($restockRows as $rowKey => $row) {
+            if (!is_array($row)) {
+                if (!is_int($rowKey) && preg_match('/^\d+$/', (string)$rowKey) === 1 && is_numeric($row)) {
+                    $result[(string)$rowKey] = (int)$row;
+                }
+                continue;
+            }
+
+            $goodsNo = trim((string)($row['goodsNo'] ?? ($row['goods_no'] ?? ($row['goodsno'] ?? ''))));
+            if ($goodsNo === '' && !is_int($rowKey) && preg_match('/^\d+$/', (string)$rowKey) === 1) {
+                $goodsNo = (string)$rowKey;
+            }
+            if ($goodsNo === '') {
+                continue;
+            }
+
+            $count = null;
+            $countFieldCandidates = [
+                'count',
+                'cnt',
+                'total',
+                'totalCount',
+                'request_count',
+                'restock_count',
+                'reInquiryCnt',
+                'alarmCnt',
+                'member_count',
+            ];
+            foreach ($countFieldCandidates as $fieldName) {
+                if (isset($row[$fieldName]) && is_numeric($row[$fieldName])) {
+                    $count = (int)$row[$fieldName];
+                    break;
+                }
+            }
+            if ($count === null) {
+                if (isset($row['list']) && is_array($row['list'])) {
+                    $count = count($row['list']);
+                } else {
+                    // 건별 리스트 응답이면 해당 row 자체를 1건으로 집계
+                    $count = 1;
+                }
+            }
+
+            if (!isset($result[$goodsNo])) {
+                $result[$goodsNo] = 0;
+            }
+            $result[$goodsNo] += max($count, 0);
+        }
+
+        return $result;
+    }
+
+    /**
+     * 고도몰 categories 응답을 화면 표기용 카테고리 목록으로 변환한다.
+     * 각 항목은 cateCd 기준 오름차순 정렬되며, 카테고리명 경로(line)와 코드(cateCd)를 포함한다.
+     * 예) ['line' => '오나홀 > 중량별 > 600g ~ 799g', 'cateCd' => '001002003']
+     *
+     * @param array $categories
+     * @return array<int,array{line:string,cateCd:string}>
+     */
+    private function buildGodoCategoryLines(array $categories): array
+    {
+        $lineRows = [];
+        $seen = [];
+
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+
+            $pathRows = (isset($categoryRow['path']) && is_array($categoryRow['path'])) ? $categoryRow['path'] : [];
+            $pathNames = [];
+            foreach ($pathRows as $pathRow) {
+                if (!is_array($pathRow)) {
+                    continue;
+                }
+                $cateNm = trim((string)($pathRow['cateNm'] ?? ''));
+                if ($cateNm !== '') {
+                    $pathNames[] = $cateNm;
+                }
+            }
+
+            if (empty($pathNames)) {
+                $cateNm = trim((string)($categoryRow['cateNm'] ?? ''));
+                if ($cateNm !== '') {
+                    $pathNames[] = $cateNm;
+                }
+            }
+
+            if (empty($pathNames)) {
+                continue;
+            }
+
+            $line = implode(' > ', $pathNames);
+            if (isset($seen[$line])) {
+                continue;
+            }
+            $seen[$line] = true;
+            $lineRows[] = [
+                'line' => $line,
+                'cateCd' => trim((string)($categoryRow['cateCd'] ?? '')),
+            ];
+        }
+
+        usort($lineRows, static function (array $a, array $b): int {
+            $aCateCd = $a['cateCd'] ?? '';
+            $bCateCd = $b['cateCd'] ?? '';
+            return strcmp((string)$aCateCd, (string)$bCateCd);
+        });
+
+        return $lineRows;
+    }
+
+    /**
+     * 주문서 재고 일괄등록 처리
+     * (legacy processing.order_sheet.php의 os_allStock 리팩토링)
+     *
+     * @param array $requestData
+     * @return array
+     */
+    public function orderSheetAllStock(array $requestData): array
+    {
+        $orderSheetIdx = (int)($requestData['os_idx'] ?? 0);
+        if ($orderSheetIdx <= 0) {
+            throw new Exception('주문서 번호가 없습니다.');
+        }
+
+        $stockDay = trim((string)($requestData['stock_day'] ?? ''));
+        if ($stockDay === '') {
+            $stockDay = date('Y-m-d');
+        }
+        $stockAllMemo = trim((string)($requestData['stock_all_memo'] ?? ''));
+
+        $psIdxRows = $requestData['ps_idx'] ?? [];
+        $qtyRows = $requestData['s_qty'] ?? [];
+        $memoRows = $requestData['s_memo'] ?? [];
+        if (!is_array($psIdxRows)) {
+            $psIdxRows = [];
+        }
+        if (!is_array($qtyRows)) {
+            $qtyRows = [];
+        }
+        if (!is_array($memoRows)) {
+            $memoRows = [];
+        }
+
+        $sessionIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $sessionId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+        $sessionName = (string)(AuthAdmin::getSession('sess_name') ?? '');
+        $actionTime = date('Y-m-d H:i:s');
+        $reg = [
+            'date' => $actionTime,
+            'id' => $sessionId,
+            'name' => $sessionName,
+            'ip' => $_SERVER['REMOTE_ADDR'] ?? '',
+            'domain' => $_SERVER['SERVER_NAME'] ?? '',
+        ];
+
+        $processedCount = 0;
+        $processedRows = [];
+        foreach ($psIdxRows as $i => $psIdxRaw) {
+            $psIdx = (int)$psIdxRaw;
+            $qty = (int)($qtyRows[$i] ?? 0);
+            if ($psIdx <= 0 || $qty <= 0) {
+                continue;
+            }
+
+            $memo = trim((string)($memoRows[$i] ?? ''));
+            $lineMemo = $stockAllMemo;
+            if ($memo !== '') {
+                $lineMemo = $lineMemo !== '' ? ($lineMemo . ' - ' . $memo) : $memo;
+            }
+
+            $stockRow = ProductStockModel::query()
+                ->select(['ps_stock', 'ps_stock_all'])
+                ->where('ps_idx', '=', $psIdx)
+                ->first();
+            $stockRow = $stockRow ? $stockRow->toArray() : ['ps_stock' => 0, 'ps_stock_all' => 0];
+            $afterStock = (int)($stockRow['ps_stock'] ?? 0) + $qty;
+
+            $psIncome = [
+                'os_idx' => $orderSheetIdx,
+                'qty' => $qty,
+                'reg' => $reg,
+            ];
+            $psLastIn = '( ' . $qty . ' ) ' . $lineMemo;
+
+            ProductStockModel::query()
+                ->where('ps_idx', '=', $psIdx)
+                ->update([
+                    'ps_stock' => $afterStock,
+                    'ps_stock_all' => (int)($stockRow['ps_stock_all'] ?? 0) + $qty,
+                    'ps_income' => json_encode($psIncome, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    'ps_last_in' => $psLastIn,
+                    'ps_update_date' => $actionTime,
+                    'ps_in_date' => $actionTime,
+                ]);
+
+            ProductStockUnitModel::query()
+                ->insert([
+                    'psu_stock_idx' => $psIdx,
+                    'psu_day' => $stockDay,
+                    'psu_mode' => 'plus',
+                    'psu_qry' => $qty,
+                    'psu_stock' => $afterStock,
+                    'psu_kind' => '신규입고',
+                    'psu_memo' => $lineMemo,
+                    'psu_token' => '',
+                    'psu_id' => $sessionId,
+                    'psu_date' => $actionTime,
+                    'reg' => '',
+                ]);
+
+            $processedCount++;
+            $processedRows[] = [
+                'ps_idx' => $psIdx,
+                'qty' => $qty,
+                'memo' => $lineMemo,
+                'after_stock' => $afterStock,
+            ];
+        }
+
+        $orderSheet = OrderSheetModel::query()
+            ->select(['oo_date_data', 'oo_stock'])
+            ->where('oo_idx', '=', $orderSheetIdx)
+            ->first();
+        $orderSheet = $orderSheet ? $orderSheet->toArray() : ['oo_date_data' => '{}', 'oo_stock' => '{}'];
+
+        $ooDateData = json_decode((string)($orderSheet['oo_date_data'] ?? '{}'), true);
+        $ooStock = json_decode((string)($orderSheet['oo_stock'] ?? '{}'), true);
+        if (!is_array($ooDateData)) {
+            $ooDateData = [];
+        }
+        if (!is_array($ooStock)) {
+            $ooStock = [];
+        }
+        if (!isset($ooDateData['stock_state']) || !is_array($ooDateData['stock_state'])) {
+            $ooDateData['stock_state'] = [];
+        }
+
+        $beforeState = trim((string)($ooStock['state'] ?? ''));
+        if ($beforeState === '') {
+            $beforeState = '첫등록';
+        }
+
+        $ooDateData['stock_state'][] = [
+            'state_before' => $beforeState,
+            'state_after' => 'in',
+            'date' => $actionTime,
+            'id' => $sessionId,
+            'name' => $sessionName,
+        ];
+        $nextOoStock = [
+            'state' => 'in',
+            'reg' => $reg,
+        ];
+
+        OrderSheetModel::query()
+            ->where('oo_idx', '=', $orderSheetIdx)
+            ->update([
+                'oo_date_data' => json_encode($ooDateData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'oo_stock' => json_encode($nextOoStock, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+        $resultPayload = [
+            'success' => true,
+            'msg' => '완료',
+            'message' => '재고가 일괄 등록되었습니다.',
+            'processed_count' => $processedCount,
+            'order_sheet_idx' => $orderSheetIdx,
+            'stock_state' => $nextOoStock,
+            'updated_by' => $sessionIdx,
+        ];
+
+        try {
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $inspectionProcessLogService->logOrderSheetAllStock([
+                'relation_pk' => $orderSheetIdx,
+                'executor_admin_idx' => $sessionIdx,
+                'executor_admin_id' => $sessionId,
+                'executor_admin_name' => $sessionName,
+                'executed_at' => $actionTime,
+                'process_content' => [
+                    'stock_day' => $stockDay,
+                    'stock_all_memo' => $stockAllMemo,
+                    'requested_line_count' => count($psIdxRows),
+                    'processed_rows' => $processedRows,
+                ],
+                'result_content' => $resultPayload,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 메인 처리에 영향이 없도록 분리한다.
+        }
+
+        return $resultPayload;
+    }
+
+    /**
+     * 주문서 재고 팝업 - 고도몰 단건 처리
+     *
+     * @param array $requestData
+     * @return array
+     * @throws Exception
+     */
+    public function orderSheetSingleGodoInspection(array $requestData): array
+    {
+        $goodsNo = trim((string)($requestData['goods_no'] ?? ''));
+        $pidx = (int)($requestData['pidx'] ?? 0);
+        $stockQty = (int)($requestData['stock_qty'] ?? 0);
+        $intranetSalePrice = trim((string)($requestData['intranet_sale_price'] ?? ''));
+        $columnUpdates = trim((string)($requestData['column_updates'] ?? ''));
+        $addCategoryCds = trim((string)($requestData['add_category_cds'] ?? ''));
+        $deleteCategoryCds = trim((string)($requestData['delete_category_cds'] ?? ''));
+
+        if (($goodsNo === '' || $goodsNo === '0') && $pidx > 0) {
+            $productRow = ProductModel::query()
+                ->select(['CD_IDX', 'cd_godo_code'])
+                ->where('CD_IDX', '=', $pidx)
+                ->first();
+            $productRow = $productRow ? $productRow->toArray() : [];
+            $goodsNo = trim((string)($productRow['cd_godo_code'] ?? ''));
+        }
+
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 없어 처리할 수 없습니다.');
+        }
+
+        if ($pidx > 0 && $intranetSalePrice !== '' && is_numeric($intranetSalePrice)) {
+            ProductModel::query()
+                ->where('CD_IDX', '=', $pidx)
+                ->update([
+                    'cd_sale_price' => $intranetSalePrice,
+                ]);
+        }
+
+        $godoApiService = new GodoApiService();
+        $responseData = $godoApiService->autoStockUpdateAndInspection([
+            'goodsNo' => $goodsNo,
+            'stockQty' => $stockQty,
+            'columnUpdates' => $columnUpdates,
+            'addCategoryCds' => $addCategoryCds,
+            'deleteCategoryCds' => $deleteCategoryCds,
+        ]);
+
+        return [
+            'success' => true,
+            'msg' => '완료',
+            'message' => '고도몰 처리가 완료되었습니다.',
+            'goods_no' => $goodsNo,
+            'stock_qty' => $stockQty,
+            'column_updates' => $columnUpdates,
+            'add_category_cds' => $addCategoryCds,
+            'delete_category_cds' => $deleteCategoryCds,
+            'response' => $responseData,
+        ];
     }
 
 
@@ -955,7 +1605,7 @@ class OrderSheetService
         ];
     }
 
-
+    
     /**
      * 결제기한 캘린더 삭제
      * @param array $data

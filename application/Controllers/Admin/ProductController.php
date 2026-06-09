@@ -12,6 +12,8 @@ use App\Services\BrandService;
 use App\Services\ProductPartnerService;
 use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
+use App\Services\GodoInspectionService;
+use App\Services\InspectionProcessLogService;
 use App\Utils\Pagination;
 class ProductController extends BaseClass 
 {
@@ -307,6 +309,48 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 디테일 (고도몰 검수 처리)
+     */
+    public function prdDetailGodoInspection(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $psIdx = (int)($requestData['ps_idx'] ?? 0);
+
+            $inspectionData = $this->productService->getSingleProductGodoInspectionData($prdIdx, $psIdx);
+
+            $godoInspectionService = new GodoInspectionService();
+            $inspectionContext = $godoInspectionService->buildInspectionContext(
+                (array)($inspectionData['item'] ?? [])
+            );
+            $inspectionVersion = $godoInspectionService->getInspectionVersion();
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $inspectionHistoryRows = $inspectionProcessLogService->getHistoryByPrdIdx($prdIdx, 30);
+
+            $data = [
+                'prd_idx' => $prdIdx,
+                'inspectionVersion' => $inspectionVersion,
+                'item' => $inspectionData['item'] ?? [],
+                'inspectionContext' => $inspectionContext,
+                'inspectionHistoryRows' => $inspectionHistoryRows,
+                'godoApiErrorMessage' => $inspectionData['godoApiErrorMessage'] ?? '',
+                'godoInfoLoadedAt' => $inspectionData['godoInfoLoadedAt'] ?? '',
+                'godoInfoLoadMs' => $inspectionData['godoInfoLoadMs'] ?? 0,
+            ];
+
+            return view('admin.product.prd_detail_godo_inspection', $data);
+
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
      * 상품 할인 로그 목록 화면
      */
     public function prdDetailSaleLogPage(Request $request)
@@ -459,6 +503,13 @@ class ProductController extends BaseClass
                 case 'unset_product_discontinued':
                     $result = $this->productService->unsetProductDiscontinued($requestData);
                     break;
+
+                case 'process_single_godo_inspection':
+                    $result = $this->productService->processSingleProductGodoInspection($requestData);
+                    break;
+
+                default:
+                    throw new Exception('유효하지 않은 action_mode 입니다.');
 
             }
 

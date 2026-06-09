@@ -56,5 +56,8 @@
 </head>
 <body id="popup">
     <?= $content ?? '' ?>
+
+<script src="/admin2/js/admin_footer.js?ver=<?=time()?>"></script>
+<script src="/assets/js/common.js?ver=<?=time()?>"></script>
 </body>
 </html>

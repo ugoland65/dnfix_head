@@ -1,3 +1,44 @@
+<style>
+.prd-image-preview-trigger {
+    cursor: zoom-in;
+}
+.prd-image-preview-modal {
+    position: fixed;
+    inset: 0;
+    z-index: 9999;
+    background: rgba(0, 0, 0, 0.75);
+    display: none;
+    align-items: center;
+    justify-content: center;
+    padding: 20px;
+}
+.prd-image-preview-modal.is-open {
+    display: flex;
+}
+.prd-image-preview-content {
+    position: relative;
+    max-width: 1000px;
+    max-height: 1000px;
+    width: 100%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+}
+.prd-image-preview-modal img {
+    max-width: 1000px;
+    max-height: 1000px;
+    width: auto;
+    height: auto;
+    border: 1px solid #e5e7eb;
+    background: #fff;
+}
+.prd-image-preview-close {
+    position: fixed;
+    top: 16px;
+    right: 16px;
+    z-index: 10000;
+}
+</style>
 <form name='prd_form' id='prd_form' method='post' enctype="multipart/form-data" autocomplete="off">
 
     <input type="hidden" name="idx" value="<?= $productData['CD_IDX'] ?? '' ?>">
@@ -122,7 +163,12 @@
                                     $img_add1 = '/data/comparion/' . $productData['cd_add_img']['add1']['filename'];
                                 ?>
                                     <div class="m-b-15">
-                                        <img src="<?= $img_add1 ?>" style="height:100px; margin-left:20px; border:1px solid #eee !important;">
+                                        <img
+                                            src="<?= $img_add1 ?>"
+                                            data-preview-src="<?= $img_add1 ?>"
+                                            class="prd-image-preview-trigger"
+                                            style="height:100px; margin-left:20px; border:1px solid #eee !important;"
+                                        >
                                     </div>
                                 <?php } ?>
 
@@ -131,6 +177,8 @@
                                 <?php if ($productData['cd_add_img']['add1']['filename'] ?? '') { ?>
                                     <div class="m-t-10"><?= $productData['cd_add_img']['add1']['filename'] ?></div>
                                 <?php } ?>
+
+                                <p style="font-size:12px; color:#ff0000;">해당값을 [실측 상품중량]에 꼭 기입해주세요.</p>
                             </div>
                         </ul>
 
@@ -840,6 +888,13 @@
     </div>
 <?php } ?>
 
+<div id="prd_image_preview_modal" class="prd-image-preview-modal">
+    <div class="prd-image-preview-content">
+        <button type="button" id="prd_image_preview_close" class="btnstyle1 btnstyle1-danger btnstyle1-md prd-image-preview-close">이미지 닫기</button>
+        <img id="prd_image_preview_target" src="" alt="원본 이미지 미리보기">
+    </div>
+</div>
+
 <script>
     var prdDetailBasicForm = function() {
 
@@ -1173,6 +1228,42 @@
             var domainLabel = extractDomainLabel($(this).val());
             if (domainLabel) {
                 $titleInput.val(domainLabel);
+            }
+        });
+
+        const $imagePreviewModal = $('#prd_image_preview_modal');
+        const $imagePreviewTarget = $('#prd_image_preview_target');
+
+        $(document).on('click', '.prd-image-preview-trigger', function() {
+            const src = String($(this).data('preview-src') || $(this).attr('src') || '').trim();
+            if (!src) {
+                return;
+            }
+            $imagePreviewTarget.attr('src', src);
+            $imagePreviewModal.addClass('is-open');
+        });
+
+        const closeImagePreviewModal = function() {
+            $imagePreviewModal.removeClass('is-open');
+            $imagePreviewTarget.attr('src', '');
+        };
+
+        $('#prd_image_preview_close').on('click', function(e) {
+            e.stopPropagation();
+            closeImagePreviewModal();
+        });
+
+        $imagePreviewTarget.on('click', function(e) {
+            e.stopPropagation();
+        });
+
+        $imagePreviewModal.on('click', function() {
+            closeImagePreviewModal();
+        });
+
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape' && $imagePreviewModal.hasClass('is-open')) {
+                closeImagePreviewModal();
             }
         });
 

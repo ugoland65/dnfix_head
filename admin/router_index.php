@@ -77,6 +77,7 @@ try {
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
     $router->post('/product/detail_sale_log/save', ProductController::class, 'saveProductSaleLog'); //상품 디테일 (할인 로그 저장)
+    $router->post('/product/detail_godo_inspection', ProductController::class, 'prdDetailGodoInspection'); //상품 디테일 (고도몰 검수 처리)
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
     $router->get('/sales/packing_list', SalesController::class, 'packingList'); //패킹리스트
     $router->get('/sales/sales_ranking_by_period', SalesController::class, 'salesRankingByPeriod'); //매출 일별 집계 조회
@@ -122,6 +123,7 @@ try {
     $router->get('/order/sheet/list', OrderSheetController::class, 'orderSheetList'); //주문서 목록
     $router->get('/order/sheet/create', OrderSheetController::class, 'orderSheetCreate'); //주문서 생성
     $router->get('/order/sheet_info', OrderSheetController::class, 'orderSheetInfo'); //주문서 상세
+    $router->get('/order/sheet/stock', OrderSheetController::class, 'orderSheetStock'); //주문서 재고 일괄등록 팝업
     $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
     $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
     $router->post('/order/sheet/delete_product', OrderSheetController::class, 'orderSheetDeleteProduct'); //주문서 주문 상품목록
@@ -134,6 +136,7 @@ try {
     $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
+    //주문서 재고 일괄등록
 
     // 재고 관리
     $router->get('/stock/rack_list', RackController::class, 'rackList'); //랙목록

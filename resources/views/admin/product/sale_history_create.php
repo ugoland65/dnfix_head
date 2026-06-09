@@ -270,7 +270,7 @@
         </button>
     </div>
 </div>
-<div id="contents_body" class="partition-body">
+<div id="contents_body"  >
     <div id="contents_body_wrap">
 
         <div class="partition-wrap">
@@ -456,6 +456,7 @@
 
             </ul>
         </div>
+
     </div>
 </div>
 <div id="contents_bottom">

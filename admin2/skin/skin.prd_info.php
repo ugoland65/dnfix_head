@@ -375,6 +375,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
 		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고/판매 리스트</ul>
+		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
@@ -544,98 +545,130 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		/**
 		 * 메뉴 클릭
 		 */
-		function mode(pn, mode) {
-
+		function mode(pn, modeKey) {
 
 			$(".crm-menu ul").removeClass('active');
-			$("#crm_menu_" + mode).addClass('active');
+			$("#crm_menu_" + modeKey).addClass('active');
 
-			var _search_date_s = "";
-			var _search_date_e = "";
-
+			var searchDateStart = "";
+			var searchDateEnd = "";
 			if ($(".list-search-date-box").length) {
-				_search_date_s = $("#search_date_s").val();
-				_search_date_e = $("#search_date_e").val();
+				searchDateStart = $("#search_date_s").val();
+				searchDateEnd = $("#search_date_e").val();
 			}
 
-			var data = {
-				"prd_idx": prd_idx
+			var requestConfig = {
+				method: "POST",
+				url: "/ad/ajax/prd_reg_form",
+				data: { prd_idx: prd_idx }
 			};
-			var ajaxMethod = "POST";
-			var ajaxUrl = "/ad/ajax/prd_reg_form";
 
-			// @deprecated
-			if (mode == "info2") {
-				ajaxUrl = "/ad/ajax/prd_reg_form";
-
-			} else if (mode == "info") {
-				ajaxMethod = "GET";
-				ajaxUrl = "/admin/product/detail_basic";
-				data = {
-					"prd_idx": prd_idx
-				};
-
-			} else if (mode == "price") {
-				ajaxMethod = "GET";
-				ajaxUrl = "/admin/product/detail_price";
-				data = {
-					"prd_idx": prd_idx
-				};
-
-			} else if (mode == "price2") {
-				ajaxUrl = "/ad/ajax/prd_info_price";
-
-			} else if (mode == "saleLog") { //할인 로그
-				//ajaxUrl = "/ad/ajax/prd_info_salelog";
-				ajaxMethod = "GET";
-				ajaxUrl = "/admin/product/detail_sale_log";
-				data = {
-					"prd_idx": prd_idx,
-					"prd_mode": "prdDB"
-				};
-
-			} else if (mode == "stock_chart") { //재고 챠트
-				ajaxUrl = "/ad/ajax/prd_info_stock_chart";
-				data = {
-					"prd_idx": prd_idx,
-					"ps_idx": ps_idx
-				};
-
-			} else if (mode == "stock") { //재고 챠트
-				ajaxUrl = "/ad/ajax/prd_info_stock";
-				data = {
-					"prd_idx": prd_idx,
-					"ps_idx": ps_idx,
-					"pn": pn,
-					"sdate": _search_date_s,
-					"edate": _search_date_e
-				};
-
-			} else if (mode == "onadb_config") { //오나DB 설정
-				ajaxUrl = "/ad/ajax/prd_info_onadb_config";
-
-			} else if (mode == "onadb_comment") { //오나DB 한줄평
-				ajaxUrl = "/ad/ajax/onadb_prd_comment_list";
-				data = {
-					"prd_idx": prd_idx,
-					"pn": pn,
-					"load_page": "prdInfo"
-				};
-
-			//수정로그
-			} else if (mode == "log") { 
-				ajaxMethod = "GET";
-				ajaxUrl = "/admin/admin_action_log/list";
-				data = {
-					"prd_idx": prd_idx,
-					"target_type": "product",
-				};
+			switch (modeKey) {
+				case "info2": // @deprecated
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/prd_reg_form",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "info":
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_basic",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "price":
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_price",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "price2": // @deprecated
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/prd_info_price",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "saleLog": // 할인 로그
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_sale_log",
+						data: {
+							prd_idx: prd_idx,
+							prd_mode: "prdDB"
+						}
+					};
+					break;
+				case "stock_chart": // 재고 차트
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/prd_info_stock_chart",
+						data: {
+							prd_idx: prd_idx,
+							ps_idx: ps_idx
+						}
+					};
+					break;
+				case "stock": // 재고/판매 리스트
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/prd_info_stock",
+						data: {
+							prd_idx: prd_idx,
+							ps_idx: ps_idx,
+							pn: pn,
+							sdate: searchDateStart,
+							edate: searchDateEnd
+						}
+					};
+					break;
+				case "godo_inspection": // 고도몰 검수 처리
+					requestConfig = {
+						method: "POST",
+						url: "/admin/product/detail_godo_inspection",
+						data: {
+							prd_idx: prd_idx,
+							ps_idx: ps_idx
+						}
+					};
+					break;
+				case "onadb_config": // 오나DB 설정
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/prd_info_onadb_config",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "onadb_comment": // 오나DB 한줄평
+					requestConfig = {
+						method: "POST",
+						url: "/ad/ajax/onadb_prd_comment_list",
+						data: {
+							prd_idx: prd_idx,
+							pn: pn,
+							load_page: "prdInfo"
+						}
+					};
+					break;
+				case "log": // 수정로그
+					requestConfig = {
+						method: "GET",
+						url: "/admin/admin_action_log/list",
+						data: {
+							prd_idx: prd_idx,
+							target_type: "product"
+						}
+					};
+					break;
 			}
 
 			$.ajax({
-				url: ajaxUrl,
-				data: data,
-				type: ajaxMethod,
+				url: requestConfig.url,
+				data: requestConfig.data,
+				type: requestConfig.method,
 				dataType: "text",
 				success: function(getHtml) {
 					if (getHtml) {

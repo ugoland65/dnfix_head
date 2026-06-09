@@ -433,41 +433,76 @@ class ProductService extends BaseClass
         $product['prd_kind_name'] = $prdKindName[$product['CD_KIND_CODE']] ?? '미지정';
         $product['national_text'] = $nationalText[$product['cd_national']] ?? '';
 
-        $product['margin_per'] = 0;
-        $product['margin_grade'] = '';
-
-        // 마진율 계산
-        if ($product['cd_sale_price'] > 0 && $product['cd_cost_price'] > 0) {
-            if ($product['cd_sale_price'] < 29999) {
-                $product['margin_per'] = round(($product['cd_sale_price'] - $product['cd_cost_price']) / $product['cd_sale_price'] * 100, 2);
-            } else {
-                $product['margin_per'] = round(($product['cd_sale_price'] - ($product['cd_cost_price'] + 2500)) / $product['cd_sale_price'] * 100, 2);
-            }
-        }
-
-        // 마진율 그룹
-        if ($product['margin_per'] > 39) {
-            $product['margin_grade'] = 'A';
-        } elseif ($product['margin_per'] >= 35) {
-            $product['margin_grade'] = 'B';
-        } elseif ($product['margin_per'] >= 30) {
-            $product['margin_grade'] = 'C';
-        } elseif ($product['margin_per'] >= 25) {
-            $product['margin_grade'] = 'D';
-        } elseif ($product['margin_per'] >= 20) {
-            $product['margin_grade'] = 'E';
-        } elseif ($product['margin_per'] >= 15) {
-            $product['margin_grade'] = 'F';
-        } elseif ($product['margin_per'] >= 10) {
-            $product['margin_grade'] = 'G';
-        } elseif ($product['margin_per'] >= 5) {
-            $product['margin_grade'] = 'H';
-        } elseif ($product['margin_per'] > 0) {
-            $product['margin_grade'] = 'I';
-        }
+        $marginInfo = $this->calculateMarginInfo(
+            (float)($product['cd_sale_price'] ?? 0),
+            (float)($product['cd_cost_price'] ?? 0)
+        );
+        $product['margin_per'] = (float)$marginInfo['margin_per'];
+        $product['margin_grade'] = (string)$marginInfo['margin_grade'];
 
         return $product;
 
+    }
+
+
+    /**
+     * 판매가/원가 기준으로 마진율 및 마진 그룹 정보를 계산한다.
+     * 외부에서도 호출 가능한 공용 메서드.
+     *
+     * @param float|int|string $salePrice
+     * @param float|int|string $costPrice
+     * @return array{margin_per:float,margin_grade:string,margin_grade_color:string}
+     */
+    public function calculateMarginInfo($salePrice, $costPrice): array
+    {
+        $sale = (float)$salePrice;
+        $cost = (float)$costPrice;
+
+        $marginPer = 0.0;
+        if ($sale > 0 && $cost > 0) {
+            if ($sale < 29999) {
+                $marginPer = round((($sale - $cost) / $sale) * 100, 2);
+            } else {
+                $marginPer = round((($sale - ($cost + 2500)) / $sale) * 100, 2);
+            }
+        }
+
+        $grade = '';
+        $gradeColor = '';
+        if ($marginPer > 39) {
+            $grade = 'A';
+            $gradeColor = '#28a745';
+        } elseif ($marginPer >= 35) {
+            $grade = 'B';
+            $gradeColor = '#20c997';
+        } elseif ($marginPer >= 30) {
+            $grade = 'C';
+            $gradeColor = '#17a2b8';
+        } elseif ($marginPer >= 25) {
+            $grade = 'D';
+            $gradeColor = '#0dcaf0';
+        } elseif ($marginPer >= 20) {
+            $grade = 'E';
+            $gradeColor = '#ffc107';
+        } elseif ($marginPer >= 15) {
+            $grade = 'F';
+            $gradeColor = '#fd7e14';
+        } elseif ($marginPer >= 10) {
+            $grade = 'G';
+            $gradeColor = '#dc3545';
+        } elseif ($marginPer >= 5) {
+            $grade = 'H';
+            $gradeColor = '#d63384';
+        } elseif ($marginPer > 0) {
+            $grade = 'I';
+            $gradeColor = '#6c757d';
+        }
+
+        return [
+            'margin_per' => $marginPer,
+            'margin_grade' => $grade,
+            'margin_grade_color' => $gradeColor,
+        ];
     }
 
 
@@ -1106,55 +1141,13 @@ class ProductService extends BaseClass
 
         }
 
-        if( !empty($productData['cd_sale_price']) ){
-			
-            //$_margin_per = round($prd_data['margin_per'],2) ?? 0;
-    
-            if( $productData['cd_sale_price'] > 0 && $productData['cd_cost_price'] > 0 ){
-                if( $productData['cd_sale_price'] < 29999 ){
-                    $_margin_per =  round( ($productData['cd_sale_price'] - $productData['cd_cost_price'] ) / $productData['cd_sale_price'] * 100, 2);
-                }else{
-                    $_margin_per =  round( ($productData['cd_sale_price'] - ($productData['cd_cost_price'] + 2500) ) / $productData['cd_sale_price'] * 100, 2);
-                }
-            }
-    
-            // 등급 계산 (40% 기준, 5단위)
-            $grade = '';
-            $gradeColor = '';
-            if ($_margin_per > 39) {
-                $grade = 'A';
-                $gradeColor = '#28a745'; // 초록색
-            } elseif ($_margin_per >= 35) {
-                $grade = 'B';
-                $gradeColor = '#20c997'; // 연두색
-            } elseif ($_margin_per >= 30) {
-                $grade = 'C';
-                $gradeColor = '#17a2b8'; // 청록색
-            } elseif ($_margin_per >= 25) {
-                $grade = 'D';
-                $gradeColor = '#0dcaf0'; // 하늘색
-            } elseif ($_margin_per >= 20) {
-                $grade = 'E';
-                $gradeColor = '#ffc107'; // 노란색
-            } elseif ($_margin_per >= 15) {
-                $grade = 'F';
-                $gradeColor = '#fd7e14'; // 오렌지색
-            } elseif ($_margin_per >= 10) {
-                $grade = 'G';
-                $gradeColor = '#dc3545'; // 빨간색
-            } elseif ($_margin_per >= 5) {
-                $grade = 'H';
-                $gradeColor = '#d63384'; // 진한 빨강
-            } elseif ($_margin_per > 0) {
-                $grade = 'I';
-                $gradeColor = '#6c757d'; // 회색
-            }
-
-            $productData['margin_per'] = $_margin_per;
-            $productData['margin_grade'] = $grade;
-            $productData['margin_grade_color'] = $gradeColor;
-    
-        }
+        $marginInfo = $this->calculateMarginInfo(
+            (float)($productData['cd_sale_price'] ?? 0),
+            (float)($productData['cd_cost_price'] ?? 0)
+        );
+        $productData['margin_per'] = (float)$marginInfo['margin_per'];
+        $productData['margin_grade'] = (string)$marginInfo['margin_grade'];
+        $productData['margin_grade_color'] = (string)$marginInfo['margin_grade_color'];
 
 
         return $productData;
@@ -2238,6 +2231,461 @@ class ProductService extends BaseClass
             'idx' => $idx,
         ];
 
+    }
+
+    /**
+     * 단일 상품 고도몰 검수 화면 데이터
+     *
+     * @param int $prdIdx
+     * @param int $psIdx
+     * @return array
+     * @throws Exception
+     */
+    public function getSingleProductGodoInspectionData(int $prdIdx, int $psIdx = 0): array
+    {
+        if ($prdIdx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $productRow = ProductModel::query()
+            ->from('COMPARISON_DB as A')
+            ->leftJoin('prd_stock as B', 'B.ps_prd_idx', '=', 'A.CD_IDX')
+            ->leftJoin('BRAND_DB as C', 'C.BD_IDX', '=', 'A.CD_BRAND_IDX')
+            ->where('A.CD_IDX', '=', $prdIdx)
+            ->select([
+                'A.CD_IDX',
+                'A.CD_KIND_CODE',
+                'A.CD_NAME',
+                'A.CD_IMG',
+                'A.CD_CODE',
+                'A.CD_SIZE2',
+                'A.cd_hbti',
+                'A.cd_sale_price',
+                'A.cd_cost_price',
+                'A.cd_godo_code',
+                'A.cd_weight_fn',
+                'B.ps_idx',
+                'B.ps_stock',
+                'C.BD_NAME',
+            ])
+            ->first();
+        $product = $productRow ? $productRow->toArray() : [];
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $resolvedPsIdx = $psIdx > 0 ? $psIdx : (int)($product['ps_idx'] ?? 0);
+        $godoApiErrorMessage = '';
+        $godoGoods = [];
+        $godoApiStartAt = microtime(true);
+
+        if ($resolvedPsIdx > 0) {
+            try {
+                $godoApiService = new GodoApiService();
+                $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                if (!is_array($godoGoodsRows)) {
+                    $godoGoodsRows = [];
+                }
+                foreach ($godoGoodsRows as $godoRow) {
+                    if (!is_array($godoRow)) {
+                        continue;
+                    }
+                    $goodsCd = trim((string)($godoRow['goodsCd'] ?? ''));
+                    if ($goodsCd === (string)$resolvedPsIdx) {
+                        $godoGoods = $godoRow;
+                        break;
+                    }
+                }
+
+            } catch (\Throwable $e) {
+                $godoApiErrorMessage = $e->getMessage();
+            }
+        }
+
+        $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
+
+        $cdWeightData = json_decode($product['cd_weight_fn'] ?? '{}', true);
+        if (!is_array($cdWeightData)) {
+            $cdWeightData = [];
+        }
+        $marginInfo = $this->calculateMarginInfo(
+            (float)($product['cd_sale_price'] ?? 0),
+            (float)($product['cd_cost_price'] ?? 0)
+        );
+        $godoCategoryLines = $this->buildGodoCategoryLines(
+            (isset($godoGoods['categories']) && is_array($godoGoods['categories'])) ? $godoGoods['categories'] : []
+        );
+
+        $godoStockQty = 0;
+        if (isset($godoGoods['totalStock']) && is_numeric($godoGoods['totalStock'])) {
+            $godoStockQty = (int)$godoGoods['totalStock'];
+        } elseif (isset($godoGoods['stockCnt']) && is_numeric($godoGoods['stockCnt'])) {
+            $godoStockQty = (int)$godoGoods['stockCnt'];
+        } elseif (isset($godoGoods['stock']) && is_numeric($godoGoods['stock'])) {
+            $godoStockQty = (int)$godoGoods['stock'];
+        } elseif (isset($godoGoods['goodsStock']) && is_numeric($godoGoods['goodsStock'])) {
+            $godoStockQty = (int)$godoGoods['goodsStock'];
+        }
+
+        $item = [
+            'pidx' => (int)($product['CD_IDX'] ?? 0),
+            'ps_idx' => $resolvedPsIdx,
+            'qty' => 0,
+            'is_false' => false,
+            'cd_kind_code' => trim((string)($product['CD_KIND_CODE'] ?? '')),
+            'brand_name' => (string)($product['BD_NAME'] ?? ''),
+            'name' => (string)($product['CD_NAME'] ?? ''),
+            'barcode' => (string)($product['CD_CODE'] ?? ''),
+            'cd_hbti' => (string)($product['cd_hbti'] ?? ''),
+            'goods_price' => (string)($product['cd_sale_price'] ?? ''),
+            'cost_price' => (string)($product['cd_cost_price'] ?? ''),
+            'goods_weight' => (string)($cdWeightData['1'] ?? 0),
+            'inner_length' => (string)($product['CD_SIZE2'] ?? ''),
+            'margin_per' => (float)($marginInfo['margin_per'] ?? 0),
+            'margin_grade' => (string)($marginInfo['margin_grade'] ?? ''),
+            'stock_qty' => (int)($product['ps_stock'] ?? 0),
+            'img_path' => trim((string)($product['CD_IMG'] ?? '')) !== '' ? ('/data/comparion/' . trim((string)($product['CD_IMG'] ?? ''))) : '',
+            'cd_godo_code' => trim((string)($product['cd_godo_code'] ?? '')),
+            'godo_goods_no' => $godoGoodsNo,
+            'godo_stock_qty' => $godoStockQty,
+            'godo_only_adult_fl' => strtolower(trim((string)($godoGoods['onlyAdultFl'] ?? ''))),
+            'godo_goods_model_no' => trim((string)($godoGoods['goodsModelNo'] ?? '')),
+            'godo_goods_price' => trim((string)($godoGoods['goodsPrice'] ?? '')),
+            'godo_cost_price' => trim((string)($godoGoods['costPrice'] ?? '')),
+            'godo_category_lines' => $godoCategoryLines,
+        ];
+
+        return [
+            'item' => $item,
+            'godoApiErrorMessage' => $godoApiErrorMessage,
+            'godoInfoLoadedAt' => date('Y-m-d H:i:s'),
+            'godoInfoLoadMs' => (int)round((microtime(true) - $godoApiStartAt) * 1000),
+        ];
+    }
+
+    /**
+     * 단일 상품 검수 체크 항목 일괄 처리
+     * - 선택된 자동처리 가능 항목만 반영
+     * - 인트라넷 대상 처리 후, 고도몰 대상이 있으면 고도몰 API 호출
+     *
+     * @param array $requestData
+     * @return array
+     * @throws Exception
+     */
+    public function processSingleProductGodoInspection(array $requestData): array
+    {
+        $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+        $psIdx = (int)($requestData['ps_idx'] ?? 0);
+        $selectedIssues = $requestData['selected_issues'] ?? [];
+        if (!is_array($selectedIssues)) {
+            $selectedIssues = [];
+        }
+        $selectedIssues = array_values(array_unique(array_filter(array_map(static function ($v) {
+            return trim((string)$v);
+        }, $selectedIssues), static function ($v) {
+            return $v !== '';
+        })));
+
+        if ($prdIdx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+        if (empty($selectedIssues)) {
+            throw new Exception('선택된 자동처리 항목이 없습니다.');
+        }
+
+        $inspectionData = $this->getSingleProductGodoInspectionData($prdIdx, $psIdx);
+        $item = (array)($inspectionData['item'] ?? []);
+        $godoInspectionService = new GodoInspectionService();
+        $inspectionVersion = $godoInspectionService->getInspectionVersion();
+        $inspectionContext = $godoInspectionService->buildInspectionContext($item);
+        $issues = (isset($inspectionContext['inspection_issues']) && is_array($inspectionContext['inspection_issues']))
+            ? $inspectionContext['inspection_issues']
+            : [];
+        $issueNameSet = [];
+        foreach ($issues as $issueRow) {
+            $name = trim((string)($issueRow['issue'] ?? ''));
+            if ($name !== '') {
+                $issueNameSet[$name] = true;
+            }
+        }
+
+        $processableIssues = [];
+        $intranetIssueNames = [];
+        $godoIssueNames = [];
+        $intranetBarcode = (string)($inspectionContext['intranet_barcode'] ?? ($item['barcode'] ?? ''));
+        foreach ($selectedIssues as $issueName) {
+            if (!isset($issueNameSet[$issueName])) {
+                continue;
+            }
+            $actionMeta = $godoInspectionService->resolveIssueActionMeta($issueName, $intranetBarcode);
+            $target = trim((string)($actionMeta['target'] ?? ''));
+            $state = trim((string)($actionMeta['state'] ?? ''));
+            if ($state !== '자동처리 가능') {
+                continue;
+            }
+            $processableIssues[] = $issueName;
+            if ($target === '인트라넷') {
+                $intranetIssueNames[$issueName] = true;
+            } elseif ($target === '고도몰') {
+                $godoIssueNames[$issueName] = true;
+            }
+        }
+
+        if (empty($processableIssues)) {
+            throw new Exception('선택된 항목 중 자동처리 가능한 항목이 없습니다.');
+        }
+
+        $beforeValues = [
+            'cd_godo_code' => trim((string)($item['cd_godo_code'] ?? '')),
+            'cd_sale_price' => trim((string)($item['goods_price'] ?? '')),
+            'godo_only_adult_fl' => strtolower(trim((string)($item['godo_only_adult_fl'] ?? ''))),
+            'godo_goods_model_no' => trim((string)($item['godo_goods_model_no'] ?? '')),
+            'godo_cost_price' => trim((string)($item['godo_cost_price'] ?? '')),
+            'godo_goods_price' => trim((string)($item['godo_goods_price'] ?? '')),
+        ];
+
+        $normalizeNumeric = static function (string $value): string {
+            return str_replace(',', '', trim($value));
+        };
+
+        $intranetUpdated = [];
+        if (isset($intranetIssueNames['상품번호 불일치'])) {
+            $godoGoodsNo = trim((string)($item['godo_goods_no'] ?? ''));
+            if ($godoGoodsNo !== '' && $godoGoodsNo !== '0') {
+                ProductModel::query()
+                    ->where('CD_IDX', '=', $prdIdx)
+                    ->update([
+                        'cd_godo_code' => $godoGoodsNo,
+                    ]);
+                $intranetUpdated[] = 'cd_godo_code';
+                $item['cd_godo_code'] = $godoGoodsNo;
+            }
+        }
+        if (isset($intranetIssueNames['판매가 불일치'])) {
+            $godoGoodsPrice = $normalizeNumeric((string)($item['godo_goods_price'] ?? ''));
+            if ($godoGoodsPrice !== '' && is_numeric($godoGoodsPrice)) {
+                ProductModel::query()
+                    ->where('CD_IDX', '=', $prdIdx)
+                    ->update([
+                        'cd_sale_price' => $godoGoodsPrice,
+                    ]);
+                $intranetUpdated[] = 'cd_sale_price';
+                $item['goods_price'] = $godoGoodsPrice;
+            }
+        }
+
+        $godoCalled = false;
+        $godoResponse = [];
+        $columnUpdates = [];
+        $addCategoryCds = '';
+        $deleteCategoryCds = '';
+        if (!empty($godoIssueNames)) {
+            if (isset($godoIssueNames['성인인증'])) {
+                $columnUpdates['godo_only_adult_fl'] = 'y';
+            }
+            if ((isset($godoIssueNames['바코드 미입력']) || isset($godoIssueNames['바코드 불일치'])) && trim((string)($item['barcode'] ?? '')) !== '') {
+                $columnUpdates['godo_goods_model_no'] = trim((string)($item['barcode'] ?? ''));
+            }
+            if (isset($godoIssueNames['원가 미입력']) || isset($godoIssueNames['원가 불일치'])) {
+                $intranetCost = $normalizeNumeric((string)($item['cost_price'] ?? ''));
+                if ($intranetCost !== '') {
+                    $columnUpdates['godo_cost_price'] = $intranetCost;
+                }
+            }
+
+            $hasCategoryIssue = false;
+            foreach (array_keys($godoIssueNames) as $issueName) {
+                if (strpos($issueName, '카테고리') !== false) {
+                    $hasCategoryIssue = true;
+                    break;
+                }
+            }
+            $columnUpdatePairs = [];
+            foreach ($columnUpdates as $columnName => $columnValue) {
+                $columnUpdatePairs[] = $columnName . '=' . (string)$columnValue;
+            }
+            $columnUpdateString = implode(',', $columnUpdatePairs);
+            $addCategoryCds = $hasCategoryIssue ? (string)($inspectionContext['category_add_codes_for_sync'] ?? '') : '';
+            $deleteCategoryCds = $hasCategoryIssue ? (string)($inspectionContext['category_delete_codes_for_sync'] ?? '') : '';
+
+            $goodsNo = trim((string)($item['godo_goods_no'] ?? ''));
+            if ($goodsNo !== '' && $goodsNo !== '0') {
+                $godoApiService = new GodoApiService();
+                $godoResponse = $godoApiService->autoStockUpdateAndInspection([
+                    'goodsNo' => $goodsNo,
+                    'columnUpdates' => $columnUpdateString,
+                    'addCategoryCds' => $addCategoryCds,
+                    'deleteCategoryCds' => $deleteCategoryCds,
+                ]);
+                $godoCalled = true;
+            }
+        }
+
+        $afterValues = $beforeValues;
+        if (!empty($intranetUpdated) && in_array('cd_godo_code', $intranetUpdated, true)) {
+            $afterValues['cd_godo_code'] = trim((string)($item['cd_godo_code'] ?? ''));
+        }
+        if (!empty($intranetUpdated) && in_array('cd_sale_price', $intranetUpdated, true)) {
+            $afterValues['cd_sale_price'] = trim((string)($item['goods_price'] ?? ''));
+        }
+        foreach ($columnUpdates as $columnName => $columnValue) {
+            $afterValues[$columnName] = (string)$columnValue;
+        }
+        $categoryAddDisplay = $this->buildCategoryCodeDisplayText($addCategoryCds, $inspectionContext, $godoInspectionService);
+        $categoryDeleteDisplay = $this->buildCategoryCodeDisplayText($deleteCategoryCds, $inspectionContext, $godoInspectionService);
+        $beforeValues['category_add_codes_for_sync'] = '';
+        $afterValues['category_add_codes_for_sync'] = $categoryAddDisplay;
+        $beforeValues['category_delete_codes_for_sync'] = $categoryDeleteDisplay;
+        $afterValues['category_delete_codes_for_sync'] = '';
+
+        $resultPayload = [
+            'success' => true,
+            'message' => '처리완료',
+            'inspection_version' => $inspectionVersion,
+            'processed_issues' => $processableIssues,
+            'intranet_updated_columns' => $intranetUpdated,
+            'godo_called' => $godoCalled,
+            'godo_response' => $godoResponse,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+                'cd_last_inspection_at' => date('Y-m-d H:i:s'),
+                'cd_last_inspection_version' => $inspectionVersion,
+            ]);
+
+        try {
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $inspectionProcessLogService->logProductSingleGodoInspection([
+                'prd_idx' => $prdIdx,
+                'ps_idx' => (int)($item['ps_idx'] ?? $psIdx),
+                'godo_goods_no' => (string)($item['godo_goods_no'] ?? ''),
+                'inspection_version' => $inspectionVersion,
+                'process_content' => [
+                    'inspection_version' => $inspectionVersion,
+                    'selected_issues' => $selectedIssues,
+                    'processable_issues' => $processableIssues,
+                    'intranet_issue_names' => array_keys($intranetIssueNames),
+                    'godo_issue_names' => array_keys($godoIssueNames),
+                    'column_updates' => $columnUpdates,
+                    'category_add_codes' => $addCategoryCds,
+                    'category_delete_codes' => $deleteCategoryCds,
+                ],
+                'before_values' => $beforeValues,
+                'after_values' => $afterValues,
+                'result_content' => $resultPayload,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 메인 처리에 영향이 없도록 분리한다.
+        }
+
+        return $resultPayload;
+    }
+
+    /**
+     * 카테고리 코드 CSV를 "카테고리명(코드)" 표기 문자열로 변환한다.
+     *
+     * @param string $codesCsv
+     * @param array $inspectionContext
+     * @param GodoInspectionService $godoInspectionService
+     * @return string
+     */
+    private function buildCategoryCodeDisplayText(string $codesCsv, array $inspectionContext, GodoInspectionService $godoInspectionService): string
+    {
+        $codesCsv = trim($codesCsv);
+        if ($codesCsv === '') {
+            return '';
+        }
+
+        $lineByCode = [];
+        $godoCategoryLines = (isset($inspectionContext['godo_category_lines']) && is_array($inspectionContext['godo_category_lines']))
+            ? $inspectionContext['godo_category_lines']
+            : [];
+        foreach ($godoCategoryLines as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+            $cateCd = trim((string)($categoryRow['cateCd'] ?? ''));
+            $line = trim((string)($categoryRow['line'] ?? ''));
+            if ($cateCd === '') {
+                continue;
+            }
+            if ($line !== '') {
+                $lineByCode[$cateCd] = $line;
+            }
+        }
+
+        $codes = array_values(array_unique(array_filter(array_map(static function ($v) {
+            return trim((string)$v);
+        }, explode(',', $codesCsv)), static function ($v) {
+            return $v !== '';
+        })));
+
+        $displayRows = [];
+        foreach ($codes as $cateCd) {
+            $cateName = $lineByCode[$cateCd] ?? $godoInspectionService->getCategoryNameByCode($cateCd);
+            if ($cateName === '') {
+                $displayRows[] = $cateCd;
+                continue;
+            }
+            $displayRows[] = $cateName . '(' . $cateCd . ')';
+        }
+
+        return implode(', ', $displayRows);
+    }
+
+    /**
+     * 고도몰 categories 응답을 화면 표기용 목록으로 변환한다.
+     *
+     * @param array $categories
+     * @return array<int,array{line:string,cateCd:string}>
+     */
+    private function buildGodoCategoryLines(array $categories): array
+    {
+        $lineRows = [];
+        $seen = [];
+
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+            $pathRows = (isset($categoryRow['path']) && is_array($categoryRow['path'])) ? $categoryRow['path'] : [];
+            $pathNames = [];
+            foreach ($pathRows as $pathRow) {
+                if (!is_array($pathRow)) {
+                    continue;
+                }
+                $cateNm = trim((string)($pathRow['cateNm'] ?? ''));
+                if ($cateNm !== '') {
+                    $pathNames[] = $cateNm;
+                }
+            }
+            if (empty($pathNames)) {
+                $cateNm = trim((string)($categoryRow['cateNm'] ?? ''));
+                if ($cateNm !== '') {
+                    $pathNames[] = $cateNm;
+                }
+            }
+            if (empty($pathNames)) {
+                continue;
+            }
+            $line = implode(' > ', $pathNames);
+            if (isset($seen[$line])) {
+                continue;
+            }
+            $seen[$line] = true;
+            $lineRows[] = [
+                'line' => $line,
+                'cateCd' => trim((string)($categoryRow['cateCd'] ?? '')),
+            ];
+        }
+
+        usort($lineRows, static function (array $a, array $b): int {
+            return strcmp((string)($a['cateCd'] ?? ''), (string)($b['cateCd'] ?? ''));
+        });
+
+        return $lineRows;
     }
 
 }
