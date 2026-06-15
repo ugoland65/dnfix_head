@@ -5,6 +5,8 @@ namespace App\Services;
 class GodoInspectionService
 {
     public const INSPECTION_VERSION = '20260609_v1';
+    public const CONTEXT_PRODUCT_SINGLE = 'product_single';
+    public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
 
     private const BRAND1_CATEGORY_LIST = [
         '049' => '중국수입 브랜드',
@@ -86,7 +88,13 @@ class GodoInspectionService
         ['cateNm' => 'I', 'cateCd' => '046001009'],
     ];
 
-    public function buildInspectionContext(array $item): array
+    /**
+     * 주문서 재고 행 1건 기준으로 검수 컨텍스트를 구성한다.
+     *
+     * 반환값에는 화면 표시용 이슈 목록과
+     * 자동처리용 카테고리 추가/삭제 큐가 함께 포함된다.
+     */
+    public function buildInspectionContext(array $item, string $contextType = self::CONTEXT_PRODUCT_SINGLE): array
     {
         $psIdx = (int)($item['ps_idx'] ?? 0);
         $goodsNo = trim((string)($item['godo_goods_no'] ?? ''));
@@ -106,7 +114,13 @@ class GodoInspectionService
         $marginGrade = strtoupper(trim((string)($item['margin_grade'] ?? '')));
         $cdHbti = strtoupper(trim((string)($item['cd_hbti'] ?? '')));
         $cdKindCode = strtoupper(trim((string)($item['cd_kind_code'] ?? '')));
+        $godoStockFl = strtolower(trim((string)($item['godo_stock_fl'] ?? '')));
+        $godoSoldOutFl = strtolower(trim((string)($item['godo_sold_out_fl'] ?? '')));
+        $currentStockQty = (int)($item['stock_qty'] ?? 0);
+        $orderQty = (int)($item['qty'] ?? 0);
+        $psInDate = trim((string)($item['ps_in_date'] ?? ''));
 
+        // 문자열 숫자 비교를 위해 공백/콤마를 정규화한다.
         $normalizePlain = static function (string $value): string {
             $value = str_replace(',', '', trim($value));
             $value = preg_replace('/\s+/', '', $value);
@@ -130,6 +144,7 @@ class GodoInspectionService
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
 
+        // 카테고리 코드 트리에서 브랜드 1차/2차 정합성을 점검하기 위한 전처리.
         $brand1Codes = array_keys(self::BRAND1_CATEGORY_LIST);
         $brand1CodeMap = array_fill_keys($brand1Codes, true);
         $categoryCodeList = [];
@@ -214,6 +229,7 @@ class GodoInspectionService
             }
         }
 
+        // 자동처리에 반영할 카테고리 추가/삭제 큐.
         $categoryAddQueue = [];
         $categoryDeleteQueue = [];
         $queueAddCategory = static function (array &$targetQueue, string $cateCd, string $cateNm): void {
@@ -268,6 +284,7 @@ class GodoInspectionService
         $targetMarginGradeCategory = $marginGradeCategoryMap[$marginGrade] ?? null;
         $targetOnaholePriceCategory = null;
 
+        // 화면에 노출될 검수 이슈 목록.
         $inspectionIssues = [];
 
         if (!$isMatchedByGoodsNo && $psIdx <= 0) {
@@ -286,7 +303,19 @@ class GodoInspectionService
         if ($isMatchedByGoodsNo && $onlyAdultFl !== 'y') {
             $inspectionIssues[] = ['required' => '참고', 'issue' => '성인인증', 'solution' => '<span>성인인증 사용이 체크되어 있지 않습니다.</span>'];
         }
+        $this->appendContextSpecificIssues(
+            $inspectionIssues,
+            $contextType,
+            $isMatchedByGoodsNo,
+            $godoStockFl,
+            $godoSoldOutFl,
+            $currentStockQty,
+            $orderQty,
+            $psInDate,
+            $godoCategoryLines
+        );
 
+        // 품목군(오나홀) 전용 점검 항목.
         if ($isMatchedByGoodsNo && $cdKindCode === 'ONAHOLE') {
             if ($goodsWeightNormalized === '' || !is_numeric($goodsWeightNormalized) || (float)$goodsWeightNormalized <= 0) {
                 $inspectionIssues[] = ['required' => '필수', 'issue' => '상품중량 미입력', 'solution' => '<span>인트라넷에 상줌중량 정보가 없습니다.</span>'];
@@ -412,6 +441,7 @@ class GodoInspectionService
             ];
         }
 
+        // 가격 비교 시 자리수/0 표기 차이로 인한 오탐을 줄이기 위한 정규화.
         $normalizePriceValue = static function (string $value): ?string {
             if ($value === '' || !is_numeric($value)) {
                 return null;
@@ -517,6 +547,7 @@ class GodoInspectionService
             }
         }
 
+        // 컨트롤러/뷰에서 그대로 사용할 수 있는 검수 결과 컨텍스트.
         return [
             'is_matched_by_goods_no' => $isMatchedByGoodsNo,
             'inspection_issues' => $inspectionIssues,
@@ -529,6 +560,80 @@ class GodoInspectionService
         ];
     }
 
+    /**
+     * 페이지별로 다른 검수 정책을 추가한다.
+     * - 재고등록 페이지에서는 단일상품 화면보다 확장된 체크를 노출한다.
+     */
+    private function appendContextSpecificIssues(
+        array &$inspectionIssues,
+        string $contextType,
+        bool $isMatchedByGoodsNo,
+        string $godoStockFl,
+        string $godoSoldOutFl,
+        int $currentStockQty,
+        int $orderQty,
+        string $psInDate,
+        array $godoCategoryLines
+    ): void {
+        if (!$isMatchedByGoodsNo) {
+            return;
+        }
+
+        if ($contextType === self::CONTEXT_ORDER_SHEET_STOCK) {
+            if ($godoStockFl === 'n') {
+                $inspectionIssues[] = ['required' => '참고', 'issue' => '판매 재고 여부', 'solution' => '<span>재고 관리 안함</span>'];
+            }
+            if ($godoSoldOutFl === 'y') {
+                $inspectionIssues[] = [
+                    'required' => '필수',
+                    'issue' => '현재 품절(수동) 상태',
+                    'solution' => '<span>현재 품절(수동) 상태입니다.</span>' . "\n"
+                        . '<span>재고수량 입력 시 자동으로 품절여부를 n으로 변경합니다.</span>' . "\n"
+                        . '<span>재고수량 미입력 시 고도몰 API 처리를 하지 않습니다.</span>',
+                ];
+            }
+
+            // 주문수량이 있고 현재고가 0인 경우: 신규/재입고 예정 카테고리 진열 여부를 참고로 안내한다.
+            if ($orderQty > 0 && $currentStockQty === 0) {
+                $isRestock = ($psInDate !== '');
+                $expectedCategoryCode = $isRestock ? '010002' : '010001';
+                $expectedCategoryName = $isRestock ? '재입고 예정' : '신규입고 예정';
+
+                $hasPlannedDisplayCategory = false;
+                foreach ($godoCategoryLines as $categoryRow) {
+                    if (!is_array($categoryRow)) {
+                        continue;
+                    }
+                    $cateCd = trim((string)($categoryRow['cateCd'] ?? ''));
+                    if ($cateCd === '') {
+                        continue;
+                    }
+                    $catePrefix = substr($cateCd, 0, 6);
+                    if ($catePrefix === '010001' || $catePrefix === '010002') {
+                        $hasPlannedDisplayCategory = true;
+                        break;
+                    }
+                }
+
+                if (!$hasPlannedDisplayCategory) {
+                    $inspectionIssues[] = [
+                        'required' => '참고',
+                        'issue' => '입고예정 카테고리 미진열',
+                        'solution' => '<span>주문수량이 존재하며 현재고가 0입니다.</span>' . "\n"
+                            . '<span>입고유형: <b>' . $expectedCategoryName . '</b></span>' . "\n"
+                            . '<span>진열 권장 카테고리: <b>' . $expectedCategoryCode . '</b> (' . $expectedCategoryName . ')</span>' . "\n"
+                            . '<span>010001(신규입고예정) 또는 010002(재입고 예정) 중 하나는 진열되어야 합니다.</span>',
+                    ];
+                }
+            }
+        }
+    }
+
+    /**
+     * 이슈명을 자동처리 메타(대상/상태/사유)로 매핑한다.
+     *
+     * 화면의 "처리" 컬럼과 프론트 자동처리 조건 분기에서 사용된다.
+     */
     public function resolveIssueActionMeta(string $issueName, string $intranetBarcode = ''): array
     {
         $actionTarget = '-';
@@ -555,6 +660,21 @@ class GodoInspectionService
                 $actionTarget = '고도몰';
                 $actionState = '자동처리 가능';
                 $actionReason = '성인인증 사용으로 자동 설정';
+                break;
+            case '판매 재고 여부':
+                $actionTarget = '고도몰';
+                $actionState = '자동처리 불가';
+                $actionReason = '참고용 안내 항목';
+                break;
+            case '현재 품절(수동) 상태':
+                $actionTarget = '고도몰';
+                $actionState = '자동처리 가능';
+                $actionReason = '재고수량 입력 시 품절여부 n으로 자동 변경';
+                break;
+            case '입고예정 카테고리 미진열':
+                $actionTarget = '고도몰';
+                $actionState = '자동처리 불가';
+                $actionReason = '참고용 진열 점검 항목';
                 break;
             case '상품중량 미입력':
             case '내부길이 미입력':
@@ -621,6 +741,9 @@ class GodoInspectionService
         ];
     }
 
+    /**
+     * cateCd => {cateNm, cateCd} 형태의 빠른 조회 맵을 만든다.
+     */
     private function buildCategoryMap(array $rows): array
     {
         $map = [];
@@ -640,6 +763,9 @@ class GodoInspectionService
         return $map;
     }
 
+    /**
+     * 마진등급(A~I) 기준 카테고리 맵을 만든다.
+     */
     private function buildMarginGradeCategoryMap(array $rows): array
     {
         $map = [];
@@ -656,6 +782,9 @@ class GodoInspectionService
         return $map;
     }
 
+    /**
+     * HBTI 코드 기준 카테고리 맵을 만든다.
+     */
     private function buildHbtiCategoryMap(array $rows): array
     {
         $map = [];
@@ -674,6 +803,9 @@ class GodoInspectionService
         return $map;
     }
 
+    /**
+     * 수치값(중량/가격/길이)에 해당하는 목표 카테고리를 찾는다.
+     */
     private function findTargetCategoryByValue(array $rows, string $value): ?array
     {
         if ($value === '' || !is_numeric($value) || (float)$value <= 0) {
@@ -704,6 +836,10 @@ class GodoInspectionService
         return null;
     }
 
+    /**
+     * 카테고리 미지정/오분류를 공통 로직으로 판정하고
+     * 이슈 목록 및 추가/삭제 큐를 함께 갱신한다.
+     */
     private function appendCategoryMismatchIssue(
         array &$inspectionIssues,
         array &$categoryAddQueue,

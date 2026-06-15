@@ -302,10 +302,11 @@ class OrderSheetService
                     'A.cd_sale_price',
                     'A.cd_cost_price',
                     'A.cd_godo_code',
-                    'A.cd_weight_fn',
                     'A.is_discontinued',
+                    'A.cd_weight_fn',
                     'B.ps_idx',
                     'B.ps_stock',
+                    'B.ps_in_date',
                     'B.is_sale_month',
                     'B.is_sale_special',
                     'C.BD_NAME',
@@ -399,6 +400,8 @@ class OrderSheetService
             $godoGoods = $godoGoodsMap[$psIdxKey] ?? [];
             $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
             $onlyAdultFl = strtolower(trim((string)($godoGoods['onlyAdultFl'] ?? '')));
+            $stockFl = strtolower(trim((string)($godoGoods['stockFl'] ?? '')));
+            $soldOutFl = strtolower(trim((string)($godoGoods['soldOutFl'] ?? '')));
             $goodsModelNo = trim((string)($godoGoods['goodsModelNo'] ?? ''));
             $goodsPrice = trim((string)($godoGoods['goodsPrice'] ?? ''));
             $costPrice = trim((string)($godoGoods['costPrice'] ?? ''));
@@ -448,9 +451,7 @@ class OrderSheetService
                 'margin_per' => (float)($marginInfo['margin_per'] ?? 0),
                 'margin_grade' => (string)($marginInfo['margin_grade'] ?? ''),
                 'stock_qty' => (int)($product['ps_stock'] ?? 0),
-                'is_sale_month' => !empty($product['is_sale_month']),
-                'is_sale_special' => !empty($product['is_sale_special']),
-                'is_discontinued' => !empty($product['is_discontinued']),
+                'ps_in_date' => (string)($product['ps_in_date'] ?? ''),
                 'img_path' => $imgPath,
                 'cd_godo_code' => $cdGodoCode,
                 'godo_goods_no' => $godoGoodsNo,
@@ -458,9 +459,14 @@ class OrderSheetService
                 'godo_code_matched' => $isGodoCodeMatched,
                 'godo_goods_found' => !empty($godoGoods),
                 'godo_only_adult_fl' => $onlyAdultFl,
+                'godo_stock_fl' => $stockFl,
+                'godo_sold_out_fl' => $soldOutFl,
                 'godo_goods_model_no' => $goodsModelNo,
                 'godo_goods_price' => $goodsPrice,
                 'godo_cost_price' => $costPrice,
+                'is_sale_month' => (int)($product['is_sale_month'] ?? 0),
+                'is_sale_special' => (int)($product['is_sale_special'] ?? 0),
+                'is_discontinued' => (int)($product['is_discontinued'] ?? 0),
                 'restock_request_count' => $restockRequestCount,
                 'godo_category_lines' => $godoCategoryLines,
             ];
@@ -819,11 +825,32 @@ class OrderSheetService
     {
         $goodsNo = trim((string)($requestData['goods_no'] ?? ''));
         $pidx = (int)($requestData['pidx'] ?? 0);
-        $stockQty = (int)($requestData['stock_qty'] ?? 0);
+        $stockQty = null;
+        if (array_key_exists('stock_qty', $requestData)) {
+            $stockQtyRaw = trim((string)$requestData['stock_qty']);
+            if ($stockQtyRaw !== '' && is_numeric($stockQtyRaw)) {
+                $stockQty = (int)$stockQtyRaw;
+            }
+        }
+        $stockInputQty = null;
+        if (array_key_exists('stock_input_qty', $requestData)) {
+            $stockInputQtyRaw = trim((string)$requestData['stock_input_qty']);
+            if ($stockInputQtyRaw !== '' && is_numeric($stockInputQtyRaw)) {
+                $stockInputQty = (int)$stockInputQtyRaw;
+            }
+        }
         $intranetSalePrice = trim((string)($requestData['intranet_sale_price'] ?? ''));
         $columnUpdates = trim((string)($requestData['column_updates'] ?? ''));
         $addCategoryCds = trim((string)($requestData['add_category_cds'] ?? ''));
         $deleteCategoryCds = trim((string)($requestData['delete_category_cds'] ?? ''));
+        $selectedAutoIssuesRaw = trim((string)($requestData['selected_auto_issues'] ?? ''));
+        $selectedAutoIssues = [];
+        if ($selectedAutoIssuesRaw !== '') {
+            $selectedAutoIssues = array_values(array_filter(array_map('trim', explode(',', $selectedAutoIssuesRaw)), static function ($v) {
+                return $v !== '';
+            }));
+        }
+        $isManualSoldOutIssueSelected = in_array('현재 품절(수동) 상태', $selectedAutoIssues, true);
 
         if (($goodsNo === '' || $goodsNo === '0') && $pidx > 0) {
             $productRow = ProductModel::query()
@@ -836,6 +863,44 @@ class OrderSheetService
 
         if ($goodsNo === '' || $goodsNo === '0') {
             throw new Exception('고도몰 상품번호가 없어 처리할 수 없습니다.');
+        }
+
+        if ($isManualSoldOutIssueSelected && ($stockInputQty === null || $stockInputQty <= 0)) {
+            return [
+                'success' => true,
+                'msg' => '재고수량 미입력으로 미처리',
+                'message' => '현재 품절(수동) 상태 해제는 재고수량 입력 후 처리됩니다.',
+                'goods_no' => $goodsNo,
+                'stock_qty' => $stockQty,
+                'column_updates' => $columnUpdates,
+                'add_category_cds' => $addCategoryCds,
+                'delete_category_cds' => $deleteCategoryCds,
+                'skipped' => true,
+            ];
+        }
+
+        if ($isManualSoldOutIssueSelected && $stockInputQty !== null && $stockInputQty > 0) {
+            $columnUpdateMap = [];
+            if ($columnUpdates !== '') {
+                foreach (explode(',', $columnUpdates) as $pair) {
+                    $pair = trim((string)$pair);
+                    if ($pair === '' || strpos($pair, '=') === false) {
+                        continue;
+                    }
+                    [$pairKey, $pairValue] = explode('=', $pair, 2);
+                    $pairKey = trim((string)$pairKey);
+                    if ($pairKey === '') {
+                        continue;
+                    }
+                    $columnUpdateMap[$pairKey] = trim((string)$pairValue);
+                }
+            }
+            $columnUpdateMap['godo_sold_out_fl'] = 'n';
+            $columnUpdatePairs = [];
+            foreach ($columnUpdateMap as $pairKey => $pairValue) {
+                $columnUpdatePairs[] = $pairKey . '=' . $pairValue;
+            }
+            $columnUpdates = implode(',', $columnUpdatePairs);
         }
 
         if ($pidx > 0 && $intranetSalePrice !== '' && is_numeric($intranetSalePrice)) {

@@ -323,7 +323,8 @@ class ProductController extends BaseClass
 
             $godoInspectionService = new GodoInspectionService();
             $inspectionContext = $godoInspectionService->buildInspectionContext(
-                (array)($inspectionData['item'] ?? [])
+                (array)($inspectionData['item'] ?? []),
+                GodoInspectionService::CONTEXT_PRODUCT_SINGLE
             );
             $inspectionVersion = $godoInspectionService->getInspectionVersion();
             $inspectionProcessLogService = new InspectionProcessLogService();

@@ -119,9 +119,38 @@ function goGodoMall(code){
 	window.open('https://showdang.co.kr/goods/goods_view.php?goodsNo='+code, '_blank');
 }
 
-function goGodoMallAdmin(code){
-	window.open('http://gdadmin.dnfix202439.godomall.com/goods/goods_register.php?goodsNo='+code, '_blank');
+
+function goGodoMallAdmin(code, page){
+
+	var url = 'http://gdadmin.dnfix202439.godomall.com/goods/goods_register.php?popupMode=yes&goodsNo='+code;
+	var win;
+	var popupOptions = {
+		url: url,
+		target: '',
+		width: 1110,
+		height: 800,
+		scrollbars: 'yes',
+		resizable: 'yes'
+	};
+	if (page) url += page;
+	popupOptions.url = url;
+
+	if (typeof popup === 'function') {
+		win = popup(popupOptions);
+	} else {
+		win = window.open(
+			url,
+			'_blank',
+			'width=1110,height=800,scrollbars=yes,resizable=yes'
+		);
+	}
+	if (win) {
+		win.focus();
+	}
+	return win;
+
 }
+
 
 function goSupplierProduct(site, code){
 	if(site == 'mobe'){

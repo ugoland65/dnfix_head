@@ -77,6 +77,7 @@
 								<th>주문서폼</th>
 								<th>관리</th>
 								<th>등록일</th>
+								<th>입고처리</th>
 								<th>댓글</th>
 								<th>메모</th>
 							</tr>
@@ -118,6 +119,9 @@
 									<td class="text-center">
 										<?= date('y.m.d H:i', strtotime($orderSheet['created_at'])) ?><br>
 										( <?= $orderSheet['created_name'] ?> )
+									</td>
+									<td class="text-center">
+										<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="window.open('/admin/order/sheet/stock?idx=<?= $orderSheet['oo_idx'] ?>', '_blank')">검수+입고처리</button>
 									</td>
 									<td class="text-left">
 										<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('orderSheet','<?=$orderSheet['oo_idx']?>')" >

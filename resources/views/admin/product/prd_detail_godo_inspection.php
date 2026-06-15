@@ -37,8 +37,41 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
 .inspection-checklist-required-required { color: #dc3545; font-weight: 700; }
 .inspection-checklist-required-ref { color: #0d6efd; font-weight: 700; }
 .inspection-checklist-issue { color: #dc3545; }
-.inspection-fold-summary { margin-top: 10px; cursor: pointer; font-weight: 700; color: #111827; }
+.inspection-category-fold { margin-top: 10px; border: 1px solid #e5e7eb; border-radius: 6px; background: #f9fafb; }
+.inspection-fold-summary {
+    cursor: pointer;
+    font-weight: 700;
+    color: #111827;
+    list-style: none;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 8px 10px;
+}
+.inspection-fold-summary::-webkit-details-marker { display: none; }
+.inspection-fold-summary::before {
+    content: '▶';
+    font-size: 10px;
+    color: #6b7280;
+    transition: transform .15s ease;
+}
+.inspection-category-fold[open] .inspection-fold-summary::before {
+    transform: rotate(90deg);
+}
+.inspection-fold-hint {
+    margin-left: auto;
+    font-size: 11px;
+    color: #2563eb;
+    font-weight: 600;
+}
+.inspection-category-fold[open] .inspection-fold-hint::before { content: '접기'; }
+.inspection-category-fold:not([open]) .inspection-fold-hint::before { content: '펼치기'; }
 .inspection-history-head { margin-top: 14px; font-size: 13px; font-weight: 700; color: #111827; }
+.inspection-value-grid { width: 100%; border-collapse: collapse; font-size: 11px; color: #111827; }
+.inspection-value-grid th,
+.inspection-value-grid td { border: 1px solid #e5e7eb; padding: 3px 5px; vertical-align: top; line-height: 1.4; }
+.inspection-value-grid th { width: 94px; background: #f9fafb; color: #374151; font-weight: 600; text-align: left; }
+.inspection-value-empty { color: #9ca3af; font-size: 11px; }
 </style>
 
 <div class="inspection-wrap">
@@ -122,8 +155,10 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
             </tbody>
         </table>
 
-        <button type="button" class="btnstyle1 btnstyle1-md" onclick="singleGodoInspection.processSelected()">체크항목 일괄 검수 처리</button>
-        
+        <div class="m-t-10 text-center">
+            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-md" onclick="singleGodoInspection.processSelected()">체크항목 일괄 검수 처리</button>
+        </div>
+
         </form>
 
     <?php } elseif ($isMatchedByGoodsNo) { ?>
@@ -133,8 +168,11 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
     <?php } ?>
 
     <?php if (!empty($godoCategoryLines)) { ?>
-        <details style="margin-top:10px;">
-            <summary class="inspection-fold-summary">현재 고도몰에 설정된 카테고리 목록 (<?= count($godoCategoryLines) ?>)</summary>
+        <details class="inspection-category-fold">
+            <summary class="inspection-fold-summary">
+                <span>현재 고도몰에 설정된 카테고리 목록 (<?= count($godoCategoryLines) ?>)</span>
+                <span class="inspection-fold-hint" aria-hidden="true"></span>
+            </summary>
             <table class="inspection-checklist-table" style="margin-top:8px;">
                 <thead>
                 <tr>
@@ -282,16 +320,20 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
                 $beforeSummaryRows = [];
                 foreach ($beforeValues as $valueKey => $valueText) {
                     $label = $valueLabelMap[$valueKey] ?? (string)$valueKey;
-                    $beforeSummaryRows[] = $label . ': ' . $formatHistoryValue((string)$valueKey, $valueText);
+                    $beforeSummaryRows[] = [
+                        'label' => $label,
+                        'value' => $formatHistoryValue((string)$valueKey, $valueText),
+                    ];
                 }
-                $beforeSummary = !empty($beforeSummaryRows) ? implode("\n", $beforeSummaryRows) : '-';
 
                 $afterSummaryRows = [];
                 foreach ($afterValues as $valueKey => $valueText) {
                     $label = $valueLabelMap[$valueKey] ?? (string)$valueKey;
-                    $afterSummaryRows[] = $label . ': ' . $formatHistoryValue((string)$valueKey, $valueText);
+                    $afterSummaryRows[] = [
+                        'label' => $label,
+                        'value' => $formatHistoryValue((string)$valueKey, $valueText),
+                    ];
                 }
-                $afterSummary = !empty($afterSummaryRows) ? implode("\n", $afterSummaryRows) : '-';
 
                 $resultMessage = trim((string)($resultContent['message'] ?? ''));
                 if ($resultMessage === '') {
@@ -307,8 +349,38 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
                     <td class="inspection-checklist-td"><?= htmlspecialchars($historyVersion !== '' ? $historyVersion : '-', ENT_QUOTES, 'UTF-8') ?></td>
                     <td class="inspection-checklist-td"><?= htmlspecialchars($locationText, ENT_QUOTES, 'UTF-8') ?></td>
                     <td class="inspection-checklist-td"><?= htmlspecialchars($processSummary, ENT_QUOTES, 'UTF-8') ?></td>
-                    <td class="inspection-checklist-td"><?= nl2br(htmlspecialchars($beforeSummary, ENT_QUOTES, 'UTF-8'), false) ?></td>
-                    <td class="inspection-checklist-td"><?= nl2br(htmlspecialchars($afterSummary, ENT_QUOTES, 'UTF-8'), false) ?></td>
+                    <td class="inspection-checklist-td">
+                        <?php if (!empty($beforeSummaryRows)) { ?>
+                            <table class="inspection-value-grid">
+                                <tbody>
+                                <?php foreach ($beforeSummaryRows as $summaryRow) { ?>
+                                    <tr>
+                                        <th><?= htmlspecialchars((string)($summaryRow['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></th>
+                                        <td><?= nl2br(htmlspecialchars((string)($summaryRow['value'] ?? ''), ENT_QUOTES, 'UTF-8'), false) ?></td>
+                                    </tr>
+                                <?php } ?>
+                                </tbody>
+                            </table>
+                        <?php } else { ?>
+                            <span class="inspection-value-empty">-</span>
+                        <?php } ?>
+                    </td>
+                    <td class="inspection-checklist-td">
+                        <?php if (!empty($afterSummaryRows)) { ?>
+                            <table class="inspection-value-grid">
+                                <tbody>
+                                <?php foreach ($afterSummaryRows as $summaryRow) { ?>
+                                    <tr>
+                                        <th><?= htmlspecialchars((string)($summaryRow['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></th>
+                                        <td><?= nl2br(htmlspecialchars((string)($summaryRow['value'] ?? ''), ENT_QUOTES, 'UTF-8'), false) ?></td>
+                                    </tr>
+                                <?php } ?>
+                                </tbody>
+                            </table>
+                        <?php } else { ?>
+                            <span class="inspection-value-empty">-</span>
+                        <?php } ?>
+                    </td>
                     <td class="inspection-checklist-td"><?= htmlspecialchars($resultMessage, ENT_QUOTES, 'UTF-8') ?></td>
                 </tr>
             <?php } ?>

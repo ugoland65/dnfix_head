@@ -64,6 +64,13 @@
                             </td>
                         </tr>
                         <tr>
+                            <th>실측 상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_4' style='width:80px;' value="<?= $productData['cd_weight_fn']['4'] ?? '' ?>"> g
+                                ※ 패키지를 제외한 상품만 실제 측정한 중량
+                            </td>
+                        </tr>
+                        <tr>
                             <th>실측 전체중량</th>
                             <td>
                                 <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>"> g
@@ -139,20 +146,79 @@
                 <td>
                     <div>
                         <?php
-                        foreach ($productData['cd_price_fn'] as $key => $val) {
-                            if ($key && $key != 'invoice') {
+
+                        //echo dump($productData['cd_price_fn']);
+                        $priceFn = (isset($productData['cd_price_fn']) && is_array($productData['cd_price_fn']))
+                            ? $productData['cd_price_fn']
+                            : [];
+                        $invoiceMap = (isset($priceFn['invoice']) && is_array($priceFn['invoice']))
+                            ? $priceFn['invoice']
+                            : [];
+                        $selectedOrderPriceCode = (string)($productData['cd_cost_price_info']['기준주문가코드'] ?? '');
+                        $orderPriceOptions = [];
+
+                        foreach ($priceFn as $key => $val) {
+                            if (!$key || $key === 'invoice') {
+                                continue;
+                            }
+
+                            // 기존 평면 구조: ['yuu' => 110]
+                            if ($key !== 'currency' && !is_array($val)) {
+                                $orderPriceOptions[] = [
+                                    'code' => (string)$key,
+                                    'label' => (string)$key,
+                                    'price' => (float)$val,
+                                    'invoice' => (string)($invoiceMap[$key] ?? ''),
+                                ];
+                                continue;
+                            }
+
+                            // 확장 구조: ['currency' => ['USD' => ['yuu' => 16.18], ...]]
+                            if ($key === 'currency' && is_array($val)) {
+                                foreach ($val as $currencyCode => $currencyRows) {
+                                    if (!is_array($currencyRows)) {
+                                        continue;
+                                    }
+                                    foreach ($currencyRows as $currencyKey => $currencyValue) {
+                                        if ($currencyKey === '' || is_array($currencyValue)) {
+                                            continue;
+                                        }
+                                        $optionCode = 'currency:' . $currencyCode . ':' . $currencyKey;
+                                        $invoiceValue = '';
+                                        if (isset($invoiceMap[$currencyCode]) && is_array($invoiceMap[$currencyCode])) {
+                                            $invoiceValue = (string)($invoiceMap[$currencyCode][$currencyKey] ?? '');
+                                        } elseif (isset($invoiceMap[$optionCode])) {
+                                            $invoiceValue = (string)$invoiceMap[$optionCode];
+                                        }
+                                        $orderPriceOptions[] = [
+                                            'code' => $optionCode,
+                                            'label' => $currencyCode . ' - ' . $currencyKey,
+                                            'price' => (float)$currencyValue,
+                                            'invoice' => $invoiceValue,
+                                        ];
+                                    }
+                                }
+                            }
+                        }
+
+                        foreach ($orderPriceOptions as $priceOption) {
                         ?>
-                                <ul>
-                                    <label>
-                                        <input type="radio" name="order_price_code" value="<?= $key ?>" <?php if ($key == ($productData['cd_cost_price_info']['기준주문가코드'] ?? '')) echo "checked"; ?> onclick="prdInfoPrice.orderPriceChange('<?= $val ?>')">
-                                        <b><?= $key ?></b> : (<?= number_format($val, 2) ?>)
-                                        <?php if ($productData['cd_price_fn']['invoice'][$key] ?? '') { ?>
-                                            | invoice 다운 : <b><?= $productData['cd_price_fn']['invoice'][$key] ?></b>
-                                        <?php } ?>
-                                    </label>
-                                </ul>
-                        <?php }
-                        } ?>
+                            <ul>
+                                <label>
+                                    <input
+                                        type="radio"
+                                        name="order_price_code"
+                                        value="<?= htmlspecialchars((string)($priceOption['code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        <?php if ((string)($priceOption['code'] ?? '') === $selectedOrderPriceCode) echo "checked"; ?>
+                                        onclick="prdInfoPrice.orderPriceChange('<?= htmlspecialchars((string)($priceOption['price'] ?? 0), ENT_QUOTES, 'UTF-8') ?>')"
+                                    >
+                                    <b><?= htmlspecialchars((string)($priceOption['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b> : (<?= number_format((float)($priceOption['price'] ?? 0), 2) ?>)
+                                    <?php if (!empty($priceOption['invoice'])) { ?>
+                                        | invoice 다운 : <b><?= htmlspecialchars((string)$priceOption['invoice'], ENT_QUOTES, 'UTF-8') ?></b>
+                                    <?php } ?>
+                                </label>
+                            </ul>
+                        <?php } ?>
                     </div>
                 </td>
             </tr>
@@ -172,71 +238,75 @@
                 $selectedNational = (string)($productData['cd_national'] ?? '');
                 $showCostCalculator = in_array($selectedNational, ['jp', 'cn'], true) || $hasCostCalculatorValue;
             ?>
-            <tr id="cost-calculator-row" style="<?php if (!$showCostCalculator) echo 'display:none;'; ?>">
+            <tr id="cost-calculator-row">
                 <th>원가 계산기</th>
                 <td>
+                    <div id="cost_calculator_content" style="<?php if (!$showCostCalculator) echo 'display:none;'; ?>">
+                        <div id="cost_cal_msg" style="display:none; color:#ff0000; font-size:17px;">[주문종류]를 선택해주세요.</div>
 
-                    <div id="cost_cal_msg" style="display:none; color:#ff0000; font-size:17px;">[주문종류]를 선택해주세요.</div>
+                        <?php if ($productData['cd_size_fn']['invoice']['cbm'] ?? '') { ?>
+                            <div class="p-b-6">
+                                CBM : <?= $productData['cd_size_fn']['invoice']['cbm'] ?> x 1.25 = (<?= ($productData['cd_size_fn']['invoice']['cbm'] * 1.25) ?>) /
+                                <?= ($productData['cd_size_fn']['invoice']['cbm'] * 1.25) ?> x 88,000 = <b><?= number_format(($productData['cd_size_fn']['invoice']['cbm'] * 1.25) * 88000) ?></b>
+                                (해운 예상 배송비)
+                            </div>
+                        <?php } ?>
 
-                    <?php if ($productData['cd_size_fn']['invoice']['cbm'] ?? '') { ?>
-                        <div class="p-b-6">
-                            CBM : <?= $productData['cd_size_fn']['invoice']['cbm'] ?> x 1.25 = (<?= ($productData['cd_size_fn']['invoice']['cbm'] * 1.25) ?>) /
-                            <?= ($productData['cd_size_fn']['invoice']['cbm'] * 1.25) ?> x 88,000 = <b><?= number_format(($productData['cd_size_fn']['invoice']['cbm'] * 1.25) * 88000) ?></b>
-                            (해운 예상 배송비)
+                        <div>
+                            <select name="cost_cal_kind" id="cost_cal_kind" class="m-r-10" onchange="prdInfoPrice.costCalKindChange(this.value)">
+                                <option value="">주문종류</option>
+                                <option value="중국주문" <?php if (($productData['cd_cost_price_info']['주문종류'] ?? '') == "중국주문") echo "selected"; ?>>중국주문</option>
+                                <option value="일본주문" <?php if (($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문") echo "selected"; ?>>일본주문</option>
+                            </select>
+
+                            주문가 : <input type="text" name="cost_cal_price" id="cost_cal_price" class="width-80 m-r-10" value="<?= $productData['cd_cost_price_info']['주문가'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+                            적용환율 : <input type="text" name="cost_cal_exchange_rate" id="cost_cal_exchange_rate" class="width-50 m-r-10" value="<?= $productData['cd_cost_price_info']['적용환율'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+                            <span id="cost_cal_kind_delivery_text">
+                                <?php if ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "중국주문")) { ?>
+                                    개당 배송비
+                                <?php } elseif ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문")) { ?>
+                                    kg당 배송비
+                                <?php } else { ?>
+                                    배송비
+                                <?php } ?>
+                            </span> : <input type="text" name="cost_cal_delivery" id="cost_cal_delivery" class="width-80" value="<?= $productData['cd_cost_price_info']['1kg배송비'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+
+                            <!-- <button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="alert('준비중');" >해외주문 기본값 설정</button> -->
+
                         </div>
-                    <?php } ?>
+                        <div class="m-t-6">
+                            <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.costCalculationNew()">원가 계산기 실행</button>
+                        </div>
 
-                    <div>
-                        <select name="cost_cal_kind" id="cost_cal_kind" class="m-r-10" onchange="prdInfoPrice.costCalKindChange(this.value)">
-                            <option value="">주문종류</option>
-                            <option value="중국주문" <?php if (($productData['cd_cost_price_info']['주문종류'] ?? '') == "중국주문") echo "selected"; ?>>중국주문</option>
-                            <option value="일본주문" <?php if (($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문") echo "selected"; ?>>일본주문</option>
-                        </select>
+                        <div id="cost_calculation_info_new" class="cost-calculation-info m-t-7">
+                            <div class="price-f-box">
+                                <?php
+                                if ($productData['cd_cost_price_info']['관세율'] ?? '') {
+                                    $_this_cost_cal_tariff = $productData['cd_cost_price_info']['관세율'];
+                                } else {
+                                    $_this_cost_cal_tariff = "6.5";
+                                }
 
-                        주문가 : <input type="text" name="cost_cal_price" id="cost_cal_price" class="width-80 m-r-10" value="<?= $productData['cd_cost_price_info']['주문가'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
-                        적용환율 : <input type="text" name="cost_cal_exchange_rate" id="cost_cal_exchange_rate" class="width-50 m-r-10" value="<?= $productData['cd_cost_price_info']['적용환율'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
-                        <span id="cost_cal_kind_delivery_text">
-                            <?php if ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "중국주문")) { ?>
-                                개당 배송비
-                            <?php } elseif ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문")) { ?>
-                                kg당 배송비
-                            <?php } else { ?>
-                                배송비
-                            <?php } ?>
-                        </span> : <input type="text" name="cost_cal_delivery" id="cost_cal_delivery" class="width-80" value="<?= $productData['cd_cost_price_info']['1kg배송비'] ?? '' ?>" onkeyUP="prdInfoPrice.costCalculationNew()">
+                                if ($productData['cd_cost_price_info']['부대비용'] ?? '') {
+                                    $_this_cal_incidental_cost = $productData['cd_cost_price_info']['부대비용'];
+                                } else {
+                                    $_this_cal_incidental_cost = "1000";
+                                }
+                                ?>
+                                관세율 : <input type="text" name="cost_cal_tariff" id="cost_cal_tariff" class="width-50" value="<?= $_this_cost_cal_tariff ?>">%
+                                <span id="incidental_cost_box" style="<?php if ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문")) { ?>display:none;<?php } ?>">
+                                    &nbsp; | &nbsp;
+                                    부대비용 (B/L 문서, 통관수수료, 원산지증명) : <input type="text" name="cost_cal_incidental_cost" id="cost_cal_incidental_cost" class="width-50" value="<?= $_this_cal_incidental_cost ?>">원
+                                </span>
 
-                        <!-- <button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="alert('준비중');" >해외주문 기본값 설정</button> -->
-
+                                <!-- 부가세율 :  <input type="text" name="cost_cal_vat" id="cost_cal_vat" class="width-50" value="11">% -->
+                            </div>
+                            <div class='calculation-show-box m-t-5' id="cost_calculation_detail">
+                            </div>
+                        </div>
                     </div>
-                    <div class="m-t-6">
-                        <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.costCalculationNew()">원가 계산기 실행</button>
-                    </div>
-
-                    <div id="cost_calculation_info_new" class="cost-calculation-info m-t-7">
-                        <div class="price-f-box">
-                            <?php
-                            if ($productData['cd_cost_price_info']['관세율'] ?? '') {
-                                $_this_cost_cal_tariff = $productData['cd_cost_price_info']['관세율'];
-                            } else {
-                                $_this_cost_cal_tariff = "6.5";
-                            }
-
-                            if ($productData['cd_cost_price_info']['부대비용'] ?? '') {
-                                $_this_cal_incidental_cost = $productData['cd_cost_price_info']['부대비용'];
-                            } else {
-                                $_this_cal_incidental_cost = "1000";
-                            }
-                            ?>
-                            관세율 : <input type="text" name="cost_cal_tariff" id="cost_cal_tariff" class="width-50" value="<?= $_this_cost_cal_tariff ?>">%
-                            <span id="incidental_cost_box" style="<?php if ((($productData['cd_cost_price_info']['주문종류'] ?? '') == "일본주문")) { ?>display:none;<?php } ?>">
-                                &nbsp; | &nbsp;
-                                부대비용 (B/L 문서, 통관수수료, 원산지증명) : <input type="text" name="cost_cal_incidental_cost" id="cost_cal_incidental_cost" class="width-50" value="<?= $_this_cal_incidental_cost ?>">원
-                            </span>
-
-                            <!-- 부가세율 :  <input type="text" name="cost_cal_vat" id="cost_cal_vat" class="width-50" value="11">% -->
-                        </div>
-                        <div class='calculation-show-box m-t-5' id="cost_calculation_detail">
-                        </div>
+                    <div id="cost_calculator_unavailable" style="<?php if ($showCostCalculator) echo 'display:none;'; ?> color:#6b7280; font-size:12px;">
+                        매입방식이 일본,중국일때만 사용가능
                     </div>
 
                 </td>
@@ -605,18 +675,22 @@
             // 매입방식을 선택한 경우: 선택값을 우선한다 (jp/cn만 노출)
             if (purchaseType !== "") {
                 if (isJapanOrChina) {
-                    $("#cost-calculator-row").show();
+                    $("#cost_calculator_content").show();
+                    $("#cost_calculator_unavailable").hide();
                 } else {
-                    $("#cost-calculator-row").hide();
+                    $("#cost_calculator_content").hide();
+                    $("#cost_calculator_unavailable").show();
                 }
                 return;
             }
 
             // 매입방식이 비어있는 초기 상태에서만 저장된 계산기 값 기준으로 노출
             if (hasSavedOrInputValue) {
-                $("#cost-calculator-row").show();
+                $("#cost_calculator_content").show();
+                $("#cost_calculator_unavailable").hide();
             } else {
-                $("#cost-calculator-row").hide();
+                $("#cost_calculator_content").hide();
+                $("#cost_calculator_unavailable").show();
             }
         }
 

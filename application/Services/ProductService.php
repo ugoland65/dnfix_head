@@ -2376,6 +2376,8 @@ class ProductService extends BaseClass
     {
         $prdIdx = (int)($requestData['prd_idx'] ?? 0);
         $psIdx = (int)($requestData['ps_idx'] ?? 0);
+        $relationPk = (int)($requestData['relation_pk'] ?? 0);
+        $locationCode = trim((string)($requestData['location_code'] ?? ''));
         $selectedIssues = $requestData['selected_issues'] ?? [];
         if (!is_array($selectedIssues)) {
             $selectedIssues = [];
@@ -2397,7 +2399,10 @@ class ProductService extends BaseClass
         $item = (array)($inspectionData['item'] ?? []);
         $godoInspectionService = new GodoInspectionService();
         $inspectionVersion = $godoInspectionService->getInspectionVersion();
-        $inspectionContext = $godoInspectionService->buildInspectionContext($item);
+        $inspectionContext = $godoInspectionService->buildInspectionContext(
+            $item,
+            GodoInspectionService::CONTEXT_PRODUCT_SINGLE
+        );
         $issues = (isset($inspectionContext['inspection_issues']) && is_array($inspectionContext['inspection_issues']))
             ? $inspectionContext['inspection_issues']
             : [];
@@ -2558,6 +2563,8 @@ class ProductService extends BaseClass
         try {
             $inspectionProcessLogService = new InspectionProcessLogService();
             $inspectionProcessLogService->logProductSingleGodoInspection([
+                'location_code' => $locationCode,
+                'relation_pk' => $relationPk,
                 'prd_idx' => $prdIdx,
                 'ps_idx' => (int)($item['ps_idx'] ?? $psIdx),
                 'godo_goods_no' => (string)($item['godo_goods_no'] ?? ''),

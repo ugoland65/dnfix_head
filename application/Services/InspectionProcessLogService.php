@@ -9,6 +9,7 @@ class InspectionProcessLogService
 {
     public const LOCATION_ORDER_SHEET_ALL_STOCK = 'order_sheet_all_stock';
     public const LOCATION_PRODUCT_SINGLE_GODO_INSPECTION = 'product_single_godo_inspection';
+    public const LOCATION_ORDER_SHEET_STOCK_SINGLE = 'order_sheet_stock_single';
 
     /**
      * 재고 일괄등록 로그 저장
@@ -32,6 +33,11 @@ class InspectionProcessLogService
      */
     public function logProductSingleGodoInspection(array $payload): int
     {
+        $locationCode = trim((string)($payload['location_code'] ?? ''));
+        if ($locationCode === '') {
+            $locationCode = self::LOCATION_PRODUCT_SINGLE_GODO_INSPECTION;
+        }
+
         $processContent = (isset($payload['process_content']) && is_array($payload['process_content']))
             ? $payload['process_content']
             : [];
@@ -65,7 +71,7 @@ class InspectionProcessLogService
         }
 
         return $this->write(array_merge($payload, [
-            'location_code' => self::LOCATION_PRODUCT_SINGLE_GODO_INSPECTION,
+            'location_code' => $locationCode,
             'prd_idx' => (int)($payload['prd_idx'] ?? 0),
             'ps_idx' => (int)($payload['ps_idx'] ?? 0),
             'godo_goods_no' => trim((string)($payload['godo_goods_no'] ?? '')),

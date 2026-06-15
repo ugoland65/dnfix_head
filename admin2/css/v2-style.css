@@ -659,3 +659,50 @@ table.table-st2 {
     border-color: #0071da;
 
 }
+
+
+.inspection-checklist-table {
+    width: 100%;
+    margin-top: 6px;
+    border-collapse: collapse;
+    font-size: 11px;
+    color: #374151;
+}
+.inspection-checklist-th {
+    text-align: left;
+    padding: 4px 6px;
+    border: 1px solid #e5e7eb;
+    background: #f9fafb;
+}
+.inspection-checklist-th-no {
+    width: 42px;
+    text-align: center;
+}
+.inspection-checklist-th-required {
+    width: 58px;
+    text-align: center;
+}
+.inspection-checklist-td {
+    padding: 4px 6px;
+    border: 1px solid #e5e7eb;
+    line-height: 1.4;
+	background-color:#fff;
+}
+.inspection-checklist-td-center {
+    text-align: center;
+}
+.inspection-checklist-issue-required {
+    color: #dc3545;
+}
+.inspection-checklist-issue-ref {
+    color: #0d6efd;
+}
+.inspection-checklist-required {
+    font-weight: 700;
+}
+.inspection-checklist-required-required {
+    color: #dc3545;
+}
+.inspection-checklist-required-ref {
+    color: #0d6efd;
+}

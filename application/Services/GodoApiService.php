@@ -1649,6 +1649,7 @@ class GodoApiService extends BaseClass {
      *   - godo_only_adult_fl => onlyAdultFl : 성인인증 여부
      *   - godo_goods_model_no => goodsModelNo : 모델번호(현행 바코드 동기화 용도)
      *   - godo_cost_price => costPrice : 원가
+     *   - godo_sold_out_fl => soldOutFl : 품절 여부(y/n)
      *   - godo_goods_price => goodsPrice : 판매가 (정책상 전송 제외)
      * - addCategoryCds (선택): 추가할 카테고리 코드 CSV
      *   예) 001002,003004
