@@ -29,7 +29,7 @@ class BaseClass {
 			$this->postData = $this->requestHandler->getAllPost(); // POST 데이터 초기화
 
         } catch (Exception $e) {
-            throw new Exception("BaseClass Initialization Error: " . $e->getMessage());
+            throw new Exception("BaseClass Initialization Error: " . $e->getMessage(), 0, $e);
         }
     }
 

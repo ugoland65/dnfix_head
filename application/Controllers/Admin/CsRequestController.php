@@ -31,6 +31,12 @@ class CsRequestController extends BaseClass
 
             $cs_status = $requestData['s_cs_status'] ?? '요청+처리중';
             $keyword = $requestData['s_keyword'] ?? '';
+            $order_no = trim((string)($requestData['s_order_no'] ?? ''));
+
+            if ($order_no !== '') {
+                $cs_status = '';
+                $keyword = '';
+            }
 
             $csRequestService = new CsRequestService();
 
@@ -43,6 +49,7 @@ class CsRequestController extends BaseClass
                 'per_page' => 100,
                 'cs_status' => $cs_status,
                 'keyword' => $keyword,
+                'order_no' => $order_no,
             ];
             $csRequestList = $csRequestService->getCsRequestList($payload);
 
@@ -57,6 +64,7 @@ class CsRequestController extends BaseClass
             $data = [
                 's_cs_status' => $cs_status,
                 's_keyword' => $keyword,
+                's_order_no' => $order_no,
                 'csRequestCount' => $csRequestCount,
                 'csRequestList' => $csRequestList['data'],
                 'paginationHtml' => $paginationHtml,

@@ -6,6 +6,8 @@ use App\Classes\QueryBuilder;
 
 use Exception;
 use BadMethodCallException;
+use PDOException;
+use Throwable;
 
 class BaseModel {
 
@@ -340,6 +342,8 @@ class BaseModel {
     public static function updateOrCreate(array $attributes, array $values = [])
     {
         $instance = static::getInstance();
+        $connection = $instance->db;
+        $ownsTransaction = false;
         
         // null 값을 제거 (라라벨 동작 방식: idx가 null이면 조건에서 제외)
         $attributes = array_filter($attributes, function($value) {
@@ -350,34 +354,98 @@ class BaseModel {
         if (empty($attributes)) {
             return static::create($values);
         }
-        
-        // 조건에 맞는 레코드 찾기
-        $query = $instance->queryBuilder();
-        foreach ($attributes as $key => $value) {
-            $query->where($key, $value);
-        }
-        
-        $existing = $query->first();
-        
-        if ($existing) {
-            // 존재하면 업데이트
-            $updateData = array_merge($attributes, $values);
-            $updated = static::update($attributes, $updateData);
-            
-            if ($updated) {
+
+        try {
+            if ($connection instanceof \PDO && !$connection->inTransaction()) {
+                $connection->beginTransaction();
+                $ownsTransaction = true;
+            }
+
+            // 조건에 맞는 레코드 찾기
+            $query = $instance->queryBuilder();
+            foreach ($attributes as $key => $value) {
+                $query->where($key, $value);
+            }
+            $existing = $query->first();
+
+            if ($existing) {
+                // 존재하면 업데이트
+                $updateData = array_merge($attributes, $values);
+                $updated = static::update($attributes, $updateData);
+
+                if (!$updated) {
+                    throw new Exception('Failed to update record');
+                }
+
                 // 업데이트된 레코드 다시 조회
                 $query = $instance->queryBuilder();
                 foreach ($attributes as $key => $value) {
                     $query->where($key, $value);
                 }
-                return $query->first();
+                $model = $query->first();
+                if (!$model) {
+                    throw new Exception('Failed to retrieve updated record');
+                }
+
+                if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                    $connection->commit();
+                }
+
+                return $model;
             }
-            throw new Exception('Failed to update record');
-        } else {
+
             // 없으면 생성
             $createData = array_merge($attributes, $values);
-            return static::create($createData);
+            try {
+                $model = static::create($createData);
+            } catch (PDOException $e) {
+                // 동시성으로 유니크 충돌이 난 경우, 생성된 레코드를 업데이트 경로로 재시도
+                if (!static::isDuplicateKeyException($e)) {
+                    throw $e;
+                }
+
+                $updateData = array_merge($attributes, $values);
+                $updated = static::update($attributes, $updateData);
+                if (!$updated) {
+                    throw new Exception('Failed to update record after duplicate key conflict');
+                }
+
+                $query = $instance->queryBuilder();
+                foreach ($attributes as $key => $value) {
+                    $query->where($key, $value);
+                }
+                $model = $query->first();
+                if (!$model) {
+                    throw new Exception('Failed to retrieve record after duplicate key conflict');
+                }
+            }
+
+            if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                $connection->commit();
+            }
+
+            return $model;
+        } catch (Throwable $e) {
+            if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            throw $e;
         }
+    }
+
+    /**
+     * 중복 키 예외 여부 확인
+     * @param PDOException $e
+     * @return bool
+     */
+    protected static function isDuplicateKeyException(PDOException $e): bool
+    {
+        $sqlState = (string)$e->getCode();
+        $message = $e->getMessage();
+
+        return in_array($sqlState, ['23000', '23505'], true)
+            || stripos($message, 'duplicate') !== false
+            || stripos($message, 'unique constraint') !== false;
     }
 
 

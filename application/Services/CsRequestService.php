@@ -29,23 +29,31 @@ class CsRequestService
 
         $cs_status = $criteria['cs_status'] ?? '요청+처리중';
         $keyword = $criteria['keyword'] ?? '';
+        $order_no = trim((string)($criteria['order_no'] ?? ''));
 
         $query = CsRequestModel::query()
-            ->when($cs_status, function($query) use ($cs_status) {
+            ->when($cs_status !== '' && $cs_status !== 'all', function($query) use ($cs_status) {
                 if( $cs_status == '요청+처리중' ){
-                    $query->where('cs_status', '요청');
-                    $query->orWhere('cs_status', '처리중');
+                    $query->where(function($statusQuery) {
+                        $statusQuery->where('cs_status', '요청');
+                        $statusQuery->orWhere('cs_status', '처리중');
+                    });
                 }else{
                     $query->where('cs_status', $cs_status);
                 }
             })
+            ->when($order_no !== '', function($query) use ($order_no) {
+                $query->where('order_no', $order_no);
+            })
             ->when($keyword, function($query) use ($keyword) {
-                $query->where('mem_id', 'like', '%'.$keyword.'%');
-                $query->orWhere('mem_name', 'like', '%'.$keyword.'%');
-                $query->orWhere('mem_phone', 'like', '%'.$keyword.'%');
-                $query->orWhere('receiver_name', 'like', '%'.$keyword.'%');
-                $query->orWhere('receiver_phone', 'like', '%'.$keyword.'%');
-                $query->orWhere('order_no', 'like', '%'.$keyword.'%');
+                $query->where(function($keywordQuery) use ($keyword) {
+                    $keywordQuery->where('mem_id', 'like', '%'.$keyword.'%');
+                    $keywordQuery->orWhere('mem_name', 'like', '%'.$keyword.'%');
+                    $keywordQuery->orWhere('mem_phone', 'like', '%'.$keyword.'%');
+                    $keywordQuery->orWhere('receiver_name', 'like', '%'.$keyword.'%');
+                    $keywordQuery->orWhere('receiver_phone', 'like', '%'.$keyword.'%');
+                    $keywordQuery->orWhere('order_no', 'like', '%'.$keyword.'%');
+                });
             })
             ->orderBy('idx', 'desc')
             ->get();

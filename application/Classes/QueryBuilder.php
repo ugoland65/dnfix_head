@@ -155,18 +155,18 @@ class QueryBuilder
             $reflection = new \ReflectionClass($relationInstance);
             
             if ($isBelongsTo) {
-                // BelongsTo는 parentInstance, ownerKey 사용
+                // BelongsTo는 현재 모델의 foreignKey -> 부모 모델 ownerKey로 매핑
                 $relatedInstanceProp = $reflection->getProperty('parentInstance');
                 $relatedInstanceProp->setAccessible(true);
                 $relatedModel = $relatedInstanceProp->getValue($relationInstance);
 
                 $foreignKeyProp = $reflection->getProperty('foreignKey');
                 $foreignKeyProp->setAccessible(true);
-                $foreignKey = $foreignKeyProp->getValue($relationInstance);
+                $parentForeignKey = $foreignKeyProp->getValue($relationInstance);
 
-                $localKeyProp = $reflection->getProperty('ownerKey');
-                $localKeyProp->setAccessible(true);
-                $localKey = $localKeyProp->getValue($relationInstance);
+                $ownerKeyProp = $reflection->getProperty('ownerKey');
+                $ownerKeyProp->setAccessible(true);
+                $relatedOwnerKey = $ownerKeyProp->getValue($relationInstance);
             } else {
                 // HasOne, HasMany는 relatedInstance, localKey 사용
                 $relatedInstanceProp = $reflection->getProperty('relatedInstance');
@@ -185,7 +185,12 @@ class QueryBuilder
             // 부모 키 값 수집
             $parentKeys = [];
             foreach ($results as $result) {
-                $keyValue = is_array($result) ? ($result[$localKey] ?? null) : null;
+                if (!is_array($result)) {
+                    continue;
+                }
+                $keyValue = $isBelongsTo
+                    ? ($result[$parentForeignKey] ?? null)
+                    : ($result[$localKey] ?? null);
                 if ($keyValue !== null && !in_array($keyValue, $parentKeys)) {
                     $parentKeys[] = $keyValue;
                 }
@@ -198,36 +203,41 @@ class QueryBuilder
             // 관계 데이터 일괄 조회
             $relatedTable = $relatedModel->getTable();
             $relatedData = $relatedModel::query()
-                ->whereIn($foreignKey, $parentKeys)
+                ->whereIn($isBelongsTo ? $relatedOwnerKey : $foreignKey, $parentKeys)
                 ->get()
                 ->toArray();
 
             // 관계 데이터를 부모 키로 그룹화
             $grouped = [];
             foreach ($relatedData as $item) {
-                $fkValue = $item[$foreignKey] ?? null;
-                if ($fkValue !== null) {
-                    if ($isHasOne) {
-                        // hasOne: 첫 번째 것만 저장
-                        if (!isset($grouped[$fkValue])) {
-                            $grouped[$fkValue] = $item;
-                        }
-                    } else {
-                        // hasMany: 배열로 저장
-                        if (!isset($grouped[$fkValue])) {
-                            $grouped[$fkValue] = [];
-                        }
-                        $grouped[$fkValue][] = $item;
+                $groupKey = $isBelongsTo
+                    ? ($item[$relatedOwnerKey] ?? null)
+                    : ($item[$foreignKey] ?? null);
+                if ($groupKey === null) {
+                    continue;
+                }
+                if ($isBelongsTo || $isHasOne) {
+                    // hasOne: 첫 번째 것만 저장
+                    if (!isset($grouped[$groupKey])) {
+                        $grouped[$groupKey] = $item;
                     }
+                } else {
+                    // hasMany: 배열로 저장
+                    if (!isset($grouped[$groupKey])) {
+                        $grouped[$groupKey] = [];
+                    }
+                    $grouped[$groupKey][] = $item;
                 }
             }
 
             // 결과에 관계 데이터 추가
             foreach ($results as &$result) {
                 if (is_array($result)) {
-                    $keyValue = $result[$localKey] ?? null;
-                    if ($isHasOne) {
-                        // hasOne: 단일 객체 또는 null
+                    $keyValue = $isBelongsTo
+                        ? ($result[$parentForeignKey] ?? null)
+                        : ($result[$localKey] ?? null);
+                    if ($isBelongsTo || $isHasOne) {
+                        // belongsTo/hasOne: 단일 객체 또는 null
                         $result[$relationName] = $grouped[$keyValue] ?? null;
                     } else {
                         // hasMany: 배열
@@ -270,18 +280,18 @@ class QueryBuilder
             $reflection = new \ReflectionClass($relationInstance);
             
             if ($isBelongsTo) {
-                // BelongsTo는 parentInstance, ownerKey 사용
+                // BelongsTo는 현재 모델의 foreignKey -> 부모 모델 ownerKey로 매핑
                 $relatedInstanceProp = $reflection->getProperty('parentInstance');
                 $relatedInstanceProp->setAccessible(true);
                 $relatedModel = $relatedInstanceProp->getValue($relationInstance);
 
                 $foreignKeyProp = $reflection->getProperty('foreignKey');
                 $foreignKeyProp->setAccessible(true);
-                $foreignKey = $foreignKeyProp->getValue($relationInstance);
+                $parentForeignKey = $foreignKeyProp->getValue($relationInstance);
 
-                $localKeyProp = $reflection->getProperty('ownerKey');
-                $localKeyProp->setAccessible(true);
-                $localKey = $localKeyProp->getValue($relationInstance);
+                $ownerKeyProp = $reflection->getProperty('ownerKey');
+                $ownerKeyProp->setAccessible(true);
+                $relatedOwnerKey = $ownerKeyProp->getValue($relationInstance);
             } else {
                 // HasOne, HasMany는 relatedInstance, localKey 사용
                 $relatedInstanceProp = $reflection->getProperty('relatedInstance');
@@ -300,7 +310,9 @@ class QueryBuilder
             // 부모 키 값 수집
             $parentKeys = [];
             foreach ($data as $item) {
-                $keyValue = $item[$localKey] ?? null;
+                $keyValue = $isBelongsTo
+                    ? ($item[$parentForeignKey] ?? null)
+                    : ($item[$localKey] ?? null);
                 if ($keyValue !== null && !in_array($keyValue, $parentKeys)) {
                     $parentKeys[] = $keyValue;
                 }
@@ -312,35 +324,39 @@ class QueryBuilder
 
             // 관계 데이터 일괄 조회
             $relatedData = $relatedModel::query()
-                ->whereIn($foreignKey, $parentKeys)
+                ->whereIn($isBelongsTo ? $relatedOwnerKey : $foreignKey, $parentKeys)
                 ->get()
                 ->toArray();
 
             // 관계 데이터를 부모 키로 그룹화
             $grouped = [];
             foreach ($relatedData as $item) {
-                $fkValue = $item[$foreignKey] ?? null;
-                if ($fkValue !== null) {
-                    if ($isHasOne) {
+                $groupKey = $isBelongsTo
+                    ? ($item[$relatedOwnerKey] ?? null)
+                    : ($item[$foreignKey] ?? null);
+                if ($groupKey !== null) {
+                    if ($isBelongsTo || $isHasOne) {
                         // hasOne: 첫 번째 것만 저장
-                        if (!isset($grouped[$fkValue])) {
-                            $grouped[$fkValue] = $item;
+                        if (!isset($grouped[$groupKey])) {
+                            $grouped[$groupKey] = $item;
                         }
                     } else {
                         // hasMany: 배열로 저장
-                        if (!isset($grouped[$fkValue])) {
-                            $grouped[$fkValue] = [];
+                        if (!isset($grouped[$groupKey])) {
+                            $grouped[$groupKey] = [];
                         }
-                        $grouped[$fkValue][] = $item;
+                        $grouped[$groupKey][] = $item;
                     }
                 }
             }
 
             // 결과에 관계 데이터 추가
             foreach ($data as &$item) {
-                $keyValue = $item[$localKey] ?? null;
-                if ($isHasOne) {
-                    // hasOne: 단일 객체 또는 null
+                $keyValue = $isBelongsTo
+                    ? ($item[$parentForeignKey] ?? null)
+                    : ($item[$localKey] ?? null);
+                if ($isBelongsTo || $isHasOne) {
+                    // belongsTo/hasOne: 단일 객체 또는 null
                     $item[$relationName] = $grouped[$keyValue] ?? null;
                 } else {
                     // hasMany: 배열
@@ -976,7 +992,7 @@ class QueryBuilder
 		$isBelongsTo = $relationInstance instanceof \App\Core\BelongsToRelation;
 		
 		if ($isBelongsTo) {
-			// BelongsTo는 parentInstance, ownerKey 사용
+			// BelongsTo는 main.foreignKey = related.ownerKey 로 비교
 			$relatedInstanceProp = $reflection->getProperty('parentInstance');
 			$relatedInstanceProp->setAccessible(true);
 			$relatedModel = $relatedInstanceProp->getValue($relationInstance);
@@ -985,9 +1001,9 @@ class QueryBuilder
 			$foreignKeyProp->setAccessible(true);
 			$foreignKey = $foreignKeyProp->getValue($relationInstance);
 
-			$localKeyProp = $reflection->getProperty('ownerKey');
-			$localKeyProp->setAccessible(true);
-			$localKey = $localKeyProp->getValue($relationInstance);
+			$ownerKeyProp = $reflection->getProperty('ownerKey');
+			$ownerKeyProp->setAccessible(true);
+			$ownerKey = $ownerKeyProp->getValue($relationInstance);
 		} else {
 			// HasOne, HasMany는 relatedInstance, localKey 사용
 			$relatedInstanceProp = $reflection->getProperty('relatedInstance');
@@ -1006,10 +1022,13 @@ class QueryBuilder
 		// 관련 테이블명 가져오기
 		$relatedTable = $relatedModel->getTable();
 		$mainTable = $this->model->getTable();
-		$mainPrimaryKey = $this->model->getPrimaryKey();
 
 		// WHERE EXISTS 서브쿼리 생성
-		$subQuery = "SELECT 1 FROM `{$relatedTable}` WHERE `{$relatedTable}`.`{$foreignKey}` = `{$mainTable}`.`{$localKey}`";
+		if ($isBelongsTo) {
+			$subQuery = "SELECT 1 FROM `{$relatedTable}` WHERE `{$relatedTable}`.`{$ownerKey}` = `{$mainTable}`.`{$foreignKey}`";
+		} else {
+			$subQuery = "SELECT 1 FROM `{$relatedTable}` WHERE `{$relatedTable}`.`{$foreignKey}` = `{$mainTable}`.`{$localKey}`";
+		}
 
 		// 추가 조건이 있으면 서브쿼리에 추가
 		if ($callback) {
@@ -1373,9 +1392,7 @@ class QueryBuilder
 			return $this; // 객체 자신을 반환하여 메서드 체이닝 가능하게 함
 			
 		} catch (\PDOException $e) {
-			echo "SQL Error: " . $e->getMessage() . "\n";
-			echo "Query: " . $query . "\n";
-			echo "Params: " . print_r($params, true) . "\n";
+			error_log('[QueryBuilder::get] SQL execution failed: ' . $e->getMessage());
 			throw $e;
 		}
 	}
@@ -1811,50 +1828,80 @@ class QueryBuilder
 	 */
 	public function count()
 	{
-		// 현재 데이터가 있으면 그 길이 반환
-		// if (isset($this->data)) {
-		// 	return count($this->data);
-		// }
-		
-		// 데이터가 없으면 쿼리 실행하여 결과 수 반환
-		$query = "SELECT COUNT(*) as count FROM {$this->table}";
-		
-		if (!empty($this->joins)) {
-			$query .= " " . implode(' ', $this->joins);
-		}
-		
 		$params = [];
-		$whereClause = $this->buildWhereClause($params);
-		if (!empty($whereClause)) {
-			$query .= " $whereClause";
-		}
-		
+
 		if (!empty($this->groupBy)) {
-			$query .= ' GROUP BY ' . implode(', ', $this->groupBy);
+			$groupedQuery = "SELECT 1 FROM {$this->table}";
+
+			if (!empty($this->joins)) {
+				$groupedQuery .= " " . implode(' ', $this->joins);
+			}
+
+			$whereClause = $this->buildWhereClause($params);
+			if (!empty($whereClause)) {
+				$groupedQuery .= " $whereClause";
+			}
+
+			$groupedQuery .= ' GROUP BY ' . implode(', ', $this->groupBy);
+			$query = "SELECT COUNT(*) AS count FROM ({$groupedQuery}) AS grouped_rows";
+		} else {
+			$query = "SELECT COUNT(*) AS count FROM {$this->table}";
+
+			if (!empty($this->joins)) {
+				$query .= " " . implode(' ', $this->joins);
+			}
+
+			$whereClause = $this->buildWhereClause($params);
+			if (!empty($whereClause)) {
+				$query .= " $whereClause";
+			}
 		}
 
 		try {
-			$stmt = $this->db->prepare($query);
-			
-			// 파라미터 바인딩
-			if (!empty($params)) {
-				foreach ($params as $key => $value) {
-					$stmt->bindValue($key, $value);
+			$hasNamedParams = false;
+			$hasPositionalParams = false;
+
+			foreach ($params as $key => $value) {
+				if (is_string($key)) {
+					$hasNamedParams = true;
+				} else {
+					$hasPositionalParams = true;
 				}
 			}
-			
-			$stmt->execute();
-			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
-			
-			// 그룹화된 결과인 경우 행 수 반환
-			if (!empty($this->groupBy)) {
-				return $stmt->rowCount();
+
+			if ($hasNamedParams && $hasPositionalParams) {
+				$convertedQuery = $query;
+				$finalPositionalParams = [];
+
+				foreach ($params as $key => $value) {
+					if (!is_string($key)) {
+						$finalPositionalParams[] = $value;
+					}
+				}
+
+				foreach ($params as $key => $value) {
+					if (is_string($key)) {
+						$pos = strpos($convertedQuery, $key);
+						if ($pos !== false) {
+							$convertedQuery = substr_replace($convertedQuery, '?', $pos, strlen($key));
+							$finalPositionalParams[] = $value;
+						}
+					}
+				}
+
+				$stmt = $this->db->prepare($convertedQuery);
+				$stmt->execute($finalPositionalParams);
+			} else if ($hasNamedParams) {
+				$stmt = $this->db->prepare($query);
+				$stmt->execute($params);
+			} else {
+				$stmt = $this->db->prepare($query);
+				$stmt->execute($hasPositionalParams ? array_values($params) : null);
 			}
-			
-			// 단일 결과인 경우 count 값 반환
+
+			$result = $stmt->fetch(\PDO::FETCH_ASSOC);
 			return isset($result['count']) ? (int)$result['count'] : 0;
 		} catch (\PDOException $e) {
-			// 오류 발생 시 0 반환
 			return 0;
 		}
 	}
@@ -2240,11 +2287,15 @@ class QueryBuilder
 
 		$setClauses = [];
 		$bindings = [];
+		$allowedOperators = ['+', '-', '*', '/'];
 
 		// SET 절 생성
 		foreach ($operations as $column => [$operator, $value]) {
 			if (!preg_match('/^[a-zA-Z0-9_]+$/', $column)) {
 				throw new \Exception("Invalid column name: $column");
+			}
+			if (!in_array($operator, $allowedOperators, true)) {
+				throw new \Exception("Invalid operator: $operator");
 			}
 
 			$paramName = ":set_" . $column;
@@ -2257,6 +2308,13 @@ class QueryBuilder
 		if (empty($conditions)) {
 			$conditions = $this->wheres;
 			foreach ($conditions as $where) {
+				if (
+					!isset($where['column']) ||
+					!isset($where['operator']) ||
+					!array_key_exists('value', $where)
+				) {
+					throw new \Exception("Unsupported where condition for updateWithOperation.");
+				}
 				$paramName = ":where_" . $where['column'];
 				$whereClauses[] = "`{$where['column']}` {$where['operator']} $paramName";
 				$bindings[$paramName] = $where['value'];

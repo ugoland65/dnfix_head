@@ -235,6 +235,7 @@
                                 <th class="">매칭상품</th>
                                 <th class="">공급사링크</th>
                                 <th class="">C/S 요청</th>
+                                <th class="">C/S 등록수</th>
                                 <th class="">수령자명</th>
                                 <th class="">수령자<br>전화번호</th>
                                 <th class="">수령자<br>휴대폰번호</th>
@@ -316,6 +317,13 @@
                                             data-receiver-phone="<?= $order['receiverCellPhone'] ?>"
 
                                             onclick="csCreate(this);">C/S 요청</button>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php $csRequestCount = (int)($csRequestCountMap[$order['orderNo']] ?? 0); ?>
+                                        <?php if ($csRequestCount > 0) { ?>
+                                            <?= $csRequestCount ?><br>
+                                            <button type="button" class="btnstyle1 btnstyle1-xs" onclick="window.open('/admin/cs/cs_list?s_order_no=<?= urlencode((string)$order['orderNo']) ?>', '_blank');">C/S 확인</button>
+                                        <?php } ?>
                                     </td>
                                     <?php
                                     $receiverName = trim((string)($order['receiverName'] ?? ''));

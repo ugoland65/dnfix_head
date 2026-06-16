@@ -198,6 +198,13 @@
 			navigateWithParams(params);
 		});
 
+		$("#search_value").on('keydown', function(e) {
+			if (e.key === 'Enter') {
+				e.preventDefault();
+				$("#searchBtn").trigger('click');
+			}
+		});
+
 		$("#search_reset").click(function() {
 			var url = "?";
 			window.location.href = url;
