@@ -447,6 +447,9 @@
                             <select id="sale_end_minute" class="sale-history-time-select"></select>
                         </div>
                         <div class="sale-history-create-actions">
+                            <button type="button" id="temp_save_sale_history_btn" class="btnstyle1 btnstyle1-inverse btnstyle1-md">
+                                임시저장
+                            </button>
                             <button type="button" id="create_sale_history_btn" class="btnstyle1 btnstyle1-primary btnstyle1-md">
                                 할인생성
                             </button>
@@ -468,11 +471,13 @@
 <script>
     var pinnedItemsMap = {};
     var currentItemsMap = {};
+    var currentTempSaleHistorySeq = 0;
     var latestGodoGoodsResult = { stock_codes: [], count: 0, items: [] };
     var latestGodoGoodsMap = {};
     var latestInspectRequestedKeyMap = {};
     var discountRateInputMap = {};
     var providerDataInspectBulkAttempted = false;
+    var latestTempSavedSaleHistory = <?= json_encode($latestTempSavedSaleHistory ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
 
     // 숫자를 천단위 콤마 문자열로 변환한다.
     function numberWithComma(value) {
@@ -2509,8 +2514,156 @@
         toggleGodoInspectButton();
     }
 
+    // YYYY-MM-DD HH:mm:ss 문자열을 Date 객체로 파싱한다.
+    function parseDateTimeStringToDate(value) {
+        var text = String(value || '').trim();
+        if (!text) {
+            return null;
+        }
+        var matches = text.match(/^(\d{4})-(\d{2})-(\d{2})(?:\s+(\d{2}):(\d{2})(?::(\d{2}))?)?$/);
+        if (!matches) {
+            return null;
+        }
+        var year = Number(matches[1]);
+        var month = Number(matches[2]) - 1;
+        var day = Number(matches[3]);
+        var hour = Number(matches[4] || 0);
+        var minute = Number(matches[5] || 0);
+        var second = Number(matches[6] || 0);
+        return new Date(year, month, day, hour, minute, second);
+    }
+
+    // 체크박스 그룹을 배열값 기준으로 체크 상태를 동기화한다.
+    function applyCheckedValues(name, values) {
+        var selectedMap = {};
+        if (Array.isArray(values)) {
+            for (var i = 0; i < values.length; i++) {
+                selectedMap[String(values[i])] = true;
+            }
+        }
+        $('input[name="' + name + '"]').each(function () {
+            var key = String($(this).val());
+            $(this).prop('checked', !!selectedMap[key]);
+        });
+    }
+
+    // 서버에서 받은 임시저장 데이터를 화면에 복원한다.
+    function applyTempSavedSaleHistory(draft) {
+        if (!draft || typeof draft !== 'object') {
+            return;
+        }
+
+        currentTempSaleHistorySeq = Number(draft.seq || 0) || 0;
+        if (currentTempSaleHistorySeq <= 0) {
+            return;
+        }
+
+        var saleMode = String(draft.sale_mode || '').trim();
+        if (saleMode && $('#sale_mode option[value="' + saleMode + '"]').length) {
+            $('#sale_mode').val(saleMode);
+        }
+
+        var meta = (draft.meta_json && typeof draft.meta_json === 'object') ? draft.meta_json : {};
+        var saleSetting = (meta.sale_setting && typeof meta.sale_setting === 'object') ? meta.sale_setting : {};
+        var saleSettingStartDate = String(saleSetting.sale_start_date || '').trim();
+        var saleSettingEndDate = String(saleSetting.sale_end_date || '').trim();
+        var saleSettingStartTime = String(saleSetting.sale_start_time || '').trim();
+        var saleSettingEndTime = String(saleSetting.sale_end_time || '').trim();
+
+        if (saleSettingStartDate) {
+            $('#sale_start_date').val(saleSettingStartDate);
+        } else {
+            var startDateObj = parseDateTimeStringToDate(draft.sale_start_date || '');
+            if (startDateObj) {
+                $('#sale_start_date').val(formatDateOnlyValue(startDateObj));
+                setSelectedTimeByPrefix('sale_start', startDateObj);
+            } else {
+                $('#sale_start_date').val('');
+            }
+        }
+        if (saleSettingEndDate) {
+            $('#sale_end_date').val(saleSettingEndDate);
+        } else {
+            var endDateObj = parseDateTimeStringToDate(draft.sale_end_date || '');
+            if (endDateObj) {
+                $('#sale_end_date').val(formatDateOnlyValue(endDateObj));
+                setSelectedTimeByPrefix('sale_end', endDateObj);
+            } else {
+                $('#sale_end_date').val('');
+            }
+        }
+        if (saleSettingStartTime) {
+            var startTimeParts = saleSettingStartTime.split(':');
+            if (startTimeParts.length >= 2) {
+                $('#sale_start_hour').val(String(startTimeParts[0] || '00').padStart(2, '0'));
+                $('#sale_start_minute').val(String(startTimeParts[1] || '00').padStart(2, '0'));
+            }
+        }
+        if (saleSettingEndTime) {
+            var endTimeParts = saleSettingEndTime.split(':');
+            if (endTimeParts.length >= 2) {
+                $('#sale_end_hour').val(String(endTimeParts[0] || '00').padStart(2, '0'));
+                $('#sale_end_minute').val(String(endTimeParts[1] || '00').padStart(2, '0'));
+            }
+        }
+
+        var randomCondition = (meta.random_condition && typeof meta.random_condition === 'object') ? meta.random_condition : {};
+        if (randomCondition.have_product_qty !== undefined) {
+            $('#have_product_qty').val(String(randomCondition.have_product_qty));
+        }
+        if (randomCondition.provider_product_qty !== undefined) {
+            $('#provider_product_qty').val(String(randomCondition.provider_product_qty));
+        }
+        if (randomCondition.have_product_min_stock !== undefined) {
+            $('#have_product_min_stock').val(String(randomCondition.have_product_min_stock));
+        }
+        if (randomCondition.have_product_margin_per !== undefined) {
+            $('#have_product_margin_per').val(String(randomCondition.have_product_margin_per));
+        }
+        if (randomCondition.provider_product_margin_per !== undefined) {
+            $('#provider_product_margin_per').val(String(randomCondition.provider_product_margin_per));
+        }
+        if (randomCondition.sale_duplicate_mode !== undefined) {
+            $('#sale_duplicate_mode').val(String(randomCondition.sale_duplicate_mode));
+        }
+        applyCheckedValues('exclude_brand_idxs[]', randomCondition.exclude_brand_idxs || []);
+        applyCheckedValues('selected_kind_codes[]', randomCondition.selected_kind_codes || []);
+        applyCheckedValues('random_discount_rates[]', randomCondition.random_discount_rates || []);
+
+        providerDataInspectBulkAttempted = !!meta.provider_bulk_inspect_attempted;
+        latestInspectRequestedKeyMap = {};
+        latestGodoGoodsMap = {};
+        latestGodoGoodsResult = { stock_codes: [], count: 0, items: [] };
+        pinnedItemsMap = {};
+        discountRateInputMap = {};
+
+        var draftItems = Array.isArray(draft.product_list) ? draft.product_list : [];
+        for (var i = 0; i < draftItems.length; i++) {
+            var item = draftItems[i] || {};
+            var itemKey = String(item.item_key || item.ps_idx || '').trim();
+            if (!itemKey) {
+                continue;
+            }
+            if (item.discount_rate !== undefined && item.discount_rate !== null && String(item.discount_rate).trim() !== '') {
+                discountRateInputMap[itemKey] = normalizeDiscountRate(item.discount_rate);
+            }
+        }
+
+        renderRandomProducts({
+            items: draftItems,
+            total_count: draftItems.length,
+            condition: {
+                total_product_qty: draftItems.length
+            },
+            force_exact_list: true
+        });
+        normalizeAndAutoFillSaleDates('');
+        setSaveButtonStatus('임시저장 불러옴', false);
+    }
+
     $(function () {
         initSaleTimeSelectors();
+        applyTempSavedSaleHistory(latestTempSavedSaleHistory);
 
         $('#sale_start_date, #sale_end_date').on('change', function () {
             normalizeAndAutoFillSaleDates(this.id);
@@ -2662,7 +2815,9 @@
                 type: 'POST',
                 dataType: 'json',
                 data: {
-                    mode: 'create',
+                    mode: currentTempSaleHistorySeq > 0 ? 'modify' : 'create',
+                    seq: currentTempSaleHistorySeq > 0 ? currentTempSaleHistorySeq : 0,
+                    save_type: 'final',
                     sale_status: 'wait',
                     sale_mode: String($('#sale_mode').val() || 'day').trim(),
                     sale_start_date: saveStartDateTime,
@@ -2675,6 +2830,7 @@
                         showToast((response && response.message) ? response.message : '할인생성 저장에 실패했습니다.', new Date().toLocaleTimeString());
                         return;
                     }
+                    currentTempSaleHistorySeq = 0;
                     showToast((response && response.message) ? response.message : '할인생성 저장 완료', new Date().toLocaleTimeString());
                     setTimeout(function () {
                         location.href = '/admin/sale/history';
@@ -2695,6 +2851,62 @@
             e.preventDefault();
             e.stopImmediatePropagation();
             return false;
+        });
+
+        $('#temp_save_sale_history_btn').on('click', function () {
+            normalizeAndAutoFillSaleDates('');
+
+            var productPayload = buildSaleHistoryProductPayload();
+            var metaPayload = buildSaleHistoryMetaPayload(productPayload);
+            var startDateText = String($('#sale_start_date').val() || '').trim();
+            var endDateText = String($('#sale_end_date').val() || '').trim();
+            var startDateObj = parseDateInputToDate(startDateText, 'sale_start');
+            var endDateObj = parseDateInputToDate(endDateText, 'sale_end');
+            var saveStartDateTime = startDateText ? (startDateObj ? formatDateTimeValue(startDateObj) : startDateText) : '';
+            var saveEndDateTime = endDateText ? (endDateObj ? formatDateTimeValue(endDateObj) : endDateText) : '';
+
+            var $btn = $(this);
+            $btn.prop('disabled', true).text('임시저장중...');
+
+            $.ajax({
+                url: '/admin/sale/history/save',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    mode: currentTempSaleHistorySeq > 0 ? 'modify' : 'create',
+                    seq: currentTempSaleHistorySeq > 0 ? currentTempSaleHistorySeq : 0,
+                    save_type: 'temp',
+                    sale_status: 'draft',
+                    sale_mode: String($('#sale_mode').val() || 'day').trim(),
+                    sale_start_date: saveStartDateTime,
+                    sale_end_date: saveEndDateTime,
+                    product_json: JSON.stringify(productPayload),
+                    meta_json: JSON.stringify(metaPayload)
+                },
+                success: function (response) {
+                    if (!response || response.status !== 'success') {
+                        showToast((response && response.message) ? response.message : '임시저장에 실패했습니다.', new Date().toLocaleTimeString());
+                        return;
+                    }
+                    var responseSeq = Number((((response || {}).data || {}).seq) || 0);
+                    if (responseSeq > 0) {
+                        currentTempSaleHistorySeq = responseSeq;
+                    }
+                    setSaveButtonStatus('임시저장 완료', false);
+                    showToast((response && response.message) ? response.message : '임시저장이 완료되었습니다.', new Date().toLocaleTimeString());
+                },
+                error: function (xhr) {
+                    var message = '임시저장에 실패했습니다.';
+                    if (xhr && xhr.responseJSON && xhr.responseJSON.message) {
+                        message = xhr.responseJSON.message;
+                    }
+                    setSaveButtonStatus('임시저장 실패', true);
+                    showToast(message, new Date().toLocaleTimeString());
+                },
+                complete: function () {
+                    $btn.prop('disabled', false).text('임시저장');
+                }
+            });
         });
 
         $(document).on('change', '#keep_all_checkbox', function () {

@@ -79,12 +79,20 @@ class SaleHistoryController extends BaseClass
      */
     public function saleHistoryCreate(Request $request)
     {
-
+        $saleHistoryService = new SaleHistoryService();
+        $requestData = $request->all();
+        $draftSeq = (int)($requestData['draft_seq'] ?? 0);
         $config_product = config('admin.product');
         $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+        $latestTempSavedSaleHistory = $draftSeq > 0
+            ? $saleHistoryService->getTempSavedSaleHistoryBySeq($draftSeq)
+            : $saleHistoryService->getLatestTempSavedSaleHistory(
+            (int)(\App\Core\AuthAdmin::getSession('sess_idx') ?? 0)
+        );
 
         $data = [
             'prd_kind_name' => $prd_kind_name,
+            'latestTempSavedSaleHistory' => $latestTempSavedSaleHistory,
         ];
 
         return view('admin.product.sale_history_create', $data)
@@ -228,10 +236,11 @@ class SaleHistoryController extends BaseClass
             $requestData = $request->all();
             $saleHistoryService = new SaleHistoryService();
             $result = $saleHistoryService->saveSaleHistory($requestData);
+            $isTempSave = (($result['save_type'] ?? '') === 'temp');
 
             return response()->json([
                 'status' => 'success',
-                'message' => '할인 이력이 저장되었습니다.',
+                'message' => $isTempSave ? '임시저장이 완료되었습니다.' : '할인 이력이 저장되었습니다.',
                 'data' => $result,
             ]);
         } catch (Throwable $e) {

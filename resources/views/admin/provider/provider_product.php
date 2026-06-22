@@ -44,6 +44,56 @@
 		gap: 8px;
 		margin-top: 16px;
 	}
+	.provider-kind-cell {
+		cursor: context-menu;
+		position: relative;
+		transition: box-shadow 0.12s ease, background-color 0.12s ease;
+	}
+	.provider-kind-cell.provider-kind-cell-missing {
+		color: #b3261e;
+		font-weight: 700;
+	}
+	.provider-kind-cell.provider-kind-selected {
+		outline: 2px solid #2f6fed;
+		outline-offset: -2px;
+		background-color: #eef4ff;
+		z-index: 1;
+	}
+	.provider-kind-context-menu {
+		display: none;
+		position: fixed;
+		min-width: 150px;
+		max-width: 220px;
+		max-height: 320px;
+		overflow-y: auto;
+		background: #fff;
+		border: 1px solid #d9dce3;
+		border-radius: 8px;
+		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+		z-index: 10020;
+		padding: 6px 0;
+	}
+	.provider-kind-context-menu.active {
+		display: block;
+	}
+	.provider-kind-context-menu-item {
+		display: block;
+		width: 100%;
+		border: 0;
+		background: transparent;
+		text-align: left;
+		padding: 8px 12px;
+		font-size: 13px;
+		line-height: 1.25;
+		cursor: pointer;
+	}
+	.provider-kind-context-menu-item:hover {
+		background: #f3f6ff;
+	}
+	.provider-kind-context-menu-item.is-current {
+		font-weight: 700;
+		color: #1849a9;
+	}
 </style>
 <div id="contents_head">
 	<h1>위탁 상품관리</h1>
@@ -215,8 +265,14 @@
 									<td>
 										<img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
 									</td>
-									<td class="text-center">
-										<?= $item['kind'] ?? "미지정" ?>
+									<?php
+										$currentKind = trim((string)($item['kind'] ?? ''));
+										$displayKind = $currentKind !== '' ? $currentKind : '미지정';
+									?>
+									<td class="text-center provider-kind-cell <?= $currentKind === '' ? 'provider-kind-cell-missing' : '' ?>"
+										data-prd-idx="<?= (int)($item['idx'] ?? 0) ?>"
+										data-current-kind="<?= htmlspecialchars($currentKind, ENT_QUOTES, 'UTF-8') ?>">
+										<span class="provider-kind-text"><?= htmlspecialchars($displayKind, ENT_QUOTES, 'UTF-8') ?></span>
 									</td>
 									<td class="prd-name">
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
@@ -445,6 +501,8 @@
 	</div>
 </div>
 
+<div id="providerKindContextMenu" class="provider-kind-context-menu" aria-hidden="true"></div>
+
 <div id="productBulkUpdateModal" class="bulk-update-modal">
 	<div class="bulk-update-modal-content">
 		<div class="bulk-update-modal-title">선택상품 일괄수정</div>
@@ -490,6 +548,7 @@
 </div>
 
 <script type="text/javascript">
+	const PROVIDER_KIND_OPTIONS = <?= json_encode(array_values($prd_kind_name ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 	const prdProvider = (function() {
 
@@ -688,7 +747,91 @@
 		location.href = '/admin/provider_product/list' + (queryString ? '?' + queryString : '');
 	}
 
+	function updateProviderKind(prdIdx, kindValue) {
+		return prdProvider.bulkUpdateSelectedProducts([prdIdx], {
+			kind: kindValue || '',
+		});
+	}
+
 	$(function() {
+		var $kindContextMenu = $('#providerKindContextMenu');
+		var $selectedKindCell = null;
+
+		function closeKindContextMenu() {
+			$kindContextMenu.removeClass('active').hide().empty().attr('aria-hidden', 'true');
+			if ($selectedKindCell && $selectedKindCell.length) {
+				$selectedKindCell.removeClass('provider-kind-selected');
+			}
+			$selectedKindCell = null;
+		}
+
+		function getProviderKindOptions() {
+			if (!Array.isArray(PROVIDER_KIND_OPTIONS)) {
+				return [];
+			}
+			var unique = [];
+			var seen = {};
+			for (var i = 0; i < PROVIDER_KIND_OPTIONS.length; i++) {
+				var val = String(PROVIDER_KIND_OPTIONS[i] || '').trim();
+				if (!val || seen[val]) {
+					continue;
+				}
+				seen[val] = true;
+				unique.push(val);
+			}
+			return unique;
+		}
+
+		function openKindContextMenu($cell, pageX, pageY) {
+			var prdIdx = Number($cell.data('prd-idx') || 0);
+			if (prdIdx <= 0) {
+				return;
+			}
+			var currentKind = String($cell.data('current-kind') || '').trim();
+			var options = getProviderKindOptions();
+			if (!options.length) {
+				alert('분류 옵션 데이터가 없습니다.');
+				return;
+			}
+
+			closeKindContextMenu();
+			$selectedKindCell = $cell;
+			$selectedKindCell.addClass('provider-kind-selected');
+
+			var menuHtml = '';
+			for (var i = 0; i < options.length; i++) {
+				var optionValue = options[i];
+				var isCurrent = optionValue === currentKind;
+				menuHtml += '<button type="button" class="provider-kind-context-menu-item ' + (isCurrent ? 'is-current' : '') + '"'
+					+ ' data-kind="' + $('<div>').text(optionValue).html() + '"'
+					+ ' data-prd-idx="' + prdIdx + '">'
+					+ (isCurrent ? '✓ ' : '')
+					+ $('<div>').text(optionValue).html()
+					+ '</button>';
+			}
+			$kindContextMenu.html(menuHtml);
+
+			var viewportWidth = $(window).width();
+			var viewportHeight = $(window).height();
+			$kindContextMenu.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
+			var menuWidth = $kindContextMenu.outerWidth();
+			var menuHeight = $kindContextMenu.outerHeight();
+			var left = pageX;
+			var top = pageY;
+			if (left + menuWidth > viewportWidth - 10) {
+				left = viewportWidth - menuWidth - 10;
+			}
+			if (top + menuHeight > viewportHeight - 10) {
+				top = viewportHeight - menuHeight - 10;
+			}
+			left = Math.max(10, left);
+			top = Math.max(10, top);
+			$kindContextMenu.css({
+				left: left + 'px',
+				top: top + 'px',
+				visibility: 'visible'
+			}).addClass('active').attr('aria-hidden', 'false');
+		}
 
 		$(document).on('change', 'input[name="check_idx[]"]', function() {
 			if ($(this).is(':checked')) {
@@ -849,6 +992,59 @@
 			prdProvider.productRegisterToSupplierProduct(prd_idx, supplier_is_option, supplier_option_data_json, partner_name, product_name);
 		});
 
+		$(document).on('contextmenu', '.provider-kind-cell', function(e) {
+			var currentKind = String($(this).data('current-kind') || '').trim();
+			if (currentKind !== '') {
+				return;
+			}
+			e.preventDefault();
+			openKindContextMenu($(this), e.clientX, e.clientY);
+		});
+
+		$(document).on('click', '.provider-kind-context-menu-item', function() {
+			var $btn = $(this);
+			var targetKind = String($btn.data('kind') || '').trim();
+			var prdIdx = Number($btn.data('prd-idx') || 0);
+			if (!$selectedKindCell || !$selectedKindCell.length || prdIdx <= 0 || !targetKind) {
+				closeKindContextMenu();
+				return;
+			}
+
+			$btn.prop('disabled', true);
+			updateProviderKind(prdIdx, targetKind)
+				.then(function(res) {
+					if (!res || res.status !== 'success') {
+						alert((res && res.message) ? res.message : '분류 업데이트에 실패했습니다.');
+						closeKindContextMenu();
+						return;
+					}
+					$selectedKindCell.data('current-kind', targetKind);
+					$selectedKindCell.find('.provider-kind-text').text(targetKind);
+					$selectedKindCell.removeClass('provider-kind-cell-missing');
+					closeKindContextMenu();
+				})
+				.catch(function() {
+					alert('서버 통신에 실패했습니다.');
+					closeKindContextMenu();
+				});
+		});
+
+		$(document).on('click', function(e) {
+			var $target = $(e.target);
+			if (!$target.closest('#providerKindContextMenu').length && !$target.closest('.provider-kind-cell').length) {
+				closeKindContextMenu();
+			}
+		});
+
+		$(document).on('keydown', function(e) {
+			if (e.key === 'Escape') {
+				closeKindContextMenu();
+			}
+		});
+
+		$(window).on('scroll resize', function() {
+			closeKindContextMenu();
+		});
 
 	});
 

@@ -12,6 +12,7 @@ use App\Models\ProductSaleHistoryModel;
 class SaleHistoryService
 {
     private $saleStatusText = [
+        'draft' => '임시저장',
         'wait' => '대기',
         'start' => '진행',
         'end' => '종료',
@@ -139,6 +140,86 @@ class SaleHistoryService
         }
 
         return $saleHistory;
+    }
+
+    /**
+     * 현재 로그인 관리자 기준 최신 임시저장 데이터를 반환한다.
+     *
+     * @param int $adminIdx
+     * @return array
+     */
+    public function getLatestTempSavedSaleHistory(int $adminIdx): array
+    {
+        if ($adminIdx <= 0) {
+            return [];
+        }
+
+        $row = ProductSaleHistoryModel::query()
+            ->where('created_by', $adminIdx)
+            ->where('temp_saved_yn', 'Y')
+            ->orderBy('temp_saved_at', 'desc')
+            ->orderBy('seq', 'desc')
+            ->first();
+        if (empty($row)) {
+            return [];
+        }
+
+        $draft = is_array($row) ? $row : $row->toArray();
+        $productList = $this->normalizeSaleHistoryProductList(
+            $this->decodeProductJson($draft['product_json'] ?? '[]')
+        );
+        $productList = $this->hydrateSaleHistoryProductListFromDb($productList);
+        $meta = $this->decodeMetaJsonToArray($draft['meta_json'] ?? '{}');
+
+        return [
+            'seq' => (int)($draft['seq'] ?? 0),
+            'sale_mode' => (string)($draft['sale_mode'] ?? 'day'),
+            'sale_status' => (string)($draft['sale_status'] ?? 'draft'),
+            'sale_start_date' => (string)($draft['sale_start_date'] ?? ''),
+            'sale_end_date' => (string)($draft['sale_end_date'] ?? ''),
+            'temp_saved_at' => (string)($draft['temp_saved_at'] ?? ($draft['updated_at'] ?? $draft['created_at'] ?? '')),
+            'product_list' => $productList,
+            'meta_json' => $meta,
+        ];
+    }
+
+    /**
+     * seq 기준 임시저장 데이터를 반환한다.
+     *
+     * @param int $seq
+     * @return array
+     */
+    public function getTempSavedSaleHistoryBySeq(int $seq): array
+    {
+        if ($seq <= 0) {
+            return [];
+        }
+
+        $row = ProductSaleHistoryModel::query()
+            ->where('seq', $seq)
+            ->where('temp_saved_yn', 'Y')
+            ->first();
+        if (empty($row)) {
+            return [];
+        }
+
+        $draft = is_array($row) ? $row : $row->toArray();
+        $productList = $this->normalizeSaleHistoryProductList(
+            $this->decodeProductJson($draft['product_json'] ?? '[]')
+        );
+        $productList = $this->hydrateSaleHistoryProductListFromDb($productList);
+        $meta = $this->decodeMetaJsonToArray($draft['meta_json'] ?? '{}');
+
+        return [
+            'seq' => (int)($draft['seq'] ?? 0),
+            'sale_mode' => (string)($draft['sale_mode'] ?? 'day'),
+            'sale_status' => (string)($draft['sale_status'] ?? 'draft'),
+            'sale_start_date' => (string)($draft['sale_start_date'] ?? ''),
+            'sale_end_date' => (string)($draft['sale_end_date'] ?? ''),
+            'temp_saved_at' => (string)($draft['temp_saved_at'] ?? ($draft['updated_at'] ?? $draft['created_at'] ?? '')),
+            'product_list' => $productList,
+            'meta_json' => $meta,
+        ];
     }
 
     
@@ -2965,8 +3046,13 @@ class SaleHistoryService
     {
         $mode = trim((string)($requestData['mode'] ?? ''));
         $seq = (int)($requestData['seq'] ?? ($requestData['idx'] ?? 0));
+        $saveType = trim((string)($requestData['save_type'] ?? 'final'));
+        $isTempSave = $saveType === 'temp';
 
-        $saleStatus = trim((string)($requestData['sale_status'] ?? 'wait'));
+        $saleStatus = trim((string)($requestData['sale_status'] ?? ($isTempSave ? 'draft' : 'wait')));
+        if ($isTempSave) {
+            $saleStatus = 'draft';
+        }
         $saleMode = trim((string)($requestData['sale_mode'] ?? 'day'));
         $saleStartDate = $this->normalizeDateTime($requestData['sale_start_date'] ?? '');
         $saleEndDate = $this->normalizeDateTime($requestData['sale_end_date'] ?? '');
@@ -2974,13 +3060,25 @@ class SaleHistoryService
         $metaJson = $this->normalizeMetaJson($requestData['meta_json'] ?? []);
         $createdBy = (int)($requestData['created_by'] ?? (AuthAdmin::getSession('sess_idx') ?? 0));
 
-        if ($saleStatus === '') {
+        // 임시저장에서는 날짜 입력이 비어있을 수 있으므로 DB datetime 컬럼 저장을 위해 안전값으로 보정한다.
+        // 실제 화면 입력값 복원은 meta_json.sale_setting 값을 우선 사용한다.
+        if ($isTempSave) {
+            $nowDateTime = date('Y-m-d H:i:s');
+            if ($saleStartDate === '') {
+                $saleStartDate = $nowDateTime;
+            }
+            if ($saleEndDate === '') {
+                $saleEndDate = $saleStartDate;
+            }
+        }
+
+        if (!$isTempSave && $saleStatus === '') {
             throw new \InvalidArgumentException('할인 상태를 선택해주세요.');
         }
-        if ($saleMode === '') {
+        if (!$isTempSave && $saleMode === '') {
             throw new \InvalidArgumentException('할인 모드를 선택해주세요.');
         }
-        if ($saleStartDate === '') {
+        if (!$isTempSave && $saleStartDate === '') {
             throw new \InvalidArgumentException('할인 시작일을 입력해주세요.');
         }
 
@@ -2992,6 +3090,8 @@ class SaleHistoryService
             'product_json' => $productJson,
             'meta_json' => $metaJson,
             'created_by' => $createdBy,
+            'temp_saved_yn' => $isTempSave ? 'Y' : 'N',
+            'temp_saved_at' => $isTempSave ? date('Y-m-d H:i:s') : null,
         ];
 
         $isModify = $mode === 'modify' || $seq > 0;
@@ -3005,6 +3105,7 @@ class SaleHistoryService
             return [
                 'mode' => 'modify',
                 'seq' => $seq,
+                'save_type' => $isTempSave ? 'temp' : 'final',
             ];
         }
 
@@ -3013,6 +3114,7 @@ class SaleHistoryService
         return [
             'mode' => 'create',
             'seq' => (int)$newSeq,
+            'save_type' => $isTempSave ? 'temp' : 'final',
         ];
     }
 

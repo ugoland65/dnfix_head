@@ -17,6 +17,8 @@ class ProductSaleHistoryModel extends BaseModel
         'product_json', // 상품 JSON
         'meta_json', // 검색/추출 조건 메타 JSON
         'created_by', // 생성자 정보
+        'temp_saved_yn', // 임시저장 여부 (Y/N)
+        'temp_saved_at', // 임시저장 시각
         'uploaded_at', // 고도몰 등록 완료 시간
         'uploaded_by', // 고도몰 등록 처리자
     ];

@@ -1,152 +1,40 @@
 <?php
-
-	// 변수 초기화
-	$form_view = $_GET['form_view'] ?? $form_view ?? "show";
-	$_order_sec_data = [];
-
-	$oo_data = sql_fetch_array(sql_query_error("select * from ona_order A 
-		left join ona_order_group B ON ( B.oog_idx = A.oo_form_idx )  WHERE A.oo_idx = '".$_idx."' "));
-
-	if (!is_array($oo_data)) {
-		$oo_data = [];
-	}
-
-	if( !$form_view ) $form_view = "show";
-	if( ($oo_data['oo_state'] ?? 0) == 4 || ($oo_data['oo_state'] ?? 0) == 5 || ($oo_data['oo_state'] ?? 0) == 7 ){ 
-		$form_view = "hidden";
-	}
-
-	$_price_colum = $oo_data['price_colum'] ?? '';
-
-	//폼 그룹 리스트
-	//$_oog_brand1 = '['.$oo_data['oog_brand'].']';
-	$_oog_brand = json_decode($oo_data['oog_brand'] ?? '[]', true);
-	if (!is_array($_oog_brand)) {
-		$_oog_brand = [];
-	}
-	
-	$_order_sec_json2 = $oo_data['oo_json'] ?? '[]';
-	$_order_sec_json = json_decode($_order_sec_json2, true);
-	if (!is_array($_order_sec_json)) {
-		$_order_sec_json = [];
-	}
-
-	$_oo_sum_price2 = 0;
-	$_oo_sum_goods2 = 0;
-	$_oo_sum_qty2 = 0;
-	$_oo_sum_weight2 = 0;
-
-	for ($i=0; $i<count($_order_sec_json); $i++){
-		
-		$_os_data_idx = $_order_sec_json[$i]['bidx'] ?? '';
-		$_order_sec_data[$_os_data_idx]['item'] = $_order_sec_json[$i]['item'] ?? 0;
-		$_order_sec_data[$_os_data_idx]['qty'] = $_order_sec_json[$i]['qty'] ?? 0;
-		$_order_sec_data[$_os_data_idx]['price'] = $_order_sec_json[$i]['price'] ?? 0;
-		$_order_sec_data[$_os_data_idx]['weight'] = $_order_sec_json[$i]['weight'] ?? 0;
-		
-		if( ($_order_sec_json[$i]['false'] ?? 0) > 0 ){
-			$_order_sec_data[$_os_data_idx]['item'] = (int)($_order_sec_json[$i]['item'] ?? 0) - (int)($_order_sec_json[$i]['false'] ?? 0);
-			$_order_sec_data[$_os_data_idx]['qty'] = (int)($_order_sec_json[$i]['qty'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_qty'] ?? 0);
-			$_order_sec_data[$_os_data_idx]['price'] = (int)($_order_sec_json[$i]['price'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_price'] ?? 0);
-			$_order_sec_data[$_os_data_idx]['weight'] = (int)($_order_sec_json[$i]['weight'] ?? 0) - (int)($_order_sec_json[$i]['false_sum_weight'] ?? 0);
-			$_order_sec_data[$_os_data_idx]['false'] = $_order_sec_json[$i]['false'] ?? 0;
-			$_order_sec_data[$_os_data_idx]['false_sum'] = $_order_sec_json[$i]['false_sum'] ?? 0;
-		}
-
-		$_oo_sum_price2 += $_order_sec_data[$_os_data_idx]['price'] ?? 0;
-		$_oo_sum_goods2 += $_order_sec_data[$_os_data_idx]['item'] ?? 0;
-		$_oo_sum_qty2 += $_order_sec_data[$_os_data_idx]['qty'] ?? 0;
-		$_oo_sum_weight2 += (int)str_replace(',','', $_order_sec_data[$_os_data_idx]['weight'] ?? 0);
-		
-	}
-
+$orderSheetMain = (isset($orderSheetMain) && is_array($orderSheetMain)) ? $orderSheetMain : [];
+$groupSideRows = (isset($groupSideRows) && is_array($groupSideRows)) ? $groupSideRows : [];
+$idx = isset($idx) ? (int)$idx : 0;
+$open_oop_idx = isset($open_oop_idx) ? (string)$open_oop_idx : '';
+$form_view = isset($form_view) ? (string)$form_view : 'show';
 ?>
-<script type="text/javascript"> 
-<!-- 
-var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
-//--> 
+
+<script type="text/javascript">
+var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
 
-<?
-/*
-	echo "<pre>";
-	//print_r($_oog_brand);
-	//print_r($_order_sec_json);
-	echo "</pre>";
-*/
-?>
 <div class="order_sheet_detail">
-	<ul class="left">
-		<div class="overflow-y">
-		
-		<? 
-		for ($i=0; $i<count($_oog_brand); $i++){
-			
-			$_brand = $_oog_brand[$i]['brand'] ?? '';
-			$_name = $_oog_brand[$i]['name'] ?? '';
-			$_oop_idx = $_oog_brand[$i]['oop_idx'] ?? '';
-
-
-			$oop_data = wepix_fetch_array(wepix_query_error("select oop_data from ona_order_prd where oop_idx = '".$_oop_idx."' "));
-
-			if (!is_array($oop_data)) {
-				$oop_data = [];
-			}
-
-			$_oop_json_check_data = substr($oop_data['oop_data'] ?? '', 0, 1);
-			if( $_oop_json_check_data == "[" ){
-				$_oop_json = $oop_data['oop_data'] ?? '[]';
-			}else{
-				$_oop_json = '['.($oop_data['oop_data'] ?? '').']';
-			}
-
-			$_oop_jsondata = json_decode($_oop_json, true);
-			if (!is_array($_oop_jsondata)) {
-				$_oop_jsondata = [];
-			}
-
-		$_item = 0;
-		$_qty = 0;
-		$_price = 0;
-		$_weight = 0;
-		$_show_weight = "";
-
-		if( isset($_order_sec_data[$_oop_idx]['item']) && $_order_sec_data[$_oop_idx]['item'] ) $_item = $_order_sec_data[$_oop_idx]['item'];
-		if( isset($_order_sec_data[$_oop_idx]['qty']) && $_order_sec_data[$_oop_idx]['qty'] ) $_qty = $_order_sec_data[$_oop_idx]['qty'];
-		if( isset($_order_sec_data[$_oop_idx]['price']) && $_order_sec_data[$_oop_idx]['price'] ) $_price = $_order_sec_data[$_oop_idx]['price'];
-		if( isset($_order_sec_data[$_oop_idx]['weight']) && $_order_sec_data[$_oop_idx]['weight'] ) $_weight = $_order_sec_data[$_oop_idx]['weight'];
-
-		if( $_weight ){
-			if( (float)$_weight > 1000 ){
-				$_show_weight = number_format(((float)$_weight*0.001),2)."kg";
-			}else{
-				$_show_weight = number_format((float)$_weight)."g";
-			}
-		}
-		?>
-		<div class="ost-big <? if($_qty > 0) echo 'inorder';?>" id="group_side_<?=$_oop_idx?>" onclick="orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_oop_idx?>')">
-			<ul><b><?=$_name?></b></ul>
-			<ul class="m-t-3">
-			<b><?=count($_oop_jsondata)?></b> / 
-			<span class="oprice-sum-goods-cate" id="oprice_sum_goods_<?=$_oop_idx?>"><?=$_item?></span>
-			<? if( isset($_order_sec_data[$_oop_idx]['false']) && $_order_sec_data[$_oop_idx]['false'] > 0 ){ ?>
-			<span class="" id="">실패 : <?=$_order_sec_data[$_oop_idx]['false']?></span>
-			<? } ?>
-			</ul>
-		<ul>
-			<span class="oprice-sum-qty" id="group_side_sum_qty_<?=$_oop_idx?>" data-value="<?=number_format((float)$_qty)?>" ><?=number_format((float)$_qty)?></span> /
-			<span class="oprice-sum-weight" id="oprice_sum_weight_<?=$_oop_idx?>"><?=$_show_weight?></span>
-		</ul>
-		<ul><span class="group-side-allsum-price" id="oprice_allsum_<?=$_oop_idx?>"><?=number_format((float)$_price, 2)?></span></ul>
-		</div>
-		<? } ?>
-
-		</div>
-	</ul>
-	<ul class="right">
-		<div id="order_sheet_detail_prd_list" class="order-sheet-detail-prd-list">
-		</div>
-	</ul>
+    <ul class="left">
+        <div class="overflow-y">
+            <?php foreach ($groupSideRows as $groupRow) { ?>
+                <div class="ost-big <?= !empty($groupRow['has_order']) ? 'inorder' : '' ?>" id="group_side_<?= $groupRow['oop_idx'] ?? '' ?>" onclick="orderSheetDetail.PrdList('<?= $idx ?>', '<?= $groupRow['oop_idx'] ?? '' ?>')">
+                    <ul><b><?= $groupRow['name'] ?? '' ?></b></ul>
+                    <ul class="m-t-3">
+                        <b><?= (int)($groupRow['oop_total_count'] ?? 0) ?></b> /
+                        <span class="oprice-sum-goods-cate" id="oprice_sum_goods_<?= $groupRow['oop_idx'] ?? '' ?>"><?= (int)($groupRow['item'] ?? 0) ?></span>
+                        <?php if ((int)($groupRow['false'] ?? 0) > 0) { ?>
+                            <span>실패 : <?= (int)($groupRow['false'] ?? 0) ?></span>
+                        <?php } ?>
+                    </ul>
+                    <ul>
+                        <span class="oprice-sum-qty" id="group_side_sum_qty_<?= $groupRow['oop_idx'] ?? '' ?>" data-value="<?= number_format((float)($groupRow['qty'] ?? 0)) ?>"><?= number_format((float)($groupRow['qty'] ?? 0)) ?></span> /
+                        <span class="oprice-sum-weight" id="oprice_sum_weight_<?= $groupRow['oop_idx'] ?? '' ?>"><?= $groupRow['show_weight'] ?? '' ?></span>
+                    </ul>
+                    <ul><span class="group-side-allsum-price" id="oprice_allsum_<?= $groupRow['oop_idx'] ?? '' ?>"><?= number_format((float)($groupRow['price'] ?? 0), 2) ?></span></ul>
+                </div>
+            <?php } ?>
+        </div>
+    </ul>
+    <ul class="right">
+        <div id="order_sheet_detail_prd_list" class="order-sheet-detail-prd-list"></div>
+    </ul>
 </div>
 
 <script>
@@ -154,9 +42,9 @@ var oogBrand = <?=$oo_data['oog_brand'] ?? '[]'?>;
 var orderSheetDetail = function() {
 
 	var detailDisplay;
-	var normalFormView = "<?=$form_view?>";
+	var normalFormView = "<?= $form_view ?>";
 	var gState = "normal";
-	var open_idx = "<?=$_idx?>";
+	var open_idx = "<?= $idx ?>";
 	var open_oop_idx = "";
 
 	var ckTr = function( id, mode ) {
@@ -166,7 +54,6 @@ var orderSheetDetail = function() {
 			$("#checkbox_"+ id).prop("checked", true);
 		}else{
 			var beforetrcolor = $("#tr_"+ id).attr("bgcolor");
-			//alert(beforetrcolor);
 			$("#tr_"+ id +" td").css({'background':beforetrcolor }); 
 			$("#checkbox_"+ id).prop("checked", false);
 		}
@@ -369,8 +256,7 @@ var orderSheetDetail = function() {
 		$("#group_side_" + oop_idx).addClass('active');
 
 		$.ajax({
-			//url: "/ad/ajax/order_sheet_detail_prd",
-			url: "/admin//order/sheet/delete_product",
+			url: "/admin/order/sheet/detail_product",
 			data : { "oo_idx" : oo_idx, "oop_idx" : oop_idx, "form_view" : form_view  },
 			type: "POST",
 			dataType: "html",
@@ -381,9 +267,6 @@ var orderSheetDetail = function() {
 				console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
 				showAlert("Error", "에러", "alert2" );
 				return false;
-			},
-			complete: function() {
-				//$(obj).attr('disabled', false);
 			}
 		});
 
@@ -406,24 +289,7 @@ var orderSheetDetail = function() {
 				if( detailDisplay == oop_idx ){
 					return false;
 				
-				//다른 그룹으로 이동시
 				}else if( detailDisplay != oop_idx ){
-					
-					/*
-						var bw1 = $("#group_side_sum_qty_"+ detailDisplay).html() * 1;
-						var bw2 = $("#group_side_sum_qty_"+ detailDisplay).data('value') * 1;
-
-						//변경된 값이 있는지 체크
-						var chModify = true;
-						if(  bw1 != bw2 ){
-							chModify = false;
-							orderSheetDetail.groupState("ing");
-						}
-
-						//var testdata = "("+detailDisplay+")("+oop_idx+")("+$("#group_side_sum_qty_"+oop_idx).html()+")("+$("#group_side_sum_qty_"+oop_idx).data('value')+")";
-						var testdata = "("+ bw1 +")("+ bw2 +")";
-						toast2("success", "데이터", testdata);
-					*/
 				
 					if( gState == "ing" ){
 						
@@ -462,31 +328,6 @@ var orderSheetDetail = function() {
 
 				}
 			}
-			/*
-			if( detailDisplay ){
-			
-				if( detailDisplay == oop_idx ){
-					return false;
-				}
-
-				//변경된 값이 있는지 체크
-				var chModify = true;
-
-				if(  $("#group_side_sum_qty_"+detailDisplay).html() != $("#group_side_sum_qty_"+detailDisplay).data('value') ){
-					chModify = false;
-					showPrdListAction = false;
-				}
-
-				if( chModify == false ){
-
-
-
-				}
-
-			}else{
-
-			}
-			*/
 
 			if( showPrdListAction == true ){
 				showPrdList(oo_idx, oop_idx);
@@ -500,8 +341,6 @@ var orderSheetDetail = function() {
 		PrdListReload: function( ) {
 			showPrdList(open_idx, open_oop_idx);
 		},
-
-
 
 		// 디테일 상품리스트 따로 호출
 		prdListShow: function( oo_idx, oop_idx, form_view ) {
@@ -521,7 +360,6 @@ var orderSheetDetail = function() {
 			payOprice = parseFloat(String(payOprice).replace(/,/g, "")) || 0;
 			v = parseFloat(String(v).replace(/,/g, "")) || 0;
 
-			// 결품상품은 라인 계산/합계 계산에서 제외
 			if (isFalseRow) {
 				groupSum(oop_idx);
 				return;
@@ -566,7 +404,6 @@ var orderSheetDetail = function() {
 				ckTr(id,"off");
 			}
 
-			// 라인별 총중량(gram / kg) 동기화
 			if ($("#weight_sum_" + id).length > 0 || $("#weight_sum_kg_" + id).length > 0) {
 				var weightSum = 0;
 				var weightSumKg = 0;
@@ -582,8 +419,6 @@ var orderSheetDetail = function() {
 				}
 			}
 
-			// 결제통화 합가격/원화 합계 동기화
-			// (국내 주문 등 결제통화 컬럼이 없는 경우를 위해 요소가 존재할 때만 처리)
 			var hasPayPriceTargets =
 				$("#pay_unit_price_sum_" + id).length > 0 ||
 				$("#pay_order_qty_sum_" + id).length > 0 ||
@@ -626,11 +461,8 @@ var orderSheetDetail = function() {
 			}
 
 			groupSum(oop_idx);
-
-			//toast2("success", "테스트", "id : "+ id +" | oprice : "+ oprice +" |  v : "+ v +" |  oprice_sum : "+ oprice_sum);
 		},
 
-		//그룹상태 변경
 		groupState : function( mode ) {
 			
 			gState = mode;
@@ -649,13 +481,11 @@ var orderSheetDetail = function() {
 
 }();
 
-<? if( $_open_oop_idx ){ ?>
-	orderSheetDetail.PrdList('<?=$_idx?>', '<?=$_open_oop_idx?>');
+<?php if ($open_oop_idx !== '') { ?>
+	orderSheetDetail.PrdList('<?= $idx ?>', '<?= $open_oop_idx ?>');
+<?php } ?>
 
-<? } ?>
-
-<? if( ($oo_data['oo_form_idx'] ?? 0) == 0 ){ ?>
+<?php if ((int)($orderSheetMain['oo_form_idx'] ?? 0) === 0) { ?>
 	showAlert("Error", "이 주문서에 [주문서 폼]이 지정되어있지 않습니다.<br>(주문서 상세정보)에서 주문서 폼을 지정해주세요.", "alert2" );
-<? } ?>
-//--> 
-</script> 
+<?php } ?>
+</script>

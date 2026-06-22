@@ -120,13 +120,15 @@ try {
 
 
     // 재고/발주 관리
+    $router->get('/order/sheet', OrderSheetController::class, 'orderSheetPage'); //주문서 작업 페이지
     $router->get('/order/sheet/list', OrderSheetController::class, 'orderSheetList'); //주문서 목록
     $router->get('/order/sheet/create', OrderSheetController::class, 'orderSheetCreate'); //주문서 생성
     $router->get('/order/sheet_info', OrderSheetController::class, 'orderSheetInfo'); //주문서 상세
+    $router->post('/order/sheet/detail', OrderSheetController::class, 'orderSheetDetail'); //주문서 상세 영역
     $router->get('/order/sheet/stock', OrderSheetController::class, 'orderSheetStock'); //주문서 재고 일괄등록 팝업
     $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
     $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
-    $router->post('/order/sheet/delete_product', OrderSheetController::class, 'orderSheetDeleteProduct'); //주문서 주문 상품목록
+    $router->post('/order/sheet/detail_product', OrderSheetController::class, 'orderSheetDetailProduct'); //주문서 주문 상품목록
     $router->post('/order/sheet/save_group_product', OrderSheetController::class, 'orderSheetSaveGroupProduct'); //주문서 주문그룹 상품목록
 
     // 주문서 그룹 관리

@@ -18,6 +18,211 @@ class OrderSheetService
 {
 
     /**
+     * 주문서 메인(레거시 skin.order_sheet.php 대체) 데이터 조회
+     *
+     * @param int $idx
+     * @return array
+     */
+    public function getOrderSheetMainPageData(int $idx): array
+    {
+        $stateTextMap = [
+            1 => '작성중',
+            2 => '주문전송',
+            4 => '입금완료',
+            5 => '입고완료',
+            7 => '주문종료',
+        ];
+
+        $orderSheet = [];
+        if ($idx > 0) {
+            $row = OrderSheetModel::query()
+                ->from('ona_order as A')
+                ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+                ->where('A.oo_idx', '=', $idx)
+                ->select(['A.*', 'B.oog_name'])
+                ->first();
+            $orderSheet = $row ? $row->toArray() : [];
+        }
+
+        if (!is_array($orderSheet)) {
+            $orderSheet = [];
+        }
+
+        $stockState = json_decode((string)($orderSheet['oo_stock'] ?? '{}'), true);
+        if (!is_array($stockState)) {
+            $stockState = [];
+        }
+
+        return [
+            'orderSheetMain' => $orderSheet,
+            'orderSheetStockState' => $stockState,
+            'orderSheetStateTextMap' => $stateTextMap,
+        ];
+    }
+
+
+    /**
+     * 주문서 상세(레거시 skin.order_sheet_detail.php 대체) 데이터 조회
+     *
+     * @param array $data
+     * @return array
+     */
+    public function getOrderSheetDetailData(array $data): array
+    {
+        $idx = (int)($data['idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('주문서 번호가 없습니다.');
+        }
+
+        $requestedFormView = trim((string)($data['form_view'] ?? 'show'));
+        if ($requestedFormView === '') {
+            $requestedFormView = 'show';
+        }
+
+        $orderSheet = OrderSheetModel::query()
+            ->from('ona_order as A')
+            ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+            ->where('A.oo_idx', '=', $idx)
+            ->select(['A.*', 'B.oog_name', 'B.oog_brand'])
+            ->first();
+        if (!$orderSheet) {
+            throw new Exception('주문서 정보를 찾을 수 없습니다.');
+        }
+        $orderSheet = $orderSheet->toArray();
+
+        $orderSecJson = json_decode((string)($orderSheet['oo_json'] ?? '[]'), true);
+        if (!is_array($orderSecJson)) {
+            $orderSecJson = [];
+        }
+
+        $orderSecData = [];
+        foreach ($orderSecJson as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $bidx = (string)($row['bidx'] ?? '');
+            if ($bidx === '') {
+                continue;
+            }
+
+            $item = (float)($row['item'] ?? 0);
+            $qty = (float)($row['qty'] ?? 0);
+            $price = (float)($row['price'] ?? 0);
+            $weight = (float)($row['weight'] ?? 0);
+
+            $falseCount = (float)($row['false'] ?? 0);
+            if ($falseCount > 0) {
+                $item -= $falseCount;
+                $qty -= (float)($row['false_sum_qty'] ?? 0);
+                $price -= (float)($row['false_sum_price'] ?? 0);
+                $weight -= (float)($row['false_sum_weight'] ?? 0);
+            }
+
+            $orderSecData[$bidx] = [
+                'item' => $item,
+                'qty' => $qty,
+                'price' => $price,
+                'weight' => $weight,
+                'false' => (int)$falseCount,
+            ];
+        }
+
+        $oogBrand = json_decode((string)($orderSheet['oog_brand'] ?? '[]'), true);
+        if (!is_array($oogBrand)) {
+            $oogBrand = [];
+        }
+
+        $oopIdxList = [];
+        foreach ($oogBrand as $brandRow) {
+            if (!is_array($brandRow)) {
+                continue;
+            }
+            $oopIdx = (string)($brandRow['oop_idx'] ?? '');
+            if ($oopIdx !== '') {
+                $oopIdxList[] = $oopIdx;
+            }
+        }
+        $oopIdxList = array_values(array_unique($oopIdxList));
+
+        $groupProductMap = [];
+        if (!empty($oopIdxList)) {
+            $groupProducts = OrderGroupProductModel::query()
+                ->select(['oop_idx', 'oop_data'])
+                ->whereIn('oop_idx', $oopIdxList)
+                ->get()
+                ->toArray();
+            foreach ($groupProducts as $row) {
+                $oopIdx = (string)($row['oop_idx'] ?? '');
+                if ($oopIdx === '') {
+                    continue;
+                }
+                $oopData = (string)($row['oop_data'] ?? '');
+                if ($oopData !== '' && substr($oopData, 0, 1) !== '[') {
+                    $oopData = '[' . $oopData . ']';
+                }
+                $decoded = json_decode($oopData !== '' ? $oopData : '[]', true);
+                if (!is_array($decoded)) {
+                    $decoded = [];
+                }
+                $groupProductMap[$oopIdx] = $decoded;
+            }
+        }
+
+        $groupSideRows = [];
+        foreach ($oogBrand as $brandRow) {
+            if (!is_array($brandRow)) {
+                continue;
+            }
+
+            $oopIdx = (string)($brandRow['oop_idx'] ?? '');
+            if ($oopIdx === '') {
+                continue;
+            }
+
+            $sec = $orderSecData[$oopIdx] ?? [];
+            $item = (float)($sec['item'] ?? 0);
+            $qty = (float)($sec['qty'] ?? 0);
+            $price = (float)($sec['price'] ?? 0);
+            $weight = (float)($sec['weight'] ?? 0);
+            $falseCount = (int)($sec['false'] ?? 0);
+
+            $showWeight = '';
+            if ($weight > 0) {
+                if ($weight > 1000) {
+                    $showWeight = number_format($weight * 0.001, 2) . 'kg';
+                } else {
+                    $showWeight = number_format($weight) . 'g';
+                }
+            }
+
+            $groupSideRows[] = [
+                'oop_idx' => $oopIdx,
+                'name' => (string)($brandRow['name'] ?? ''),
+                'item' => $item,
+                'qty' => $qty,
+                'price' => $price,
+                'false' => $falseCount,
+                'show_weight' => $showWeight,
+                'oop_total_count' => count($groupProductMap[$oopIdx] ?? []),
+                'has_order' => $qty > 0,
+            ];
+        }
+
+        $formView = $requestedFormView;
+        if (in_array((int)($orderSheet['oo_state'] ?? 0), [4, 5, 7], true)) {
+            $formView = 'hidden';
+        }
+
+        return [
+            'idx' => $idx,
+            'open_oop_idx' => (string)($data['open_oop_idx'] ?? ''),
+            'form_view' => $formView,
+            'orderSheetMain' => $orderSheet,
+            'groupSideRows' => $groupSideRows,
+        ];
+    }
+
+    /**
      * 주문서 목록 조회
      * @param array $criteria
      * @return array
@@ -72,6 +277,74 @@ class OrderSheetService
             );
         }
 
+        // 목록 검색 조건과 무관하게, 요약은 전체 DB 기준으로 별도 집계한다.
+        $summaryRows = OrderSheetModel::query()
+            ->selectRaw("
+                ona_order.oo_state,
+                CASE
+                    WHEN ona_order.oo_import = '국내' THEN 'domestic'
+                    ELSE 'import'
+                END AS import_type,
+                COUNT(*) AS order_count,
+                COALESCE(SUM(
+                    CASE
+                        WHEN ona_order.oo_state IN ('1', '2') THEN
+                            CASE
+                                WHEN ona_order.oo_import = '국내' THEN ona_order.oo_sum_price
+                                WHEN ona_order.oo_prd_currency IN ('엔', 'JPY', 'jpy')
+                                    THEN ona_order.oo_sum_price * (COALESCE(ona_order.oo_prd_exchange_rate, 0) / 100)
+                                ELSE ona_order.oo_sum_price * COALESCE(ona_order.oo_prd_exchange_rate, 0)
+                            END
+                        ELSE COALESCE(ona_order.oo_price_kr, 0)
+                    END
+                ), 0) AS pay_sum
+            ")
+            ->whereRaw("ona_order.oo_state IN ('1','2','4','5')")
+            ->groupBy('ona_order.oo_state', 'import_type')
+            ->get()
+            ->toArray();
+
+        $emptySplitSummary = [
+            'domestic' => ['label' => '국내', 'count' => 0, 'pay_sum' => 0],
+            'import' => ['label' => '수입', 'count' => 0, 'pay_sum' => 0],
+        ];
+        $summary = [
+            'total' => [
+                'count' => 0,
+                'pay_sum' => 0,
+                'split' => $emptySplitSummary,
+            ],
+            'states' => [
+                '1' => ['label' => '작성중', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+                '2' => ['label' => '주문전송', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+                '4' => ['label' => '입금완료', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+                '5' => ['label' => '입고완료', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+            ],
+        ];
+
+        foreach ($summaryRows as $summaryRow) {
+            $state = (string)($summaryRow['oo_state'] ?? '');
+            $importType = (string)($summaryRow['import_type'] ?? 'import');
+            if (!isset($summary['states'][$state])) {
+                continue;
+            }
+            if (!isset($summary['states'][$state]['split'][$importType])) {
+                $importType = 'import';
+            }
+
+            $count = (int)($summaryRow['order_count'] ?? 0);
+            $paySum = (int)($summaryRow['pay_sum'] ?? 0);
+
+            $summary['states'][$state]['count'] += $count;
+            $summary['states'][$state]['pay_sum'] += $paySum;
+            $summary['states'][$state]['split'][$importType]['count'] += $count;
+            $summary['states'][$state]['split'][$importType]['pay_sum'] += $paySum;
+            $summary['total']['count'] += $count;
+            $summary['total']['pay_sum'] += $paySum;
+            $summary['total']['split'][$importType]['count'] += $count;
+            $summary['total']['split'][$importType]['pay_sum'] += $paySum;
+        }
+
         $result = $query->paginate($perPage, $page);
 
         $stateTextMap = [
@@ -121,6 +394,8 @@ class OrderSheetService
             $row['oo_state_text'] = $stateTextMap[$state] ?? '';
         }
         unset($row);
+
+        $result['summary'] = $summary;
 
         return $result;
     }
@@ -1789,7 +2064,7 @@ class OrderSheetService
      * @param array $data
      * @return array
      */
-    public function getOrderSheetDeleteProduct(array $data): array
+    public function getOrderSheetDetailProduct(array $data): array
     {
         
         $oo_idx = $data['oo_idx'] ?? null;
@@ -2142,6 +2417,7 @@ class OrderSheetService
 
     /**
      * 주문서 주문그룹 상품 저장
+     * 
      * 레거시 processing.order_sheet.php 의 orderSheet_groupOrder 로직을 서비스화한 메서드.
      * @param array $data
      * @return array
@@ -2376,6 +2652,7 @@ class OrderSheetService
 
     /**
      * 주문서 상품 실패 처리
+     * 
      * @param array $data
      * @return array
      */
@@ -2573,6 +2850,7 @@ class OrderSheetService
 
     /**
      * 주문서 상품 주문가격 등록
+     * 
      * @param array $data
      * @return array
      */
@@ -2660,6 +2938,7 @@ class OrderSheetService
 
     /**
      * 주문서 상품 가격 변경
+     * 
      * @param array $data
      * @return array
      */
@@ -2749,9 +3028,215 @@ class OrderSheetService
         ];
     }
 
+    /**
+     * 주문서 상품 그룹 이동
+     * 
+     * @param array $data
+     * @return array
+     */
+    public function orderSheetProductMoveGroup(array $data): array
+    {
+        $ooIdx = (int)($data['oo_idx'] ?? 0);
+        $fromOopIdx = trim((string)($data['oop_idx'] ?? ''));
+        $toOopIdx = trim((string)($data['to_oop_idx'] ?? ''));
+        $pidx = trim((string)($data['pidx'] ?? ''));
+
+        if ($ooIdx <= 0 || $fromOopIdx === '' || $toOopIdx === '' || $pidx === '') {
+            throw new Exception('필수 값이 누락되었습니다.');
+        }
+        if ($fromOopIdx === $toOopIdx) {
+            throw new Exception('동일한 그룹으로는 이동할 수 없습니다.');
+        }
+
+        $decodeOopData = static function ($raw): array {
+            $text = trim((string)$raw);
+            if ($text === '') {
+                return [];
+            }
+            $decoded = json_decode($text, true);
+            if (is_array($decoded)) {
+                return $decoded;
+            }
+            $wrapped = json_decode('[' . $text . ']', true);
+            return is_array($wrapped) ? $wrapped : [];
+        };
+
+        $orderGroupRows = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->whereIn('oop_idx', [$fromOopIdx, $toOopIdx])
+            ->get()
+            ->toArray();
+        if (count($orderGroupRows) < 2) {
+            throw new Exception('이동 대상 그룹 정보를 찾을 수 없습니다.');
+        }
+
+        $groupMap = [];
+        foreach ($orderGroupRows as $row) {
+            $groupMap[(string)($row['oop_idx'] ?? '')] = $row;
+        }
+        if (!isset($groupMap[$fromOopIdx]) || !isset($groupMap[$toOopIdx])) {
+            throw new Exception('이동 대상 그룹 정보를 찾을 수 없습니다.');
+        }
+
+        $fromData = $decodeOopData($groupMap[$fromOopIdx]['oop_data'] ?? '');
+        $toData = $decodeOopData($groupMap[$toOopIdx]['oop_data'] ?? '');
+
+        $movingRow = null;
+        foreach ($fromData as $key => $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            if ((string)($row['idx'] ?? '') === $pidx) {
+                $movingRow = $row;
+                unset($fromData[$key]);
+                break;
+            }
+        }
+        if ($movingRow === null) {
+            throw new Exception('이동할 상품을 찾을 수 없습니다.');
+        }
+        $fromData = array_values($fromData);
+
+        // 대상 그룹 중복 제거 후 최상단 삽입
+        $toFiltered = [];
+        foreach ($toData as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            if ((string)($row['idx'] ?? '') === $pidx) {
+                continue;
+            }
+            $toFiltered[] = $row;
+        }
+        array_unshift($toFiltered, $movingRow);
+        $toData = $toFiltered;
+
+        OrderGroupProductModel::query()
+            ->where('oop_idx', '=', $fromOopIdx)
+            ->update([
+                'oop_data' => json_encode($fromData, JSON_UNESCAPED_UNICODE),
+            ]);
+        OrderGroupProductModel::query()
+            ->where('oop_idx', '=', $toOopIdx)
+            ->update([
+                'oop_data' => json_encode($toData, JSON_UNESCAPED_UNICODE),
+            ]);
+
+        // 주문 selpd 데이터가 있으면 동일하게 그룹 이동
+        $orderRow = OrderSheetModel::query()
+            ->select(['oo_idx', 'oo_json'])
+            ->where('oo_idx', '=', $ooIdx)
+            ->first();
+        $orderRow = $orderRow ? $orderRow->toArray() : [];
+        if (!empty($orderRow)) {
+            $ooJson = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
+            if (!is_array($ooJson)) {
+                $ooJson = [];
+            }
+
+            $fromGroupKey = null;
+            $toGroupKey = null;
+            foreach ($ooJson as $key => $groupRow) {
+                if (!is_array($groupRow)) {
+                    continue;
+                }
+                $bidx = (string)($groupRow['bidx'] ?? '');
+                if ($bidx === $fromOopIdx) {
+                    $fromGroupKey = $key;
+                } elseif ($bidx === $toOopIdx) {
+                    $toGroupKey = $key;
+                }
+            }
+
+            if ($fromGroupKey !== null && $toGroupKey !== null) {
+                $fromSelpd = $ooJson[$fromGroupKey]['selpd'] ?? [];
+                $toSelpd = $ooJson[$toGroupKey]['selpd'] ?? [];
+                if (!is_array($fromSelpd)) $fromSelpd = [];
+                if (!is_array($toSelpd)) $toSelpd = [];
+
+                $movedSelpd = null;
+                foreach ($fromSelpd as $selpdKey => $selpdRow) {
+                    if (!is_array($selpdRow)) {
+                        continue;
+                    }
+                    if ((string)($selpdRow['pidx'] ?? '') === $pidx) {
+                        $movedSelpd = $selpdRow;
+                        unset($fromSelpd[$selpdKey]);
+                        break;
+                    }
+                }
+                $fromSelpd = array_values($fromSelpd);
+
+                if ($movedSelpd !== null) {
+                    $toSelpdFiltered = [];
+                    foreach ($toSelpd as $selpdRow) {
+                        if (!is_array($selpdRow)) {
+                            continue;
+                        }
+                        if ((string)($selpdRow['pidx'] ?? '') === $pidx) {
+                            continue;
+                        }
+                        $toSelpdFiltered[] = $selpdRow;
+                    }
+                    array_unshift($toSelpdFiltered, $movedSelpd);
+                    $toSelpd = $toSelpdFiltered;
+
+                    $sumBySelpd = static function (array $selpdRows): array {
+                        $sumItem = 0;
+                        $sumQty = 0;
+                        $sumPrice = 0.0;
+                        foreach ($selpdRows as $row) {
+                            if (!is_array($row)) {
+                                continue;
+                            }
+                            $qty = (float)($row['qty'] ?? 0);
+                            if ($qty <= 0) {
+                                continue;
+                            }
+                            $sumItem++;
+                            $sumQty += $qty;
+                            $sumPrice += ((float)($row['price'] ?? 0) * $qty);
+                        }
+                        return [
+                            'item' => $sumItem,
+                            'qty' => $sumQty,
+                            'price' => $sumPrice,
+                        ];
+                    };
+
+                    $fromSum = $sumBySelpd($fromSelpd);
+                    $toSum = $sumBySelpd($toSelpd);
+
+                    $ooJson[$fromGroupKey]['selpd'] = $fromSelpd;
+                    $ooJson[$toGroupKey]['selpd'] = $toSelpd;
+
+                    $ooJson[$fromGroupKey]['item'] = $fromSum['item'];
+                    $ooJson[$fromGroupKey]['qty'] = $fromSum['qty'];
+                    $ooJson[$fromGroupKey]['price'] = $fromSum['price'];
+
+                    $ooJson[$toGroupKey]['item'] = $toSum['item'];
+                    $ooJson[$toGroupKey]['qty'] = $toSum['qty'];
+                    $ooJson[$toGroupKey]['price'] = $toSum['price'];
+
+                    OrderSheetModel::query()
+                        ->where('oo_idx', '=', $ooIdx)
+                        ->update([
+                            'oo_json' => json_encode($ooJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                        ]);
+                }
+            }
+        }
+
+        return [
+            'success' => true,
+            'msg' => '완료',
+        ];
+    }
+
 
     /**
      * 주문서 상품 단종처리
+     * 
      * @param array $data
      * @return array
      */
@@ -2840,6 +3325,113 @@ class OrderSheetService
                 }
             }
         }
+
+        return [
+            'success' => true,
+            'msg' => '완료',
+        ];
+    }
+
+    /**
+     * 주문서 그룹 상품 노출 순서 변경 저장
+     * 
+     * (order_sheet_detail_product 화면의 tr 순서 저장)
+     *
+     * @param array $data
+     * @return array
+     */
+    public function orderSheetProductOrderChange(array $data): array
+    {
+        $oopIdx = trim((string)($data['oop_idx'] ?? ''));
+        $orderedIdx = $data['ordered_idx'] ?? [];
+
+        if ($oopIdx === '') {
+            throw new Exception('그룹 번호가 없습니다.');
+        }
+        if (!is_array($orderedIdx) || empty($orderedIdx)) {
+            throw new Exception('변경할 순서 데이터가 없습니다.');
+        }
+
+        $normalizedOrder = [];
+        foreach ($orderedIdx as $rowIdx) {
+            $rowIdx = trim((string)$rowIdx);
+            if ($rowIdx === '') {
+                continue;
+            }
+            if (!isset($normalizedOrder[$rowIdx])) {
+                $normalizedOrder[$rowIdx] = true;
+            }
+        }
+        $orderedList = array_keys($normalizedOrder);
+        if (empty($orderedList)) {
+            throw new Exception('유효한 순서 데이터가 없습니다.');
+        }
+
+        $orderGroupProduct = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->where('oop_idx', '=', $oopIdx)
+            ->first();
+        $orderGroupProduct = $orderGroupProduct ? $orderGroupProduct->toArray() : [];
+        if (empty($orderGroupProduct)) {
+            throw new Exception('주문서 그룹 상품을 찾을 수 없습니다.');
+        }
+
+        $oopDataRaw = trim((string)($orderGroupProduct['oop_data'] ?? ''));
+        if ($oopDataRaw === '') {
+            $oopJsonData = [];
+        } else {
+            $oopJsonData = json_decode($oopDataRaw, true);
+            if (!is_array($oopJsonData)) {
+                $oopJsonData = json_decode('[' . $oopDataRaw . ']', true);
+                if (!is_array($oopJsonData)) {
+                    $oopJsonData = [];
+                }
+            }
+        }
+
+        if (empty($oopJsonData)) {
+            throw new Exception('주문서 그룹 상품 데이터가 비어있습니다.');
+        }
+
+        $rowByIdx = [];
+        foreach ($oopJsonData as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $idx = trim((string)($row['idx'] ?? ''));
+            if ($idx === '') {
+                continue;
+            }
+            if (!isset($rowByIdx[$idx])) {
+                $rowByIdx[$idx] = $row;
+            }
+        }
+
+        $reordered = [];
+        $used = [];
+        foreach ($orderedList as $idx) {
+            if (!isset($rowByIdx[$idx])) {
+                continue;
+            }
+            $reordered[] = $rowByIdx[$idx];
+            $used[$idx] = true;
+        }
+        foreach ($oopJsonData as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $idx = trim((string)($row['idx'] ?? ''));
+            if ($idx !== '' && isset($used[$idx])) {
+                continue;
+            }
+            $reordered[] = $row;
+        }
+
+        OrderGroupProductModel::query()
+            ->where('oop_idx', '=', $oopIdx)
+            ->update([
+                'oop_data' => json_encode($reordered, JSON_UNESCAPED_UNICODE),
+            ]);
 
         return [
             'success' => true,

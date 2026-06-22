@@ -371,7 +371,7 @@ var orderSheet = function () {
 		Detail: function (idx, oop_idx, form_view) {
 
 			$.ajax({
-				url: "/ad/ajax/order_sheet_detail",
+				url: "/admin/order/sheet/detail",
 				data: { "idx": idx, "open_oop_idx": oop_idx, "form_view": form_view },
 				type: "POST",
 				dataType: "html",

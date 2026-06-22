@@ -94,6 +94,136 @@
         font-size: 10px !important;
     }
 
+    .row-order-cell {
+        text-align: center;
+        vertical-align: middle;
+        cursor: ns-resize;
+        user-select: none;
+        touch-action: pan-y;
+    }
+
+    .row-order-handle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 52px;
+        border: 1px solid #d8deea;
+        border-radius: 4px;
+        background: #f7f9fc;
+        color: #60708f;
+    }
+
+    .row-order-handle::before,
+    .row-order-handle::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        border-radius: 2px;
+        background: repeating-linear-gradient(
+            to bottom,
+            #9ba8c2 0,
+            #9ba8c2 2px,
+            transparent 2px,
+            transparent 5px
+        );
+    }
+
+    .row-order-handle::before {
+        left: 5px;
+    }
+
+    .row-order-handle::after {
+        right: 5px;
+    }
+
+    .row-order-icon {
+        position: relative;
+        z-index: 1;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    .row-sort-active {
+        box-shadow: inset 0 0 0 2px #6f89ff;
+    }
+
+    .row-sort-placeholder td {
+        background: #eef3ff !important;
+        border-top: 1px dashed #91a7e8;
+        border-bottom: 1px dashed #91a7e8;
+        height: 44px;
+    }
+
+    .row-context-selected {
+        outline: 2px solid #5e78f0;
+        outline-offset: -2px;
+    }
+
+    .row-context-menu {
+        position: fixed;
+        z-index: 9999;
+        min-width: 150px;
+        background: #fff;
+        border: 1px solid #cdd5e5;
+        border-radius: 6px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+        padding: 4px 0;
+    }
+
+    .row-context-menu[hidden] {
+        display: none;
+    }
+
+    .row-context-menu button {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #1f2c47;
+        cursor: pointer;
+    }
+
+    .row-context-menu button:hover {
+        background: #edf3ff;
+    }
+
+    .row-context-menu button.active {
+        background: #e7efff;
+        color: #1a397a;
+        font-weight: 600;
+    }
+
+    .row-context-menu button + button {
+        border-top: 1px solid #eef1f6;
+    }
+
+    #orderSheetRowMoveGroupList {
+        max-height: 252px; /* 약 7개 항목 */
+        overflow-y: auto;
+    }
+
+    #orderSheetRowMoveGroupList:not(:empty) {
+        border-top: 1px solid #eef1f6;
+    }
+
+    .row-context-menu-icon {
+        display: inline-flex;
+        width: 14px;
+        color: #4c5f86;
+        justify-content: center;
+        font-size: 12px;
+        line-height: 1;
+    }
+
     .weight-sum-wrap{
         ul{
             font-size: 11px;
@@ -205,6 +335,7 @@
         <thead>
             <tr>
                 <th style="width:40px;"></th>
+                <th style="width:40px;"></th>
                 <th style="width:60px;">IDX<br>재고코드</th>
                 <th style="width:86px;">주문코드</th>
                 <th>이미지</th>
@@ -310,6 +441,11 @@
 
             ?>
                 <tr id="tr_<?= $item['idx'] ?? '' ?>" class="<?= $_tr_class ?? '' ?>">
+                    <td class="row-order-cell">
+                        <span class="row-order-handle" data-sort-handle="vertical" title="행 순서 변경 (상하 이동)">
+                            <!--<span class="row-order-icon">↕</span>-->
+                        </span>
+                    </td>
 
                     <!-- 체크 -->
                     <td id="checkbox_td_<?= $item['idx'] ?? '' ?>">
@@ -402,8 +538,8 @@
                     </td>
 
                     <!-- 주문메모 -->
-                    <td style="min-width:150px; padding:0 !important; ">
-                        <textarea name="memo" id="memo_<?= $item['idx'] ?? '' ?>" class="memo-auto-fit" style="width:100%; background-color:transparent; border:none !important; resize: none; padding:5px; margin:0 !important; box-sizing:border-box; color:#ff0000;"><?= $item['selpd']['memo'] ?? '' ?></textarea>
+                    <td style="min-width:150px; height:90px; padding:0 !important; ">
+                        <textarea name="memo" id="memo_<?= $item['idx'] ?? '' ?>" class="memo-auto-fit" style="width:100%; height:90px; background-color:transparent; border:none !important; resize: none; padding:5px; margin:0 !important; box-sizing:border-box; color:#ff0000;"><?= $item['selpd']['memo'] ?? '' ?></textarea>
                     </td>
 
                     <!-- 주문수량 -->
@@ -707,7 +843,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <th colspan="7">
+                <th colspan="8">
                 </th>
                 <th class="text-center">
                     <b id="order_sheet_total_qty"><?= number_format($total_qty) ?></b>
@@ -783,6 +919,13 @@
             </tr>
         </tfoot>
     </table>
+</div>
+
+<div id="orderSheetRowContextMenu" class="row-context-menu" hidden>
+    <button type="button" data-row-action="move-top"><span class="row-context-menu-icon">↑</span>맨 위로 이동</button>
+    <button type="button" data-row-action="move-bottom"><span class="row-context-menu-icon">↓</span>맨 아래로 이동</button>
+    <button type="button" data-row-action="group-move"><span class="row-context-menu-icon">⇄</span>그룹이동</button>
+    <div id="orderSheetRowMoveGroupList"></div>
 </div>
 
 <script>
@@ -1265,23 +1408,6 @@
             return String(rounded).replace(/\B(?=(\d{3})+(?!\d))/g, ',');
         }
 
-        function fitMemoTextareas() {
-            var textareas = document.querySelectorAll('.ospl-prd-wrap textarea.memo-auto-fit');
-            var minHeight = 56;
-            var maxHeight = 71;
-            textareas.forEach(function(textarea) {
-                var td = textarea.closest('td');
-                if (!td) {
-                    return;
-                }
-                var tdHeight = td.clientHeight;
-                if (tdHeight > 0) {
-                    var targetHeight = Math.max(minHeight, Math.min(maxHeight, tdHeight));
-                    textarea.style.height = targetHeight + 'px';
-                }
-            });
-        }
-
         function adjustQtyByStep(idx, oopIdx, step) {
             var $input = $("#unit_qty_" + idx);
             if ($input.length === 0) {
@@ -1299,165 +1425,560 @@
             orderSheetDetail.qtyGogo(idx, oopIdx);
         }
 
-        fitMemoTextareas();
-        setTimeout(fitMemoTextareas, 0);
-        window.addEventListener('resize', fitMemoTextareas);
+        var $prdTableBody = $('.ospl-prd-wrap .table-st1 tbody');
+        var $prdWrap = $('.ospl-prd-wrap').first();
+        var $rowContextMenu = $('#orderSheetRowContextMenu');
+        var $rowMoveGroupList = $('#orderSheetRowMoveGroupList');
+        var $contextTargetRow = $();
+        var rowOrderSaveInFlight = false;
+        var rowOrderSaveQueued = false;
+        var rowOrderSaveDebounceTimer = null;
+        var rowOrderSaveDebounceMs = 400;
+        var rowSortableInitScheduled = false;
+        var rowSortableInitialized = false;
+        var rowOrderLastSavedKey = '';
 
-
-        // 가격변경
-        $('.editable-cd-price').editable({
-            type: 'text',
-            url: '/admin/order/sheet/action',
-            title: '가격 변경',
-            inputclass: 'testinput',
-            params: function(params) {
-                params.action_mode = 'orderSheetProductPriceChange';
-                params.cd_idx = $(this).data('cdidx');
-                params.oop_code = $(this).data('oopcode');
-                params.mod_mode = "price";
-                return params;
-            },
-            ajaxOptions: {
-                type: 'POST',
-                dataType: 'json'
-            },
-            display: function(value, response) {
-                return false;
-            },
-            success: function(res) {
-                if (res.success === true) {
-                    $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
-                    var cdidx = $(this).data('cdidx');
-                    $("#unit_price_" + cdidx).val(res.uprice);
-
-                    var exchangeRate = parseFloat($(this).data('exchangerate') || 0);
-                    var currency = String($(this).data('currency') || '').trim();
-                    if (exchangeRate > 0) {
-                        var wonPriceRaw = (parseFloat(res.uprice) || 0) * exchangeRate;
-                        if (currency === '엔' || currency.toUpperCase() === 'JPY') {
-                            wonPriceRaw = wonPriceRaw / 100;
-                        }
-                        $("#unit_won_price_" + cdidx).text(formatWonPrice(wonPriceRaw));
-                    }
-
-                    orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
-                } else {
-                    showAlert("Error", res.msg, "alert2");
-                    return false;
-                }
-            },
-            error: function(request, status, error) {
-                console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
-                showAlert("Error", "에러", "alert2");
-                return false;
-            },
-            validate: function(value) {
-                if ($.trim(value) == '') {
-                    return '빈 값은 입력할 수 없습니다.';
-                }
+        function refreshRowSortable() {
+            if (!$prdTableBody.length || typeof $prdTableBody.sortable !== 'function') {
+                return;
             }
-        });
-
-        // 수입신고가 가격변경
-        $('.editable-cd-iv-price').editable({
-            type: 'text',
-            url: '/admin/order/sheet/action',
-            title: '수입신고가 가격변경',
-            inputclass: 'testinput',
-            params: function(params) {
-                params.action_mode = 'orderSheetProductPriceChange';
-                params.cd_idx = $(this).data('cdidx');
-                params.oop_code = $(this).data('oopcode');
-                params.mod_mode = "invoicePrice";
-                return params;
-            },
-            ajaxOptions: {
-                type: 'POST',
-                dataType: 'json'
-            },
-            display: function(value, response) {
-                return false;
-            },
-            success: function(res) {
-                if (res.success === true) {
-                    $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
-                    var cdidx = $(this).data('cdidx');
-                    $("#unit_iv_price_" + cdidx).val(res.uprice);
-                    orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
-                } else {
-                    showAlert("Error", res.msg, "alert2");
-                    return false;
-                }
-            },
-            error: function(request, status, error) {
-                console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
-                showAlert("Error", "에러", "alert2");
-                return false;
-            },
-            validate: function(value) {
-                if ($.trim(value) == '') {
-                    return '빈 값은 입력할 수 없습니다.';
-                }
+            if (!$prdTableBody.data('ui-sortable')) {
+                return;
             }
-        });
+            $prdTableBody.sortable('refresh');
+        }
 
-        // 결제통화 가격변경
-        function bindEditableCdPayPrice($targets) {
-            $targets.editable({
-                type: 'text',
-                url: '/admin/order/sheet/action',
-                title: '결제통화 가격변경',
-                inputclass: 'testinput',
-                params: function(params) {
-                    params.action_mode = 'orderSheetProductPriceChange';
-                    params.cd_idx = $(this).data('cdidx');
-                    params.oop_code = $(this).data('oopcode');
-                    params.mod_mode = "payPrice";
-                    params.currency_code = $(this).data('currencycode');
-                    return params;
+        function initRowSortableIfNeeded() {
+            if (rowSortableInitialized) {
+                return true;
+            }
+            if (!$prdTableBody.length || typeof $prdTableBody.sortable !== 'function') {
+                return false;
+            }
+            if ($prdTableBody.data('ui-sortable')) {
+                rowSortableInitialized = true;
+                return true;
+            }
+
+            // y축만 허용하여 행 순서를 상하로만 변경
+            $prdTableBody.sortable({
+                axis: 'y',
+                items: '> tr',
+                handle: '.row-order-handle',
+                tolerance: 'pointer',
+                helper: function(e, tr) {
+                    var $originalCells = tr.children();
+                    var $helper = tr.clone();
+                    $helper.children().each(function(index) {
+                        $(this).width($originalCells.eq(index).outerWidth());
+                    });
+                    return $helper;
                 },
-                ajaxOptions: {
-                    type: 'POST',
-                    dataType: 'json'
+                placeholder: 'row-sort-placeholder',
+                forcePlaceholderSize: true,
+                appendTo: $prdWrap.length ? $prdWrap : 'parent',
+                cursor: 'ns-resize',
+                opacity: 0.92,
+                start: function(event, ui) {
+                    ui.item.addClass('row-sort-active');
+                    ui.placeholder.height(ui.item.outerHeight());
                 },
-                display: function(value, response) {
-                    return false;
+                stop: function(event, ui) {
+                    ui.item.removeClass('row-sort-active');
+                    saveChangedRowOrder();
+                }
+            });
+
+            rowSortableInitialized = true;
+            rowOrderLastSavedKey = collectOrderedRowIds().join(',');
+            return true;
+        }
+
+        function scheduleRowSortableInit() {
+            if (rowSortableInitScheduled || rowSortableInitialized) {
+                return;
+            }
+            rowSortableInitScheduled = true;
+
+            var runInit = function() {
+                rowSortableInitScheduled = false;
+                initRowSortableIfNeeded();
+            };
+
+            if (typeof window.requestIdleCallback === 'function') {
+                window.requestIdleCallback(runInit, { timeout: 1200 });
+            } else {
+                setTimeout(runInit, 120);
+            }
+        }
+
+        function hideRowContextMenu() {
+            $rowContextMenu.attr('hidden', true).css({ left: '', top: '' });
+            $rowMoveGroupList.empty();
+            $rowContextMenu.find('[data-row-action="group-move"]').removeClass('active');
+            if ($contextTargetRow.length) {
+                $contextTargetRow.removeClass('row-context-selected');
+            }
+            $contextTargetRow = $();
+        }
+
+        function movePrdWrapScroll(edge) {
+            if (!$prdWrap.length) {
+                return;
+            }
+            if (edge === 'top') {
+                $prdWrap.scrollTop(0);
+            } else if (edge === 'bottom') {
+                $prdWrap.scrollTop($prdWrap.prop('scrollHeight'));
+            }
+        }
+
+        function getCurrentRowPidx() {
+            if (!$contextTargetRow.length) {
+                return '';
+            }
+            var trId = String($contextTargetRow.attr('id') || '');
+            return trId.replace(/^tr_/, '').trim();
+        }
+
+        function getMovableGroupTargets() {
+            var currentOopIdx = String("<?= $oop_idx ?? '' ?>");
+            var groups = [];
+            $('.order_sheet_detail .left .ost-big[id^="group_side_"]').each(function() {
+                var id = String($(this).attr('id') || '');
+                var oopIdx = id.replace(/^group_side_/, '').trim();
+                if (!oopIdx || oopIdx === currentOopIdx) {
+                    return;
+                }
+                var name = $.trim($(this).find('ul:first b').text() || '');
+                groups.push({
+                    oop_idx: oopIdx,
+                    name: name || ('그룹 ' + oopIdx)
+                });
+            });
+            return groups;
+        }
+
+        function moveCurrentRowToGroup(targetOopIdx, pidx) {
+            pidx = String(pidx || getCurrentRowPidx()).trim();
+            if (!targetOopIdx || !pidx) {
+                showAlert("Error", "이동할 상품 정보가 없습니다.", "alert2");
+                return;
+            }
+
+            $.ajax({
+                url: "/admin/order/sheet/action",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    action_mode: "orderSheetProductMoveGroup",
+                    oo_idx: "<?= $oo_idx ?? '' ?>",
+                    oop_idx: "<?= $oop_idx ?? '' ?>",
+                    to_oop_idx: targetOopIdx,
+                    pidx: pidx
                 },
                 success: function(res) {
-                    if (res.success === true) {
-                        $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
-                        var cdidx = $(this).data('cdidx');
-                        $("#pay_unit_price_" + cdidx).val(res.uprice);
-
-                        var exchangeRate = parseFloat($(this).data('exchangerate') || 0);
-                        var currency = String($(this).data('currency') || '').trim();
-                        if (exchangeRate > 0) {
-                            var wonPriceRaw = (parseFloat(res.uprice) || 0) * exchangeRate;
-                            if (currency === '엔' || currency.toUpperCase() === 'JPY') {
-                                wonPriceRaw = wonPriceRaw / 100;
-                            }
-                            $("#pay_unit_won_price_" + cdidx).text(formatWonPrice(wonPriceRaw));
-                        }
-
-                        orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
+                    if (res && res.success === true) {
+                        showToast("상품이 그룹으로 이동되었습니다.", new Date().toLocaleTimeString());
+                        orderSheet.Detail("<?= $oo_idx ?? '' ?>", targetOopIdx, "<?= $form_view ?? '' ?>");
                     } else {
-                        showAlert("Error", res.msg, "alert2");
-                        return false;
+                        showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "그룹 이동 중 오류가 발생했습니다.", "alert2");
                     }
                 },
                 error: function(request, status, error) {
                     console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
-                    showAlert("Error", "에러", "alert2");
-                    return false;
+                    showAlert("Error", "그룹 이동 중 오류가 발생했습니다.", "alert2");
+                }
+            });
+        }
+
+        function collectOrderedRowIds() {
+            var orderedIds = [];
+            $prdTableBody.find('> tr').each(function() {
+                var trId = String($(this).attr('id') || '');
+                var rowId = trId.replace(/^tr_/, '').trim();
+                if (rowId !== '') {
+                    orderedIds.push(rowId);
+                }
+            });
+            return orderedIds;
+        }
+
+        function saveChangedRowOrderNow() {
+            var orderedIds = collectOrderedRowIds();
+            if (orderedIds.length === 0) {
+                return;
+            }
+            var orderKey = orderedIds.join(',');
+            if (orderKey === rowOrderLastSavedKey) {
+                return;
+            }
+            if (rowOrderSaveInFlight) {
+                rowOrderSaveQueued = true;
+                return;
+            }
+
+            rowOrderSaveInFlight = true;
+            rowOrderSaveQueued = false;
+
+            $.ajax({
+                url: "/admin/order/sheet/action",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    action_mode: "orderSheetProductOrderChange",
+                    oo_idx: "<?= $oo_idx ?? '' ?>",
+                    oop_idx: "<?= $oop_idx ?? '' ?>",
+                    ordered_idx: orderedIds
                 },
-                validate: function(value) {
-                    if ($.trim(value) == '') {
-                        return '빈 값은 입력할 수 없습니다.';
+                success: function(res) {
+                    if (res && res.success === true) {
+                        rowOrderLastSavedKey = orderKey;
+                        showToast("상품 순서가 변경되었습니다.", new Date().toLocaleTimeString());
+                    } else {
+                        showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "순서 저장 중 오류가 발생했습니다.", "alert2");
+                    }
+                },
+                error: function(request, status, error) {
+                    console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                    showAlert("Error", "순서 저장 중 오류가 발생했습니다.", "alert2");
+                },
+                complete: function() {
+                    rowOrderSaveInFlight = false;
+                    if (rowOrderSaveQueued) {
+                        rowOrderSaveQueued = false;
+                        saveChangedRowOrder();
                     }
                 }
             });
         }
-        bindEditableCdPayPrice($('.editable-cd-pay-price'));
+
+        function saveChangedRowOrder() {
+            if (rowOrderSaveDebounceTimer) {
+                clearTimeout(rowOrderSaveDebounceTimer);
+            }
+            rowOrderSaveDebounceTimer = setTimeout(function() {
+                rowOrderSaveDebounceTimer = null;
+                saveChangedRowOrderNow();
+            }, rowOrderSaveDebounceMs);
+        }
+
+        function showRowContextMenu($row, clientX, clientY) {
+            if (!$rowContextMenu.length) {
+                return;
+            }
+            if (!$rowContextMenu.parent().is('body')) {
+                $rowContextMenu.appendTo('body');
+            }
+            if ($contextTargetRow.length) {
+                $contextTargetRow.removeClass('row-context-selected');
+            }
+            $contextTargetRow = $row;
+            $contextTargetRow.addClass('row-context-selected');
+            $rowContextMenu.removeAttr('hidden');
+
+            var menuWidth = $rowContextMenu.outerWidth() || 150;
+            var menuHeight = $rowContextMenu.outerHeight() || 120;
+            var viewportWidth = window.innerWidth || $(window).width();
+            var viewportHeight = window.innerHeight || $(window).height();
+            var maxLeft = viewportWidth - menuWidth - 8;
+            var maxTop = viewportHeight - menuHeight - 8;
+            var left = Math.min(clientX, maxLeft);
+            var top = Math.min(clientY, maxTop);
+
+            if (!isFinite(left)) {
+                left = clientX;
+            }
+            if (!isFinite(top)) {
+                top = clientY;
+            }
+
+            $rowContextMenu.css({
+                left: Math.max(8, left),
+                top: Math.max(8, top)
+            });
+        }
+
+        scheduleRowSortableInit();
+
+        $(document)
+            .off('mouseover.orderSheetInitSortable', '.row-order-handle')
+            .on('mouseover.orderSheetInitSortable', '.row-order-handle', function() {
+                initRowSortableIfNeeded();
+            })
+            .off('contextmenu.orderSheetRowMenu', '.ospl-prd-wrap .table-st1 tbody > tr')
+            .on('contextmenu.orderSheetRowMenu', '.ospl-prd-wrap .table-st1 tbody > tr', function(e) {
+                e.preventDefault();
+                showRowContextMenu($(this), e.clientX, e.clientY);
+            })
+            .off('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]:not([data-row-action="group-move-target"])')
+            .on('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]:not([data-row-action="group-move-target"])', function(e) {
+                e.preventDefault();
+                var action = String($(this).data('row-action') || '');
+                if (!$contextTargetRow.length) {
+                    hideRowContextMenu();
+                    return;
+                }
+                var $tbody = $contextTargetRow.parent('tbody');
+                if (!$tbody.length) {
+                    hideRowContextMenu();
+                    return;
+                }
+
+                if (action === 'move-top') {
+                    $contextTargetRow.prependTo($tbody);
+                    refreshRowSortable();
+                    movePrdWrapScroll('top');
+                    saveChangedRowOrder();
+                } else if (action === 'move-bottom') {
+                    $contextTargetRow.appendTo($tbody);
+                    refreshRowSortable();
+                    movePrdWrapScroll('bottom');
+                    saveChangedRowOrder();
+                } else if (action === 'group-move') {
+                    var $groupMoveBtn = $(this);
+                    if ($rowMoveGroupList.children().length > 0) {
+                        $rowMoveGroupList.empty();
+                        $groupMoveBtn.removeClass('active');
+                        return;
+                    }
+
+                    var targetGroups = getMovableGroupTargets();
+                    if (!targetGroups.length) {
+                        showAlert("Info", "이동 가능한 다른 그룹이 없습니다.", "alert2");
+                        hideRowContextMenu();
+                        return;
+                    }
+
+                    var listHtml = '';
+                    for (var i = 0; i < targetGroups.length; i++) {
+                        listHtml += '<button type="button" data-row-action="group-move-target" data-target-oopidx="' + targetGroups[i].oop_idx + '"><span class="row-context-menu-icon">↳</span>' + targetGroups[i].name + '</button>';
+                    }
+                    $rowMoveGroupList.html(listHtml);
+                    $groupMoveBtn.addClass('active');
+                    return;
+                }
+
+                hideRowContextMenu();
+            })
+            .off('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]')
+            .on('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]', function(e) {
+                e.preventDefault();
+                var targetOopIdx = String($(this).data('target-oopidx') || '').trim();
+                var pidx = getCurrentRowPidx();
+                hideRowContextMenu();
+                moveCurrentRowToGroup(targetOopIdx, pidx);
+            })
+            .off('click.orderSheetRowMenuHide')
+            .on('click.orderSheetRowMenuHide', function(e) {
+                if (!$(e.target).closest('#orderSheetRowContextMenu').length) {
+                    hideRowContextMenu();
+                }
+            })
+            .off('keydown.orderSheetRowMenuHide')
+            .on('keydown.orderSheetRowMenuHide', function(e) {
+                if (e.key === 'Escape') {
+                    hideRowContextMenu();
+                }
+            });
+
+        $(window)
+            .off('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide')
+            .on('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide', function() {
+                hideRowContextMenu();
+            });
+
+
+        // 가격변경 (지연 초기화)
+        function bindEditableCdPrice($targets) {
+            $targets.each(function() {
+                var $el = $(this);
+                if ($el.data('editable')) {
+                    return;
+                }
+                $el.editable({
+                    type: 'text',
+                    url: '/admin/order/sheet/action',
+                    title: '가격 변경',
+                    inputclass: 'testinput',
+                    params: function(params) {
+                        params.action_mode = 'orderSheetProductPriceChange';
+                        params.cd_idx = $(this).data('cdidx');
+                        params.oop_code = $(this).data('oopcode');
+                        params.mod_mode = "price";
+                        return params;
+                    },
+                    ajaxOptions: {
+                        type: 'POST',
+                        dataType: 'json'
+                    },
+                    display: function(value, response) {
+                        return false;
+                    },
+                    success: function(res) {
+                        if (res.success === true) {
+                            $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
+                            var cdidx = $(this).data('cdidx');
+                            $("#unit_price_" + cdidx).val(res.uprice);
+
+                            var exchangeRate = parseFloat($(this).data('exchangerate') || 0);
+                            var currency = String($(this).data('currency') || '').trim();
+                            if (exchangeRate > 0) {
+                                var wonPriceRaw = (parseFloat(res.uprice) || 0) * exchangeRate;
+                                if (currency === '엔' || currency.toUpperCase() === 'JPY') {
+                                    wonPriceRaw = wonPriceRaw / 100;
+                                }
+                                $("#unit_won_price_" + cdidx).text(formatWonPrice(wonPriceRaw));
+                            }
+
+                            orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
+                        } else {
+                            showAlert("Error", res.msg, "alert2");
+                            return false;
+                        }
+                    },
+                    error: function(request, status, error) {
+                        console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                        showAlert("Error", "에러", "alert2");
+                        return false;
+                    },
+                    validate: function(value) {
+                        if ($.trim(value) == '') {
+                            return '빈 값은 입력할 수 없습니다.';
+                        }
+                    }
+                });
+            });
+        }
+
+        // 수입신고가 가격변경 (지연 초기화)
+        function bindEditableCdIvPrice($targets) {
+            $targets.each(function() {
+                var $el = $(this);
+                if ($el.data('editable')) {
+                    return;
+                }
+                $el.editable({
+                    type: 'text',
+                    url: '/admin/order/sheet/action',
+                    title: '수입신고가 가격변경',
+                    inputclass: 'testinput',
+                    params: function(params) {
+                        params.action_mode = 'orderSheetProductPriceChange';
+                        params.cd_idx = $(this).data('cdidx');
+                        params.oop_code = $(this).data('oopcode');
+                        params.mod_mode = "invoicePrice";
+                        return params;
+                    },
+                    ajaxOptions: {
+                        type: 'POST',
+                        dataType: 'json'
+                    },
+                    display: function(value, response) {
+                        return false;
+                    },
+                    success: function(res) {
+                        if (res.success === true) {
+                            $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
+                            var cdidx = $(this).data('cdidx');
+                            $("#unit_iv_price_" + cdidx).val(res.uprice);
+                            orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
+                        } else {
+                            showAlert("Error", res.msg, "alert2");
+                            return false;
+                        }
+                    },
+                    error: function(request, status, error) {
+                        console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                        showAlert("Error", "에러", "alert2");
+                        return false;
+                    },
+                    validate: function(value) {
+                        if ($.trim(value) == '') {
+                            return '빈 값은 입력할 수 없습니다.';
+                        }
+                    }
+                });
+            });
+        }
+
+        // 결제통화 가격변경
+        function bindEditableCdPayPrice($targets) {
+            $targets.each(function() {
+                var $el = $(this);
+                if ($el.data('editable')) {
+                    return;
+                }
+                $el.editable({
+                    type: 'text',
+                    url: '/admin/order/sheet/action',
+                    title: '결제통화 가격변경',
+                    inputclass: 'testinput',
+                    params: function(params) {
+                        params.action_mode = 'orderSheetProductPriceChange';
+                        params.cd_idx = $(this).data('cdidx');
+                        params.oop_code = $(this).data('oopcode');
+                        params.mod_mode = "payPrice";
+                        params.currency_code = $(this).data('currencycode');
+                        return params;
+                    },
+                    ajaxOptions: {
+                        type: 'POST',
+                        dataType: 'json'
+                    },
+                    display: function(value, response) {
+                        return false;
+                    },
+                    success: function(res) {
+                        if (res.success === true) {
+                            $(this).html("<b>" + formatPriceForView(res.uprice) + "</b>");
+                            var cdidx = $(this).data('cdidx');
+                            $("#pay_unit_price_" + cdidx).val(res.uprice);
+
+                            var exchangeRate = parseFloat($(this).data('exchangerate') || 0);
+                            var currency = String($(this).data('currency') || '').trim();
+                            if (exchangeRate > 0) {
+                                var wonPriceRaw = (parseFloat(res.uprice) || 0) * exchangeRate;
+                                if (currency === '엔' || currency.toUpperCase() === 'JPY') {
+                                    wonPriceRaw = wonPriceRaw / 100;
+                                }
+                                $("#pay_unit_won_price_" + cdidx).text(formatWonPrice(wonPriceRaw));
+                            }
+
+                            orderSheetDetail.qtyGogo(cdidx, $(this).data('oopidx'));
+                        } else {
+                            showAlert("Error", res.msg, "alert2");
+                            return false;
+                        }
+                    },
+                    error: function(request, status, error) {
+                        console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                        showAlert("Error", "에러", "alert2");
+                        return false;
+                    },
+                    validate: function(value) {
+                        if ($.trim(value) == '') {
+                            return '빈 값은 입력할 수 없습니다.';
+                        }
+                    }
+                });
+            });
+        }
+        // 초기 로딩 비용 절감을 위해 editable은 클릭 시 1회 초기화
+        $(document)
+            .off('click.orderSheetEditableLazy', '.editable-cd-price, .editable-cd-iv-price, .editable-cd-pay-price')
+            .on('click.orderSheetEditableLazy', '.editable-cd-price, .editable-cd-iv-price, .editable-cd-pay-price', function(e) {
+                e.preventDefault();
+                var $el = $(this);
+                if ($el.hasClass('editable-cd-price')) {
+                    bindEditableCdPrice($el);
+                } else if ($el.hasClass('editable-cd-iv-price')) {
+                    bindEditableCdIvPrice($el);
+                } else if ($el.hasClass('editable-cd-pay-price')) {
+                    bindEditableCdPayPrice($el);
+                }
+                $el.editable('show');
+            });
 
         // AJAX 재렌더링으로 스크립트가 다시 실행되어도 클릭 핸들러가 중복 등록되지 않도록 네임스페이스로 재바인딩
         $(document)

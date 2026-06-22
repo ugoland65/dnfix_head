@@ -55,6 +55,7 @@ class OrderSheetController extends BaseClass
 
             $data = [
                 'orderSheetList' => $orderSheetListResult['data'],
+                'orderSheetSummary' => $orderSheetListResult['summary'] ?? [],
                 'totalCount' => $orderSheetListResult['total'],
                 'paginationHtml' => $paginationHtml,
                 'pagination' => $pagination->toArray(),
@@ -151,6 +152,69 @@ class OrderSheetController extends BaseClass
     }
 
     /**
+     * 주문서 메인 페이지(레거시 skin.order_sheet.php 대체)
+     *
+     * @param Request $request
+     * @return View
+     */
+    public function orderSheetPage(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $idx = (int)($requestData['idx'] ?? 0);
+
+            $orderSheetService = new OrderSheetService();
+            $pageData = $orderSheetService->getOrderSheetMainPageData($idx);
+
+            return view('admin.order_sheet.order_sheet', [
+                'idx' => $idx,
+                'oop_idx' => (string)($requestData['oop_idx'] ?? ''),
+                'form_view' => (string)($requestData['form_view'] ?? ''),
+                'orderSheetMain' => $pageData['orderSheetMain'] ?? [],
+                'orderSheetStockState' => $pageData['orderSheetStockState'] ?? [],
+                'orderSheetStateTextMap' => $pageData['orderSheetStateTextMap'] ?? [],
+            ])->extends('admin.layout.layout', [
+                'pageGroup2' => 'order',
+                'pageNameCode' => 'order_sheet',
+            ]);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 주문서 상세 영역(레거시 skin.order_sheet_detail.php 대체)
+     *
+     * @param Request $request
+     * @return View
+     */
+    public function orderSheetDetail(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $idx = (int)($requestData['idx'] ?? 0);
+
+            $orderSheetService = new OrderSheetService();
+            $detailData = $orderSheetService->getOrderSheetDetailData([
+                'idx' => $idx,
+                'open_oop_idx' => (string)($requestData['open_oop_idx'] ?? ''),
+                'form_view' => (string)($requestData['form_view'] ?? 'show'),
+            ]);
+
+            return view('admin.order_sheet.order_sheet_detail', $detailData);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
      * 주문서 재고 일괄등록 팝업
      *
      * @param Request $request
@@ -227,7 +291,7 @@ class OrderSheetController extends BaseClass
      * @param Request $request
      * @return JsonResponse
      */
-    public function orderSheetDeleteProduct(Request $request)
+    public function orderSheetDetailProduct(Request $request)
     {
         try{
 
@@ -244,20 +308,20 @@ class OrderSheetController extends BaseClass
                 'form_view' => $form_view,
             ];
 
-            $orderSheetDeleteProduct = $orderSheetService->getOrderSheetDeleteProduct($payload);
+            $orderSheetDetailProduct = $orderSheetService->getOrderSheetDetailProduct($payload);
 
             $data = [
                 'oo_idx' => $oo_idx,
                 'oop_idx' => $oop_idx,
                 'form_view' => $form_view,
-                'orderSheet' => $orderSheetDeleteProduct['orderSheet'],
-                'orderGroup' => $orderSheetDeleteProduct['orderGroup'],
-                'orderGroupProduct' => $orderSheetDeleteProduct['orderGroupProduct'],
+                'orderSheet' => $orderSheetDetailProduct['orderSheet'],
+                'orderGroup' => $orderSheetDetailProduct['orderGroup'],
+                'orderGroupProduct' => $orderSheetDetailProduct['orderGroupProduct'],
             ];
 
-            //dump($orderSheetDeleteProduct);
+            //dump($orderSheetDetailProduct);
 
-            return view('admin.order_sheet.order_sheet_delete_product', $data);
+            return view('admin.order_sheet.order_sheet_detail_product', $data);
 
         }
         catch (Throwable $e) {
@@ -375,6 +439,18 @@ class OrderSheetController extends BaseClass
 
                 $result = $orderSheetService->orderSheetProductSoldOut($requestData);
                 $message = $result['message'] ?? $result['msg'] ?? "주문서 상품 단종 처리되었습니다.";
+
+            // 주문서 상품 노출순서 변경
+            }elseif( $actionMode == 'orderSheetProductOrderChange' ){
+
+                $result = $orderSheetService->orderSheetProductOrderChange($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "주문서 상품 노출순서가 변경되었습니다.";
+
+            // 주문서 상품 그룹 이동
+            }elseif( $actionMode == 'orderSheetProductMoveGroup' ){
+
+                $result = $orderSheetService->orderSheetProductMoveGroup($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "주문서 상품이 그룹 이동되었습니다.";
 
             // 주문서 재고 일괄등록
             }elseif( $actionMode == 'orderSheetAllStock' ){

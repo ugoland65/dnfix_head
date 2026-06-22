@@ -118,7 +118,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                             <td>
                                 통화
                                 <select name="oo_prd_currency">
-                                    <option value="원" <?php if (($orderSheetInfo['oo_prd_currency'] ?? '') == "원") echo "selected"; ?>>원</option>
+                                    <option value="원" <?php if (($orderSheetInfo['oo_prd_currency'] ?? '') == "원") echo "selected"; ?> <?php if (($orderSheetInfo['oo_import'] ?? '') === "수입") echo "disabled"; ?>>원</option>
                                     <option value="엔" <?php if (($orderSheetInfo['oo_prd_currency'] ?? '') == "엔") echo "selected"; ?>>엔</option>
                                     <option value="위안" <?php if (($orderSheetInfo['oo_prd_currency'] ?? '') == "위안") echo "selected"; ?>>위안</option>
                                     <option value="달러" <?php if (($orderSheetInfo['oo_prd_currency'] ?? '') == "달러") echo "selected"; ?>>달러</option>
@@ -1417,6 +1417,21 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             }
         }
 
+        function togglePrdCurrencyWonOption() {
+            var importValue = String($('input[name="oo_import"]:checked').val() || '').trim();
+            var $prdCurrencySelect = $('select[name="oo_prd_currency"]');
+            var $wonOption = $prdCurrencySelect.find('option[value="원"]');
+
+            if (importValue === '수입') {
+                $wonOption.prop('disabled', true);
+                if (String($prdCurrencySelect.val() || '') === '원') {
+                    $prdCurrencySelect.val('엔').trigger('change');
+                }
+            } else {
+                $wonOption.prop('disabled', false);
+            }
+        }
+
         function formatNumberWithComma(value) {
             var raw = String(value || '').replace(/,/g, '');
             if (raw === '') return '';
@@ -1437,12 +1452,14 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             $('.calendar-input input').datepicker(clareCalendar);
 
             toggleOrderCurrencySetting();
+            togglePrdCurrencyWonOption();
             toggleCurrencyConversionRow();
             updateExpressNameOptions();
             toggleExpressPriceExpectedRow();
             updateExpressTrackingButton();
             $('input[name="oo_import"]').on('change', function() {
                 toggleOrderCurrencySetting();
+                togglePrdCurrencyWonOption();
                 toggleCurrencyConversionRow();
             });
             $('select[name="oo_prd_currency"], select[name="oo_sum_currency"]').on('change', toggleCurrencyConversionRow);

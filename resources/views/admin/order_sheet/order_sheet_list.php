@@ -11,6 +11,77 @@
 <div id="contents_body">
 	<div id="contents_body_wrap">
 
+		<?php
+		$emptySplitSummary = [
+			'domestic' => ['label' => '국내', 'count' => 0, 'pay_sum' => 0],
+			'import' => ['label' => '수입', 'count' => 0, 'pay_sum' => 0],
+		];
+		$orderSheetSummary = $orderSheetSummary ?? [];
+		$totalSummary = $orderSheetSummary['total'] ?? [
+			'count' => 0,
+			'pay_sum' => 0,
+			'split' => $emptySplitSummary,
+		];
+		$stateSummaryMap = $orderSheetSummary['states'] ?? [
+			'1' => ['label' => '작성중', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+			'2' => ['label' => '주문전송', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+			'4' => ['label' => '입금완료', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+			'5' => ['label' => '입고완료', 'count' => 0, 'pay_sum' => 0, 'split' => $emptySplitSummary],
+		];
+		?>
+		<style>
+			.order-sheet-summary { display:flex; flex-wrap:wrap; gap:10px; margin:0 0 12px 0; }
+			.order-sheet-summary .summary-card { min-width:220px; padding:12px 14px; border:1px solid #d8dde5; border-radius:8px; background:#fff; }
+			.order-sheet-summary .summary-card-total { border-color:#8aa8ff; background:#f3f7ff; }
+			.order-sheet-summary .summary-clickable { cursor:pointer; transition:all .15s ease; }
+			.order-sheet-summary .summary-clickable:hover { border-color:#a4b3cc; box-shadow:0 2px 8px rgba(16,24,40,.08); transform:translateY(-1px); }
+			.order-sheet-summary .summary-title { font-size:12px; color:#667085; margin-bottom:6px; }
+			.order-sheet-summary .summary-count { font-size:18px; font-weight:700; color:#101828; line-height:1.2; }
+			.order-sheet-summary .summary-pay { margin-top:3px; font-size:13px; color:#344054; }
+			.order-sheet-summary .summary-split { margin-top:8px; padding-top:8px; border-top:1px solid #eaecf0; }
+			.order-sheet-summary .summary-split-row { display:flex; justify-content:space-between; font-size:12px; color:#475467; }
+			.order-sheet-summary .summary-split-row + .summary-split-row { margin-top:4px; }
+			.order-sheet-summary .summary-split-value { color:#1d2939; }
+			.order-sheet-summary .summary-split-clickable { cursor:pointer; border-radius:4px; padding:2px 4px; margin:0 -4px; }
+			.order-sheet-summary .summary-split-clickable:hover { background:#eef2f8; }
+		</style>
+
+		<div class="order-sheet-summary">
+			<div class="summary-card summary-card-total summary-clickable" data-summary-filter="1" data-state="ing" data-import="all">
+				<div class="summary-title">총 주문</div>
+				<div class="summary-count"><?= number_format((int)($totalSummary['count'] ?? 0)) ?>건</div>
+				<div class="summary-pay"><?= number_format((int)($totalSummary['pay_sum'] ?? 0)) ?>원</div>
+				<div class="summary-split">
+					<div class="summary-split-row summary-split-clickable" data-summary-filter="1" data-state="ing" data-import="국내">
+						<span><?= $totalSummary['split']['domestic']['label'] ?? '국내' ?></span>
+						<span class="summary-split-value"><?= number_format((int)($totalSummary['split']['domestic']['count'] ?? 0)) ?>건 / <?= number_format((int)($totalSummary['split']['domestic']['pay_sum'] ?? 0)) ?>원</span>
+					</div>
+					<div class="summary-split-row summary-split-clickable" data-summary-filter="1" data-state="ing" data-import="수입">
+						<span><?= $totalSummary['split']['import']['label'] ?? '수입' ?></span>
+						<span class="summary-split-value"><?= number_format((int)($totalSummary['split']['import']['count'] ?? 0)) ?>건 / <?= number_format((int)($totalSummary['split']['import']['pay_sum'] ?? 0)) ?>원</span>
+					</div>
+				</div>
+			</div>
+			<?php foreach ($stateSummaryMap as $summaryStateKey => $summaryState) { ?>
+				<div class="summary-card summary-clickable" data-summary-filter="1" data-state="<?= $summaryStateKey ?>" data-import="all">
+					<div class="summary-title"><?= $summaryState['label'] ?></div>
+					<div class="summary-count"><?= number_format($summaryState['count']) ?>건</div>
+					<div class="summary-pay"><?= number_format($summaryState['pay_sum']) ?>원</div>
+					<div class="summary-split">
+						<div class="summary-split-row summary-split-clickable" data-summary-filter="1" data-state="<?= $summaryStateKey ?>" data-import="국내">
+							<span><?= $summaryState['split']['domestic']['label'] ?></span>
+							<span class="summary-split-value"><?= number_format($summaryState['split']['domestic']['count']) ?>건 / <?= number_format($summaryState['split']['domestic']['pay_sum']) ?>원</span>
+						</div>
+						<div class="summary-split-row summary-split-clickable" data-summary-filter="1" data-state="<?= $summaryStateKey ?>" data-import="수입">
+							<span><?= $summaryState['split']['import']['label'] ?></span>
+							<span class="summary-split-value"><?= number_format($summaryState['split']['import']['count']) ?>건 / <?= number_format($summaryState['split']['import']['pay_sum']) ?>원</span>
+						</div>
+					</div>
+				</div>
+			<?php } ?>
+		</div>
+
+	
 		<!-- 검색 영역 -->
 		<div class="top-search-wrap">
 			<ul class="count-wrap">
@@ -60,7 +131,7 @@
 			</ul>
 		</div>
 
-		<div id="list_new_wrap">
+		<div id="list_new_wrap" style="max-height: calc(100% - 180px);">
 			<div class="table-wrap5">
 				<div class="scroll-wrap">
 
@@ -73,6 +144,7 @@
 								<th>상태</th>
 								<th>이름</th>
 								<th>주문금액</th>
+								<th>예상금액</th>
 								<th>결제금액</th>
 								<th>주문서폼</th>
 								<th>관리</th>
@@ -97,19 +169,41 @@
 								} else {
 									$tr_class = '';
 								}
+
+								$orderAmount = (float)($orderSheet['oo_sum_price'] ?? 0);
+								$orderAmountCurrency = trim((string)($orderSheet['oo_price_data']['currency'] ?? ''));
+
+								$expectedAmountText = '-';
+								if ((string)($orderSheet['oo_import'] ?? '') === '국내') {
+									$expectedAmountText = number_format($orderAmount);
+									if ($orderAmountCurrency !== '') {
+										$expectedAmountText .= ' ' . $orderAmountCurrency;
+									}
+								} else {
+									$prdExchangeRate = (float)($orderSheet['oo_prd_exchange_rate'] ?? 0);
+									$prdCurrency = trim((string)($orderSheet['oo_prd_currency'] ?? ''));
+									$isYenCurrency = in_array($prdCurrency, ['엔', 'JPY', 'jpy'], true);
+									$expectedAmount = $prdExchangeRate > 0
+										? ($isYenCurrency
+											? round($orderAmount * ($prdExchangeRate / 100), 0)
+											: round($orderAmount * $prdExchangeRate, 0))
+										: 0;
+									$expectedAmountText = number_format($expectedAmount) . ' 원';
+								}
 							?>
 								<tr class="<?= $tr_class ?>">
 									<td><input type="checkbox" name="order_sheet_idx[]" value="<?= $orderSheet['oo_idx'] ?>"></td>
 									<td class="text-center"><?= $orderSheet['oo_idx'] ?></td>
 									<td class="text-center"><?= $orderSheet['oo_import'] ?></td>
 									<td><?= $orderSheet['oo_state_text'] ?></td>
-									<td><a href="/ad/order/order_sheet/?idx=<?=$orderSheet['oo_idx']?>"><b><?= $orderSheet['oo_name'] ?></b></a></td>
-									<td class="text-right"><?= number_format($orderSheet['oo_sum_price']) ?> <?= $orderSheet['oo_price_data']['currency'] ?? '' ?></td>
-									<td class="text-right"><?= number_format($orderSheet['oo_price_kr']) ?> 원</td>
+									<td><a href="/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>"><b><?= $orderSheet['oo_name'] ?></b></a></td>
+									<td class="text-right"><?= number_format($orderAmount) ?> <?= $orderAmountCurrency ?></td>
+									<td class="text-right"><?= $expectedAmountText ?></td>
+									<td class="text-right"><?= ((float)($orderSheet['oo_price_kr'] ?? 0) > 0) ? number_format((float)$orderSheet['oo_price_kr']) . ' 원' : '-' ?></td>
 									<td class="text-center"><a href="/admin/order/sheet/list?oo_state=all&oo_form_idx=<?= $orderSheet['oo_form_idx'] ?>"><?= $orderSheet['oog_name'] ?></a></td>
 									<td class="text-center">
 										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $orderSheet['oo_idx'] ?>','main')">상세내용</button>
-										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="location.href='/ad/order/order_sheet/?idx=<?= $orderSheet['oo_idx'] ?>'">주문상품</button>
+										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="location.href='/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>'">주문상품</button>
 
 										<?php /*
 										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheetMainList.payment('<?=$orderSheet['oo_idx']?>')">결제요청</button>
@@ -150,7 +244,6 @@
 </div>
 <script src="/admin2/js/order_sheet.js?ver=<?=time()?>"></script>
 <script>
-
 	// 검색 파라미터 수집 공통 함수
 	function getSearchParams(additionalParams) {
 		var params = {};
@@ -192,6 +285,21 @@
 	}
 
 	$(function() {
+		$("[data-summary-filter='1']").on("click", function(e) {
+			e.preventDefault();
+			e.stopPropagation();
+
+			var $target = $(this);
+			var state = $target.data("state");
+			var importType = $target.data("import");
+
+			var params = getSearchParams({
+				oo_state: state || 'ing',
+				oo_import: importType || 'all',
+			});
+
+			navigateWithParams(params);
+		});
 
 		$("#searchBtn").on('click', function() {
 			var params = getSearchParams();
