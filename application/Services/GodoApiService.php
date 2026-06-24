@@ -621,8 +621,9 @@ class GodoApiService extends BaseClass {
         $mode = $criteria['mode'] ?? 'b';
         $start_date = $criteria['start_date'] ?? date('Y-m-d');
         $end_date = $criteria['end_date'] ?? date('Y-m-d');
+        $scmNo = $criteria['scmNo'] ?? 'noScm';
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?apiMode=orderGoods&scmNo=noScm&mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?apiMode=orderGoods&scmNo='.$scmNo.'&mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
         $response = HttpClient::getData($apiUrl);
 
         $apiData = json_decode($response, true);
@@ -648,7 +649,7 @@ class GodoApiService extends BaseClass {
             15 => '도라토이',
             16 => '대형',	
             17 => '리퍼브',	
-            18 => '랜덤박스',	
+            18 => '구매대행',	
             19 => '예비1',	
             20 => '예비2',		
         ];
@@ -1503,19 +1504,19 @@ class GodoApiService extends BaseClass {
     /**
      * 고도몰 상품코드(goodsNo)로 재입고 알림 신청 목록 조회
      * 
-     * @param string $goodsNos 상품코드
+     * @param string $goodsNos 상품코드 - 쉼표없이 단일상품으로 가능
      * @param string $mode 모드 (list, count)
      * @return array
      */
-    public function getGodoGoodsRestockByGoodsNos($goodsNos, $mode = 'list') 
+    public function getGodoGoodsRestockByGoodsNos($goodsNos, $restockMode = 'list') 
     {
-        $mode = strtolower(trim((string)$mode));
-        if ($mode !== 'count' && $mode !== 'list') {
-            $mode = 'list';
+        $restockMode = strtolower(trim((string)$restockMode));
+        if ($restockMode !== 'count' && $restockMode !== 'list') {
+            $restockMode = 'list';
         }
 
         // goods_api.php 쪽에서 mode=count|list 를 직접 허용하도록 확장된 구조 사용
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode='.$mode.'&goodsNos='.$goodsNos;
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=reInquiryGoodsNos&restockMode='.$restockMode.'&goodsNos='.$goodsNos;
         $response = HttpClient::getData($apiUrl);
         $responseData = json_decode($response, true);
         if(!is_array($responseData)){

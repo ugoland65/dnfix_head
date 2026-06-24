@@ -43,6 +43,7 @@ class ProductPartnerModel extends BaseModel
 		'godo_loaded_at',
 		'kind',
 		'hbti_type',
+		'category_code',
 		'matching_code',
 		'matching_option',
 		'matching_data',

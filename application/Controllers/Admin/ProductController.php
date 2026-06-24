@@ -47,9 +47,10 @@ class ProductController extends BaseClass
             $sort_mode = $requestData['sort_mode'] ?? 'idx';
             $rack_code = $requestData['rack_code'] ?? null;
 
-            $in_stock = $requestData['in_stock'] ?? 'have';
+            $in_stock = $requestData['in_stock'] ?? 'all';
             $s_brand = $requestData['s_brand'] ?? null;
             $s_prd_kind = $requestData['s_prd_kind'] ?? null;
+            $s_prd_kind_second = $requestData['s_prd_kind_second'] ?? null;
             $s_importing_country = $requestData['s_importing_country'] ?? null;
             $s_margin_group = $requestData['s_margin_group'] ?? null;
             $search_value = $requestData['search_value'] ?? null;
@@ -69,6 +70,7 @@ class ProductController extends BaseClass
                 'rack_code' => $rack_code,
                 's_brand' => $s_brand,
                 's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
@@ -97,11 +99,13 @@ class ProductController extends BaseClass
             $config_product = config('admin.product');
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
+            $categories = $config_product['categories'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
                 's_brand' => $s_brand,
                 's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
@@ -115,6 +119,7 @@ class ProductController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
+                'categories' => $categories,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -154,6 +159,7 @@ class ProductController extends BaseClass
             $in_stock = $requestData['in_stock'] ?? 'have';
             $s_brand = $requestData['s_brand'] ?? null;
             $s_prd_kind = $requestData['s_prd_kind'] ?? null;
+            $s_prd_kind_second = $requestData['s_prd_kind_second'] ?? null;
             $s_importing_country = $requestData['s_importing_country'] ?? null;
             $s_margin_group = $requestData['s_margin_group'] ?? null;
             $search_value = $requestData['search_value'] ?? null;
@@ -174,6 +180,7 @@ class ProductController extends BaseClass
                 'rack_code' => $rack_code,
                 's_brand' => $s_brand,
                 's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
@@ -202,11 +209,13 @@ class ProductController extends BaseClass
             $config_product = config('admin.product');
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
+            $categories = $config_product['categories'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
                 's_brand' => $s_brand,
                 's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
@@ -220,6 +229,7 @@ class ProductController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
+                'categories' => $categories,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -254,6 +264,7 @@ class ProductController extends BaseClass
 
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+            $categories = $config_product['categories'] ?? [];
 
             // 브랜드 셀렉트바를 위한 조회
             $brandService = new BrandService();
@@ -264,6 +275,7 @@ class ProductController extends BaseClass
                 'prd_idx' => $prdIdx,
                 'productData' => $productData,
                 'prd_kind_name' => $prd_kind_name,
+                'categories' => $categories,
                 'brandForSelect' => $brandForSelect
             ];
 
@@ -507,6 +519,10 @@ class ProductController extends BaseClass
 
                 case 'process_single_godo_inspection':
                     $result = $this->productService->processSingleProductGodoInspection($requestData);
+                    break;
+                
+                case 'update_product_category':
+                    $result = $this->productService->updateProductCategory($requestData);
                     break;
 
                 default:

@@ -84,14 +84,83 @@
             <tr>
                 <th>상품 구분</th>
                 <td>
-                    <select name="kind">
-                        <option value=''>상품 구분 선택</option>
-                        <? foreach ($prd_kind_name as $kind) { ?>
-                            <option value="<?= $kind ?>" <? if ($prd_data['kind'] == $kind) echo "selected"; ?>><?= $kind ?></option>
-                        <? } ?>
-                    </select>
+                    <?php
+                        $categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
+                        $kindCodeByName = [];
+                        foreach (($prd_kind_name ?? []) as $kindCode => $kindName) {
+                            $kindCodeByName[(string)$kindName] = (string)$kindCode;
+                        }
+                        $categoryCodeByKind = [];
+                        $categoryChildrenByKind = [];
+                        foreach ($categoryRows as $categoryRow) {
+                            if (!is_array($categoryRow)) {
+                                continue;
+                            }
+                            $parentKey = trim((string)($categoryRow['key'] ?? ''));
+                            $parentCode = trim((string)($categoryRow['code'] ?? ''));
+                            $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+                            if ($parentKey !== '' && $parentCode !== '') {
+                                $categoryCodeByKind[$parentKey] = $parentCode;
+                            }
+                            $childOptions = [];
+                            foreach ($children as $childRow) {
+                                if (!is_array($childRow)) {
+                                    continue;
+                                }
+                                $childKey = trim((string)($childRow['key'] ?? ''));
+                                $childCode = trim((string)($childRow['code'] ?? ''));
+                                $childName = trim((string)($childRow['name'] ?? ''));
+                                if ($childKey === '' || $childCode === '') {
+                                    continue;
+                                }
+                                $categoryCodeByKind[$childKey] = $childCode;
+                                $childOptions[] = [
+                                    'key' => $childKey,
+                                    'code' => $childCode,
+                                    'name' => $childName !== '' ? $childName : $childKey,
+                                ];
+                            }
+                            if ($parentKey !== '' && !empty($childOptions)) {
+                                $categoryChildrenByKind[$parentKey] = $childOptions;
+                            }
+                        }
 
-                    <?php if ($prd_data['kind'] == '') { ?>
+                        $selectedKindRaw = trim((string)($prd_data['kind'] ?? ''));
+                        $selectedKindCode = $selectedKindRaw;
+                        if ($selectedKindCode !== '' && !isset($prd_kind_name[$selectedKindCode])) {
+                            $selectedKindCode = (string)($kindCodeByName[$selectedKindCode] ?? $selectedKindCode);
+                        }
+                        $selectedCategoryCode = trim((string)($prd_data['category_code'] ?? ''));
+                        if ($selectedCategoryCode === '' && isset($categoryCodeByKind[$selectedKindCode])) {
+                            $selectedCategoryCode = (string)$categoryCodeByKind[$selectedKindCode];
+                        }
+                        $selectedSecondKindKey = '';
+                        $selectedKindChildren = $categoryChildrenByKind[$selectedKindCode] ?? [];
+                        if (!empty($selectedKindChildren)) {
+                            foreach ($selectedKindChildren as $childOption) {
+                                if ((string)($childOption['code'] ?? '') === $selectedCategoryCode) {
+                                    $selectedSecondKindKey = (string)($childOption['key'] ?? '');
+                                    break;
+                                }
+                            }
+                        }
+                    ?>
+                    <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
+                        <select name="kind">
+                            <option value=''>상품 구분 선택</option>
+                            <? foreach ($prd_kind_name as $kindCode => $kindName) { ?>
+                                <option value="<?= $kindCode ?>" <? if ($selectedKindCode == $kindCode) echo "selected"; ?>><?= $kindName ?></option>
+                            <? } ?>
+                        </select>
+                        <input type="hidden" name="category_code" id="provider_category_code" value="<?= htmlspecialchars($selectedCategoryCode, ENT_QUOTES, 'UTF-8') ?>">
+                        <div id="provider_kind_second_wrap" style="display:none;">
+                            <select name="kind_second" id="provider_kind_second">
+                                <option value="">2차 카테고리 선택</option>
+                            </select>
+                        </div>
+                    </div>
+
+                    <?php if ($selectedKindCode === '') { ?>
                         <p class="text-danger">
                             상품 구분이 지정되지 않았습니다. 상품 구분을 지정해주세요.
                         </p>
@@ -311,9 +380,7 @@
 
         <tbody>
 
-        <?php
-            if ($prd_data['kind'] == "ONAHOLE") {
-        ?>
+        <?php if (($selectedKindCode ?? '') === "ONAHOLE") { ?>
         <tbody>
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
@@ -851,9 +918,15 @@
 <script>
     $(document).ready(function() {
         $('.dn-select2').select2();
+        initProviderCategorySelector();
         initGodoCategorySelector();
     });
 
+    const providerCategoryCodeByKind = <?= json_encode($categoryCodeByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const providerCategoryChildrenByKind = <?= json_encode($categoryChildrenByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const providerKindNameByCode = <?= json_encode($prd_kind_name ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialProviderSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    let hasAppliedInitialProviderSecondCategory = false;
     const godoCateTree = <?= json_encode($godo_cate ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const selectedGodoCate = <?= json_encode([
         'depth1' => $selectedDepth1,
@@ -863,6 +936,78 @@
     const initialSelectedGodoCategoryItems = <?= json_encode($initialSelectedCategoryItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let hasAppliedInitialGodoCate = false;
     const selectedGodoCategoryItems = Array.isArray(initialSelectedGodoCategoryItems) ? initialSelectedGodoCategoryItems.slice() : [];
+
+    function resolveProviderCategoryCodeByKind(kindKey) {
+        const key = String(kindKey || '').trim();
+        if (!key || typeof providerCategoryCodeByKind !== 'object' || providerCategoryCodeByKind === null) {
+            return '';
+        }
+        return String(providerCategoryCodeByKind[key] || '').trim();
+    }
+
+    function updateProviderCategoryCodeInput() {
+        const primaryKind = String($('select[name="kind"]').val() || '').trim();
+        const secondKind = String($('#provider_kind_second').val() || '').trim();
+        let categoryCode = '';
+        if (secondKind !== '') {
+            categoryCode = resolveProviderCategoryCodeByKind(secondKind);
+        }
+        if (categoryCode === '' && primaryKind !== '') {
+            categoryCode = resolveProviderCategoryCodeByKind(primaryKind);
+        }
+        $('#provider_category_code').val(categoryCode);
+    }
+
+    function renderProviderSecondCategorySelect(resetSelection) {
+        const primaryKind = String($('select[name="kind"]').val() || '').trim();
+        const childCategories = Array.isArray(providerCategoryChildrenByKind[primaryKind]) ? providerCategoryChildrenByKind[primaryKind] : [];
+        const $secondWrap = $('#provider_kind_second_wrap');
+        const $secondSelect = $('#provider_kind_second');
+
+        $secondSelect.empty();
+        $secondSelect.append('<option value="">2차 카테고리 선택</option>');
+
+        if (childCategories.length === 0) {
+            $secondWrap.hide();
+            updateProviderCategoryCodeInput();
+            return;
+        }
+
+        for (let i = 0; i < childCategories.length; i++) {
+            const child = childCategories[i] || {};
+            const childKey = String(child.key || '').trim();
+            const childName = String(child.name || childKey).trim();
+            if (!childKey) {
+                continue;
+            }
+            $secondSelect.append(
+                $('<option>', {
+                    value: childKey,
+                    text: childName
+                })
+            );
+        }
+
+        if (!resetSelection && !hasAppliedInitialProviderSecondCategory && initialProviderSecondKindKey) {
+            $secondSelect.val(initialProviderSecondKindKey);
+            hasAppliedInitialProviderSecondCategory = true;
+        } else {
+            $secondSelect.val('');
+        }
+
+        $secondWrap.show();
+        updateProviderCategoryCodeInput();
+    }
+
+    function initProviderCategorySelector() {
+        $('select[name="kind"]').on('change', function() {
+            renderProviderSecondCategorySelect(true);
+        });
+        $('#provider_kind_second').on('change', function() {
+            updateProviderCategoryCodeInput();
+        });
+        renderProviderSecondCategorySelect(false);
+    }
 
     function normalizeGodoCategoryItems(items) {
         if (!Array.isArray(items)) {
@@ -906,12 +1051,13 @@
         if (!targetKind) {
             return {};
         }
+        const targetKindName = String(providerKindNameByCode[targetKind] || targetKind).trim();
 
         const depth1Map = {};
         Object.entries(godoCateTree || {}).forEach(function(entry) {
             const code = entry[0];
             const node = entry[1] || {};
-            if (String(node.name || '').trim() === targetKind) {
+            if (String(node.name || '').trim() === targetKindName) {
                 depth1Map[code] = node;
             }
         });

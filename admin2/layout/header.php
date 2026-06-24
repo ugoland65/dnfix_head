@@ -385,10 +385,13 @@ $gnb_lang = "ko";
 							<a href="/admin/order/godo_order_list">고도몰 주문가져오기</a>
 						</li>
 						<li>
-							<a href="/admin/order/godo_order">고도몰 주문(상품)</a>
+							<a href="/admin/order/godo_order">고도몰주문 (상품)</a>
 						</li>
 						<li>
-							<a href="/admin/order/godo_order_goods_list">공급사 주문 가져오기</a>
+							<a href="/admin/order/godo_order_goods_list">고도몰주문 (공급사)</a>
+						</li>
+						<li>
+							<a href="/admin/order/godo_order_purchase_list">고도몰주문 (구매대행)</a>
 						</li>
 						<li>
 							<a href="/admin/sales/sales_ranking_by_period">기간별 판매 조회</a>

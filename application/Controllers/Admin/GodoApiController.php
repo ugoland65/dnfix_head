@@ -83,6 +83,8 @@ class GodoApiController extends BaseClass
 
             $requestData = $request->all();
 
+            //dd($requestData);
+
             $today = date('Y-m-d');
             $default_start_date = date('Y-m-d', strtotime('-7 days'));
 
@@ -145,7 +147,85 @@ class GodoApiController extends BaseClass
             ])->response(404);
         }
     }
-    
+
+
+    /**
+     * 고도몰 주문 - 구매대행
+     * 
+     * @param Request $request 요청 데이터
+     * @return view
+     */
+    public function godoOrderPurchaseList(Request $request) 
+    {
+        try{
+
+            $requestData = $request->all();
+
+            $today = date('Y-m-d');
+            $default_start_date = date('Y-m-d', strtotime('-7 days'));
+
+            $start_date = $requestData['start_date'] ?? $default_start_date;
+            $end_date = $requestData['end_date'] ?? $today;
+            $mode = $requestData['mode'] ?? 'p';
+     
+            $payload = [
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'mode' => $mode,
+                'scmNo' => 18,
+            ];
+            $godoApiService = new GodoApiService();
+            $orderList = $godoApiService->getOrderGoodsList($payload);
+
+            $orderRows = $orderList['orderData']['data'] ?? [];
+            $orderNos = [];
+            foreach ($orderRows as $orderRow) {
+                $orderNo = (string)($orderRow['orderNo'] ?? '');
+                if ($orderNo !== '') {
+                    $orderNos[$orderNo] = true;
+                }
+            }
+
+            $csRequestCountMap = [];
+            if (!empty($orderNos)) {
+                $csRequestCounts = CsRequestModel::query()
+                    ->select(['order_no', 'COUNT(*) as count'])
+                    ->whereIn('order_no', array_keys($orderNos))
+                    ->groupBy('order_no')
+                    ->get()
+                    ->toArray();
+
+                foreach ($csRequestCounts as $countRow) {
+                    $orderNo = (string)($countRow['order_no'] ?? '');
+                    if ($orderNo === '') {
+                        continue;
+                    }
+                    $csRequestCountMap[$orderNo] = (int)($countRow['count'] ?? 0);
+                }
+            }
+
+            $data = [
+                'start_date' => $start_date,
+                'end_date' => $end_date,
+                'mode' => $mode,
+                'orderList' => $orderList['orderData'] ?? [],
+                'csRequestCountMap' => $csRequestCountMap,
+            ];
+
+            return view('admin.order.godo_order_purchase_list', $data)
+                ->extends('admin.layout.layout',[
+                    'pageGroup2' => 'order',
+                    'pageNameCode' => 'godo_order_purchase_list'
+                ]);
+
+        } catch (Exception $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+
+    }
+
 
     /**
      * 고도 주문서 출력 화면

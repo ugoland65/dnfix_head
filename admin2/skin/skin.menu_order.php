@@ -41,9 +41,11 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 		<li>주문 가져오기 (상품별)</li>
 	</ul>
 	<ul <? if( $pageNameCode == "godo_order_goods_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_goods_list'">
-		<li>공급사 주문 가져오기</li>
+		<li>주문 가져오기 (공급사)</li>
 	</ul>
-
+	<ul <? if( $pageNameCode == "godo_order_purchase_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_purchase_list'">
+		<li>주문 가져오기 (구매대행)</li>
+	</ul>
 
 
 </div>

@@ -35,6 +35,8 @@ class ProductPartnerService extends BaseClass
         $s_keyword = $payloadData['s_keyword'] ?? '';
         $match_status = $payloadData['match_status'] ?? null;
         $s_brand = $payloadData['s_brand'] ?? null;
+        $s_prd_kind = $payloadData['s_prd_kind'] ?? null;
+        $s_prd_kind_second = $payloadData['s_prd_kind_second'] ?? null;
         $sort_mode = $payloadData['sort_mode'] ?? 'idx';
         $s_godo_sale_status = $payloadData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
         $with_api_data = $payloadData['with_api_data'] ?? false;
@@ -84,6 +86,22 @@ class ProductPartnerService extends BaseClass
         
         if( !empty($s_brand) ){
             $query->where('prd_partner.brand_idx', $s_brand);
+        }
+
+        if (!empty($s_prd_kind)) {
+            // prd_partner.kind 컬럼은 분류명을 한글 value로 저장하므로 key를 value로 정규화한다.
+            $kindName = $this->normalizeKindName((string)$s_prd_kind);
+            if ($kindName !== '') {
+                $query->where('prd_partner.kind', $kindName);
+            }
+        }
+
+        if (!empty($s_prd_kind_second)) {
+            $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+            $secondCategoryCode = trim((string)($categoryCodeMap[(string)$s_prd_kind_second] ?? ''));
+            if ($secondCategoryCode !== '') {
+                $query->where('prd_partner.category_code', $secondCategoryCode);
+            }
         }
 
         // 매칭제외 여부
@@ -273,9 +291,19 @@ class ProductPartnerService extends BaseClass
             $short_desc = trim((string)($postData['short_desc'] ?? ''));
             $name_ori = $postData['name_ori'] ?? '';
             $name_p = $postData['name_p'] ?? '';
-            $kind = $postData['kind'] ?? '';
-            $supplier_prd_idx = $postData['supplier_prd_idx'] ?? 0;
-            $supplier_prd_pk = $postData['supplier_prd_pk'] ?? null;
+            $kindInput = (string)($postData['kind'] ?? '');
+            $kindCode = $this->normalizeKindCode($kindInput);
+            $kind = $this->normalizeKindName($kindInput);
+            $kindSecond = $postData['kind_second'] ?? '';
+            $categoryCode = $this->resolveCategoryCodeForSave((string)$kindCode, (string)($postData['category_code'] ?? ''), (string)$kindSecond);
+            $supplier_prd_idx = $toIntOrNull($postData['supplier_prd_idx'] ?? null);
+            if ($supplier_prd_idx === null) {
+                $supplier_prd_idx = 0;
+            }
+            $supplier_prd_pk = $toIntOrNull($postData['supplier_prd_pk'] ?? null);
+            if ($supplier_prd_pk === null) {
+                $supplier_prd_pk = 0;
+            }
             $supplier_site = $postData['supplier_site'] ?? null;
             $supplier_2nd_name = $postData['supplier_2nd_name'] ?? null;
             $supplier_img_mode = $postData['supplier_img_mode'] ?? 'out';
@@ -347,6 +375,7 @@ class ProductPartnerService extends BaseClass
                 'name_p' => $name_p, // 공급사 상품명
                 'status' => $status, // 상품 상태
                 'kind' => $kind, // 상품 구분 (상품 카테고리 코드)
+                'category_code' => $categoryCode, // 분류 코드(2차 우선, 미선택시 1차)
                 'brand_idx' => $brand_idx, // 브랜드 인덱스 (BRAND_DB 테이블의 BD_IDX)
                 'partner_idx' => $partner_idx, // 공급사 인덱스 (partners 테이블의 idx)
                 'is_match_excluded' => $is_match_excluded, // 매칭제외 여부
@@ -382,6 +411,7 @@ class ProductPartnerService extends BaseClass
                 'name_p' => $name_p,
                 'status' => $status,
                 'kind' => $kind,
+                'category_code' => $categoryCode,
                 'brand_idx' => $brand_idx,
                 'partner_idx' => $partner_idx,
                 'is_match_excluded' => $is_match_excluded, // 매칭제외 여부
@@ -752,7 +782,7 @@ class ProductPartnerService extends BaseClass
         }
 
         $brandIdx = (int)($data['brand_idx'] ?? 0);
-        $kind = trim((string)($data['kind'] ?? ''));
+        $kind = $this->normalizeKindName((string)($data['kind'] ?? ''));
         $status = trim((string)($data['status'] ?? ''));
 
         $updateData = [
@@ -837,6 +867,54 @@ class ProductPartnerService extends BaseClass
     public function bulkUpdateBrand($data)
     {
         return $this->bulkUpdateSelectedProducts($data);
+    }
+
+    /**
+     * 위탁상품 분류(1차/2차) 단건 수정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function updateProductPartnerCategory(array $postData): array
+    {
+        try {
+            $prdIdx = (int)($postData['prd_idx'] ?? 0);
+            if ($prdIdx <= 0) {
+                throw new \Exception('위탁상품 고유번호가 없습니다.');
+            }
+
+            $kindCode = trim((string)($postData['kind_code'] ?? ''));
+            if ($kindCode === '') {
+                throw new \Exception('1차 카테고리를 선택해주세요.');
+            }
+
+            $kindSecondCode = trim((string)($postData['kind_second_code'] ?? ''));
+            $postedCategoryCode = trim((string)($postData['category_code'] ?? ''));
+            $resolvedCategoryCode = $this->resolveCategoryCodeForSave($kindCode, $postedCategoryCode, $kindSecondCode);
+            $kindName = $this->normalizeKindName($kindCode);
+
+            ProductPartnerModel::query()
+                ->where('idx', $prdIdx)
+                ->update([
+                    'kind' => $kindName,
+                    'category_code' => $resolvedCategoryCode,
+                ]);
+
+            return [
+                'status' => 'success',
+                'message' => '상품 분류가 수정되었습니다.',
+                'data' => [
+                    'kind' => $kindName,
+                    'kind_code' => $kindCode,
+                    'category_code' => $resolvedCategoryCode,
+                ],
+            ];
+        } catch (\Throwable $e) {
+            return [
+                'status' => 'error',
+                'message' => $e->getMessage(),
+            ];
+        }
     }
 
 
@@ -1089,6 +1167,11 @@ class ProductPartnerService extends BaseClass
             }
         }
 
+        $providerCategoryCode = trim((string)($productPartner['category_code'] ?? ''));
+        if ($providerCategoryCode === '') {
+            $providerCategoryCode = $this->resolveCategoryCodeForSave($cdKindCode, '');
+        }
+
 
         $supplier_is_option = $productPartner['supplier_is_option'] ?? 'N';
         $supplier_option_data = $productPartner['supplier_option_data'] ?? [];
@@ -1128,6 +1211,7 @@ class ProductPartnerService extends BaseClass
 
         $insertData = [
             'CD_KIND_CODE' => $cdKindCode ?: '',
+            'CD_CATEGORY_CODE' => $providerCategoryCode,
             'CD_BRAND_IDX' => $productPartner['brand_idx'] ?? 0,
             'CD_NAME' => $baseName !== '' ? $baseName : null,
             'CD_NAME_OG' => $baseOriginalName,
@@ -1158,6 +1242,144 @@ class ProductPartnerService extends BaseClass
         }
 
         return true;
+    }
+
+    /**
+     * 상품 저장 시 카테고리 코드를 결정한다.
+     * - 2차 카테고리가 선택되면 해당 코드 우선
+     * - 2차가 없거나 미선택이면 1차(상품구분) 코드 사용
+     *
+     * @param string $kindCode
+     * @param string $postedCategoryCode
+     * @param string $secondKindCode
+     * @return string
+     */
+    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = ''): string
+    {
+        $kindCode = trim($kindCode);
+        $postedCategoryCode = trim($postedCategoryCode);
+        $secondKindCode = trim($secondKindCode);
+
+        $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+        if ($secondKindCode !== '' && isset($categoryCodeMap[$secondKindCode])) {
+            return (string)$categoryCodeMap[$secondKindCode];
+        }
+
+        if ($postedCategoryCode !== '') {
+            return $postedCategoryCode;
+        }
+
+        if ($kindCode === '') {
+            return '';
+        }
+
+        return (string)($categoryCodeMap[$kindCode] ?? '');
+    }
+
+    /**
+     * config 카테고리 트리에서 kind => code 맵을 생성한다.
+     *
+     * @return array<string,string>
+     */
+    private function buildCategoryCodeMapByKind(): array
+    {
+        $configProduct = config('admin.product');
+        $categories = $configProduct['categories'] ?? [];
+        if (!is_array($categories)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+
+            $parentKey = trim((string)($categoryRow['key'] ?? ''));
+            $parentCode = trim((string)($categoryRow['code'] ?? ''));
+            if ($parentKey !== '' && $parentCode !== '') {
+                $map[$parentKey] = $parentCode;
+            }
+
+            $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+            foreach ($children as $childRow) {
+                if (!is_array($childRow)) {
+                    continue;
+                }
+                $childKey = trim((string)($childRow['key'] ?? ''));
+                $childCode = trim((string)($childRow['code'] ?? ''));
+                if ($childKey === '' || $childCode === '') {
+                    continue;
+                }
+                $map[$childKey] = $childCode;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * 상품 구분 입력값(영문 key / 한글명)을 영문 key로 정규화한다.
+     *
+     * @param string $kindValue
+     * @return string
+     */
+    private function normalizeKindCode(string $kindValue): string
+    {
+        $kindValue = trim($kindValue);
+        if ($kindValue === '') {
+            return '';
+        }
+
+        $configProduct = config('admin.product');
+        $prdKindName = $configProduct['prd_kind_name'] ?? [];
+        if (!is_array($prdKindName)) {
+            return $kindValue;
+        }
+
+        if (isset($prdKindName[$kindValue])) {
+            return $kindValue;
+        }
+
+        foreach ($prdKindName as $kindCode => $kindName) {
+            if ((string)$kindName === $kindValue) {
+                return (string)$kindCode;
+            }
+        }
+
+        return $kindValue;
+    }
+
+    /**
+     * 상품 구분 입력값(영문 key / 한글명)을 한글명으로 정규화한다.
+     *
+     * @param string $kindValue
+     * @return string
+     */
+    private function normalizeKindName(string $kindValue): string
+    {
+        $kindValue = trim($kindValue);
+        if ($kindValue === '') {
+            return '';
+        }
+
+        $configProduct = config('admin.product');
+        $prdKindName = $configProduct['prd_kind_name'] ?? [];
+        if (!is_array($prdKindName)) {
+            return $kindValue;
+        }
+
+        if (isset($prdKindName[$kindValue])) {
+            return (string)$prdKindName[$kindValue];
+        }
+
+        foreach ($prdKindName as $kindName) {
+            if ((string)$kindName === $kindValue) {
+                return (string)$kindName;
+            }
+        }
+
+        return $kindValue;
     }
 
 }

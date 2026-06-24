@@ -105,9 +105,10 @@ class ProductService extends BaseClass
         $show_mode = $criteria['show_mode'] ?? '';
         $rack_code = $criteria['rack_code'] ?? null;
 
-        $in_stock = $criteria['in_stock'] ?? 'have';
+        $in_stock = $criteria['in_stock'] ?? 'all';
         $s_brand = $criteria['s_brand'] ?? null;
         $s_prd_kind = $criteria['s_prd_kind'] ?? null;
+        $s_prd_kind_second = $criteria['s_prd_kind_second'] ?? null;
         $s_importing_country = $criteria['s_importing_country'] ?? null;
         $s_margin_group = $criteria['s_margin_group'] ?? null;
         $s_work_task_code = trim((string)($criteria['s_work_task_code'] ?? ''));
@@ -166,6 +167,16 @@ class ProductService extends BaseClass
         // 상품 종류 검색
         if ($s_prd_kind) {
             $query->where('A.CD_KIND_CODE', $s_prd_kind);
+        }
+        if (!empty($s_prd_kind_second)) {
+            $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+            $secondCategoryCode = trim((string)($categoryCodeMap[$s_prd_kind_second] ?? ''));
+            if ($secondCategoryCode === '') {
+                $secondCategoryCode = trim((string)$s_prd_kind_second);
+            }
+            if ($secondCategoryCode !== '') {
+                $query->where('A.CD_CATEGORY_CODE', $secondCategoryCode);
+            }
         }
 
         // 수입국 검색
@@ -319,6 +330,7 @@ class ProductService extends BaseClass
 
         $config_product = config('admin.product');
         $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+        $categoryNameByCode = $this->buildCategoryNameMapByCode();
 
         $_national_text = [];
         $_national_text['jp'] = "일본";
@@ -327,7 +339,7 @@ class ProductService extends BaseClass
 
         // 상품 종류 추가
         foreach ($products as &$product) {
-            $product = $this->processProductData($product, $prd_kind_name, $_national_text);
+            $product = $this->processProductData($product, $prd_kind_name, $_national_text, $categoryNameByCode);
         }
         unset($product); // 참조 변수 해제
 
@@ -368,7 +380,7 @@ class ProductService extends BaseClass
     /**
      * 개별 상품 데이터 처리
      */
-    private function processProductData($product, $prdKindName, $nationalText)
+    private function processProductData($product, $prdKindName, $nationalText, array $categoryNameByCode = [])
     {
         
         $product['cd_size_fn'] = json_decode($product['cd_size_fn'] ?? '{}', true);
@@ -431,6 +443,8 @@ class ProductService extends BaseClass
         ];
 
         $product['prd_kind_name'] = $prdKindName[$product['CD_KIND_CODE']] ?? '미지정';
+        $cdCategoryCode = trim((string)($product['CD_CATEGORY_CODE'] ?? ''));
+        $product['cd_category_name'] = ($cdCategoryCode !== '') ? (string)($categoryNameByCode[$cdCategoryCode] ?? '') : '';
         $product['national_text'] = $nationalText[$product['cd_national']] ?? '';
 
         $marginInfo = $this->calculateMarginInfo(
@@ -1336,6 +1350,11 @@ class ProductService extends BaseClass
             $imgMode = 'this';
         }
         $cdKindCode = (string)($postData['cd_kind_code'] ?? '');
+        $cdCategoryCode = $this->resolveCategoryCodeForSave(
+            $cdKindCode,
+            (string)($postData['cd_category_code'] ?? ''),
+            (string)($postData['cd_kind_code_second'] ?? '')
+        );
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
         $cdName = (string)($postData['cd_name'] ?? '');
@@ -1465,6 +1484,7 @@ class ProductService extends BaseClass
 
         $updateData = [
             'CD_KIND_CODE' => $cdKindCode,
+            'CD_CATEGORY_CODE' => $cdCategoryCode,
             'CD_BRAND_IDX' => $cdBrandIdx,
             'CD_BRAND2_IDX' => $cdBrand2Idx,
             'CD_NAME' => $cdName,
@@ -1590,6 +1610,52 @@ class ProductService extends BaseClass
             'message' => '완료',
             'msg' => '완료',
             'idx' => $idx,
+        ];
+    }
+
+    /**
+     * 목록 화면에서 상품 분류(1차/2차) 빠른 수정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function updateProductCategory(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        $cdKindCode = trim((string)($postData['cd_kind_code'] ?? ''));
+        $cdKindCodeSecond = trim((string)($postData['cd_kind_code_second'] ?? ''));
+        $postedCategoryCode = trim((string)($postData['cd_category_code'] ?? ''));
+
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+        if ($cdKindCode === '') {
+            throw new Exception('1차 카테고리를 선택해주세요.');
+        }
+
+        $exists = ProductModel::query()
+            ->select('CD_IDX')
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        if (empty($exists)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $cdCategoryCode = $this->resolveCategoryCodeForSave($cdKindCode, $postedCategoryCode, $cdKindCodeSecond);
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+                'CD_KIND_CODE' => $cdKindCode,
+                'CD_CATEGORY_CODE' => $cdCategoryCode,
+            ]);
+
+        return [
+            'success' => true,
+            'message' => '상품 분류가 수정되었습니다.',
+            'prd_idx' => $prdIdx,
+            'cd_kind_code' => $cdKindCode,
+            'cd_category_code' => $cdCategoryCode,
         ];
     }
 
@@ -2010,6 +2076,121 @@ class ProductService extends BaseClass
         })));
 
         return $decoded;
+    }
+
+    /**
+     * 상품 저장 시 카테고리 코드를 결정한다.
+     * - 2차 카테고리가 선택되면 해당 코드 우선
+     * - 2차가 없거나 미선택이면 1차(상품구분) 코드 사용
+     *
+     * @param string $kindCode
+     * @param string $postedCategoryCode
+     * @return string
+     */
+    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = ''): string
+    {
+        $kindCode = trim($kindCode);
+        $postedCategoryCode = trim($postedCategoryCode);
+        $secondKindCode = trim($secondKindCode);
+
+        $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+        if ($secondKindCode !== '' && isset($categoryCodeMap[$secondKindCode])) {
+            return (string)$categoryCodeMap[$secondKindCode];
+        }
+
+        if ($postedCategoryCode !== '') {
+            return $postedCategoryCode;
+        }
+
+        if ($kindCode === '') {
+            return '';
+        }
+
+        return (string)($categoryCodeMap[$kindCode] ?? '');
+    }
+
+    /**
+     * config 카테고리 트리에서 kind => code 맵을 생성한다.
+     *
+     * @return array<string,string>
+     */
+    private function buildCategoryCodeMapByKind(): array
+    {
+        $configProduct = config('admin.product');
+        $categories = $configProduct['categories'] ?? [];
+        if (!is_array($categories)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+
+            $parentKey = trim((string)($categoryRow['key'] ?? ''));
+            $parentCode = trim((string)($categoryRow['code'] ?? ''));
+            if ($parentKey !== '' && $parentCode !== '') {
+                $map[$parentKey] = $parentCode;
+            }
+
+            $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+            foreach ($children as $childRow) {
+                if (!is_array($childRow)) {
+                    continue;
+                }
+                $childKey = trim((string)($childRow['key'] ?? ''));
+                $childCode = trim((string)($childRow['code'] ?? ''));
+                if ($childKey === '' || $childCode === '') {
+                    continue;
+                }
+                $map[$childKey] = $childCode;
+            }
+        }
+
+        return $map;
+    }
+
+    /**
+     * config 카테고리 트리에서 code => name 맵을 생성한다.
+     *
+     * @return array<string,string>
+     */
+    private function buildCategoryNameMapByCode(): array
+    {
+        $configProduct = config('admin.product');
+        $categories = $configProduct['categories'] ?? [];
+        if (!is_array($categories)) {
+            return [];
+        }
+
+        $map = [];
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+
+            $parentCode = trim((string)($categoryRow['code'] ?? ''));
+            $parentName = trim((string)($categoryRow['name'] ?? ''));
+            if ($parentCode !== '' && $parentName !== '') {
+                $map[$parentCode] = $parentName;
+            }
+
+            $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+            foreach ($children as $childRow) {
+                if (!is_array($childRow)) {
+                    continue;
+                }
+                $childCode = trim((string)($childRow['code'] ?? ''));
+                $childName = trim((string)($childRow['name'] ?? ''));
+                if ($childCode === '' || $childName === '') {
+                    continue;
+                }
+                $map[$childCode] = $childName;
+            }
+        }
+
+        return $map;
     }
 
 

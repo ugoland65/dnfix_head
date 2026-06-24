@@ -188,7 +188,7 @@
 </style>
 
 <div id="contents_head">
-    <h1>고도몰 주문 (공급사)</h1>
+    <h1>고도몰 주문 (구매대행)</h1>
     <div class="m-l-20">
         <select name="mode" id="mode">
             <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
@@ -233,7 +233,7 @@
                                 <th class="">주문상품명</th>
                                 <th class="">주문수량</th>
                                 <th class="">매칭상품</th>
-                                <th class="">공급사링크</th>
+
                                 <th class="">C/S 요청</th>
                                 <th class="">C/S 등록수</th>
                                 <th class="">수령자명</th>
@@ -299,9 +299,7 @@
                                             </div>
                                         <?php } ?>
                                     </td>
-                                    <td>
-                                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="goSupplierProduct('<?= $order['ProductPartner']['supplier_site'] ?>', '<?= $order['ProductPartner']['supplier_prd_pk'] ?>');">공급사링크</button>
-                                    </td>
+
                                     <td>
                                         <button type="button" class="btnstyle1 btnstyle1-xs" 
 
@@ -491,7 +489,7 @@
             var mode = $('#mode').val();
             var start_date = $('#start_date').val();
             var end_date = $('#end_date').val();
-            location.href = "/admin/order/godo_order_goods_list?mode=" + mode + "&start_date=" + start_date + "&end_date=" + end_date;
+            location.href = "/admin/order/godo_order_purchase_list?mode=" + mode + "&start_date=" + start_date + "&end_date=" + end_date;
         });
 
         // 상품보기 토글

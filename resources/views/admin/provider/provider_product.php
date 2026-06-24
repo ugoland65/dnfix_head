@@ -59,42 +59,93 @@
 		background-color: #eef4ff;
 		z-index: 1;
 	}
-	.provider-kind-context-menu {
+	.provider-kind-cell.provider-kind-updated {
+		outline: 2px solid #1e9d5a;
+		outline-offset: -2px;
+		background-color: #e9f9ef;
+	}
+	.provider-kind-context-layer {
 		display: none;
 		position: fixed;
-		min-width: 150px;
-		max-width: 220px;
-		max-height: 320px;
-		overflow-y: auto;
+		width: 280px;
 		background: #fff;
 		border: 1px solid #d9dce3;
 		border-radius: 8px;
 		box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
 		z-index: 10020;
-		padding: 6px 0;
+		padding: 12px;
 	}
-	.provider-kind-context-menu.active {
+	.provider-kind-context-layer.active {
 		display: block;
-	}
-	.provider-kind-context-menu-item {
-		display: block;
-		width: 100%;
-		border: 0;
-		background: transparent;
-		text-align: left;
-		padding: 8px 12px;
-		font-size: 13px;
-		line-height: 1.25;
-		cursor: pointer;
-	}
-	.provider-kind-context-menu-item:hover {
-		background: #f3f6ff;
-	}
-	.provider-kind-context-menu-item.is-current {
-		font-weight: 700;
-		color: #1849a9;
 	}
 </style>
+<?php
+	$categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
+	$providerCategoryPrimaryOptions = [];
+	$providerCategoryChildrenByPrimary = [];
+	$providerCategoryNameByKey = [];
+	$providerCategoryCodeByKey = [];
+	$providerCategoryNameByCode = [];
+	$providerPrimaryCategoryNameByKey = [];
+	$providerPrimaryCategoryCodeByKey = [];
+	$providerKindKeyByName = [];
+	foreach (($prd_kind_name ?? []) as $kindKey => $kindName) {
+		$providerKindKeyByName[(string)$kindName] = (string)$kindKey;
+	}
+
+	foreach ($categoryRows as $categoryRow) {
+		if (!is_array($categoryRow)) {
+			continue;
+		}
+		$parentKey = trim((string)($categoryRow['key'] ?? ''));
+		$parentCode = trim((string)($categoryRow['code'] ?? ''));
+		$parentName = trim((string)($categoryRow['name'] ?? ''));
+		$parentDisplayName = trim((string)($prd_kind_name[$parentKey] ?? $parentName));
+		if ($parentDisplayName === '') {
+			$parentDisplayName = $parentKey;
+		}
+		if ($parentKey === '' || $parentCode === '') {
+			continue;
+		}
+
+		$providerCategoryPrimaryOptions[] = [
+			'key' => $parentKey,
+			'code' => $parentCode,
+			'name' => $parentDisplayName,
+		];
+		$providerPrimaryCategoryNameByKey[$parentKey] = $parentDisplayName;
+		$providerPrimaryCategoryCodeByKey[$parentKey] = $parentCode;
+		$providerCategoryNameByKey[$parentKey] = $parentDisplayName;
+		$providerCategoryCodeByKey[$parentKey] = $parentCode;
+		$providerCategoryNameByCode[$parentCode] = $parentDisplayName;
+
+		$children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+		$childOptions = [];
+		foreach ($children as $childRow) {
+			if (!is_array($childRow)) {
+				continue;
+			}
+			$childKey = trim((string)($childRow['key'] ?? ''));
+			$childCode = trim((string)($childRow['code'] ?? ''));
+			$childName = trim((string)($childRow['name'] ?? ''));
+			if ($childKey === '' || $childCode === '') {
+				continue;
+			}
+			$childDisplayName = $childName !== '' ? $childName : $childKey;
+			$childOptions[] = [
+				'key' => $childKey,
+				'code' => $childCode,
+				'name' => $childDisplayName,
+			];
+			$providerCategoryNameByKey[$childKey] = $childDisplayName;
+			$providerCategoryCodeByKey[$childKey] = $childCode;
+			$providerCategoryNameByCode[$childCode] = $childDisplayName;
+		}
+		if (!empty($childOptions)) {
+			$providerCategoryChildrenByPrimary[$parentKey] = $childOptions;
+		}
+	}
+?>
 <div id="contents_head">
 	<h1>위탁 상품관리</h1>
 	<h3>인트라넷에 등록된 위탁 상품입니다.</h3>
@@ -150,6 +201,19 @@
 						?>
 							<option value="<?= $brand['BD_IDX'] ?>" <? if ($brand['BD_IDX'] == ($s_brand ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?></option>
 						<? } ?>
+					</select>
+				</ul>
+				<ul>
+					<select name="s_prd_kind" id="s_prd_kind">
+						<option value="">상품분류</option>
+						<? foreach (($prd_kind_name ?? []) as $code => $name) { ?>
+							<option value="<?= $code ?>" <? if ($code == ($s_prd_kind ?? '')) echo "selected"; ?>><?= $name ?></option>
+						<? } ?>
+					</select>
+				</ul>
+				<ul>
+					<select name="s_prd_kind_second" id="s_prd_kind_second" style="display:none;">
+						<option value="">2차 카테고리</option>
 					</select>
 				</ul>
 				<ul>
@@ -266,13 +330,27 @@
 										<img src="<?= $item['img_src'] ?>" style="height:70px; border:1px solid #eee !important;">
 									</td>
 									<?php
-										$currentKind = trim((string)($item['kind'] ?? ''));
-										$displayKind = $currentKind !== '' ? $currentKind : '미지정';
+										$currentKindRaw = trim((string)($item['kind'] ?? ''));
+										$currentKindCode = trim((string)($providerKindKeyByName[$currentKindRaw] ?? $currentKindRaw));
+										$currentCategoryCode = trim((string)($item['category_code'] ?? ''));
+										$primaryCategoryName = trim((string)($providerPrimaryCategoryNameByKey[$currentKindCode] ?? ($providerCategoryNameByKey[$currentKindCode] ?? $currentKindRaw)));
+										if ($primaryCategoryName === '') {
+											$primaryCategoryName = '미지정';
+										}
+										$secondaryCategoryName = trim((string)($providerCategoryNameByCode[$currentCategoryCode] ?? $currentCategoryCode));
+										$primaryCategoryCode = trim((string)($providerPrimaryCategoryCodeByKey[$currentKindCode] ?? ($providerCategoryCodeByKey[$currentKindCode] ?? '')));
+										$hasSecondaryCategory = $currentCategoryCode !== ''
+											&& $secondaryCategoryName !== ''
+											&& $currentCategoryCode !== $primaryCategoryCode;
 									?>
-									<td class="text-center provider-kind-cell <?= $currentKind === '' ? 'provider-kind-cell-missing' : '' ?>"
+									<td class="text-center provider-kind-cell <?= $currentKindCode === '' ? 'provider-kind-cell-missing' : '' ?>"
 										data-prd-idx="<?= (int)($item['idx'] ?? 0) ?>"
-										data-current-kind="<?= htmlspecialchars($currentKind, ENT_QUOTES, 'UTF-8') ?>">
-										<span class="provider-kind-text"><?= htmlspecialchars($displayKind, ENT_QUOTES, 'UTF-8') ?></span>
+										data-current-kind="<?= htmlspecialchars($currentKindCode, ENT_QUOTES, 'UTF-8') ?>"
+										data-current-category-code="<?= htmlspecialchars($currentCategoryCode, ENT_QUOTES, 'UTF-8') ?>">
+										<span class="provider-kind-primary"><?= htmlspecialchars($primaryCategoryName, ENT_QUOTES, 'UTF-8') ?></span>
+										<span class="provider-kind-secondary-wrap" style="<?= $hasSecondaryCategory ? '' : 'display:none;' ?>">
+											<br><b class="provider-kind-secondary"><?= htmlspecialchars($secondaryCategoryName, ENT_QUOTES, 'UTF-8') ?></b>
+										</span>
 									</td>
 									<td class="prd-name">
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
@@ -501,7 +579,23 @@
 	</div>
 </div>
 
-<div id="providerKindContextMenu" class="provider-kind-context-menu" aria-hidden="true"></div>
+<div id="providerCategoryContextLayer" class="provider-kind-context-layer" aria-hidden="true">
+	<div style="font-weight:700; margin-bottom:8px;">상품 분류 수정</div>
+	<div style="margin-bottom:8px;">
+		<select id="provider_quick_category_primary" style="width:100%;">
+			<option value="">1차 카테고리 선택</option>
+		</select>
+	</div>
+	<div id="provider_quick_category_secondary_wrap" style="display:none; margin-bottom:10px;">
+		<select id="provider_quick_category_secondary" style="width:100%;">
+			<option value="">2차 카테고리 선택</option>
+		</select>
+	</div>
+	<div style="display:flex; justify-content:flex-end; gap:8px;">
+		<button type="button" class="btnstyle1 btnstyle1-sm" id="provider_quick_category_cancel_btn">취소</button>
+		<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="provider_quick_category_save_btn">저장</button>
+	</div>
+</div>
 
 <div id="productBulkUpdateModal" class="bulk-update-modal">
 	<div class="bulk-update-modal-content">
@@ -523,8 +617,8 @@
 			<label for="bulkUpdateKind">상품 구분 일괄변경</label>
 			<select id="bulkUpdateKind" style="width:100%;">
 				<option value="">상품 구분 선택</option>
-				<? foreach (($prd_kind_name ?? []) as $kind) { ?>
-					<option value="<?= $kind ?>"><?= $kind ?></option>
+				<? foreach (($prd_kind_name ?? []) as $kindCode => $kindName) { ?>
+					<option value="<?= $kindCode ?>"><?= $kindName ?></option>
 				<? } ?>
 			</select>
 		</div>
@@ -548,7 +642,11 @@
 </div>
 
 <script type="text/javascript">
-	const PROVIDER_KIND_OPTIONS = <?= json_encode(array_values($prd_kind_name ?? []), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+	const PROVIDER_CATEGORY_PRIMARY_OPTIONS = <?= json_encode($providerCategoryPrimaryOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+	const PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY = <?= json_encode($providerCategoryChildrenByPrimary ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+	const PROVIDER_CATEGORY_NAME_BY_KEY = <?= json_encode($providerCategoryNameByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+	const PROVIDER_CATEGORY_NAME_BY_CODE = <?= json_encode($providerCategoryNameByCode ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+	const PROVIDER_CATEGORY_CODE_BY_KEY = <?= json_encode($providerCategoryCodeByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 	const prdProvider = (function() {
 
@@ -668,10 +766,21 @@
 			});
 		}
 
+		function updateProductCategory(payload) {
+			return ajaxRequest(API_ENDPOINT.bulkUpdate, {
+				action_mode: 'update_product_partner_category',
+				prd_idx: payload.prd_idx || 0,
+				kind_code: payload.kind_code || '',
+				kind_second_code: payload.kind_second_code || '',
+				category_code: payload.category_code || '',
+			});
+		}
+
 		return {
 			cancelMatchProviderProduct,
 			productRegisterToSupplierProduct,
 			bulkUpdateSelectedProducts,
+			updateProductCategory,
 		};
 
 	})();
@@ -715,6 +824,8 @@
 			's_supplier_match': $("#s_supplier_match").val(),
 			's_keyword': $("#s_keyword").val(),
 			's_brand': $("#s_brand").val(),
+			's_prd_kind': $("#s_prd_kind").val(),
+			's_prd_kind_second': $("#s_prd_kind_second").val(),
 			'sort_mode': $("#sort_kind").val(),
 			's_godo_sale_status': $("#s_godo_sale_status").val(),
 		};
@@ -747,75 +858,144 @@
 		location.href = '/admin/provider_product/list' + (queryString ? '?' + queryString : '');
 	}
 
-	function updateProviderKind(prdIdx, kindValue) {
-		return prdProvider.bulkUpdateSelectedProducts([prdIdx], {
-			kind: kindValue || '',
-		});
-	}
-
 	$(function() {
-		var $kindContextMenu = $('#providerKindContextMenu');
+		var $categoryLayer = $('#providerCategoryContextLayer');
 		var $selectedKindCell = null;
+		var $updatedKindCell = null;
 
-		function closeKindContextMenu() {
-			$kindContextMenu.removeClass('active').hide().empty().attr('aria-hidden', 'true');
+		function setUpdatedKindCell($cell) {
+			if ($updatedKindCell && $updatedKindCell.length) {
+				$updatedKindCell.removeClass('provider-kind-updated');
+			}
+			$updatedKindCell = $cell && $cell.length ? $cell : null;
+			if ($updatedKindCell && $updatedKindCell.length) {
+				$updatedKindCell.addClass('provider-kind-updated');
+			}
+		}
+
+		function clearUpdatedKindCell() {
+			if ($updatedKindCell && $updatedKindCell.length) {
+				$updatedKindCell.removeClass('provider-kind-updated');
+			}
+			$updatedKindCell = null;
+		}
+
+		function closeCategoryLayer() {
+			$categoryLayer.removeClass('active').hide().attr('aria-hidden', 'true');
 			if ($selectedKindCell && $selectedKindCell.length) {
 				$selectedKindCell.removeClass('provider-kind-selected');
 			}
 			$selectedKindCell = null;
 		}
 
-		function getProviderKindOptions() {
-			if (!Array.isArray(PROVIDER_KIND_OPTIONS)) {
-				return [];
-			}
-			var unique = [];
-			var seen = {};
-			for (var i = 0; i < PROVIDER_KIND_OPTIONS.length; i++) {
-				var val = String(PROVIDER_KIND_OPTIONS[i] || '').trim();
-				if (!val || seen[val]) {
-					continue;
+		function fillPrimarySelect(selectedKind) {
+			var $primary = $('#provider_quick_category_primary');
+			$primary.empty().append('<option value="">1차 카테고리 선택</option>');
+			(PROVIDER_CATEGORY_PRIMARY_OPTIONS || []).forEach(function(item) {
+				if (!item || !item.key) {
+					return;
 				}
-				seen[val] = true;
-				unique.push(val);
-			}
-			return unique;
+				$primary.append($('<option>', {
+					value: item.key,
+					text: item.name || item.key
+				}));
+			});
+			$primary.val(String(selectedKind || '').trim());
 		}
 
-		function openKindContextMenu($cell, pageX, pageY) {
+		function fillSecondarySelect(primaryKind, selectedSecondKind) {
+			var kind = String(primaryKind || '').trim();
+			var childOptions = Array.isArray(PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[kind]) ? PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[kind] : [];
+			var $wrap = $('#provider_quick_category_secondary_wrap');
+			var $secondary = $('#provider_quick_category_secondary');
+
+			$secondary.empty().append('<option value="">2차 카테고리 선택</option>');
+			if (childOptions.length === 0) {
+				$wrap.hide();
+				return;
+			}
+
+			childOptions.forEach(function(item) {
+				if (!item || !item.key) {
+					return;
+				}
+				$secondary.append($('<option>', {
+					value: item.key,
+					text: item.name || item.key
+				}));
+			});
+			$secondary.val(String(selectedSecondKind || '').trim());
+			$wrap.show();
+		}
+
+		function findSecondKindByCategoryCode(primaryKind, categoryCode) {
+			var kind = String(primaryKind || '').trim();
+			var code = String(categoryCode || '').trim();
+			if (!kind || !code) {
+				return '';
+			}
+			var childOptions = Array.isArray(PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[kind]) ? PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[kind] : [];
+			for (var i = 0; i < childOptions.length; i++) {
+				var child = childOptions[i] || {};
+				var childKey = String(child.key || '').trim();
+				if (childKey && String(PROVIDER_CATEGORY_CODE_BY_KEY[childKey] || '').trim() === code) {
+					return childKey;
+				}
+			}
+			return '';
+		}
+
+		function fillSearchSecondarySelect(resetSelection) {
+			var primaryKind = String($('#s_prd_kind').val() || '').trim();
+			var $second = $('#s_prd_kind_second');
+			var childOptions = Array.isArray(PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind]) ? PROVIDER_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind] : [];
+
+			$second.empty().append('<option value="">2차 카테고리</option>');
+			if (childOptions.length === 0) {
+				$second.val('');
+				$second.hide();
+				return;
+			}
+
+			childOptions.forEach(function(item) {
+				if (!item || !item.key) {
+					return;
+				}
+				$second.append($('<option>', {
+					value: item.key,
+					text: item.name || item.key
+				}));
+			});
+
+			if (resetSelection) {
+				$second.val('');
+			} else {
+				var currentVal = String('<?= htmlspecialchars((string)($s_prd_kind_second ?? ''), ENT_QUOTES, 'UTF-8') ?>');
+				$second.val(currentVal);
+			}
+			$second.show();
+		}
+
+		function openCategoryLayer($cell, pageX, pageY) {
 			var prdIdx = Number($cell.data('prd-idx') || 0);
 			if (prdIdx <= 0) {
 				return;
 			}
-			var currentKind = String($cell.data('current-kind') || '').trim();
-			var options = getProviderKindOptions();
-			if (!options.length) {
-				alert('분류 옵션 데이터가 없습니다.');
-				return;
-			}
 
-			closeKindContextMenu();
+			closeCategoryLayer();
 			$selectedKindCell = $cell;
 			$selectedKindCell.addClass('provider-kind-selected');
-
-			var menuHtml = '';
-			for (var i = 0; i < options.length; i++) {
-				var optionValue = options[i];
-				var isCurrent = optionValue === currentKind;
-				menuHtml += '<button type="button" class="provider-kind-context-menu-item ' + (isCurrent ? 'is-current' : '') + '"'
-					+ ' data-kind="' + $('<div>').text(optionValue).html() + '"'
-					+ ' data-prd-idx="' + prdIdx + '">'
-					+ (isCurrent ? '✓ ' : '')
-					+ $('<div>').text(optionValue).html()
-					+ '</button>';
-			}
-			$kindContextMenu.html(menuHtml);
+			var currentKind = String($cell.data('current-kind') || '').trim();
+			var currentCategoryCode = String($cell.data('current-category-code') || '').trim();
+			var secondKind = findSecondKindByCategoryCode(currentKind, currentCategoryCode);
+			fillPrimarySelect(currentKind);
+			fillSecondarySelect(currentKind, secondKind);
 
 			var viewportWidth = $(window).width();
 			var viewportHeight = $(window).height();
-			$kindContextMenu.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
-			var menuWidth = $kindContextMenu.outerWidth();
-			var menuHeight = $kindContextMenu.outerHeight();
+			$categoryLayer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
+			var menuWidth = $categoryLayer.outerWidth();
+			var menuHeight = $categoryLayer.outerHeight();
 			var left = pageX;
 			var top = pageY;
 			if (left + menuWidth > viewportWidth - 10) {
@@ -826,7 +1006,7 @@
 			}
 			left = Math.max(10, left);
 			top = Math.max(10, top);
-			$kindContextMenu.css({
+			$categoryLayer.css({
 				left: left + 'px',
 				top: top + 'px',
 				visibility: 'visible'
@@ -939,6 +1119,10 @@
 		updateSelectedCount();
 
 		$(".dn-select2").select2();
+		fillSearchSecondarySelect(false);
+		$('#s_prd_kind').on('change', function() {
+			fillSearchSecondarySelect(true);
+		});
 
 		// 검색 인풋 엔터키 처리
 		$('#s_keyword').on('keypress', function(e) {
@@ -993,57 +1177,103 @@
 		});
 
 		$(document).on('contextmenu', '.provider-kind-cell', function(e) {
-			var currentKind = String($(this).data('current-kind') || '').trim();
-			if (currentKind !== '') {
-				return;
-			}
 			e.preventDefault();
-			openKindContextMenu($(this), e.clientX, e.clientY);
+			openCategoryLayer($(this), e.clientX, e.clientY);
 		});
 
-		$(document).on('click', '.provider-kind-context-menu-item', function() {
-			var $btn = $(this);
-			var targetKind = String($btn.data('kind') || '').trim();
-			var prdIdx = Number($btn.data('prd-idx') || 0);
-			if (!$selectedKindCell || !$selectedKindCell.length || prdIdx <= 0 || !targetKind) {
-				closeKindContextMenu();
+		$('#provider_quick_category_primary').on('change', function() {
+			fillSecondarySelect($(this).val(), '');
+		});
+
+		$('#provider_quick_category_cancel_btn').on('click', function() {
+			closeCategoryLayer();
+		});
+
+		$('#provider_quick_category_save_btn').on('click', function() {
+			if (!$selectedKindCell || !$selectedKindCell.length) {
+				closeCategoryLayer();
 				return;
 			}
 
-			$btn.prop('disabled', true);
-			updateProviderKind(prdIdx, targetKind)
+			var prdIdx = Number($selectedKindCell.data('prd-idx') || 0);
+			var primaryKind = String($('#provider_quick_category_primary').val() || '').trim();
+			var secondaryKind = String($('#provider_quick_category_secondary').val() || '').trim();
+
+			if (!primaryKind) {
+				alert('1차 카테고리를 선택해주세요.');
+				return;
+			}
+
+			var categoryCode = '';
+			if (secondaryKind) {
+				categoryCode = String(PROVIDER_CATEGORY_CODE_BY_KEY[secondaryKind] || '').trim();
+			}
+			if (!categoryCode) {
+				categoryCode = String(PROVIDER_CATEGORY_CODE_BY_KEY[primaryKind] || '').trim();
+			}
+
+			$('#provider_quick_category_save_btn').prop('disabled', true);
+			prdProvider.updateProductCategory({
+				prd_idx: prdIdx,
+				kind_code: primaryKind,
+				kind_second_code: secondaryKind,
+				category_code: categoryCode
+			})
 				.then(function(res) {
+					$('#provider_quick_category_save_btn').prop('disabled', false);
 					if (!res || res.status !== 'success') {
 						alert((res && res.message) ? res.message : '분류 업데이트에 실패했습니다.');
-						closeKindContextMenu();
 						return;
 					}
-					$selectedKindCell.data('current-kind', targetKind);
-					$selectedKindCell.find('.provider-kind-text').text(targetKind);
+
+					var primaryName = String(PROVIDER_CATEGORY_NAME_BY_KEY[primaryKind] || primaryKind).trim();
+					var primaryCode = String(PROVIDER_CATEGORY_CODE_BY_KEY[primaryKind] || '').trim();
+					var savedCategoryCode = String((res && res.data && res.data.category_code) ? res.data.category_code : categoryCode).trim();
+					var secondaryName = String(PROVIDER_CATEGORY_NAME_BY_CODE[savedCategoryCode] || '').trim();
+					var hasSecondary = savedCategoryCode !== '' && savedCategoryCode !== primaryCode && secondaryName !== '';
+
+					$selectedKindCell.data('current-kind', primaryKind);
+					$selectedKindCell.attr('data-current-kind', primaryKind);
+					$selectedKindCell.data('current-category-code', savedCategoryCode);
+					$selectedKindCell.attr('data-current-category-code', savedCategoryCode);
+					$selectedKindCell.find('.provider-kind-primary').text(primaryName);
+
+					var $secondaryWrap = $selectedKindCell.find('.provider-kind-secondary-wrap');
+					var $secondary = $selectedKindCell.find('.provider-kind-secondary');
+					if (hasSecondary) {
+						$secondary.text(secondaryName);
+						$secondaryWrap.show();
+					} else {
+						$secondary.text('');
+						$secondaryWrap.hide();
+					}
+
 					$selectedKindCell.removeClass('provider-kind-cell-missing');
-					closeKindContextMenu();
+					setUpdatedKindCell($selectedKindCell);
+					closeCategoryLayer();
 				})
 				.catch(function() {
+					$('#provider_quick_category_save_btn').prop('disabled', false);
 					alert('서버 통신에 실패했습니다.');
-					closeKindContextMenu();
 				});
 		});
 
 		$(document).on('click', function(e) {
+			clearUpdatedKindCell();
 			var $target = $(e.target);
-			if (!$target.closest('#providerKindContextMenu').length && !$target.closest('.provider-kind-cell').length) {
-				closeKindContextMenu();
+			if (!$target.closest('#providerCategoryContextLayer').length && !$target.closest('.provider-kind-cell').length) {
+				closeCategoryLayer();
 			}
 		});
 
 		$(document).on('keydown', function(e) {
 			if (e.key === 'Escape') {
-				closeKindContextMenu();
+				closeCategoryLayer();
 			}
 		});
 
 		$(window).on('scroll resize', function() {
-			closeKindContextMenu();
+			closeCategoryLayer();
 		});
 
 	});

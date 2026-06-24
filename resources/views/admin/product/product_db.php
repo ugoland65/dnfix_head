@@ -1,6 +1,92 @@
 <div id="contents_head">
 	<h1>상품 DB</h1>
 </div>
+<style>
+    .product-kind-cell {
+        cursor: context-menu;
+        position: relative;
+        transition: box-shadow 0.12s ease, background-color 0.12s ease;
+    }
+    .product-kind-cell.product-kind-selected {
+        outline: 2px solid #2f6fed;
+        outline-offset: -2px;
+        background-color: #eef4ff;
+        z-index: 1;
+    }
+    .product-kind-cell.product-kind-updated {
+        outline: 2px solid #16a34a;
+        outline-offset: -2px;
+        background-color: #ecfdf3;
+        z-index: 1;
+    }
+    .product-kind-context-layer {
+        display: none;
+        position: fixed;
+        min-width: 280px;
+        max-width: 340px;
+        background: #fff;
+        border: 1px solid #d9dce3;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        z-index: 10020;
+        padding: 12px;
+    }
+    .product-kind-context-layer.active {
+        display: block;
+    }
+</style>
+<?php
+    $categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
+    $categoryPrimaryOptions = [];
+    $categoryChildrenByPrimary = [];
+    $categoryNameByKey = [];
+    $categoryNameByCode = [];
+    $categoryCodeByKey = [];
+    foreach ($categoryRows as $categoryRow) {
+        if (!is_array($categoryRow)) {
+            continue;
+        }
+        $parentKey = trim((string)($categoryRow['key'] ?? ''));
+        $parentName = trim((string)($categoryRow['name'] ?? ''));
+        $parentCode = trim((string)($categoryRow['code'] ?? ''));
+        if ($parentKey === '' || $parentName === '') {
+            continue;
+        }
+        $categoryPrimaryOptions[] = [
+            'key' => $parentKey,
+            'name' => $parentName,
+        ];
+        $categoryNameByKey[$parentKey] = $parentName;
+        if ($parentCode !== '') {
+            $categoryCodeByKey[$parentKey] = $parentCode;
+            $categoryNameByCode[$parentCode] = $parentName;
+        }
+
+        $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+        $childOptions = [];
+        foreach ($children as $childRow) {
+            if (!is_array($childRow)) {
+                continue;
+            }
+            $childKey = trim((string)($childRow['key'] ?? ''));
+            $childName = trim((string)($childRow['name'] ?? ''));
+            $childCode = trim((string)($childRow['code'] ?? ''));
+            if ($childKey === '' || $childName === '') {
+                continue;
+            }
+            $childOptions[] = [
+                'key' => $childKey,
+                'name' => $childName,
+            ];
+            $categoryNameByKey[$childKey] = $childName;
+            if ($childCode !== '') {
+                $categoryCodeByKey[$childKey] = $childCode;
+                $categoryNameByCode[$childCode] = $childName;
+            }
+        }
+        $categoryChildrenByPrimary[$parentKey] = $childOptions;
+    }
+?>
 <div id="contents_body">
     <div id="contents_body_wrap" >
 
@@ -40,6 +126,13 @@
                 </select>
             </ul>
             <ul>
+                <select name="s_prd_kind_second" id="s_prd_kind_second" style="display:none;">
+                    <option value="">2차 카테고리</option>
+                </select>
+            </ul>
+
+            <? /*
+            <ul>
                 <select name="s_work_task_code" id="s_work_task_code">
                     <option value="">작업체크 항목</option>
                     <?php foreach (($workTaskItemOptions ?? []) as $taskItem) { ?>
@@ -58,6 +151,9 @@
                     <option value="N" <?php if ((string)($s_work_task_done ?? '') === 'N') echo 'selected'; ?>>미완료</option>
                 </select>
             </ul>
+
+            */?>
+            
             <ul>
                 <select name="s_importing_country" id="s_importing_country" >
                     <option value="">수입국</option>
@@ -249,7 +345,26 @@
                                     <td class="p-5">
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><img src="<?=$img_path?>" style="height:70px; border:1px solid #eee !important;"></p>
                                     </td>
-                                    <td class="text-center"><?=$product['prd_kind_name']?></td>
+                                    <?php
+                                        $primaryCategoryName = trim((string)($product['prd_kind_name'] ?? '미지정'));
+                                        $secondaryCategoryName = trim((string)($product['cd_category_name'] ?? ''));
+                                        $currentKindCode = trim((string)($product['CD_KIND_CODE'] ?? ''));
+                                        $currentCategoryCode = trim((string)($product['CD_CATEGORY_CODE'] ?? ''));
+                                        $hasSecondaryCategory = $currentCategoryCode !== ''
+                                            && $secondaryCategoryName !== ''
+                                            && $secondaryCategoryName !== $primaryCategoryName;
+                                    ?>
+                                    <td class="text-center product-kind-cell"
+                                        data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                        data-current-kind="<?= htmlspecialchars($currentKindCode, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-current-category-code="<?= htmlspecialchars($currentCategoryCode, ENT_QUOTES, 'UTF-8') ?>">
+                                        <?php
+                                        ?>
+                                        <span class="product-kind-primary"><?= htmlspecialchars($primaryCategoryName, ENT_QUOTES, 'UTF-8') ?></span>
+                                        <span class="product-kind-secondary-wrap" style="<?= $hasSecondaryCategory ? '' : 'display:none;' ?>">
+                                            <br><b class="product-kind-secondary"><?= htmlspecialchars($secondaryCategoryName, ENT_QUOTES, 'UTF-8') ?></b>
+                                        </span>
+                                    </td>
                                     <td>
                                         <?php if( $product['is_sale_month'] ){ ?>
                                             <label class="on_sale_label xs monthly">월간할인</label>
@@ -424,7 +539,29 @@
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
 	</div>
 </div>
+<div id="productCategoryContextLayer" class="product-kind-context-layer" aria-hidden="true">
+    <div style="font-weight:700; margin-bottom:8px;">상품 분류 수정</div>
+    <div style="margin-bottom:8px;">
+        <select id="quick_category_primary" style="width:100%;">
+            <option value="">1차 카테고리 선택</option>
+        </select>
+    </div>
+    <div id="quick_category_secondary_wrap" style="display:none; margin-bottom:10px;">
+        <select id="quick_category_secondary" style="width:100%;">
+            <option value="">2차 카테고리 선택</option>
+        </select>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_category_cancel_btn">취소</button>
+        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_category_save_btn">저장</button>
+    </div>
+</div>
 <script type="text/javascript">
+const PRODUCT_CATEGORY_PRIMARY_OPTIONS = <?= json_encode($categoryPrimaryOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY = <?= json_encode($categoryChildrenByPrimary ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const PRODUCT_CATEGORY_NAME_BY_KEY = <?= json_encode($categoryNameByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const PRODUCT_CATEGORY_NAME_BY_CODE = <?= json_encode($categoryNameByCode ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const PRODUCT_CATEGORY_CODE_BY_KEY = <?= json_encode($categoryCodeByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function select_all() {
 		var checkboxes = document.getElementsByName('check_idx[]');
@@ -456,6 +593,7 @@ function select_all() {
 		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
 		var fields = {
 			's_prd_kind': $("#s_prd_kind").val(),
+            's_prd_kind_second': $("#s_prd_kind_second").val(),
 			'search_value': $("#search_value").val(),
 			's_brand': $("#s_brand").val(),
 			's_importing_country': $("#s_importing_country").val(),
@@ -498,8 +636,171 @@ function select_all() {
 	}
 
     $(function(){
+        var $categoryLayer = $('#productCategoryContextLayer');
+        var $selectedCategoryCell = null;
+        var $updatedCategoryCell = null;
+
+        function setUpdatedCategoryCell($cell) {
+            if ($updatedCategoryCell && $updatedCategoryCell.length) {
+                $updatedCategoryCell.removeClass('product-kind-updated');
+            }
+            $updatedCategoryCell = $cell && $cell.length ? $cell : null;
+            if ($updatedCategoryCell && $updatedCategoryCell.length) {
+                $updatedCategoryCell.addClass('product-kind-updated');
+            }
+        }
+
+        function clearUpdatedCategoryCell() {
+            if ($updatedCategoryCell && $updatedCategoryCell.length) {
+                $updatedCategoryCell.removeClass('product-kind-updated');
+            }
+            $updatedCategoryCell = null;
+        }
+
+        function closeCategoryLayer() {
+            $categoryLayer.removeClass('active').hide().attr('aria-hidden', 'true');
+            if ($selectedCategoryCell && $selectedCategoryCell.length) {
+                $selectedCategoryCell.removeClass('product-kind-selected');
+            }
+            $selectedCategoryCell = null;
+        }
+
+        function fillPrimarySelect(selectedKind) {
+            var $primary = $('#quick_category_primary');
+            $primary.empty().append('<option value="">1차 카테고리 선택</option>');
+            (PRODUCT_CATEGORY_PRIMARY_OPTIONS || []).forEach(function(item) {
+                if (!item || !item.key) {
+                    return;
+                }
+                $primary.append($('<option>', {
+                    value: item.key,
+                    text: item.name || item.key
+                }));
+            });
+            $primary.val(String(selectedKind || '').trim());
+        }
+
+        function fillSecondarySelect(primaryKind, selectedSecondKind) {
+            var kind = String(primaryKind || '').trim();
+            var childOptions = Array.isArray(PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[kind]) ? PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[kind] : [];
+            var $wrap = $('#quick_category_secondary_wrap');
+            var $secondary = $('#quick_category_secondary');
+
+            $secondary.empty().append('<option value="">2차 카테고리 선택</option>');
+            if (childOptions.length === 0) {
+                $wrap.hide();
+                return;
+            }
+
+            childOptions.forEach(function(item) {
+                if (!item || !item.key) {
+                    return;
+                }
+                $secondary.append($('<option>', {
+                    value: item.key,
+                    text: item.name || item.key
+                }));
+            });
+
+            $secondary.val(String(selectedSecondKind || '').trim());
+            $wrap.show();
+        }
+
+        function findSecondKindByCategoryCode(primaryKind, categoryCode) {
+            var kind = String(primaryKind || '').trim();
+            var code = String(categoryCode || '').trim();
+            if (!kind || !code) {
+                return '';
+            }
+            var childOptions = Array.isArray(PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[kind]) ? PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[kind] : [];
+            for (var i = 0; i < childOptions.length; i++) {
+                var child = childOptions[i] || {};
+                var childKey = String(child.key || '').trim();
+                if (childKey && String(PRODUCT_CATEGORY_CODE_BY_KEY[childKey] || '').trim() === code) {
+                    return childKey;
+                }
+            }
+            return '';
+        }
+
+        function fillSearchSecondarySelect(resetSelection) {
+            var primaryKind = String($('#s_prd_kind').val() || '').trim();
+            var $second = $('#s_prd_kind_second');
+            var childOptions = Array.isArray(PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind]) ? PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind] : [];
+
+            $second.empty().append('<option value="">2차 카테고리</option>');
+            if (childOptions.length === 0) {
+                $second.val('');
+                $second.hide();
+                return;
+            }
+
+            childOptions.forEach(function(item) {
+                if (!item || !item.key) {
+                    return;
+                }
+                $second.append($('<option>', {
+                    value: item.key,
+                    text: item.name || item.key
+                }));
+            });
+
+            if (resetSelection) {
+                $second.val('');
+            } else {
+                var currentVal = String('<?= htmlspecialchars((string)($s_prd_kind_second ?? ''), ENT_QUOTES, 'UTF-8') ?>');
+                $second.val(currentVal);
+            }
+            $second.show();
+        }
+
+        function openCategoryLayer($cell, clientX, clientY) {
+            var prdIdx = Number($cell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                return;
+            }
+
+            closeCategoryLayer();
+            $selectedCategoryCell = $cell;
+            $selectedCategoryCell.addClass('product-kind-selected');
+
+            var currentKind = String($cell.data('current-kind') || '').trim();
+            var currentCategoryCode = String($cell.data('current-category-code') || '').trim();
+            var secondKind = findSecondKindByCategoryCode(currentKind, currentCategoryCode);
+
+            fillPrimarySelect(currentKind);
+            fillSecondarySelect(currentKind, secondKind);
+
+            $categoryLayer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
+            var layerWidth = $categoryLayer.outerWidth();
+            var layerHeight = $categoryLayer.outerHeight();
+            var viewportWidth = $(window).width();
+            var viewportHeight = $(window).height();
+
+            var left = clientX;
+            var top = clientY;
+            if (left + layerWidth > viewportWidth - 10) {
+                left = viewportWidth - layerWidth - 10;
+            }
+            if (top + layerHeight > viewportHeight - 10) {
+                top = viewportHeight - layerHeight - 10;
+            }
+
+            left = Math.max(10, left);
+            top = Math.max(10, top);
+
+            $categoryLayer.css({
+                left: left + 'px',
+                top: top + 'px',
+                visibility: 'visible'
+            }).addClass('active').attr('aria-hidden', 'false');
+        }
         
         $(".dn-select2").select2();
+        fillSearchSecondarySelect(false);
+        $('#s_prd_kind').on('change', function() {
+            fillSearchSecondarySelect(true);
+        });
         
         // 개별 체크박스 선택 시 행 배경색 변경
         $(document).on('change', 'input[name="check_idx[]"]', function() {
@@ -542,6 +843,105 @@ function select_all() {
                 e.preventDefault();
                 $("#searchBtn").trigger('click');
             }
+        });
+
+        $(document).on('contextmenu', '.product-kind-cell', function(e) {
+            e.preventDefault();
+            openCategoryLayer($(this), e.clientX, e.clientY);
+        });
+
+        $('#quick_category_primary').on('change', function() {
+            fillSecondarySelect($(this).val(), '');
+        });
+
+        $('#quick_category_cancel_btn').on('click', function() {
+            closeCategoryLayer();
+        });
+
+        $('#quick_category_save_btn').on('click', function() {
+            if (!$selectedCategoryCell || !$selectedCategoryCell.length) {
+                closeCategoryLayer();
+                return;
+            }
+
+            var prdIdx = Number($selectedCategoryCell.data('prd-idx') || 0);
+            var primaryKind = String($('#quick_category_primary').val() || '').trim();
+            var secondaryKind = String($('#quick_category_secondary').val() || '').trim();
+
+            if (!primaryKind) {
+                alert('1차 카테고리를 선택해주세요.');
+                return;
+            }
+
+            var categoryCode = '';
+            if (secondaryKind) {
+                categoryCode = String(PRODUCT_CATEGORY_CODE_BY_KEY[secondaryKind] || '').trim();
+            }
+            if (!categoryCode) {
+                categoryCode = String(PRODUCT_CATEGORY_CODE_BY_KEY[primaryKind] || '').trim();
+            }
+
+            var payload = {
+                action_mode: 'update_product_category',
+                prd_idx: prdIdx,
+                cd_kind_code: primaryKind,
+                cd_kind_code_second: secondaryKind,
+                cd_category_code: categoryCode
+            };
+
+            ajaxRequest('/admin/product/action', payload)
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '분류 수정에 실패했습니다.');
+                        return;
+                    }
+
+                    var primaryName = String(PRODUCT_CATEGORY_NAME_BY_KEY[primaryKind] || primaryKind);
+                    var primaryCode = String(PRODUCT_CATEGORY_CODE_BY_KEY[primaryKind] || '').trim();
+                    var savedCategoryCode = String((res && res.data && res.data.cd_category_code) ? res.data.cd_category_code : categoryCode).trim();
+                    var secondaryName = String(PRODUCT_CATEGORY_NAME_BY_CODE[savedCategoryCode] || '').trim();
+                    var hasSecondary = savedCategoryCode !== '' && savedCategoryCode !== primaryCode && secondaryName !== '';
+
+                    $selectedCategoryCell.data('current-kind', primaryKind);
+                    $selectedCategoryCell.attr('data-current-kind', primaryKind);
+                    $selectedCategoryCell.data('current-category-code', savedCategoryCode);
+                    $selectedCategoryCell.attr('data-current-category-code', savedCategoryCode);
+                    $selectedCategoryCell.find('.product-kind-primary').text(primaryName);
+
+                    var $secondaryWrap = $selectedCategoryCell.find('.product-kind-secondary-wrap');
+                    var $secondary = $selectedCategoryCell.find('.product-kind-secondary');
+                    if (hasSecondary) {
+                        $secondary.text(secondaryName);
+                        $secondaryWrap.show();
+                    } else {
+                        $secondary.text('');
+                        $secondaryWrap.hide();
+                    }
+
+                    setUpdatedCategoryCell($selectedCategoryCell);
+                    closeCategoryLayer();
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        });
+
+        $(document).on('click', function(e) {
+            clearUpdatedCategoryCell();
+            var $target = $(e.target);
+            if (!$target.closest('#productCategoryContextLayer').length && !$target.closest('.product-kind-cell').length) {
+                closeCategoryLayer();
+            }
+        });
+
+        $(document).on('keydown', function(e) {
+            if (e.key === 'Escape') {
+                closeCategoryLayer();
+            }
+        });
+
+        $(window).on('scroll resize', function() {
+            closeCategoryLayer();
         });
 
 		// 선택상품 업무요청

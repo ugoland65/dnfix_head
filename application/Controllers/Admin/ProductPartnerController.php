@@ -42,6 +42,8 @@ class ProductPartnerController extends BaseClass
             $s_brand = $requestData['s_brand'] ?? null; // 브랜드
             $sort_mode = $requestData['sort_mode'] ?? 'idx'; // 정렬 모드
             $s_godo_sale_status = $requestData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
+            $s_prd_kind = $requestData['s_prd_kind'] ?? null; // 상품분류(1차)
+            $s_prd_kind_second = $requestData['s_prd_kind_second'] ?? null; // 상품분류(2차)
 
             $payload = [
                 'paging' => true,
@@ -54,6 +56,8 @@ class ProductPartnerController extends BaseClass
                 's_brand' => $s_brand,
                 'sort_mode' => $sort_mode,
                 's_godo_sale_status' => $s_godo_sale_status,
+                's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
             ];
 
             $productPartnerService = new ProductPartnerService();
@@ -77,6 +81,7 @@ class ProductPartnerController extends BaseClass
             $brandForSelect = $brandService->getBrandForSelect(['listActive' => true]);
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+            $categories = $config_product['categories'] ?? [];
 
             //공급매칭 pks 수집
             $supplier_prd_idxs = [];
@@ -144,6 +149,8 @@ class ProductPartnerController extends BaseClass
                 's_keyword' => $s_keyword,
                 's_brand' => $s_brand,
                 's_status' => $s_godo_sale_status,
+                's_prd_kind' => $s_prd_kind,
+                's_prd_kind_second' => $s_prd_kind_second,
                 'sort_mode' => $sort_mode,
                 'pagination' => $paginationArray,
                 'paginationHtml' => $paginationHtml,
@@ -151,6 +158,7 @@ class ProductPartnerController extends BaseClass
                 'partnerForSelect' => $partnerForSelect,
                 'brandForSelect' => $brandForSelect,
                 'prd_kind_name' => $prd_kind_name,
+                'categories' => $categories,
                 'supplierProductMap' => $supplierProductMap,
             ];
 
@@ -328,6 +336,7 @@ class ProductPartnerController extends BaseClass
 
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+            $categories = $config_product['categories'] ?? [];
 
             $config_godo_cate = config('admin.godo_cate');
             $godo_cate = $config_godo_cate ?? [];
@@ -345,6 +354,7 @@ class ProductPartnerController extends BaseClass
             $data = [
                 'godo_cate' => $godo_cate,
                 'prd_kind_name' => $prd_kind_name,
+                'categories' => $categories,
                 'brandForSelect' => $brandForSelect,
                 'partnerForSelect' => $partnerForSelect,
                 'prd_data' => $productPartner ?? [],
@@ -546,6 +556,23 @@ class ProductPartnerController extends BaseClass
                 $result = true;
                 $message = '최근 할인일이 저장되었습니다.';
                 $errorMessage = '최근 할인일 저장에 실패했습니다.';
+
+            }elseif( $actionMode == 'update_product_partner_category' ){
+                $payload = [
+                    'prd_idx' => $requestData['prd_idx'] ?? null,
+                    'kind_code' => $requestData['kind_code'] ?? '',
+                    'kind_second_code' => $requestData['kind_second_code'] ?? '',
+                    'category_code' => $requestData['category_code'] ?? '',
+                ];
+                $resultData = $productPartnerService->updateProductPartnerCategory($payload);
+                if (($resultData['status'] ?? 'error') !== 'success') {
+                    throw new \Exception($resultData['message'] ?? '분류 수정에 실패했습니다.');
+                }
+                return response()->json([
+                    'status' => 'success',
+                    'message' => $resultData['message'] ?? '분류가 수정되었습니다.',
+                    'data' => $resultData['data'] ?? [],
+                ]);
 
             }else{
                 throw new \Exception('지원하지 않는 action_mode 입니다.');

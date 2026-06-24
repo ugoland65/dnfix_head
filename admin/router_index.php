@@ -138,6 +138,8 @@ try {
     $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
+    $router->get('/order/godo_order_purchase_list', GodoApiController::class, 'godoOrderPurchaseList'); //구매대행 주문서 조회
+    
     //주문서 재고 일괄등록
 
     // 재고 관리
