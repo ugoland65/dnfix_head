@@ -375,6 +375,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
 		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고/판매 리스트</ul>
+		<ul id="crm_menu_competitor_product" class="" onclick="prdInfo.mode('', 'competitor_product')">경쟁사 판매현황</ul>
 		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
@@ -385,16 +386,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		if( !empty($prd_data['ps_idx']) ){ ?>
 		<div class="stock-write-box">
 
-			<?php /*
-			<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
-			<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold'] ?? 0?></b></ul>
-			*/ ?>
+			<?php 
+				/*
+				<ul>현재 재고 : <b id="now_stock"><?=$prd_data['ps_stock'] ?? 0?></b></ul>
+				<ul class="m-t-7">보류 재고 : <b id="now_stock_hold" style="color:#999;"><?=$prd_data['ps_stock_hold'] ?? 0?></b></ul>
+				*/ 
+			?>
 
 			<ul class="m-t-7"><button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.stockModify()" >재고 변경등록</button></ul>
 		</div>
-		<?php } 
-
-	?>
+		<?php } ?>
 	<div class="left-btn-wrap">
 		<button type="button" id="" class="btnstyle1 btnstyle1-info btnstyle1-sm btnstyle1-search-full" onclick="prdInfo.prdGroupingAdd()" >이상품 그룹핑 추가</button>
 	</div>
@@ -445,7 +446,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 					<dl>
 						<dt>재고코드가 생성되지 않았습니다.</dt>
 						<dd>
-							<button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.makePsIdx()"> <i class="fas fa-plus-circle"></i> 재고 코드 생성</button>
+							<button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="prdInfo.makePsIdx()"> <i class="fas fa-plus-circle"></i> 재고 코드 생성</button>
 						</dd>
 					</dl>
 				<?php } ?>
@@ -476,16 +477,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				</ul>
 
 				<?php if (!empty($grade)) { ?>
-				<ul>
-					<dl>
-						<dt>마진등급</dt>
-						<dd>
-							<span class="grade-badge grade-<?=$grade?>">
-								<?=$grade?>
-							</span>
-						</dd>
-					</dl>
-				</ul>
+					<ul>
+						<dl>
+							<dt>마진등급</dt>
+							<dd>
+								<span class="grade-badge grade-<?=$grade?>">
+									<?=$grade?>
+								</span>
+							</dd>
+						</dl>
+					</ul>
 				<?php } ?>
 
 				<?php if (!empty($prd_data['cd_godo_code'])) { ?>
@@ -623,6 +624,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 							sdate: searchDateStart,
 							edate: searchDateEnd
 						}
+					};
+					break;
+				case "competitor_product": // 경쟁사 판매현황
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_competitor_product",
+						data: { prd_idx: prd_idx }
 					};
 					break;
 				case "godo_inspection": // 고도몰 검수 처리

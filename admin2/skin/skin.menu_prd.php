@@ -18,7 +18,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	*/ ?>
 
 	<ul <? if( $pageNameCode == "prd_db") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_db'"><li>상품 DB</li></ul>
-	<ul <? if( $_pageN == "prd_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>보유상품 관리</li></ul>
+	<ul <? if( $pageNameCode == "product_stock") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>보유상품 관리</li></ul>
 
 </div>
 <div class="left-menu-mid-title">

@@ -330,7 +330,7 @@ $gnb_lang = "ko";
 
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "showdang") echo "active"; ?>"><a href="/ad/showdang/brand_group">쑈당몰</a></li>
             <li class="<?=$gnb_lang?> <? if($_pageGroup == "onadb") echo "active"; ?>"><a href="/ad/onadb/onadb_prd_comment">오나디비</a></li>
-            <li class="ko <?php if( $_pageGroup == "prd" || $pageGroup2 == "prd" ) echo "active"; ?>  have-sub-menu">
+            <li class="ko <?php if( $_pageGroup == "prd" || $pageGroup2 == "prd" ) echo "active"; ?> have-sub-menu">
 				상품관리
 				<div class="sub-menu">
 					<ul>
@@ -356,8 +356,18 @@ $gnb_lang = "ko";
 				</div>
 			</li>    
 
-			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?>">
-				<a href="/admin/provider_product/db">공급사 관리</a>
+			<li class="ko <?php if( $_pageGroup == "provider" || $pageGroup2 == "provider" ) echo "active"; ?> have-sub-menu">
+				<a href="/admin/provider_product/db">공급사/경쟁사</a>
+				<div class="sub-menu">
+					<ul>
+						<li>
+							<a href="/admin/provider_product/db">공급사 상품 DB</a>
+						</li>
+						<li>
+							<a href="/admin/competitor/competitor_product_db">경쟁사 상품 DB</a>
+						</li>
+					</ul>
+				</div>
 			</li>
 			
             <li class="ko <?php if( $_pageGroup == "coupang" || $pageGroup2 == "coupang" ) echo "active"; ?> have-sub-menu">

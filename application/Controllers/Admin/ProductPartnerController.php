@@ -199,6 +199,10 @@ class ProductPartnerController extends BaseClass
             $s_keyword = $requestData['s_keyword'] ?? '';
             $page = $requestData['page'] ?? 1;
             $s_status = $requestData['s_status'] ?? '';
+            $s_limit = (int)($requestData['s_limit'] ?? 100);
+            if (!in_array($s_limit, [100, 200, 300, 500], true)) {
+                $s_limit = 100;
+            }
 
             if( $site ){
 
@@ -208,7 +212,7 @@ class ProductPartnerController extends BaseClass
                 $url .= "&match_status=".$s_match_status;
                 $url .= "&keyword=".urlencode($s_keyword);
                 $url .= "&page=".$page;
-                $url .= "&limit=500";
+                $url .= "&limit=".$s_limit;
             
                 // 보낼 API Key
                 $headers = [
@@ -267,6 +271,7 @@ class ProductPartnerController extends BaseClass
                 's_keyword' => $s_keyword,
                 'page' => $page,
                 's_status' => $s_status,
+                's_limit' => $s_limit,
                 'SupplierProductApiData' => $SupplierProductApiData,
                 'pagination_total' => $pagination_total,
                 'pagination_per_page' => $pagination_per_page,

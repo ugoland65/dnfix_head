@@ -14,6 +14,7 @@ use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
 use App\Services\GodoInspectionService;
 use App\Services\InspectionProcessLogService;
+use App\Services\CompetitorApiService;
 use App\Utils\Pagination;
 class ProductController extends BaseClass 
 {
@@ -402,6 +403,42 @@ class ProductController extends BaseClass
         }
     }
 
+    /**
+     * 상품 디테일 (경쟁사 판매현황)
+     */
+    public function prdDetailCompetitorProductPage(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            if ($prdIdx <= 0) {
+                throw new Exception('prd_idx가 올바르지 않습니다.');
+            }
+
+            $competitorApiService = new CompetitorApiService();
+            $competitorApiData = $competitorApiService->getCompetitorProducts([
+                'match_idx' => $prdIdx,
+                'sort_mode' => 'updated_at',
+                'page' => 1,
+                'limit' => 200,
+            ]);
+
+            $rows = $competitorApiData['data']['competitorProducts'] ?? [];
+            if (!is_array($rows)) {
+                $rows = [];
+            }
+
+            return view('admin.product.prd_detail_competitor_product', [
+                'prd_idx' => $prdIdx,
+                'rows' => $rows,
+            ]);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
 
     /**
      * 상품 베이직 저장
@@ -523,6 +560,10 @@ class ProductController extends BaseClass
                 
                 case 'update_product_category':
                     $result = $this->productService->updateProductCategory($requestData);
+                    break;
+
+                case 'update_product_memo2':
+                    $result = $this->productService->updateProductMemo2($requestData);
                     break;
 
                 default:

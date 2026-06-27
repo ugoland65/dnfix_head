@@ -25,6 +25,7 @@ use App\Controllers\Admin\OrderController;
 use App\Controllers\Admin\Coupang\CoupangController;
 use App\Controllers\Admin\CalendarController;
 use App\Controllers\Admin\SaleHistoryController;
+use App\Controllers\Admin\CompetitorController;
 
 try {
 
@@ -76,6 +77,7 @@ try {
     $router->get('/product/detail_basic', ProductController::class, 'prdDetailBasicPage'); //상품 디테일 (베이직)
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
+    $router->get('/product/detail_competitor_product', ProductController::class, 'prdDetailCompetitorProductPage'); //상품 디테일 (경쟁사 판매현황)
     $router->post('/product/detail_sale_log/save', ProductController::class, 'saveProductSaleLog'); //상품 디테일 (할인 로그 저장)
     $router->post('/product/detail_godo_inspection', ProductController::class, 'prdDetailGodoInspection'); //상품 디테일 (고도몰 검수 처리)
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트
@@ -118,6 +120,10 @@ try {
     $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
     $router->get('/provider_product/discount_sale_log', ProductPartnerController::class, 'productPartnerDiscountSaleLog'); //공급사 상품 할인 내역 로그
 
+    //경쟁사 DB
+    $router->get('/competitor/competitor_product_db', CompetitorController::class, 'getCompetitorProductDb'); //경쟁사 사이트 상품DB
+    $router->post('/competitor/search_product', CompetitorController::class, 'searchComparisonProducts'); //경쟁사 상품 매칭용 상품DB 검색
+    $router->post('/competitor/match', CompetitorController::class, 'matchCompetitorProduct'); //경쟁사 상품 매칭 저장
 
     // 재고/발주 관리
     $router->get('/order/sheet', OrderSheetController::class, 'orderSheetPage'); //주문서 작업 페이지

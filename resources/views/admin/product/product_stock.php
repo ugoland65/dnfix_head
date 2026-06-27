@@ -2,18 +2,21 @@
 	<h1>상품 재고 (보유상품 관리)</h1>
 </div>
 <style>
-    .product-kind-cell {
+    .product-kind-cell,
+    .product-name-cell {
         cursor: context-menu;
         position: relative;
         transition: box-shadow 0.12s ease, background-color 0.12s ease;
     }
-    .product-kind-cell.product-kind-selected {
+    .product-kind-cell.product-kind-selected,
+    .product-name-cell.product-kind-selected {
         outline: 2px solid #2f6fed;
         outline-offset: -2px;
         background-color: #eef4ff;
         z-index: 1;
     }
-    .product-kind-cell.product-kind-updated {
+    .product-kind-cell.product-kind-updated,
+    .product-name-cell.product-kind-updated {
         outline: 2px solid #16a34a;
         outline-offset: -2px;
         background-color: #ecfdf3;
@@ -366,7 +369,10 @@
                                             <br><b class="product-kind-secondary"><?= htmlspecialchars($secondaryCategoryName, ENT_QUOTES, 'UTF-8') ?></b>
                                         </span>
                                     </td>
-                                    <td>
+
+                                    <td class="product-name-cell"
+                                        data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                        data-current-memo2="<?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                         <?php if( $product['is_sale_month'] ){ ?>
                                             <label class="on_sale_label xs monthly">월간할인</label>
                                         <?php } ?>
@@ -378,10 +384,11 @@
                                         <?php } ?>
 
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
-                                        <?php if( !empty($product['cd_memo2']) ){ ?>
-                                            <div class="m-t-3" style="color:#ff0000"><span class="prd-memo">- <?=$product['cd_memo2']?></span></div>
-                                        <?php } ?>
+                                        <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
+                                            <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                        </div>
                                     </td>
+                                    
                                     <td class="text-center">
                                         <a href="/admin/product/product_stock?s_brand=<?=$product['CD_BRAND_IDX']?>"><?=$product['brand_name']?></a>
                                         <?php if( $product['CD_BRAND2_IDX'] ){ ?>
@@ -563,6 +570,16 @@
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_category_save_btn">저장</button>
     </div>
 </div>
+<div id="productMemoContextLayer" class="product-kind-context-layer" aria-hidden="true">
+    <div style="font-weight:700; margin-bottom:8px;">리스트 메모 수정</div>
+    <div style="margin-bottom:10px;">
+        <input type="text" id="quick_memo2_input" style="width:100%;" placeholder="리스트 메모 입력">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_memo2_cancel_btn">취소</button>
+        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_memo2_save_btn">저장</button>
+    </div>
+</div>
 
 <script>
     const PRODUCT_CATEGORY_PRIMARY_OPTIONS = <?= json_encode($categoryPrimaryOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -647,7 +664,9 @@
 
     $(function(){
         var $categoryLayer = $('#productCategoryContextLayer');
+        var $memoLayer = $('#productMemoContextLayer');
         var $selectedCategoryCell = null;
+        var $selectedMemoCell = null;
         var $updatedCategoryCell = null;
 
         function setUpdatedCategoryCell($cell) {
@@ -673,6 +692,40 @@
                 $selectedCategoryCell.removeClass('product-kind-selected');
             }
             $selectedCategoryCell = null;
+        }
+
+        function closeMemoLayer() {
+            $memoLayer.removeClass('active').hide().attr('aria-hidden', 'true');
+            if ($selectedMemoCell && $selectedMemoCell.length) {
+                $selectedMemoCell.removeClass('product-kind-selected');
+            }
+            $selectedMemoCell = null;
+        }
+
+        function positionLayer($layer, clientX, clientY) {
+            $layer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
+            var layerWidth = $layer.outerWidth();
+            var layerHeight = $layer.outerHeight();
+            var viewportWidth = $(window).width();
+            var viewportHeight = $(window).height();
+
+            var left = clientX;
+            var top = clientY;
+            if (left + layerWidth > viewportWidth - 10) {
+                left = viewportWidth - layerWidth - 10;
+            }
+            if (top + layerHeight > viewportHeight - 10) {
+                top = viewportHeight - layerHeight - 10;
+            }
+
+            left = Math.max(10, left);
+            top = Math.max(10, top);
+
+            $layer.css({
+                left: left + 'px',
+                top: top + 'px',
+                visibility: 'visible'
+            }).addClass('active').attr('aria-hidden', 'false');
         }
 
         function fillPrimarySelect(selectedKind) {
@@ -770,6 +823,7 @@
                 return;
             }
 
+            closeMemoLayer();
             closeCategoryLayer();
             $selectedCategoryCell = $cell;
             $selectedCategoryCell.addClass('product-kind-selected');
@@ -780,30 +834,42 @@
 
             fillPrimarySelect(currentKind);
             fillSecondarySelect(currentKind, secondKind);
+            positionLayer($categoryLayer, clientX, clientY);
+        }
 
-            $categoryLayer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
-            var layerWidth = $categoryLayer.outerWidth();
-            var layerHeight = $categoryLayer.outerHeight();
-            var viewportWidth = $(window).width();
-            var viewportHeight = $(window).height();
-
-            var left = clientX;
-            var top = clientY;
-            if (left + layerWidth > viewportWidth - 10) {
-                left = viewportWidth - layerWidth - 10;
-            }
-            if (top + layerHeight > viewportHeight - 10) {
-                top = viewportHeight - layerHeight - 10;
+        function openMemoLayer($cell, clientX, clientY) {
+            var prdIdx = Number($cell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                return;
             }
 
-            left = Math.max(10, left);
-            top = Math.max(10, top);
+            closeCategoryLayer();
+            closeMemoLayer();
+            $selectedMemoCell = $cell;
+            $selectedMemoCell.addClass('product-kind-selected');
 
-            $categoryLayer.css({
-                left: left + 'px',
-                top: top + 'px',
-                visibility: 'visible'
-            }).addClass('active').attr('aria-hidden', 'false');
+            var currentMemo = String($cell.data('current-memo2') || '').trim();
+            $('#quick_memo2_input').val(currentMemo);
+
+            positionLayer($memoLayer, clientX, clientY);
+            $('#quick_memo2_input').trigger('focus').trigger('select');
+        }
+
+        function applyProductMemo2($cell, memoText) {
+            var normalizedMemo = String(memoText || '').trim();
+            $cell.data('current-memo2', normalizedMemo);
+            $cell.attr('data-current-memo2', normalizedMemo);
+
+            var $memoWrap = $cell.find('.prd-memo-wrap');
+            var $memoText = $cell.find('.prd-memo');
+            if (normalizedMemo === '') {
+                $memoText.text('');
+                $memoWrap.hide();
+                return;
+            }
+
+            $memoText.text('- ' + normalizedMemo);
+            $memoWrap.show();
         }
 
         $(".dn-select2").select2();
@@ -853,12 +919,21 @@
             openCategoryLayer($(this), e.clientX, e.clientY);
         });
 
+        $(document).on('contextmenu', '.product-name-cell', function(e) {
+            e.preventDefault();
+            openMemoLayer($(this), e.clientX, e.clientY);
+        });
+
         $('#quick_category_primary').on('change', function() {
             fillSecondarySelect($(this).val(), '');
         });
 
         $('#quick_category_cancel_btn').on('click', function() {
             closeCategoryLayer();
+        });
+
+        $('#quick_memo2_cancel_btn').on('click', function() {
+            closeMemoLayer();
         });
 
         $('#quick_category_save_btn').on('click', function() {
@@ -929,22 +1004,73 @@
                 });
         });
 
+        function saveQuickMemo2() {
+            if (!$selectedMemoCell || !$selectedMemoCell.length) {
+                closeMemoLayer();
+                return;
+            }
+
+            var prdIdx = Number($selectedMemoCell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                closeMemoLayer();
+                return;
+            }
+
+            var nextMemo = String($('#quick_memo2_input').val() || '').trim();
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'update_product_memo2',
+                prd_idx: prdIdx,
+                cd_memo2: nextMemo
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '리스트 메모 저장에 실패했습니다.');
+                        return;
+                    }
+                    applyProductMemo2($selectedMemoCell, nextMemo);
+                    setUpdatedCategoryCell($selectedMemoCell);
+                    closeMemoLayer();
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        }
+
+        $('#quick_memo2_save_btn').on('click', function() {
+            saveQuickMemo2();
+        });
+
+        $('#quick_memo2_input').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveQuickMemo2();
+            }
+        });
+
         $(document).on('click', function(e) {
             clearUpdatedCategoryCell();
             var $target = $(e.target);
-            if (!$target.closest('#productCategoryContextLayer').length && !$target.closest('.product-kind-cell').length) {
+            if (
+                !$target.closest('#productCategoryContextLayer').length &&
+                !$target.closest('#productMemoContextLayer').length &&
+                !$target.closest('.product-kind-cell').length &&
+                !$target.closest('.product-name-cell').length
+            ) {
                 closeCategoryLayer();
+                closeMemoLayer();
             }
         });
 
         $(document).on('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeCategoryLayer();
+                closeMemoLayer();
             }
         });
 
         $(window).on('scroll resize', function() {
             closeCategoryLayer();
+            closeMemoLayer();
         });
 
         // 랙코드 일괄 변경

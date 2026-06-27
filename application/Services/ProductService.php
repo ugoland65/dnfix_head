@@ -1659,6 +1659,43 @@ class ProductService extends BaseClass
         ];
     }
 
+    /**
+     * 목록 화면에서 리스트 메모(cd_memo2) 빠른 수정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function updateProductMemo2(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        $cdMemo2 = trim((string)($postData['cd_memo2'] ?? ''));
+
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $exists = ProductModel::query()
+            ->select('CD_IDX')
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        if (empty($exists)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+                'cd_memo2' => $cdMemo2,
+            ]);
+
+        return [
+            'success' => true,
+            'message' => '리스트 메모가 수정되었습니다.',
+            'prd_idx' => $prdIdx,
+            'cd_memo2' => $cdMemo2,
+        ];
+    }
+
 
     /**
      * 상품 매입정보 저장
@@ -1701,6 +1738,8 @@ class ProductService extends BaseClass
         $costCalDelivery = (string)($postData['cost_cal_delivery'] ?? '');
         $costCalTariff = (string)($postData['cost_cal_tariff'] ?? '');
         $costCalIncidentalCost = (string)($postData['cost_cal_incidental_cost'] ?? '');
+        $additionalCostReasons = $postData['additional_cost_reason'] ?? [];
+        $additionalCostAmounts = $postData['additional_cost_amount'] ?? [];
         $exRate = (string)($postData['ex_rate'] ?? '');
         $oprice = (string)($postData['oprice'] ?? '');
         $opriceKey = (string)($postData['oprice_key'] ?? '');
@@ -1710,16 +1749,37 @@ class ProductService extends BaseClass
         $tax = (string)($postData['tax'] ?? '');
         $vat = (string)($postData['vat'] ?? '');
         $cdCostPriceVat = (string)($postData['cd_cost_price_vat'] ?? '포함');
+        $deliveryType = (string)($postData['delivery_type'] ?? ($oldProduct['delivery_type'] ?? 'small'));
         $delivery = (string)($postData['delivery'] ?? '');
         $opWon = (string)($postData['op_won'] ?? '');
         $costP = (string)($postData['cost_p'] ?? ($postData['cd_cost_price'] ?? '0'));
         $supplierPrdIdx = (int)($postData['supplier_prd_idx'] ?? 0);
         $cdCostPriceMemo = (string)($postData['cd_cost_price_memo'] ?? '');
 
+        if ($deliveryType === 'tiny_80') {
+            $deliveryType = 'tiny';
+        }
+        if (!in_array($deliveryType, ['tiny', 'small', 'medium', 'large', 'xlarge'], true)) {
+            $deliveryType = 'small';
+        }
+
         $cdSizeFnData = json_decode($oldProduct['cd_size_fn'] ?? '{}', true);
         if (!is_array($cdSizeFnData)) {
             $cdSizeFnData = [];
         }
+        $oldCdSizeData = json_decode($oldProduct['CD_SIZE'] ?? '{}', true);
+        if (!is_array($oldCdSizeData)) {
+            $oldCdSizeData = [];
+        }
+        $cdSizeW = array_key_exists('cd_size_w', $postData) ? (string)$postData['cd_size_w'] : (string)($oldCdSizeData['W'] ?? '');
+        $cdSizeH = array_key_exists('cd_size_h', $postData) ? (string)$postData['cd_size_h'] : (string)($oldCdSizeData['H'] ?? '');
+        $cdSizeD = array_key_exists('cd_size_d', $postData) ? (string)$postData['cd_size_d'] : (string)($oldCdSizeData['D'] ?? '');
+        $cdSizeData = [
+            'W' => $cdSizeW,
+            'H' => $cdSizeH,
+            'D' => $cdSizeD,
+        ];
+        $cdSize = json_encode($cdSizeData, JSON_UNESCAPED_UNICODE);
 
         if ($invoiceSizeCbmMode !== 'hand') {
             $invoiceSizeCbmMode = 'auto';
@@ -1743,6 +1803,7 @@ class ProductService extends BaseClass
             'cbm' => $cbm,
             'cbm_mode' => $invoiceSizeCbmMode,
         ];
+        $cdSizeFnData['package'] = $cdSizeData;
         $cdSizeFn = json_encode($cdSizeFnData);
 
         $cdWeightFn = json_encode([
@@ -1754,6 +1815,28 @@ class ProductService extends BaseClass
 
         $cdSalePrice = (int)str_replace(',', '', $cdSalePriceRaw);
         $cdCostPrice = (string)str_replace(',', '', $costP);
+        $additionalCostList = [];
+        $additionalCostTotal = 0;
+        if (!is_array($additionalCostReasons)) {
+            $additionalCostReasons = [];
+        }
+        if (!is_array($additionalCostAmounts)) {
+            $additionalCostAmounts = [];
+        }
+        $additionalCostLength = max(count($additionalCostReasons), count($additionalCostAmounts));
+        for ($i = 0; $i < $additionalCostLength; $i++) {
+            $reason = trim((string)($additionalCostReasons[$i] ?? ''));
+            $amountRaw = trim((string)($additionalCostAmounts[$i] ?? ''));
+            $amount = (int)str_replace(',', '', $amountRaw);
+            if ($reason === '' && $amount <= 0) {
+                continue;
+            }
+            $additionalCostList[] = [
+                'reason' => $reason,
+                'amount' => $amount,
+            ];
+            $additionalCostTotal += $amount;
+        }
 
         $auth = AdminAuth::user() ?? [];
         $regData = [
@@ -1776,6 +1859,8 @@ class ProductService extends BaseClass
                 '배송비' => $costCalDelivery,
                 '관세율' => $costCalTariff,
                 '부대비용' => $costCalIncidentalCost,
+                '추가비용목록' => $additionalCostList,
+                '추가비용합계' => $additionalCostTotal,
                 'reg' => $regData,
             ];
         } else {
@@ -1796,6 +1881,8 @@ class ProductService extends BaseClass
                 '배송비' => $delivery,
                 '원전환' => $opWon,
                 '원가' => $cdCostPrice,
+                '추가비용목록' => $additionalCostList,
+                '추가비용합계' => $additionalCostTotal,
                 'reg' => $regData,
             ];
         }
@@ -1803,10 +1890,12 @@ class ProductService extends BaseClass
 
         $updateData = [
             'cd_national' => $cdNational,
+            'CD_SIZE' => $cdSize,
             'cd_size_fn' => $cdSizeFn,
             'cd_weight_fn' => $cdWeightFn,
             'cd_sale_price' => $cdSalePrice,
             'cd_cost_price' => $cdCostPrice,
+            'delivery_type' => $deliveryType,
             'cd_cost_price_info' => $cdCostPriceInfo,
             'supplier_prd_idx' => $supplierPrdIdx,
             'cd_cost_price_memo' => $cdCostPriceMemo,

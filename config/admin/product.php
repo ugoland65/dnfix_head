@@ -90,7 +90,74 @@ $categories = [
         'code' => '05000000',
         'key' => 'ANAL',
         'name' => '애널',
-        'children' => []
+        'children' => [
+            [
+                'code' => '05010000',
+                'key' => 'ANAL_PLUG_MANUAL',
+                'name' => '애널플러그 (수동)',
+                'children' => []
+            ],
+            [
+                'code' => '05020000',
+                'key' => 'ANAL_PLUG_VIBE',
+                'name' => '애널플러그 (진동)',
+                'children' => []
+            ],
+            [
+                'code' => '05030000',
+                'key' => 'ANAL_BEADS_MANUAL',
+                'name' => '애널비즈 (수동)',
+                'children' => []
+            ],
+            [
+                'code' => '05040000',
+                'key' => 'ANAL_BEADS_VIBE',
+                'name' => '애널비즈 (진동)',
+                'children' => []
+            ],
+            [
+                'code' => '05050000',
+                'key' => 'ANAL_VIBE',
+                'name' => '애널 바이브',
+                'children' => []
+            ],
+            [
+                'code' => '05060000',
+                'key' => 'ANAL_DILDO',
+                'name' => '애널 딜도',
+                'children' => []
+            ],
+            [
+                'code' => '05070000',
+                'key' => 'ANAL_PURE_CRYSTAL',
+                'name' => '퓨어 크리스탈',
+                'children' => []
+            ],
+            [
+                'code' => '05080000',
+                'key' => 'ANAL_PROSTATE_ANEROS',
+                'name' => '전립선/아네로스',
+                'children' => []
+            ],
+            [
+                'code' => '05090000',
+                'key' => 'ANAL_EXPAND_PUMP',
+                'name' => '애널 확장/펌프',
+                'children' => []
+            ],
+            [
+                'code' => '05100000',
+                'key' => 'ANAL_CARE_SUPPORT',
+                'name' => '애널 관리/보조',
+                'children' => []
+            ],
+            [
+                'code' => '05110000',
+                'key' => 'ANAL_TAIL_ACCESSORY',
+                'name' => '애널 테일/액세서리',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '06000000',

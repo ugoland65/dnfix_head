@@ -2,18 +2,21 @@
 	<h1>상품 DB</h1>
 </div>
 <style>
-    .product-kind-cell {
+    .product-kind-cell,
+    .product-name-cell {
         cursor: context-menu;
         position: relative;
         transition: box-shadow 0.12s ease, background-color 0.12s ease;
     }
-    .product-kind-cell.product-kind-selected {
+    .product-kind-cell.product-kind-selected,
+    .product-name-cell.product-kind-selected {
         outline: 2px solid #2f6fed;
         outline-offset: -2px;
         background-color: #eef4ff;
         z-index: 1;
     }
-    .product-kind-cell.product-kind-updated {
+    .product-kind-cell.product-kind-updated,
+    .product-name-cell.product-kind-updated {
         outline: 2px solid #16a34a;
         outline-offset: -2px;
         background-color: #ecfdf3;
@@ -152,8 +155,6 @@
                 </select>
             </ul>
 
-            */?>
-            
             <ul>
                 <select name="s_importing_country" id="s_importing_country" >
                     <option value="">수입국</option>
@@ -172,13 +173,7 @@
                     <option value="sale_all" <? if( $s_sale_mode == 'sale_all' ) echo "selected";?> >할인전체</option>
                 </select>
             </ul>
-            <ul>
-                <select name="s_discontinued" id="s_discontinued" >
-                    <option value="">단종여부</option>
-                    <option value="1" <? if( $s_discontinued == '1' ) echo "selected";?> >단종</option>
-                    <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >미단종</option>
-                </select>
-            </ul>
+
             <ul>
                 <select name="s_margin_group" id="s_margin_group" >
                     <option value="">마진그룹 </option>
@@ -202,6 +197,15 @@
             </ul>
             <ul>
                 <input type='text' name='rack_code' id='rack_code' value="<?=$rack_code ?? '' ?>" placeholder="랙코드" style="width:80px;">
+            </ul>
+            */?>
+
+            <ul>
+                <select name="s_discontinued" id="s_discontinued" >
+                    <option value="">단종여부</option>
+                    <option value="1" <? if( $s_discontinued == '1' ) echo "selected";?> >단종</option>
+                    <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >미단종</option>
+                </select>
             </ul>
             <ul>
                 <input type='text' name='search_value' id='search_value' value="<?= $search_value?? '' ?>" placeholder="검색어" style="min-width: 200px;">
@@ -249,9 +253,15 @@
                                 <th>브랜드</th>
                                 <th>바코드</th>
                                 <th>출시일</th>
+
+                                <? /*
                                 <th>랙코드</th>
+                                */?>
+
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
+
+                                <? /*
                                 <th>수입국</th>
                                 <th>할인모드</th>
                                 <th>판매가</th>
@@ -262,6 +272,8 @@
                                 <th>최근입고일</th>
                                 <th>최근품절일</th>
                                 <th>최근할인일</th>
+                                */?>
+
                             </tr>
                         </thead>
                         <tbody>
@@ -365,7 +377,10 @@
                                             <br><b class="product-kind-secondary"><?= htmlspecialchars($secondaryCategoryName, ENT_QUOTES, 'UTF-8') ?></b>
                                         </span>
                                     </td>
-                                    <td>
+
+                                    <td class="product-name-cell"
+                                        data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                        data-current-memo2="<?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                         <?php if( $product['is_sale_month'] ){ ?>
                                             <label class="on_sale_label xs monthly">월간할인</label>
                                         <?php } ?>
@@ -377,10 +392,11 @@
                                         <?php } ?>
 
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
-                                        <?php if( !empty($product['cd_memo2']) ){ ?>
-                                            <div class="m-t-3" style="color:#ff0000"><span class="prd-memo">- <?=$product['cd_memo2']?></span></div>
-                                        <?php } ?>
+                                        <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
+                                            <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                        </div>
                                     </td>
+                                    
                                     <td class="text-center">
                                         <a href="/admin/product/product_db?s_brand=<?=$product['CD_BRAND_IDX']?>"><?=$product['brand_name']?></a>
                                         <?php if( $product['CD_BRAND2_IDX'] ){ ?>
@@ -403,7 +419,11 @@
                                         <?php } ?>
                                     </td>
 
+                                    <? /*
+                                    <!-- 랙코드 -->
                                     <td class="text-center"><?=$product['ps_rack_code']?></td>
+                                    */?>
+
                                     <td class="text-center">
                                         <?php if( $product['weight'] ){ ?>
                                             <b><?=number_format($product['weight'])?></b>g
@@ -435,6 +455,8 @@
                                             }
                                         ?>
                                     </td>
+
+                                    <? /*
                                     <td class="text-center"><?=$_national_text[$product['cd_national']]?></td>
                                     <td class="text-center">
                                         <?=$product['is_sale_month'] ? '월간할인' : ($product['is_sale_special'] ? '특가할인' : '할인전체')?>
@@ -520,6 +542,8 @@
                                             }
                                         ?>
                                     </td>
+                                    */?>
+
                                 </tr>
                             <? } ?>
                         </tbody>
@@ -554,6 +578,16 @@
     <div style="display:flex; justify-content:flex-end; gap:8px;">
         <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_category_cancel_btn">취소</button>
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_category_save_btn">저장</button>
+    </div>
+</div>
+<div id="productMemoContextLayer" class="product-kind-context-layer" aria-hidden="true">
+    <div style="font-weight:700; margin-bottom:8px;">리스트 메모 수정</div>
+    <div style="margin-bottom:10px;">
+        <input type="text" id="quick_memo2_input" style="width:100%;" placeholder="리스트 메모 입력">
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_memo2_cancel_btn">취소</button>
+        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_memo2_save_btn">저장</button>
     </div>
 </div>
 <script type="text/javascript">
@@ -637,7 +671,9 @@ function select_all() {
 
     $(function(){
         var $categoryLayer = $('#productCategoryContextLayer');
+        var $memoLayer = $('#productMemoContextLayer');
         var $selectedCategoryCell = null;
+        var $selectedMemoCell = null;
         var $updatedCategoryCell = null;
 
         function setUpdatedCategoryCell($cell) {
@@ -663,6 +699,40 @@ function select_all() {
                 $selectedCategoryCell.removeClass('product-kind-selected');
             }
             $selectedCategoryCell = null;
+        }
+
+        function closeMemoLayer() {
+            $memoLayer.removeClass('active').hide().attr('aria-hidden', 'true');
+            if ($selectedMemoCell && $selectedMemoCell.length) {
+                $selectedMemoCell.removeClass('product-kind-selected');
+            }
+            $selectedMemoCell = null;
+        }
+
+        function positionLayer($layer, clientX, clientY) {
+            $layer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
+            var layerWidth = $layer.outerWidth();
+            var layerHeight = $layer.outerHeight();
+            var viewportWidth = $(window).width();
+            var viewportHeight = $(window).height();
+
+            var left = clientX;
+            var top = clientY;
+            if (left + layerWidth > viewportWidth - 10) {
+                left = viewportWidth - layerWidth - 10;
+            }
+            if (top + layerHeight > viewportHeight - 10) {
+                top = viewportHeight - layerHeight - 10;
+            }
+
+            left = Math.max(10, left);
+            top = Math.max(10, top);
+
+            $layer.css({
+                left: left + 'px',
+                top: top + 'px',
+                visibility: 'visible'
+            }).addClass('active').attr('aria-hidden', 'false');
         }
 
         function fillPrimarySelect(selectedKind) {
@@ -760,6 +830,7 @@ function select_all() {
                 return;
             }
 
+            closeMemoLayer();
             closeCategoryLayer();
             $selectedCategoryCell = $cell;
             $selectedCategoryCell.addClass('product-kind-selected');
@@ -770,30 +841,42 @@ function select_all() {
 
             fillPrimarySelect(currentKind);
             fillSecondarySelect(currentKind, secondKind);
+            positionLayer($categoryLayer, clientX, clientY);
+        }
 
-            $categoryLayer.css({ left: 0, top: 0, display: 'block', visibility: 'hidden' });
-            var layerWidth = $categoryLayer.outerWidth();
-            var layerHeight = $categoryLayer.outerHeight();
-            var viewportWidth = $(window).width();
-            var viewportHeight = $(window).height();
-
-            var left = clientX;
-            var top = clientY;
-            if (left + layerWidth > viewportWidth - 10) {
-                left = viewportWidth - layerWidth - 10;
-            }
-            if (top + layerHeight > viewportHeight - 10) {
-                top = viewportHeight - layerHeight - 10;
+        function openMemoLayer($cell, clientX, clientY) {
+            var prdIdx = Number($cell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                return;
             }
 
-            left = Math.max(10, left);
-            top = Math.max(10, top);
+            closeCategoryLayer();
+            closeMemoLayer();
+            $selectedMemoCell = $cell;
+            $selectedMemoCell.addClass('product-kind-selected');
 
-            $categoryLayer.css({
-                left: left + 'px',
-                top: top + 'px',
-                visibility: 'visible'
-            }).addClass('active').attr('aria-hidden', 'false');
+            var currentMemo = String($cell.data('current-memo2') || '').trim();
+            $('#quick_memo2_input').val(currentMemo);
+
+            positionLayer($memoLayer, clientX, clientY);
+            $('#quick_memo2_input').trigger('focus').trigger('select');
+        }
+
+        function applyProductMemo2($cell, memoText) {
+            var normalizedMemo = String(memoText || '').trim();
+            $cell.data('current-memo2', normalizedMemo);
+            $cell.attr('data-current-memo2', normalizedMemo);
+
+            var $memoWrap = $cell.find('.prd-memo-wrap');
+            var $memoText = $cell.find('.prd-memo');
+            if (normalizedMemo === '') {
+                $memoText.text('');
+                $memoWrap.hide();
+                return;
+            }
+
+            $memoText.text('- ' + normalizedMemo);
+            $memoWrap.show();
         }
         
         $(".dn-select2").select2();
@@ -850,12 +933,21 @@ function select_all() {
             openCategoryLayer($(this), e.clientX, e.clientY);
         });
 
+        $(document).on('contextmenu', '.product-name-cell', function(e) {
+            e.preventDefault();
+            openMemoLayer($(this), e.clientX, e.clientY);
+        });
+
         $('#quick_category_primary').on('change', function() {
             fillSecondarySelect($(this).val(), '');
         });
 
         $('#quick_category_cancel_btn').on('click', function() {
             closeCategoryLayer();
+        });
+
+        $('#quick_memo2_cancel_btn').on('click', function() {
+            closeMemoLayer();
         });
 
         $('#quick_category_save_btn').on('click', function() {
@@ -926,22 +1018,73 @@ function select_all() {
                 });
         });
 
+        function saveQuickMemo2() {
+            if (!$selectedMemoCell || !$selectedMemoCell.length) {
+                closeMemoLayer();
+                return;
+            }
+
+            var prdIdx = Number($selectedMemoCell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                closeMemoLayer();
+                return;
+            }
+
+            var nextMemo = String($('#quick_memo2_input').val() || '').trim();
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'update_product_memo2',
+                prd_idx: prdIdx,
+                cd_memo2: nextMemo
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '리스트 메모 저장에 실패했습니다.');
+                        return;
+                    }
+                    applyProductMemo2($selectedMemoCell, nextMemo);
+                    setUpdatedCategoryCell($selectedMemoCell);
+                    closeMemoLayer();
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        }
+
+        $('#quick_memo2_save_btn').on('click', function() {
+            saveQuickMemo2();
+        });
+
+        $('#quick_memo2_input').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveQuickMemo2();
+            }
+        });
+
         $(document).on('click', function(e) {
             clearUpdatedCategoryCell();
             var $target = $(e.target);
-            if (!$target.closest('#productCategoryContextLayer').length && !$target.closest('.product-kind-cell').length) {
+            if (
+                !$target.closest('#productCategoryContextLayer').length &&
+                !$target.closest('#productMemoContextLayer').length &&
+                !$target.closest('.product-kind-cell').length &&
+                !$target.closest('.product-name-cell').length
+            ) {
                 closeCategoryLayer();
+                closeMemoLayer();
             }
         });
 
         $(document).on('keydown', function(e) {
             if (e.key === 'Escape') {
                 closeCategoryLayer();
+                closeMemoLayer();
             }
         });
 
         $(window).on('scroll resize', function() {
             closeCategoryLayer();
+            closeMemoLayer();
         });
 
 		// 선택상품 업무요청

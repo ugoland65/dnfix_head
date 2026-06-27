@@ -4,21 +4,31 @@
     <div id="head_write_btn">
 	</div>
 </div>
+
 <div id="contents_body">
 	<div id="contents_body_wrap">
+
+        <div class="supplier-site-selector-wrap">
+            <div class="supplier-site-selector-title">공급사 사이트 선택</div>
+            <input type="hidden" name="s_site" id="s_site" value="<?= htmlspecialchars((string)($site ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+            <div class="supplier-site-selector">
+                <button type="button" class="supplier-site-btn <?= empty($site) ? 'active' : '' ?>" data-site="">전체</button>
+                <?php foreach($supplier_code_data as $key => $value){ ?>
+                    <button
+                        type="button"
+                        class="supplier-site-btn <?=$site == $key ? 'active' : ''?>"
+                        data-site="<?= htmlspecialchars((string)$key, ENT_QUOTES, 'UTF-8') ?>">
+                        <?=$value['name']?> (<?=$value['code']?>)
+                    </button>
+                <?php } ?>
+            </div>
+        </div>
+
 		<div id="list_new_wrap">
 
             <div class="table-top">
 				<ul class="total">
 					Total : <b><?=number_format($pagination_total)?></b>
-				</ul>
-                <ul>
-					<select name="s_site" id="s_site" >
-						<option value="" >공급사 사이트</option>
-                        <?php foreach($supplier_code_data as $key => $value){ ?>
-                            <option value="<?=$key?>" <?=$site == $key ? 'selected' : ''?>><?=$value['name']?> (<?=$value['code']?>)</option>
-                        <?php } ?>
-					</select>
 				</ul>
                 <ul>
 					<select name="s_status" id="s_status" >
@@ -50,6 +60,14 @@
 					<button type="button" id="resetBtn" class="btnstyle1 btnstyle1-sm"  > 
 						<i class="fas fa-undo"></i> 초기화
 					</button>
+				</ul>
+                <ul class="right">
+					<select name="s_limit" id="s_limit">
+                        <option value="100" <?= (int)($s_limit ?? 100) === 100 ? 'selected' : '' ?>>100개씩</option>
+                        <option value="200" <?= (int)($s_limit ?? 100) === 200 ? 'selected' : '' ?>>200개씩</option>
+                        <option value="300" <?= (int)($s_limit ?? 100) === 300 ? 'selected' : '' ?>>300개씩</option>
+                        <option value="500" <?= (int)($s_limit ?? 100) === 500 ? 'selected' : '' ?>>500개씩</option>
+                    </select>
 				</ul>
             </div> 
 
@@ -258,6 +276,13 @@ function select_all() {
 }
 
 $(function(){
+    $(document).on('click', '.supplier-site-btn', function() {
+        var site = String($(this).data('site') || '');
+        $('#s_site').val(site);
+        $('.supplier-site-btn').removeClass('active');
+        $(this).addClass('active');
+        $("#searchBtn").trigger('click');
+    });
 
     // 개별 체크박스 선택 시 행 배경색 변경
     $(document).on('change', 'input[name="key_check[]"]', function() {
@@ -328,6 +353,7 @@ $(function(){
             's_match_status': $("#s_match_status").val(),
             's_keyword': $("#s_keyword").val(),
             's_status': $("#s_status").val(),
+            's_limit': $("#s_limit").val(),
         };
 
         // 유효한 값만 params에 추가
@@ -353,7 +379,11 @@ $(function(){
         let s_site = $("#s_site").val();
         let s_match_status = $("#s_match_status").val();
 
-        location.href = '/admin/provider_product/db?s_site=' + s_site + '&s_match_status=' + s_match_status;
+        location.href = '/admin/provider_product/db?s_site=' + s_site + '&s_match_status=' + s_match_status + '&s_limit=100';
+    });
+
+    $("#s_limit").on('change', function() {
+        $("#searchBtn").trigger('click');
     });
 
     // 매칭제외 버튼 클릭

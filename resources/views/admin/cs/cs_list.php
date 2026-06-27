@@ -79,6 +79,7 @@
                                 <th class="">분류</th>
 								<th class="">상태</th>
                                 <th class="">상태변경</th>
+                                <th class="">그룹</th>
 								<th class="">주문번호</th>
 								<th class="">주문일</th>
 								<th class="">회원ID</th>
@@ -124,6 +125,13 @@
                                     <?php } ?>
                                 </td>
                                 <td><button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="csDetail('<?=$row['idx']?>')" >상태변경</button></td>
+                                <td>
+                                    <?php if (!empty($row['cs_group_idx'])) { ?>
+                                        G<?= $row['cs_group_idx'] ?>-<?php echo (int)($row['group_item_no'] ?? 0); ?>
+                                    <?php } else { ?>
+                                        -
+                                    <?php } ?>
+                                </td>
                                 <td><a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['order_no'] ?>" target="_blank"><b><?= $row['order_no'] ?></b></a></td>
                                 <td><?= $row['order_date'] ?></td>
                                 <td>
@@ -142,7 +150,23 @@
                                 </td>
                                 <td><?= $row['receiver_name'] ?></td>
                                 <td><?= $row['receiver_phone'] ?></td>
-                                <td><?= nl2br($row['cs_body']) ?></td>
+                                <td>
+                                    <?php if( !empty($row['target_list']) ){ ?>
+                                        <?php foreach($row['target_list'] as $target){ ?>
+                                            <div class="mb-profile-box md participant-item" data-idx="<?= $target['idx'] ?>" data-name="<?= $target['name'] ?>" >
+                                                <?php if( !empty($target['image']) ){ ?>
+                                                    <div class="profile-img"><img src="/data/uploads/<?=$target['image']?>" alt=""></div>
+                                                <?php } else { ?>
+                                                    <div class="profile-img"><i class="far fa-user-circle"></i></div>
+                                                <?php } ?>
+                                                <span class="profile-name"><?= $target['name'] ?></span>
+                                            </div>
+                                        <?php } ?>
+                                    <?php } ?>
+                                    <div>
+                                        <?= nl2br($row['cs_body']) ?>
+                                    </div>
+                                </td>
                                 <td class="text-left">
                                     <button type="button" id="" class="btnstyle1 btnstyle1-sm" onclick="footerGlobal.comment('cs','<?=$row['idx']?>')" >
                                         댓글

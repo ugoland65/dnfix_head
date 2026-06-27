@@ -6,7 +6,7 @@ use Throwable;
 use App\Core\BaseClass;
 use App\Classes\Request;
 use App\Services\CsRequestService;
-use App\Services\GodoApiService;
+use App\Services\CommentService;
 use App\Utils\Pagination;
 
 class CsRequestController extends BaseClass
@@ -110,6 +110,10 @@ class CsRequestController extends BaseClass
             $receiverName = $requestData['receiverName'] ?? null;
             $receiverPhone = $requestData['receiverPhone'] ?? null;
             $actionDate = $requestData['actionDate'] ?? null;
+            $targetMb = $requestData['targetMb'] ?? null;
+
+            $commentService = new CommentService();
+            $mentionTarget = $commentService->getMentionTarget();
 
             $data = [
                 'mode' => 'create',
@@ -126,6 +130,8 @@ class CsRequestController extends BaseClass
                 'groupNm' => $groupNm,
                 'receiverName' => $receiverName,
                 'receiverPhone' => $receiverPhone,
+                'targetMb' => $targetMb,
+                'mentionTarget' => $mentionTarget,
             ];
 
             return view('admin.cs.cs_detail', $data);
@@ -155,10 +161,13 @@ class CsRequestController extends BaseClass
 
             $csRequestService = new CsRequestService();
             $csRequest = $csRequestService->getCsRequestDetail($idx);
+            $commentService = new CommentService();
+            $mentionTarget = $commentService->getMentionTarget();
 
             $data = [
                 'mode' => 'detail',
                 'csRequest' => $csRequest,
+                'mentionTarget' => $mentionTarget,
             ];
 
             return view('admin.cs.cs_detail', $data);
@@ -215,7 +224,7 @@ class CsRequestController extends BaseClass
 
             if( $mode == 'create' ){
 
-                $order_no = $requestData['order_no'] ?? null; 
+                $order_nos = $requestData['order_nos'] ?? ($requestData['order_no'] ?? null);
                 $order_date = $requestData['order_date'] ?? null;
                 $payment_dt = $requestData['payment_dt'] ?? null;
                 $category = $requestData['category'] ?? null;
@@ -228,53 +237,37 @@ class CsRequestController extends BaseClass
                 $receiver_phone = $requestData['receiver_phone'] ?? null;
                 $cs_body = $requestData['cs_body'] ?? null;
                 $action_date = $requestData['action_date'] ?? null;
+                $target_mb_idx = $requestData['target_mb_idx'] ?? [];
 
                 if ($category !== '출고지정일') {
                     $action_date = null;
                 }
 
-                if( !empty($order_no) ){
-                    
-                    $godoApiService = new GodoApiService();
-                    $godoGoodsInfo = $godoApiService->getGodoOrderInfo($order_no);
-
-                    $payload = [
-                        'orderNo' => $order_no,
-                        'orderDate' => $godoGoodsInfo['regDt'],
-                        'paymentDt' => $godoGoodsInfo['paymentDt'],
-                        'memNo' => $godoGoodsInfo['memNo'],
-                        'memId' => $godoGoodsInfo['memId'],
-                        'memName' => $godoGoodsInfo['memNm'],
-                        'memPhone' => $godoGoodsInfo['cellPhone'],
-                        'receiverName' => $godoGoodsInfo['receiverName'],
-                        'receiverPhone' => $godoGoodsInfo['receiverCellPhone'],
-                        'category' => $category,
-                        'actionDate' => $action_date,
-                        'csBody' => $cs_body,
-                    ];
-
-                }else{
-                    $payload = [
-                        'orderNo' => $order_no,
-                        'orderDate' => $order_date,
-                        'paymentDt' => $payment_dt,
-                        'memNo' => $mem_no,
-                        'memId' => $mem_id,
-                        'memName' => $mem_name,
-                        'memPhone' => $mem_phone,
-                        'groupNm' => $group_nm,
-                        'receiverName' => $receiver_name,
-                        'receiverPhone' => $receiver_phone,
-                        'category' => $category,
-                        'actionDate' => $action_date,
-                        'csBody' => $cs_body,
-                    ];
-
+                $orderNoList = $this->parseOrderNoList($order_nos);
+                if (empty($orderNoList)) {
+                    throw new Exception('주문번호를 1개 이상 입력해주세요.');
                 }
 
-                $csRequest = $csRequestService->createCsRequest($payload);
+                $payload = [
+                    'orderNos' => $orderNoList,
+                    'category' => $category,
+                    'actionDate' => $action_date,
+                    'csBody' => $cs_body,
+                    'orderDate' => $order_date,
+                    'paymentDt' => $payment_dt,
+                    'memNo' => $mem_no,
+                    'memId' => $mem_id,
+                    'memName' => $mem_name,
+                    'memPhone' => $mem_phone,
+                    'groupNm' => $group_nm,
+                    'receiverName' => $receiver_name,
+                    'receiverPhone' => $receiver_phone,
+                    'targetMbIdx' => $target_mb_idx,
+                ];
 
-                $message = 'C/S 처리 요청 완료';
+                $result = $csRequestService->createCsRequestGroup($payload);
+
+                $message = 'C/S 처리 요청 완료 (총 '.($result['createdCount'] ?? 0).'건)';
 
 
             }else{
@@ -285,6 +278,7 @@ class CsRequestController extends BaseClass
                     'action_date' => $requestData['action_date'] ?? null,
                     'cs_status' => $requestData['cs_status'],
                     'process_action' => $requestData['process_action'],
+                    'target_mb_idx' => $requestData['target_mb_idx'] ?? [],
                 ];
 
                 $csRequest = $csRequestService->updateCsStatus($payload);
@@ -304,6 +298,34 @@ class CsRequestController extends BaseClass
                 'message' => $e->getMessage(),
             ]);
         }
+    }
+
+    /**
+     * 주문번호 입력값을 배열로 변환
+     *
+     * @param mixed $orderNosRaw
+     * @return array
+     */
+    private function parseOrderNoList($orderNosRaw): array
+    {
+        if (is_array($orderNosRaw)) {
+            $tokens = array_map(static function($value) {
+                return trim((string)$value);
+            }, $orderNosRaw);
+        } else {
+            $raw = trim((string)$orderNosRaw);
+            if ($raw === '') {
+                return [];
+            }
+
+            $tokens = preg_split('/[\s,]+/u', $raw) ?: [];
+        }
+
+        $tokens = array_filter($tokens, static function($value) {
+            return $value !== '';
+        });
+
+        return array_values(array_unique($tokens));
     }
 
 }

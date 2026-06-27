@@ -1,6 +1,43 @@
 <form name='prd_price_form' id='prd_price_form' method='post' enctype="multipart/form-data" autocomplete="off">
 
     <input type="hidden" name="idx" value="<?= $productData['CD_IDX'] ?? '' ?>">
+    <style>
+        .cost-extra-section {
+            margin-top: 10px;
+            border: 1px solid #e5e7eb;
+            border-radius: 8px;
+            padding: 10px;
+            background: #fbfdff;
+        }
+        .cost-extra-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+        }
+        .cost-extra-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .cost-extra-table th,
+        .cost-extra-table td {
+            border: 1px solid #e5e7eb;
+            padding: 6px;
+            vertical-align: middle;
+        }
+        .cost-extra-table th {
+            background: #f8fafc;
+            font-weight: 600;
+            text-align: center;
+        }
+        .cost-extra-table td input[type="text"] {
+            width: 100%;
+            box-sizing: border-box;
+        }
+        .cost-extra-summary {
+            margin-top: 8px;
+            color: #374151;
+            font-size: 12px;
+        }
+    </style>
 
     <table class="table-style ">
         <colgroup>
@@ -86,6 +123,21 @@
 
                 </td>
             </tr>
+
+            <tr>
+                <th>패키지 사이즈</th>
+                <td>
+
+                    세로(H) : <input type='text' name='cd_size_h' value="<?= $productData['CD_SIZE']['H'] ?? '' ?>" style="width:60px">
+                    가로(W) : <input type='text' name='cd_size_w' value="<?= $productData['CD_SIZE']['W'] ?? '' ?>" style="width:60px">
+                    깊이(D) : <input type='text' name='cd_size_d' value="<?= $productData['CD_SIZE']['D'] ?? '' ?>" style="width:60px">
+                    <div class="admin-guide-text">
+                        - 단위 mm (숫자만 등록할것)
+                    </div>
+
+                </td>
+            </tr>
+
             <tr>
                 <th>포장 사이즈</th>
                 <td>
@@ -96,6 +148,7 @@
                     CBM : <input type='text' name='invoice_size_cbm' id='invoice_size_cbm' value="<?= $productData['cd_size_fn']['invoice']['cbm'] ?? '' ?>" style="width:60px">
                     <input type="checkbox" name="invoice_size_cbm_mode" value="hand" <?php if (($productData['cd_size_fn']['invoice']['cbm_mode'] ?? '') == "hand") echo "checked"; ?>> CBM 수동입력
                     <div class="admin-guide-text">
+                        - 제품이 입고될시 패키지를 포장한 사이즈를 입력해주세요.<br>
                         - 단위 mm (숫자만 등록할것)
                     </div>
                 </td>
@@ -105,22 +158,45 @@
             </tr>
 
             <tr>
+                <th>택배배송<br>박스유형</th>
+                <td>
+                    <?php
+                        $deliveryTypeOptions = [
+                            'tiny' => '극소형 (가로+세로+높이=80cm 중량 2Kg까지 / 2,300원)',
+                            'small' => '소형 (가로+세로+높이=100cm 중량 5Kg까지 / 2,800원)',
+                            'medium' => '중형 (가로+세로+높이=120cm 중량 10Kg까지 / 3,300원)',
+                            'large' => '대형 (가로+세로+높이=140cm 중량 15Kg까지 / 5,000원)',
+                            'xlarge' => '특대형 (가로+세로+높이=160cm 중량 20Kg까지 / 5,400원)',
+                        ];
+                        $__selectedDeliveryType = (string)($productData['delivery_type'] ?? 'small');
+                        if ($__selectedDeliveryType === 'tiny_80') {
+                            $__selectedDeliveryType = 'tiny';
+                        }
+                        if (!isset($deliveryTypeOptions[$__selectedDeliveryType])) {
+                            $__selectedDeliveryType = $__selectedDeliveryType === 'large' ? 'large' : 'small';
+                        }
+                    ?>
+                    <?php foreach ($deliveryTypeOptions as $__typeCode => $__typeLabel) { ?>
+                        <div class="m-b-4">
+                            <label>
+                                <input type="radio" name="delivery_type" value="<?= $__typeCode ?>" <?= $__selectedDeliveryType === $__typeCode ? 'checked' : '' ?>>
+                                <?= $__typeLabel ?>
+                                <span class="delivery-type-recommend m-l-5" data-delivery-type="<?= $__typeCode ?>" style="display:none; color:#2563eb; font-weight:600;">추천</span>
+                            </label>
+                        </div>
+                    <?php } ?>
+                    <div id="delivery_type_recommendation" class="admin-guide-text"></div>
+                </td>
+            </tr>
+
+            <tr>
                 <th>쑈당몰 판매가</th>
                 <td>
-                    <input type='text' name='cd_sale_price' value="<?= number_format($productData['cd_sale_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;'> 원
+                    <input type='text' name='cd_sale_price' id='cd_sale_price' value="<?= number_format($productData['cd_sale_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this ); prdInfoPrice.updateSaleMarginSummary();" style='width:100px;'> 원
 
-                    <?php
-                    if (($productData['cd_sale_price'] ?? 0) > 0 && ($productData['cd_cost_price'] ?? 0) > 0) {
-                    ?>
-                        | 마진 : <b><?= number_format($productData['cd_sale_price'] - $productData['cd_cost_price']) ?></b>
-                        ( <b><?= round(($productData['cd_sale_price'] - $productData['cd_cost_price']) / $productData['cd_sale_price'] * 100, 2) ?></b> % )
-                        <?php if ($productData['cd_sale_price'] > 29999) { ?>
-                            | 3만 무배 마진 : <b><?= number_format($productData['cd_sale_price'] - ($productData['cd_cost_price'] + 2500)) ?></b>
-                            ( <b style="color:#ff0000"><?= round(($productData['cd_sale_price'] - ($productData['cd_cost_price'] + 2500)) / $productData['cd_sale_price'] * 100, 2) ?></b> % )
-                        <?php } ?>
-                    <?php } ?>
+                    <span id="sale_margin_summary"></span>
 
-                    <span class="grade-badge grade-<?=$productData['margin_grade']?>">
+                    <span id="margin_grade_badge" class="grade-badge grade-<?=$productData['margin_grade']?>">
                         <?=$productData['margin_grade']?>
                     </span>
 
@@ -227,13 +303,31 @@
                 $costInfo = $productData['cd_cost_price_info'] ?? [];
                 $hasCostCalculatorValue = false;
                 if (is_array($costInfo)) {
-                    $costCalculatorKeys = ['주문종류', '주문가', '적용환율', '배송비', '관세율', '부대비용'];
+                    $costCalculatorKeys = ['주문종류', '주문가', '적용환율', '배송비', '관세율', '부대비용', '추가비용합계'];
                     foreach ($costCalculatorKeys as $ck) {
                         if (isset($costInfo[$ck]) && trim((string)$costInfo[$ck]) !== '') {
                             $hasCostCalculatorValue = true;
                             break;
                         }
                     }
+                }
+                $additionalCostItems = [];
+                if (is_array($costInfo) && !empty($costInfo['추가비용목록']) && is_array($costInfo['추가비용목록'])) {
+                    foreach ($costInfo['추가비용목록'] as $additionalItem) {
+                        if (!is_array($additionalItem)) {
+                            continue;
+                        }
+                        $additionalCostItems[] = [
+                            'reason' => trim((string)($additionalItem['reason'] ?? '')),
+                            'amount' => (int)($additionalItem['amount'] ?? 0),
+                        ];
+                    }
+                }
+                if (empty($additionalCostItems)) {
+                    $additionalCostItems[] = [
+                        'reason' => '',
+                        'amount' => 0,
+                    ];
                 }
                 $selectedNational = (string)($productData['cd_national'] ?? '');
                 $showCostCalculator = in_array($selectedNational, ['jp', 'cn'], true) || $hasCostCalculatorValue;
@@ -274,9 +368,6 @@
                             <!-- <button type="button" id="" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="alert('준비중');" >해외주문 기본값 설정</button> -->
 
                         </div>
-                        <div class="m-t-6">
-                            <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.costCalculationNew()">원가 계산기 실행</button>
-                        </div>
 
                         <div id="cost_calculation_info_new" class="cost-calculation-info m-t-7">
                             <div class="price-f-box">
@@ -304,6 +395,50 @@
                             <div class='calculation-show-box m-t-5' id="cost_calculation_detail">
                             </div>
                         </div>
+
+                        <div class="cost-extra-section" id="additional_cost_section">
+                            <div class="cost-extra-title">추가비용 항목</div>
+                            <table class="cost-extra-table">
+                                <colgroup>
+                                    <col width="*" />
+                                    <col width="180px" />
+                                    <col width="80px" />
+                                </colgroup>
+                                <thead>
+                                    <tr>
+                                        <th>추가사유</th>
+                                        <th>비용</th>
+                                        <th>관리</th>
+                                    </tr>
+                                </thead>
+                                <tbody id="additional_cost_list">
+                                    <?php foreach ($additionalCostItems as $additionalCostItem) { ?>
+                                        <tr class="additional-cost-row">
+                                            <td>
+                                                <input type="text" name="additional_cost_reason[]" class="additional-cost-reason" value="<?= htmlspecialchars((string)($additionalCostItem['reason'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="예: 검품비, 포장보강비">
+                                            </td>
+                                            <td>
+                                                <input type="text" name="additional_cost_amount[]" class="additional-cost-amount text-right" value="<?= !empty($additionalCostItem['amount']) ? number_format((int)$additionalCostItem['amount']) : '' ?>" placeholder="0">
+                                            </td>
+                                            <td class="text-center">
+                                                <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdInfoPrice.removeAdditionalCostRow(this)">삭제</button>
+                                            </td>
+                                        </tr>
+                                    <?php } ?>
+                                </tbody>
+                            </table>
+                            <div class="m-t-6">
+                                <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdInfoPrice.addAdditionalCostRow()">+ 추가비용 항목 추가</button>
+                            </div>
+                            <div class="cost-extra-summary">
+                                추가비용 합계: <b id="additional_cost_total_text">0원</b>
+                            </div>
+                        </div>
+
+                        <div class="m-t-6">
+                            <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.costCalculationNew()">원가 계산기 실행</button>
+                        </div>
+
                     </div>
                     <div id="cost_calculator_unavailable" style="<?php if ($showCostCalculator) echo 'display:none;'; ?> color:#6b7280; font-size:12px;">
                         매입방식이 일본,중국일때만 사용가능
@@ -315,8 +450,34 @@
             <tr>
                 <th>판매가 계산기</th>
                 <td>
+                    <?php
+                        $__deliveryType = (string)($productData['delivery_type'] ?? 'small');
+                        if ($__deliveryType === 'tiny_80') {
+                            $__deliveryType = 'tiny';
+                        }
+                        $__deliveryFeeMap = [
+                            'tiny' => 2300,
+                            'small' => 2800,
+                            'medium' => 3300,
+                            'large' => 5000,
+                            'xlarge' => 5400,
+                        ];
+                        if (!in_array($__deliveryType, ['tiny', 'small', 'medium', 'large', 'xlarge'], true)) {
+                            $__deliveryType = $__deliveryType === 'large' ? 'large' : 'small';
+                        }
+                        $__estimatedShippingFee = (int)($__deliveryFeeMap[$__deliveryType] ?? 2800);
+                    ?>
                     <div>
                         적용할 원가가격 : <input type="text" name="estimated_selling_price" id="estimated_selling_price" value="<?= number_format($productData['cd_cost_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this ); prdInfoPrice.salePriceCalculation();" class="width-80 m-r-10">
+                    </div>
+                    <div class="m-t-6">
+                        차감할 배송비 :
+                        <input type="text" name="estimated_shipping_fee" id="estimated_shipping_fee" value="<?= number_format($__estimatedShippingFee) ?>" onkeyUP="GC.commaInput( this.value, this ); prdInfoPrice.salePriceCalculation();" class="width-80 m-r-10">
+                        <label><input type="radio" name="estimated_shipping_fee_type" value="2300" <?= $__estimatedShippingFee === 2300 ? 'checked' : '' ?>> 극소형 2,300원</label>
+                        <label class="m-l-10"><input type="radio" name="estimated_shipping_fee_type" value="2800" <?= $__estimatedShippingFee === 2800 ? 'checked' : '' ?>> 소형 2,800원</label>
+                        <label class="m-l-10"><input type="radio" name="estimated_shipping_fee_type" value="3300" <?= $__estimatedShippingFee === 3300 ? 'checked' : '' ?>> 중형 3,300원</label>
+                        <label class="m-l-10"><input type="radio" name="estimated_shipping_fee_type" value="5000" <?= $__estimatedShippingFee === 5000 ? 'checked' : '' ?>> 대형 5,000원</label>
+                        <label class="m-l-10"><input type="radio" name="estimated_shipping_fee_type" value="5400" <?= $__estimatedShippingFee === 5400 ? 'checked' : '' ?>> 특대형 5,400원</label>
                     </div>
                     <div class="m-t-6">
                         <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.salePriceCalculation()">판매가 계산기 실행</button>
@@ -374,10 +535,64 @@
         var yen_cn = <?= $yen_cn ?? 193 ?>;
         var kg_p = <?= $kg_p ?? 6000 ?>;
         var cn_delivery_p = <?= $delivery_p_cn ?? 2800 ?>;
+        var DELIVERY_FEE_MAP = {
+            tiny: 2300,
+            small: 2800,
+            medium: 3300,
+            large: 5000,
+            xlarge: 5400
+        };
 
         var costCalMsg = function(msg) {
             $("#cost_cal_msg").show().html(msg);
         };
+
+        function getAdditionalCostItems() {
+            var items = [];
+            var total = 0;
+            $("#additional_cost_list .additional-cost-row").each(function() {
+                var $row = $(this);
+                var reason = String($row.find(".additional-cost-reason").val() || "").trim();
+                var amount = Number(GC.uncomma($row.find(".additional-cost-amount").val() || "0"));
+                if (!isFinite(amount)) {
+                    amount = 0;
+                }
+                amount = Math.round(amount);
+                if (reason === "" && amount <= 0) {
+                    return;
+                }
+                items.push({
+                    reason: reason,
+                    amount: amount
+                });
+                total += amount;
+            });
+
+            return {
+                items: items,
+                total: total
+            };
+        }
+
+        function updateAdditionalCostSummary() {
+            var additionalCostData = getAdditionalCostItems();
+            $("#additional_cost_total_text").text(GC.comma(additionalCostData.total) + "원");
+        }
+
+        function buildAdditionalCostDetailHtml(additionalItems) {
+            if (!additionalItems || additionalItems.length === 0) {
+                return "";
+            }
+            var detailText = "";
+            for (var i = 0; i < additionalItems.length; i++) {
+                var item = additionalItems[i] || {};
+                var reasonText = String(item.reason || "").trim();
+                var amountValue = Number(item.amount || 0);
+                var label = reasonText !== "" ? reasonText : ("항목" + (i + 1));
+                detailText += "<li>" + label + " : <b>" + GC.comma(amountValue) + "</b>원</li>";
+            }
+            return "<ul>추가비용 항목</ul><ul style='padding-left:14px; margin-top:2px;'>" + detailText + "</ul>";
+        }
 
         /**
          * 원가 계산기
@@ -444,9 +659,14 @@
             var normalVatAmount = Math.round((purchaseCostKrw + normalDutyAmount) * 0.1);
             var normalTaxTotal = normalDutyAmount + normalVatAmount;
 
-            var additionalCost = Number(GC.uncomma($("#cost_cal_incidental_cost").val() || "0"));
+            var incidentalCost = Number(GC.uncomma($("#cost_cal_incidental_cost").val() || "0"));
             var deliveryCostInput = Number(GC.uncomma($("#cost_cal_delivery").val() || "0"));
+            var additionalCostData = getAdditionalCostItems();
+            var additionalCostItems = additionalCostData.items;
+            var additionalCostTotal = Number(additionalCostData.total || 0);
+            updateAdditionalCostSummary();
 
+            var incidentalCostDisplayText = "";
             var additionalCostDisplayText = "";
             var deliveryCostDisplayText = "";
 
@@ -480,10 +700,16 @@
                 var reducedVatAmount = Math.round((reducedDeclarePurchaseCostKrw + reducedDutyAmount) * 0.1);
                 var reducedTaxTotal = reducedDutyAmount + reducedVatAmount;
 
-                if (additionalCost > 0) {
-                    normalTaxTotal = normalTaxTotal + additionalCost;
-                    reducedTaxTotal = reducedTaxTotal + additionalCost;
-                    additionalCostDisplayText = " | 부대비용 : <b>" + GC.comma(additionalCost) + "</b>";
+                if (incidentalCost > 0) {
+                    normalTaxTotal = normalTaxTotal + incidentalCost;
+                    reducedTaxTotal = reducedTaxTotal + incidentalCost;
+                    incidentalCostDisplayText = " | 부대비용 : <b>" + GC.comma(incidentalCost) + "</b>";
+                }
+
+                if (additionalCostTotal > 0) {
+                    normalTaxTotal = normalTaxTotal + additionalCostTotal;
+                    reducedTaxTotal = reducedTaxTotal + additionalCostTotal;
+                    additionalCostDisplayText = " | 추가비용 : <b>" + GC.comma(additionalCostTotal) + "</b>";
                 }
 
                 if (deliveryCostInput > 0) {
@@ -496,10 +722,11 @@
                 var reducedLandedCost = normalizeMoney(purchaseCostKrw + reducedTaxTotal);
 
                 resultHtml += "<ul>(₩)원전환 : ￥<b>" + GC.comma(foreignOrderAmount) + "</b> -> <b class='point2'>" + formatMoney(purchaseCostKrw) + "</b>원 ( 적용환율 : <b>" + exchangeRate + "</b> )</ul>";
-                resultHtml += "<ul>정상 원가 기준 | 관세 : <b>" + GC.comma(normalDutyAmount) + "</b> | 부가세 : <b>" + GC.comma(normalVatAmount) + "</b>" + additionalCostDisplayText + deliveryCostDisplayText + " = 합 : <b>" + GC.comma(normalTaxTotal) + "</b>";
+                resultHtml += "<ul>정상 원가 기준 | 관세 : <b>" + GC.comma(normalDutyAmount) + "</b> | 부가세 : <b>" + GC.comma(normalVatAmount) + "</b>" + incidentalCostDisplayText + additionalCostDisplayText + deliveryCostDisplayText + " = 합 : <b>" + GC.comma(normalTaxTotal) + "</b>";
                 resultHtml += " | 총합 : <b class='point2'>" + formatMoney(normalLandedCost) + "</b>원</ul>";
-                resultHtml += "<ul>축소신고 시뮬레이션 기준 | 관세 : <b>" + GC.comma(reducedDutyAmount) + "</b> | 부가세 : <b>" + GC.comma(reducedVatAmount) + "</b>" + additionalCostDisplayText + deliveryCostDisplayText + " = 합 : <b>" + GC.comma(reducedTaxTotal) + "</b>";
+                resultHtml += "<ul>축소신고 시뮬레이션 기준 | 관세 : <b>" + GC.comma(reducedDutyAmount) + "</b> | 부가세 : <b>" + GC.comma(reducedVatAmount) + "</b>" + incidentalCostDisplayText + additionalCostDisplayText + deliveryCostDisplayText + " = 합 : <b>" + GC.comma(reducedTaxTotal) + "</b>";
                 resultHtml += " | 총합 : <b class='point2'>" + formatMoney(reducedLandedCost) + "</b>원</ul>";
+                resultHtml += buildAdditionalCostDetailHtml(additionalCostItems);
 
             // 일본주문 계산 흐름 :
             // 1) 중량(실측 우선, 없으면 전체중량)으로 배송비 계산
@@ -542,6 +769,11 @@
                     deliveryCostDisplayText = " | 배송비 : <b>" + GC.comma(deliveryCostByWeight) + "</b>( kg/" + GC.comma(deliveryCostInput) + " )";
                 }
 
+                if (additionalCostTotal > 0) {
+                    normalTaxTotal = normalTaxTotal + additionalCostTotal;
+                    additionalCostDisplayText = " | 추가비용 : <b>" + GC.comma(additionalCostTotal) + "</b>";
+                }
+
 
                 var japanLandedCost = normalizeMoney(purchaseCostKrw + normalTaxTotal);
 
@@ -549,6 +781,7 @@
                 resultHtml += "<ul>정상 원가 기준 | 관세 : <b>" + GC.comma(normalDutyAmount) + "</b> | 부가세 : <b>" + GC.comma(normalVatAmount) + "</b>" + additionalCostDisplayText + deliveryCostDisplayText + " = 합 : <b>" + GC.comma(normalTaxTotal) + "</b></ul>";
                 resultHtml += "<ul>총합 : <b class='point2'>" + formatMoney(japanLandedCost) + "</b>원</ul>";
                 resultHtml += "<ul><button type='button' id='' class='btnstyle1 btnstyle1-xs' onclick='prdInfoPrice.goCostPrice(" + japanLandedCost + ")' >총합 원가로 입력</button></ul>";
+                resultHtml += buildAdditionalCostDetailHtml(additionalCostItems);
 
             }
 
@@ -570,24 +803,164 @@
                 return false;
             }
 
+            var estimatedShippingFee = $("#estimated_shipping_fee").val();
+            estimatedShippingFee = GC.uncomma(estimatedShippingFee);
+            if (!estimatedShippingFee) {
+                estimatedShippingFee = 2500;
+            }
+
             var inst_arr = [50, 45, 40, 35, 30, 25, 20, 15, 10, 5];
 
             var _html = "";
+            _html += "<div style='margin-bottom:6px; color:#4b5563;'>"
+                + "판매가 30,000원 이상은 배송비(" + GC.comma(estimatedShippingFee) + "원) 차감 마진 기준으로 마진율 계산"
+                + "</div>";
+            _html += "<div style='border:1px solid #e5e7eb; border-radius:6px; overflow:hidden;'>";
+            _html += "<div style='display:flex; background:#f9fafb; font-weight:600; padding:8px 10px; border-bottom:1px solid #e5e7eb;'>"
+                + "<div style='width:90px;'>마진율</div>"
+                + "<div style='width:140px;'>예상판매가</div>"
+                + "<div style='width:120px;'>기본마진</div>"
+                + "<div style='width:140px;'>적용마진</div>"
+                + "<div style='flex:1;'>적용기준</div>"
+                + "</div>";
 
             for (var i = 0; i < inst_arr.length; i++) {
                 var inst_per = 1 - (inst_arr[i] / 100);
                 var inst_value = Math.round(estimatedSellingPrice / inst_per);
+                var baseMargin = inst_value - estimatedSellingPrice;
+                var isFreeShippingTarget = inst_value >= 30000;
+                var appliedMargin = isFreeShippingTarget ? (baseMargin - estimatedShippingFee) : baseMargin;
+                var marginRate = estimatedSellingPrice > 0 ? ((appliedMargin / estimatedSellingPrice) * 100) : 0;
+                var marginRateText = (Math.round(marginRate * 100) / 100).toFixed(2) + "%";
+                var appliedRuleText = isFreeShippingTarget
+                    ? "3만무배 적용 (배송비 " + GC.comma(estimatedShippingFee) + "원 차감)"
+                    : "일반 마진";
+                var rowBgColor = (i % 2 === 0) ? "#ffffff" : "#fcfcfd";
 
-                _html += "<ul>예상 판매가 ( " + inst_arr[i] + "% ) <b>" + GC.comma(inst_value) + "</b>원 | 마진 <b>" + GC.comma(inst_value - estimatedSellingPrice) + "</b>원";
-                if (inst_value >= 30000) {
-                    _html += " | 3만무배 <b>" + GC.comma((inst_value - estimatedSellingPrice) - 2500) + "</b>원";
-                }
-                _html += "</ul>";
+                _html += "<div style='display:flex; align-items:center; padding:8px 10px; border-bottom:1px solid #f1f5f9; background:" + rowBgColor + ";'>"
+                    + "<div style='width:90px;'><b>" + inst_arr[i] + "%</b></div>"
+                    + "<div style='width:140px;'>" + GC.comma(inst_value) + "원</div>"
+                    + "<div style='width:120px;'>" + GC.comma(baseMargin) + "원</div>"
+                    + "<div style='width:140px; font-weight:600; color:#111827;'>" + GC.comma(appliedMargin) + "원 (" + marginRateText + ")</div>"
+                    + "<div style='flex:1; color:#4b5563;'>" + appliedRuleText + "</div>"
+                    + "</div>";
 
             } //for END
+            _html += "</div>";
 
             $("#estimated_selling_price_result").html(_html);
 
+        }
+
+        function getDeliveryFeeByType() {
+            var deliveryType = $('input[name="delivery_type"]:checked').val() || "small";
+            return Number(DELIVERY_FEE_MAP[deliveryType] || DELIVERY_FEE_MAP.small);
+        }
+
+        function parseSizeValue(value) {
+            var normalized = String(value || "").replace(/,/g, "").trim();
+            if (normalized === "") {
+                return 0;
+            }
+            var parsed = Number(normalized);
+            return isNaN(parsed) ? 0 : parsed;
+        }
+
+        function getRecommendedDeliveryTypeByPackageSize() {
+            var sizeH = parseSizeValue($("input[name='cd_size_h']").val());
+            var sizeW = parseSizeValue($("input[name='cd_size_w']").val());
+            var sizeD = parseSizeValue($("input[name='cd_size_d']").val());
+
+            if (sizeH <= 0 || sizeW <= 0 || sizeD <= 0) {
+                return null;
+            }
+
+            var sumCm = (sizeH + sizeW + sizeD) / 10;
+            if (sumCm <= 80) {
+                return { type: "tiny", label: "극소형", sumCm: sumCm };
+            }
+            if (sumCm <= 100) {
+                return { type: "small", label: "소형", sumCm: sumCm };
+            }
+            if (sumCm <= 120) {
+                return { type: "medium", label: "중형", sumCm: sumCm };
+            }
+            if (sumCm <= 140) {
+                return { type: "large", label: "대형", sumCm: sumCm };
+            }
+            if (sumCm <= 160) {
+                return { type: "xlarge", label: "특대형", sumCm: sumCm };
+            }
+
+            return { type: "", label: "규격초과", sumCm: sumCm };
+        }
+
+        function updateDeliveryTypeRecommendation() {
+            var recommendation = getRecommendedDeliveryTypeByPackageSize();
+            var $recommendText = $("#delivery_type_recommendation");
+            $(".delivery-type-recommend").hide();
+
+            if (!recommendation) {
+                $recommendText.html("");
+                return;
+            }
+
+            if (recommendation.type) {
+                $('.delivery-type-recommend[data-delivery-type="' + recommendation.type + '"]').show();
+            }
+
+            var roundedSum = Math.round(recommendation.sumCm * 10) / 10;
+            $recommendText.html(
+                "- 패키지 사이즈 합계(가로+세로+높이): <b>" + roundedSum + "cm</b> / 추천 박스유형: <b>" + recommendation.label + "</b>"
+            );
+        }
+
+        function calculateMarginGrade(marginPer) {
+            var p = Number(marginPer) || 0;
+            if (p > 39) return "A";
+            if (p >= 35) return "B";
+            if (p >= 30) return "C";
+            if (p >= 25) return "D";
+            if (p >= 20) return "E";
+            if (p >= 15) return "F";
+            if (p >= 10) return "G";
+            if (p >= 5) return "H";
+            if (p > 0) return "I";
+            return "";
+        }
+
+        function updateSaleMarginSummary() {
+            var salePrice = GC.uncomma($("#cd_sale_price").val() || "0");
+            var costPrice = GC.uncomma($("#cd_cost_price").val() || "0");
+            var deliveryFee = getDeliveryFeeByType();
+            var summaryHtml = "";
+            var grade = "";
+
+            if (salePrice > 0 && costPrice > 0) {
+                var margin = salePrice - costPrice;
+                var marginPer = Math.round(((margin / salePrice) * 100) * 100) / 100;
+                var gradeBasePer = marginPer;
+
+                summaryHtml += " | 마진 : <b>" + GC.comma(margin) + "</b>";
+                summaryHtml += " ( <b>" + marginPer + "</b> % )";
+
+                if (salePrice > 29999) {
+                    var freeMargin = salePrice - (costPrice + deliveryFee);
+                    var freeMarginPer = Math.round(((freeMargin / salePrice) * 100) * 100) / 100;
+                    summaryHtml += " | 3만 무배 마진 (택배비 " + GC.comma(deliveryFee) + "원 차감) : <b>" + GC.comma(freeMargin) + "</b>";
+                    summaryHtml += " ( <b style='color:#ff0000'>" + freeMarginPer + "</b> % )";
+                    gradeBasePer = freeMarginPer;
+                }
+
+                grade = calculateMarginGrade(gradeBasePer);
+            }
+
+            $("#sale_margin_summary").html(summaryHtml);
+            var badgeClass = "grade-badge";
+            if (grade) {
+                badgeClass += " grade-" + grade;
+            }
+            $("#margin_grade_badge").attr("class", badgeClass).text(grade || "-");
         }
 
         /**
@@ -671,6 +1044,12 @@
                     break;
                 }
             }
+            if (!hasSavedOrInputValue) {
+                var additionalCostData = getAdditionalCostItems();
+                if (additionalCostData.total > 0 || additionalCostData.items.length > 0) {
+                    hasSavedOrInputValue = true;
+                }
+            }
 
             // 매입방식을 선택한 경우: 선택값을 우선한다 (jp/cn만 노출)
             if (purchaseType !== "") {
@@ -698,8 +1077,37 @@
 
             costCalculationNew,
             salePriceCalculation,
+            updateSaleMarginSummary,
+            updateDeliveryTypeRecommendation,
             costSave,
             toggleCostCalculatorVisibility,
+            addAdditionalCostRow: function(reason, amount) {
+                var reasonText = String(reason || "");
+                var amountText = Number(amount || 0) > 0 ? GC.comma(Number(amount || 0)) : "";
+                var rowHtml = ""
+                    + "<tr class='additional-cost-row'>"
+                    + "  <td><input type='text' name='additional_cost_reason[]' class='additional-cost-reason' value='" + $("<div>").text(reasonText).html() + "' placeholder='예: 검품비, 포장보강비'></td>"
+                    + "  <td><input type='text' name='additional_cost_amount[]' class='additional-cost-amount text-right' value='" + amountText + "' placeholder='0'></td>"
+                    + "  <td class='text-center'><button type='button' class='btnstyle1 btnstyle1-sm' onclick='prdInfoPrice.removeAdditionalCostRow(this)'>삭제</button></td>"
+                    + "</tr>";
+                $("#additional_cost_list").append(rowHtml);
+                updateAdditionalCostSummary();
+                prdInfoPrice.costCalculationNew();
+            },
+            removeAdditionalCostRow: function(buttonEl) {
+                var $rows = $("#additional_cost_list .additional-cost-row");
+                if ($rows.length <= 1) {
+                    $rows.find(".additional-cost-reason").val("");
+                    $rows.find(".additional-cost-amount").val("");
+                } else {
+                    $(buttonEl).closest(".additional-cost-row").remove();
+                }
+                updateAdditionalCostSummary();
+                prdInfoPrice.costCalculationNew();
+            },
+            refreshAdditionalCostSummary: function() {
+                updateAdditionalCostSummary();
+            },
             changeValue: function(mode, v) { //prdInfoPrice.changeValue
                 if (mode == "yen_cn") {
                     yen_cn = v;
@@ -730,6 +1138,7 @@
                 $("#cd_cost_price").val(GC.comma(v));
                 $("#estimated_selling_price").val(GC.comma(v));
                 prdInfoPrice.salePriceCalculation();
+                prdInfoPrice.updateSaleMarginSummary();
 
             },
 
@@ -795,6 +1204,56 @@
     <?php } ?>
 
     $(function() {
+        var DELIVERY_FEE_MAP = {
+            tiny: 2300,
+            small: 2800,
+            medium: 3300,
+            large: 5000,
+            xlarge: 5400
+        };
+
+        function syncEstimatedShippingFeeByDeliveryType() {
+            var deliveryType = $('input[name="delivery_type"]:checked').val() || "small";
+            var shippingFee = Number(DELIVERY_FEE_MAP[deliveryType] || DELIVERY_FEE_MAP.small);
+
+            $('input[name="estimated_shipping_fee_type"][value="' + shippingFee + '"]').prop('checked', true);
+            $("#estimated_shipping_fee").val(GC.comma(shippingFee));
+            prdInfoPrice.salePriceCalculation();
+        }
+
+        $('input[name="estimated_shipping_fee_type"]').on('change', function() {
+            var selectedFee = GC.uncomma($(this).val() || "0");
+            $("#estimated_shipping_fee").val(GC.comma(selectedFee));
+            prdInfoPrice.salePriceCalculation();
+        });
+
+        $('input[name="delivery_type"]').on('change', function() {
+            syncEstimatedShippingFeeByDeliveryType();
+            prdInfoPrice.updateSaleMarginSummary();
+            prdInfoPrice.updateDeliveryTypeRecommendation();
+        });
+        $(document).on("keyup change", ".additional-cost-amount", function() {
+            GC.commaInput(this.value, this);
+            prdInfoPrice.refreshAdditionalCostSummary();
+            prdInfoPrice.costCalculationNew();
+        });
+        $(document).on("keyup change", ".additional-cost-reason", function() {
+            prdInfoPrice.refreshAdditionalCostSummary();
+            prdInfoPrice.costCalculationNew();
+        });
+        $("input[name='cd_size_h'], input[name='cd_size_w'], input[name='cd_size_d']").on("keyup change", function() {
+            prdInfoPrice.updateDeliveryTypeRecommendation();
+        });
+
+        syncEstimatedShippingFeeByDeliveryType();
+        prdInfoPrice.refreshAdditionalCostSummary();
+        prdInfoPrice.updateDeliveryTypeRecommendation();
+        prdInfoPrice.updateSaleMarginSummary();
+
+        $("#cd_cost_price").on("keyup change", function() {
+            prdInfoPrice.updateSaleMarginSummary();
+        });
+
         prdInfoPrice.toggleCostCalculatorVisibility();
         $(':input:radio[name=cd_national]').on('change', function() {
             prdInfoPrice.toggleCostCalculatorVisibility();

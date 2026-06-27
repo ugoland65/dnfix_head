@@ -1,4 +1,9 @@
 <form id="cs_detail_form">
+    <?php
+        if (!isset($mentionTarget) || !is_array($mentionTarget)) {
+            $mentionTarget = [];
+        }
+    ?>
 
     <input type="hidden" name="mode" value="<?= $mode ?>">
     <input type="hidden" name="apiMode" value="<?= $apiMode ?>">
@@ -42,16 +47,16 @@
                 <tr>
                     <th>주문번호</th>
                     <td>
-
-                    <?php if ( !empty($orderNo) ) { ?>
-                        <input type="hidden" name="order_no" id="order_no" value="<?= $orderNo ?>">
-                        <span><?= $orderNo ?></span>
-                    <?php } else { ?>
-                        <input type="text" name="order_no" id="order_no" value="">
-                        <div class="admin-guide-text">
-                            주문번호를 입력하면 주문정보를 자동으로 조회됩니다.
+                        <div id="order_no_list">
+                            <div class="order-no-item m-b-5">
+                                <input type="text" name="order_nos[]" class="order-no-input" value="<?= !empty($orderNo) ? $orderNo : '' ?>" placeholder="주문번호를 입력하세요.">
+                                <button type="button" class="btnstyle1 btnstyle1-sm order-no-remove-btn">삭제</button>
+                            </div>
                         </div>
-                    <?php } ?>
+                        <button type="button" id="order_no_add_btn" class="btnstyle1 btnstyle1-sm">주문번호 추가</button>
+                        <div class="admin-guide-text">
+                            주문번호를 한 개씩 입력 후 추가 버튼으로 입력칸을 늘릴 수 있습니다.
+                        </div>
                     </td>
                 </tr>
 
@@ -146,7 +151,21 @@
                     </tr>
                 <?php } ?>
 
-
+                <tr>
+                    <th>참여자</th>
+                    <td>
+                        <div id="target_mb_id_div" class="target-mb-id-div">
+                            참여자 :
+                            <label><input type="checkbox" name="target_mb_idx_all" id="target_mb_idx_all"> 전체선택</label>
+                            <?php foreach ($mentionTarget as $mb) { ?>
+                                <label>
+                                    <input type="checkbox" name="target_mb_idx[]" class="target-mb-id" value="<?= $mb['idx'] ?>">
+                                    <?= $mb['ad_name'] ?>
+                                </label>
+                            <?php } ?>
+                        </div>
+                    </td>
+                </tr>
                 <tr>
                     <th>요청내용</th>
                     <td>
@@ -192,6 +211,28 @@
                     </td>
                 </tr>
                 <tr>
+                    <th>참여자</th>
+                    <td>
+                        <div id="target_mb_id_div" class="target-mb-id-div">
+                            참여자 :
+                            <label><input type="checkbox" name="target_mb_idx_all" id="target_mb_idx_all"> 전체선택</label>
+                            <?php
+                            foreach ($mentionTarget as $mb) {
+                                $_checked = "";
+                                $_target_mb_text = "@" . $mb['idx'];
+                                if (isset($csRequest['target_mb']) && strstr((string)$csRequest['target_mb'], $_target_mb_text)) {
+                                    $_checked = "checked";
+                                }
+                            ?>
+                                <label>
+                                    <input type="checkbox" name="target_mb_idx[]" class="target-mb-id" value="<?= $mb['idx'] ?>" <?= $_checked ?>>
+                                    <?= $mb['ad_name'] ?>
+                                </label>
+                            <?php } ?>
+                        </div>
+                    </td>
+                </tr>
+                <tr>
                     <th>처리내용</th>
                     <td>
                         <textarea name="process_action" id="process_action" rows="10"><?= $csRequest['process_action'] ?></textarea>
@@ -228,6 +269,31 @@
             toggleActionDateRow();
             $('#category').on('change', toggleActionDateRow);
         }
+
+        function addOrderNoRow(value) {
+            var rowHtml = ''
+                + '<div class="order-no-item m-b-5">'
+                + '    <input type="text" name="order_nos[]" class="order-no-input" value="' + (value || '') + '" placeholder="주문번호를 입력하세요.">'
+                + '    <button type="button" class="btnstyle1 btnstyle1-sm order-no-remove-btn">삭제</button>'
+                + '</div>';
+            $('#order_no_list').append(rowHtml);
+        }
+
+        $('#order_no_add_btn').on('click', function() {
+            addOrderNoRow('');
+            $('#order_no_list .order-no-input').last().focus();
+        });
+
+        $(document).on('click', '.order-no-remove-btn', function() {
+            $(this).closest('.order-no-item').remove();
+            if ($('#order_no_list .order-no-item').length === 0) {
+                addOrderNoRow('');
+            }
+        });
+
+        $('#target_mb_idx_all').on('change', function() {
+            $('.target-mb-id').prop('checked', $(this).is(':checked'));
+        });
         
         $('#save_btn').click(function(e){
             e.preventDefault();
@@ -238,6 +304,23 @@
                 if (category === '출고지정일' && actionDate === '') {
                     alert('출고지정일 분류는 출고일자 입력이 필요합니다.');
                     $('#action_date').focus();
+                    return;
+                }
+            }
+
+            if ($('input[name="mode"]').val() === 'create') {
+                var validOrderCount = 0;
+                $('#order_no_list .order-no-input').each(function() {
+                    var value = $.trim($(this).val());
+                    $(this).val(value);
+                    if (value !== '') {
+                        validOrderCount++;
+                    }
+                });
+
+                if (validOrderCount === 0) {
+                    alert('주문번호를 1개 이상 입력해주세요.');
+                    $('#order_no_list .order-no-input').first().focus();
                     return;
                 }
             }
