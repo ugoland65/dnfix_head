@@ -44,6 +44,8 @@ class CompetitorController extends BaseClass
                 'freebody' => ['name' => "프리바디", 'code' => 'freebody'],
                 'bananamall' => ['name' => "바나나몰", 'code' => 'bananamall'],
                 'rmax' => ['name' => "리얼맥스", 'code' => 'rmax'],
+                'dingdong' => ['name' => "딩동몰", 'code' => 'dingdong'],
+                'vavoomshop' => ['name' => "바붐샵", 'code' => 'vavoomshop'],
             ];
 
             if( $site ){

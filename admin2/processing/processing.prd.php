@@ -671,6 +671,19 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 }elseif( $_a_mode == "prd_copy" ){
 
+	/*
+	 * @deprecated
+	 * 상품 복사는 /admin/product/action (action_mode=copy_product)로 이관됨.
+	 * 레거시 prd_copy 분기는 재사용 방지를 위해 즉시 종료한다.
+	 */
+	$response = array('success' => false, 'msg' => 'Deprecated endpoint. use /admin/product/action');
+	header('Content-Type: application/json');
+	echo json_encode($response);
+	exit;
+
+	// @deprecated legacy implementation (disabled permanently)
+	if (false) {
+
 	$_idx = $_POST['idx'] ?? "";
 
 	$data = sql_fetch_array(sql_query_error("select * from "._DB_COMPARISON." WHERE CD_IDX = '".$_idx."' "));
@@ -854,6 +867,7 @@ if( $_a_mode == "prd_reg" ){
 	sql_query_error($query);
 
 	$response = array('success' => true, 'msg' => '완료' );
+	}
 
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 가격정보 수정

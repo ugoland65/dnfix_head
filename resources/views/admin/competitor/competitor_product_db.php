@@ -154,6 +154,9 @@
                                 <?php endif; ?>
                             </td>
                             <td class="text-center">
+                                <?php if( ($row['sale_status'] ?? '') === '품절' ): ?>
+                                    <span style="color:#dc2626; font-weight:700;">품절</span><br><br>
+                                <?php endif; ?>
                                 <?php if( $row['last_status_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_status_changed_at']))?>
                                 <?php endif; ?>

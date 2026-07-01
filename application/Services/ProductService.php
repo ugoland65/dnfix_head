@@ -1696,6 +1696,61 @@ class ProductService extends BaseClass
         ];
     }
 
+    /**
+     * 상품 복사 등록
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function copyProduct(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? ($postData['idx'] ?? 0));
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $sourceProduct = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        if (empty($sourceProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $sourceData = is_array($sourceProduct) ? $sourceProduct : $sourceProduct->toArray();
+        if (!is_array($sourceData) || empty($sourceData)) {
+            throw new Exception('상품 정보를 읽을 수 없습니다.');
+        }
+
+        unset($sourceData['CD_IDX']);
+
+        // Legacy prd_copy 동작 유지: 대표이미지(CD_IMG)는 복사 제외
+        unset($sourceData['CD_IMG']);
+
+        $actionTime = date('Y-m-d H:i:s');
+        $sourceData['cd_reg_time'] = $actionTime;
+
+        $regData = [
+            'reg' => [
+                'mode' => 'v3',
+                'copy_idx' => $prdIdx,
+                'copy' => '(' . $prdIdx . ') 복사등록',
+                'info' => $actionTime,
+            ],
+        ];
+        $sourceData['cd_reg'] = json_encode($regData, JSON_UNESCAPED_UNICODE);
+
+        $inserted = ProductModel::query()->insert($sourceData);
+        if (!$inserted) {
+            throw new Exception('복사 등록에 실패했습니다.');
+        }
+
+        return [
+            'success' => true,
+            'message' => '복사등록 되었습니다.',
+            'copied_from' => $prdIdx,
+        ];
+    }
+
 
     /**
      * 상품 매입정보 저장

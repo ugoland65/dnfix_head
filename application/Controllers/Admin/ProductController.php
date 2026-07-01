@@ -566,6 +566,10 @@ class ProductController extends BaseClass
                     $result = $this->productService->updateProductMemo2($requestData);
                     break;
 
+                case 'copy_product':
+                    $result = $this->productService->copyProduct($requestData);
+                    break;
+
                 default:
                     throw new Exception('유효하지 않은 action_mode 입니다.');
 

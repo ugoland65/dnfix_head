@@ -260,19 +260,7 @@
 
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
-
-                                <? /*
-                                <th>수입국</th>
-                                <th>할인모드</th>
-                                <th>판매가</th>
-                                <th>책정원가</th>
-                                <th>마진율</th>
-                                <th>마진등급</th>
-                                <th>최근판매일</th>
-                                <th>최근입고일</th>
-                                <th>최근품절일</th>
-                                <th>최근할인일</th>
-                                */?>
+                                <th>관리</th>
 
                             </tr>
                         </thead>
@@ -455,94 +443,15 @@
                                             }
                                         ?>
                                     </td>
-
-                                    <? /*
-                                    <td class="text-center"><?=$_national_text[$product['cd_national']]?></td>
                                     <td class="text-center">
-                                        <?=$product['is_sale_month'] ? '월간할인' : ($product['is_sale_special'] ? '특가할인' : '할인전체')?>
+                                        <button
+                                            type="button"
+                                            class="btnstyle1 btnstyle1-success btnstyle1-xs"
+                                            onclick="copyProductDb(<?= (int)($product['CD_IDX'] ?? 0) ?>);"
+                                        >
+                                            복사
+                                        </button>
                                     </td>
-                                    <td class="text-right"><?=number_format($product['cd_sale_price'])?></td>
-                                    <td class="text-right"><?=number_format($product['cd_cost_price'])?></td>
-                                    <td class="text-right"><b><?=$_margin_per?>%</b></td>
-                                    <td class="text-center">
-                                        <?php if (!empty($grade)) { ?>
-                                            <span class="grade-badge grade-<?=$grade?>">
-                                                <?=$grade?>
-                                            </span>
-                                        <?php } else { ?>
-                                            -
-                                        <?php } ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php
-                                            $lastSaleDate = $product['ps_last_date'] ?? null;
-                                            if (
-                                                !empty($lastSaleDate) &&
-                                                $lastSaleDate !== '0000-00-00 00:00:00' &&
-                                                $lastSaleDate !== '0000-00-00' &&
-                                                ($ts = strtotime($lastSaleDate)) // strtotime 실패하면 false
-                                            ) {
-                                                echo date('y.m.d', $ts);
-                                            } else {
-                                                echo '-';
-                                            }
-                                        ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php
-                                            $inDate = $product['ps_in_date'] ?? null;
-                                            if (
-                                                !empty($inDate) &&
-                                                $inDate !== '0000-00-00 00:00:00' &&
-                                                $inDate !== '0000-00-00' &&
-                                                ($ts = strtotime($inDate)) // strtotime 실패하면 false
-                                            ) {
-                                                echo date('y.m.d', $ts);
-                                            } else {
-                                                echo '-';
-                                            }
-                                        ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php
-                                            $soldoutDate = $product['ps_soldout_date'] ?? null;
-                                            if( $product['ps_stock'] < 1 ){
-                                                if (
-                                                    !empty($soldoutDate) &&
-                                                    $soldoutDate !== '0000-00-00 00:00:00' &&
-                                                    $soldoutDate !== '0000-00-00' &&
-                                                    ($ts = strtotime($soldoutDate)) // strtotime 실패하면 false
-                                                ) {
-                                                    echo date('y.m.d', $ts);
-                                                } else {
-                                                    echo '-';
-                                                }
-                                            }
-                                        ?>
-                                    </td>
-                                    <td class="text-center">
-                                        <?php
-                                            $saleDate = $product['ps_sale_date'] ?? null;
-                                            if (
-                                                !empty($saleDate) &&
-                                                $saleDate !== '0000-00-00 00:00:00' &&
-                                                $saleDate !== '0000-00-00' &&
-                                                ($ts = strtotime($saleDate)) // strtotime 실패하면 false
-                                            ) {
-                                        ?>
-                                            <div>
-                                                <ul class="text-center"><?=date('y.m.d', $ts)?></ul>
-                                                <ul class="text-center m-t-5" style="font-size:12px;">총 할인수 : <?=$product['last_sale']['sale_count'] ?? 0?></ul>
-                                                <ul class="text-center" style="font-size:11px;"><?=$product['last_sale']['sale_subject'] ?? ''?></ul>
-                                                <ul class="text-center"><?=$product['last_sale']['sale_per'] ?? 0?>%</ul>
-                                            </div>
-                                        <?php
-                                            } else {
-                                                echo '-';
-                                            }
-                                        ?>
-                                    </td>
-                                    */?>
 
                                 </tr>
                             <? } ?>
@@ -668,6 +577,50 @@ function select_all() {
 		// 페이지 이동
 		location.href = '/admin/product/product_db' + (queryString ? '?' + queryString : '');
 	}
+
+    function copyProductDb(prdIdx) {
+        var idx = Number(prdIdx || 0);
+        if (idx <= 0) {
+            alert('상품 정보가 올바르지 않습니다.');
+            return;
+        }
+
+        /*
+         * @deprecated legacy endpoint
+         * 기존 /ad/processing/prd + a_mode=prd_copy 경로는 더 이상 사용하지 않는다.
+         *
+         * $.ajax({
+         *     url: '/ad/processing/prd',
+         *     type: 'POST',
+         *     dataType: 'json',
+         *     data: {
+         *         a_mode: 'prd_copy',
+         *         idx: idx
+         *     },
+         * });
+         */
+        $.ajax({
+            url: '/admin/product/action',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                action_mode: 'copy_product',
+                prd_idx: idx
+            },
+            success: function(res) {
+                if (!(res && res.success)) {
+                    alert((res && (res.message || res.msg)) ? (res.message || res.msg) : '복사 등록에 실패했습니다.');
+                    return;
+                }
+                alert((res && (res.message || res.msg)) ? (res.message || res.msg) : '복사등록 되었습니다.');
+                location.reload();
+            },
+            error: function(request, status, error) {
+                console.log('code:' + request.status + '\n' + 'message:' + request.responseText + '\n' + 'error:' + error);
+                alert('복사 요청 중 오류가 발생했습니다.');
+            }
+        });
+    }
 
     $(function(){
         var $categoryLayer = $('#productCategoryContextLayer');
