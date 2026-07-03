@@ -71,6 +71,59 @@ class AiRulebook extends BaseClass
                 $templateHtml = (string)($output['template_html'] ?? '');
             }
 
+            $defaultValidation = [
+                'strict_template' => true,
+                'allow_only_variable_replacement' => true,
+                'verify_before_output' => true,
+            ];
+            $rawValidation = $this->decodeJsonField($output['validation'] ?? null, []);
+            $validation = is_array($rawValidation)
+                ? array_merge($defaultValidation, $rawValidation)
+                : $defaultValidation;
+
+            $validation['strict_template'] = true;
+            $validation['allow_only_variable_replacement'] = true;
+            $validation['verify_before_output'] = true;
+
+            $validation['template_html_is_output_itself'] = true;
+            $validation['output_html_must_match_template_html_char_level'] = true;
+            $validation['keep_structure_when_content_empty'] = true;
+
+            $validation['copy_template_then_replace_variables'] = true;
+
+            $validation['keep_tag_names'] = true;
+            $validation['keep_class_names'] = true;
+            $validation['keep_attributes'] = true;
+            $validation['keep_tag_order'] = true;
+            $validation['keep_wrapper'] = true;
+            $validation['keep_comments'] = true;
+            $validation['keep_indentation'] = true;
+            $validation['keep_line_breaks'] = true;
+
+            $validation['forbid_new_html'] = true;
+            $validation['forbid_new_tag'] = true;
+            $validation['forbid_new_class'] = true;
+            $validation['forbid_new_attribute'] = true;
+            $validation['forbid_delete_tag'] = true;
+            $validation['forbid_change_tag'] = true;
+
+            $validation['rules'] = [
+                'template_html은 참고용이 아니라 출력 결과 그 자체이다.',
+                'template_html을 새로 작성하지 말고 그대로 복사한 후 {{변수}}만 치환한다.',
+                '출력 HTML은 template_html과 문자 단위까지 동일해야 한다.',
+                '모든 태그명(div, ul, li, p, span 등)은 template_html과 동일해야 한다.',
+                '모든 class명은 template_html과 동일해야 한다.',
+                '모든 attribute(class, id, style 등)는 template_html과 동일해야 한다.',
+                '태그의 순서와 계층 구조를 변경하지 않는다.',
+                'HTML 주석은 유지한다.',
+                '들여쓰기와 개행은 유지한다.',
+                '{{변수}} 앞뒤에 새로운 HTML을 추가하지 않는다.',
+                'template_html에 존재하지 않는 태그, class, id, style, attribute를 생성하지 않는다.',
+                '내용이 없어도 HTML 구조는 그대로 유지한다.',
+                '검증에 실패하면 template_html 기준으로 다시 생성한다.',
+                'template_html을 수정하는 것은 오답이며, {{변수}}만 수정하는 것이 정답이다.'
+            ];
+
             return response()->json([
                 'success' => true,
                 'data' => [
@@ -104,6 +157,13 @@ class AiRulebook extends BaseClass
                             'description_join' => (string)($output['description_join'] ?? ($output['maker_comment_join'] ?? 'lines_to_br')),
                             'escape_text_nodes' => ((int)($output['escape_text_nodes'] ?? 1)) === 0 ? 0 : 1,
                             'template_html' => $templateHtml,
+                            'validation' => $validation,
+                        ],
+                        // 레거시/외부 소비자 호환용 alias
+                        'rules_json' => [
+                            'output' => [
+                                'validation' => $validation,
+                            ],
                         ],
                         'glossary' => is_array($glossary) ? $glossary : [],
                         'replacements' => is_array($replacements) ? $replacements : [],

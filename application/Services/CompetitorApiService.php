@@ -24,6 +24,7 @@ class CompetitorApiService
         $site = trim((string)($params['site'] ?? ''));
         $status = trim((string)($params['status'] ?? ''));
         $matchStatus = trim((string)($params['match_status'] ?? ''));
+        $keywordMode = trim((string)($params['keyword_mode'] ?? ''));
         $keyword = trim((string)($params['keyword'] ?? ''));
         $matchIdx = (int)($params['match_idx'] ?? 0);
 
@@ -35,6 +36,9 @@ class CompetitorApiService
         }
         if ($matchStatus !== '') {
             $query['match_status'] = $matchStatus;
+        }
+        if ($keywordMode !== '') {
+            $query['keyword_mode'] = $keywordMode;
         }
         if ($keyword !== '') {
             $query['keyword'] = $keyword;

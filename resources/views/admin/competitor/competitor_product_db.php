@@ -51,8 +51,15 @@
                         <option value="match_excluded" <?=$s_match_status == 'match_excluded' ? 'selected' : ''?>>매칭제외</option>
 					</select>
 				</ul>
+                <ul class="m-l-10">
+					<select name="s_keyword_mode" id="s_keyword_mode" >
+                        <option value="name" <?=$s_keyword_mode == 'name' ? 'selected' : ''?>>상품명</option>
+                        <option value="category" <?=$s_keyword_mode == 'category' ? 'selected' : ''?>>카테고리 명</option>
+                        <option value="brand_name" <?=$s_keyword_mode == 'brand_name' ? 'selected' : ''?>>브랜드명</option>
+					</select>
+				</ul>
                 <ul>
-					<input type="text" name="s_keyword" id="s_keyword" placeholder="상품명 검색" value="<?= $s_keyword ?? '' ?>">
+					<input type="text" name="s_keyword" id="s_keyword" placeholder="검색어" value="<?= $s_keyword ?? '' ?>">
 				</ul>
                 <ul>
 					<button type="button" id="searchBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm"  > 
@@ -690,6 +697,7 @@ $(function(){
         var fields = {
             's_site': $("#s_site").val(),
             's_match_status': $("#s_match_status").val(),
+            's_keyword_mode': $("#s_keyword_mode").val(),
             's_keyword': $("#s_keyword").val(),
             's_status': $("#s_status").val(),
             's_limit': $("#s_limit").val(),
