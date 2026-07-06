@@ -10,6 +10,7 @@ use App\Classes\Request;
 use App\Utils\Pagination;
 use App\Models\ProductModel;
 use App\Models\BrandModel;
+use App\Models\ProductStockModel;
 use App\Services\CompetitorApiService;
 
 class CompetitorController extends BaseClass
@@ -39,6 +40,11 @@ class CompetitorController extends BaseClass
                 $s_limit = 100;
             }
             $matchedProductMap = [];
+            $brandForSelect = BrandModel::query()
+                ->select('BD_IDX', 'BD_NAME')
+                ->orderBy('BD_NAME', 'ASC')
+                ->get();
+            $brandForSelect = is_array($brandForSelect) ? $brandForSelect : $brandForSelect->toArray();
 
             $competitor_data = [
                 'oname' => ['name' => "오나미몰", 'code' => 'oname'],
@@ -78,6 +84,19 @@ class CompetitorController extends BaseClass
                         ->whereIn('CD_IDX', $matchIdxs)
                         ->get();
                     $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
+                    $stockQtyByCdIdx = [];
+                    $stockRows = ProductStockModel::query()
+                        ->select('ps_prd_idx', 'ps_stock')
+                        ->whereIn('ps_prd_idx', $matchIdxs)
+                        ->get();
+                    $stockRows = is_array($stockRows) ? $stockRows : $stockRows->toArray();
+                    foreach ($stockRows as $stockRow) {
+                        $prdIdx = (int)($stockRow['ps_prd_idx'] ?? 0);
+                        if ($prdIdx <= 0) {
+                            continue;
+                        }
+                        $stockQtyByCdIdx[$prdIdx] = (int)($stockRow['ps_stock'] ?? 0);
+                    }
 
                     $brandIdxs = [];
                     foreach ($matchedProducts as $matchedProduct) {
@@ -116,6 +135,7 @@ class CompetitorController extends BaseClass
                             'CD_BRAND_IDX' => $brandIdx,
                             'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
                             'cd_sale_price' => (int)($matchedProduct['cd_sale_price'] ?? 0),
+                            'stock_qty' => (int)($stockQtyByCdIdx[$cdIdx] ?? 0),
                             'img_path' => $img !== '' ? ('/data/comparion/' . $img) : '',
                         ];
                     }
@@ -154,6 +174,7 @@ class CompetitorController extends BaseClass
                 'pagination_current_page' => $pagination_current_page,
                 'paginationHtml' => $paginationHtml,
                 'matchedProductMap' => $matchedProductMap,
+                'brandForSelect' => $brandForSelect,
             ];
 
             return view('admin.competitor.competitor_product_db', $data)
@@ -181,6 +202,11 @@ class CompetitorController extends BaseClass
         try {
             $requestData = $request->all();
             $keyword = trim((string)($requestData['keyword'] ?? ''));
+            $brandIdx = (int)($requestData['brand_idx'] ?? 0);
+            $page = (int)($requestData['page'] ?? 1);
+            if ($page <= 0) {
+                $page = 1;
+            }
             $limit = (int)($requestData['limit'] ?? 30);
             if ($limit <= 0) {
                 $limit = 30;
@@ -189,29 +215,35 @@ class CompetitorController extends BaseClass
                 $limit = 100;
             }
 
-            if ($keyword === '') {
+            if ($keyword === '' && $brandIdx <= 0) {
                 return response()->json([
                     'success' => true,
-                    'message' => '검색어가 비어있습니다.',
+                    'message' => '검색 조건이 비어있습니다.',
                     'data' => [
                         'items' => [],
                     ],
                 ]);
             }
 
-            $productRows = ProductModel::query()
+            $query = ProductModel::query()
                 ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'CD_IMG')
-                ->where('CD_NAME', 'LIKE', '%' . $keyword . '%')
-                ->orderBy('CD_IDX', 'DESC')
-                ->limit($limit)
-                ->get();
-            $productRows = is_array($productRows) ? $productRows : $productRows->toArray();
+                ->orderBy('CD_IDX', 'DESC');
+
+            if ($keyword !== '') {
+                $query->where('CD_NAME', 'LIKE', '%' . $keyword . '%');
+            }
+            if ($brandIdx > 0) {
+                $query->where('CD_BRAND_IDX', $brandIdx);
+            }
+
+            $paginationResult = $query->paginate($limit, $page);
+            $productRows = $paginationResult['data'] ?? [];
 
             $brandIdxs = [];
             foreach ($productRows as $row) {
-                $brandIdx = (int)($row['CD_BRAND_IDX'] ?? 0);
-                if ($brandIdx > 0) {
-                    $brandIdxs[] = $brandIdx;
+                $itemBrandIdx = (int)($row['CD_BRAND_IDX'] ?? 0);
+                if ($itemBrandIdx > 0) {
+                    $brandIdxs[] = $itemBrandIdx;
                 }
             }
             $brandIdxs = array_values(array_unique($brandIdxs));
@@ -249,6 +281,12 @@ class CompetitorController extends BaseClass
                 'message' => '검색 완료',
                 'data' => [
                     'items' => $items,
+                    'pagination' => [
+                        'total' => (int)($paginationResult['total'] ?? 0),
+                        'per_page' => (int)($paginationResult['per_page'] ?? $limit),
+                        'current_page' => (int)($paginationResult['current_page'] ?? $page),
+                        'last_page' => (int)($paginationResult['last_page'] ?? 1),
+                    ],
                 ],
             ]);
         } catch (Throwable $e) {
@@ -327,6 +365,81 @@ class CompetitorController extends BaseClass
             return response()->json([
                 'success' => true,
                 'message' => '매칭 처리 완료',
+                'data' => $responseData['data'] ?? [],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 경쟁사 상품 매칭 해지
+     * 외부 API(/api/CompetitorProductMatch)로 매칭 해지 정보 전달
+     *
+     * @param Request $request
+     * @return \App\Core\Response
+     */
+    public function unmatchCompetitorProduct(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+
+            $site = trim((string)($requestData['site'] ?? ''));
+            $prdPk = (int)($requestData['prd_pk'] ?? 0);
+
+            if ($site === '') {
+                throw new \Exception('site is required');
+            }
+            if ($prdPk <= 0) {
+                throw new \Exception('prd_pk must be numeric');
+            }
+
+            $processorPk = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+            $processorId = trim((string)(AuthAdmin::getSession('sess_id') ?? ''));
+            $processorName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+
+            if ($processorPk <= 0 || $processorId === '' || $processorName === '') {
+                throw new \Exception('처리자 정보가 유효하지 않습니다. 다시 로그인 후 시도해주세요.');
+            }
+
+            $payload = [
+                'site' => $site,
+                'prd_pk' => $prdPk,
+                'match_idx' => 0,
+                'action_mode' => 'unmatch',
+                'processor_pk' => $processorPk,
+                'processor_id' => $processorId,
+                'processor_name' => $processorName,
+                'match_processed_at' => date('Y-m-d H:i:s'),
+            ];
+
+            $headers = [
+                'Content-Type: application/json',
+                'X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f',
+            ];
+
+            $responseRaw = HttpClient::postData('https://dnetc01.mycafe24.com/api/CompetitorProductMatch', $payload, $headers);
+            if ($responseRaw === '') {
+                throw new \Exception('외부 API 응답이 비어있습니다.');
+            }
+
+            $responseData = json_decode($responseRaw, true);
+            if (!is_array($responseData)) {
+                throw new \Exception('외부 API 응답 파싱에 실패했습니다.');
+            }
+
+            $status = (string)($responseData['status'] ?? '');
+            if ($status !== 'success') {
+                $errorMessage = (string)($responseData['message'] ?? '매칭 해지 실패');
+                throw new \Exception($errorMessage);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => '매칭 해지 완료',
                 'data' => $responseData['data'] ?? [],
             ]);
         } catch (Throwable $e) {

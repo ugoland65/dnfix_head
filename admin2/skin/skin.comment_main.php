@@ -169,6 +169,7 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 		width: 100%;
 		height: 49px;
 		display: flex;
+		gap: 10px;
 		align-items: center;
 		justify-content: space-between;
 		border-bottom: 1px solid #bbb;
@@ -179,12 +180,23 @@ if (empty($_idx) && !empty($result['CalendarInsert']['idx'])) {
 	.chat-title b {
 		font-size: 15px;
 		font-weight: 600;
+		display: block;
+		overflow: hidden;
+		text-overflow: ellipsis;
+		white-space: nowrap;
+	}
+
+	.chat-title-name {
+		flex:1;
 	}
 
 	.chat-title-menu {
+		/*
 		position: absolute;
 		top: 10px;
 		right: 10px;
+		*/
+		width:190px;
 	}
 
 	.chat-wrap {

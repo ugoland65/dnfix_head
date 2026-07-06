@@ -103,12 +103,14 @@ $mentionTarget = $CommentService->getMentionTarget();
 
 <div class="chat-title">
 
-	<div>
+	<div class="chat-title-name">
 		<ul>
 			<span><?= $result['title']['mode'] ?> | <?= $_mode ?>-<?= $_tidx ?></span>
-			<? if ($_mode == "log") { ?>
+			<?php if ($_mode == "log") { ?>
 				<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="window.open('/admin/work/TaskRequestDetail/<?= $_tidx ?>','_blank');">게시물보기</button>
-			<? } ?>
+			<?php } elseif ($_mode == "prd") { ?>
+				<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="onlyAD.prdView('<?= $_tidx ?>','info');" >상품보기</button>
+			<?php }  ?>
 		</ul>
 		<ul class="m-t-4"><b><?= $result['title']['name'] ?></b></ul>
 	</div>
@@ -154,7 +156,9 @@ $mentionTarget = $CommentService->getMentionTarget();
 						</div>
 						<div class="m-t-5 comment-body" id='comment_body_<?= $comment['idx'] ?>'>
 							<?php
-								$commentText = nl2br(htmlspecialchars($comment['comment'] ?? '', ENT_QUOTES, 'UTF-8'));
+								$rawComment = (string)($comment['comment'] ?? '');
+								$normalizedComment = html_entity_decode($rawComment, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+								$commentText = htmlspecialchars($normalizedComment, ENT_QUOTES, 'UTF-8');
 								$commentText = preg_replace_callback(
 									'~(https?://[^\s<]+)~i',
 									function ($matches) {
@@ -173,6 +177,7 @@ $mentionTarget = $CommentService->getMentionTarget();
 									},
 									$commentText
 								);
+								$commentText = nl2br($commentText);
 							?>
 							<?= $commentText ?>
 						</div>

@@ -37,10 +37,7 @@
 					<select name="s_status" id="s_status" >
 						<option value="" >판매상태</option>
                         <option value="판매중" <?=$s_status == '판매중' ? 'selected' : ''?>>판매중</option>
-                        <option value="일시품절" <?=$s_status == '일시품절' ? 'selected' : ''?>>일시품절</option>
                         <option value="품절" <?=$s_status == '품절' ? 'selected' : ''?>>품절</option>
-                        <option value="판매중단" <?=$s_status == '판매중단' ? 'selected' : ''?>>판매중단</option>
-                        <option value="수집실패" <?=$s_status == '수집실패' ? 'selected' : ''?>>수집실패</option>
 					</select>
 				</ul>
                 <ul>
@@ -106,13 +103,11 @@
                             <th class="">사이트<br>카테고리</th>
                             <th style="width:100px; min-width:100px; max-width:100px;">브랜드</th>
                             <th class="" style="width:300px;">상품명</th>
-                            
                             <th>판매가</th>
                             <th>수정일<br>등록일</th>
                             <th>판매가<br>변경일</th>
                             <th>판매상태<br>변경일</th>
                             <th>정보<br>변경일</th>
-
                             <th>매칭</th>
                             <th>매칭상품</th>
                         </tr>
@@ -122,8 +117,8 @@
                         <?php
                             foreach ( $CompetitorProductApiData['data']['competitorProducts'] ?? [] as $row ){
                         ?>
-                        <tr id="trid_<?=$row['idx']?>" >
-                            <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$row['idx']?>" ></td>	
+                        <tr id="trid_<?=$row['site']?>_<?=$row['prd_pk']?>" >
+                            <td class="list-checkbox"><input type="checkbox" name="key_check[]" value="<?=$row['site']?>_<?=$row['prd_pk']?>" ></td>	
                             <td class=""><?=$row['site']?></td>
                             <td class="text-center"><?=$row['sale_status'] ?? ''?></td>
                             <td class="list-idx">
@@ -144,13 +139,9 @@
                             <td class="text-left"><?=$row['category'] ?? ''?></td>
                             <td class="text-center" style="width:100px; min-width:100px; max-width:100px; white-space: normal !important;"><?=$row['brand_name']?></td>
                             <td class="text-left" style="white-space: normal !important;">
-                                <b><?=$row['name']?></b>
+                                <b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?=$row['name']?></a></b>
                             </td>
-
-
-
                             <td class="text-right"><b><?=number_format($row['price'])?></b></td>
-
                             <td class="text-center">
                                 <?=date('Y.m.d H:i', strtotime($row['updated_at']))?><br>
                                 <?=date('Y.m.d H:i', strtotime($row['created_at']))?>
@@ -162,7 +153,7 @@
                             </td>
                             <td class="text-center">
                                 <?php if( ($row['sale_status'] ?? '') === '품절' ): ?>
-                                    <span style="color:#dc2626; font-weight:700;">품절</span><br><br>
+                                    <span style="color:#dc2626; font-weight:700;">품절</span><br>
                                 <?php endif; ?>
                                 <?php if( $row['last_status_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_status_changed_at']))?>
@@ -198,26 +189,40 @@
                                     $matchedProduct = $matchedProductMap[$matchedIdx] ?? null;
                                 ?>
                                 <?php if( !empty($matchedProduct) ): ?>
-                                    <div style="display:flex; align-items:flex-start; gap:10px;">
+                                    <div style="display:flex; align-items:flex-start; gap:7px;">
                                         <div style="width:56px; min-width:56px;">
                                             <?php if( !empty($matchedProduct['img_path']) ){ ?>
                                                 <img src="<?= htmlspecialchars((string)($matchedProduct['img_path'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:56px; height:56px; object-fit:cover; border:1px solid #eee !important;">
                                             <?php } ?>
                                         </div>
                                         <div style="flex:1; min-width:0;">
+
+                                            <?php /*
                                             <div><b>#<?=$matchedProduct['CD_IDX'] ?? ''?></b></div>
+                                            */ ?>
+
+                                            <span style="color:#6b7280;">브랜드: <?= htmlspecialchars((string)($matchedProduct['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span>
                                             <div class="m-t-3" style="font-size:12px; white-space:normal;">
                                                 <?= htmlspecialchars((string)($matchedProduct['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
                                             </div>
-                                            <div class="m-t-3" style="font-size:12px; color:#6b7280;">
-                                                브랜드: <?= htmlspecialchars((string)($matchedProduct['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?>
-                                            </div>
-                                            <div class="m-t-3" style="font-size:12px;">
-                                                판매가: <b><?= number_format((int)($matchedProduct['cd_sale_price'] ?? 0)) ?></b>
+                                            <div class="m-t-3" style="font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                                
+                                                <span style="display:inline-flex; align-items:center; gap:10px; white-space:nowrap;">
+                                                    <span>판매가: <b><?= number_format((int)($matchedProduct['cd_sale_price'] ?? 0)) ?></b></span>
+                                                    <span style="color:#6b7280;">재고: <b><?= number_format((int)($matchedProduct['stock_qty'] ?? 0)) ?></b></span>
+                                                </span>
                                             </div>
                                             <div class="m-t-3">
                                                 <button type="button" class="btnstyle1 btnstyle1-xs"
-                                                    onclick="onlyAD.prdView('<?= (int)($matchedProduct['CD_IDX'] ?? 0) ?>','info');">매칭된 상품보기</button>
+                                                    onclick="onlyAD.prdView('<?= (int)($matchedProduct['CD_IDX'] ?? 0) ?>','info');">#<?=$matchedProduct['CD_IDX'] ?? ''?> 매칭된 상품보기</button>
+                                                <button
+                                                    type="button"
+                                                    class="btnstyle1 btnstyle1-danger btnstyle1-xs competitor-product-unmatch-btn"
+                                                    data-competitor-site="<?= htmlspecialchars((string)($row['site'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                    data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
+                                                    style="margin-left:4px;">
+                                                    매칭 해지
+                                                </button>
                                             </div>
                                         </div>
                                     </div>
@@ -288,13 +293,13 @@
         min-width: 0;
     }
     .match-layer-target-thumb {
-        width: 48px;
-        height: 48px;
+        width: 60px;
+        height: 60px;
         border: 1px solid #e5e7eb;
         border-radius: 4px;
         object-fit: cover;
         background: #f3f4f6;
-        flex: 0 0 48px;
+        flex: 0 0 60px;
     }
     .match-layer-body {
         padding: 14px 16px;
@@ -304,10 +309,18 @@
         display: flex;
         gap: 8px;
         margin-bottom: 10px;
+        align-items: center;
     }
     .match-layer-search input[type="text"] {
         flex: 1;
         min-width: 200px;
+    }
+    .match-layer-search .match-brand-select-wrap {
+        width: 220px;
+        min-width: 220px;
+    }
+    .match-layer-search .select2-container {
+        width: 100% !important;
     }
     .match-result-table {
         width: 100%;
@@ -339,7 +352,24 @@
         justify-content: space-between;
         align-items: center;
     }
+    .match-pagination {
+        margin-top: 10px;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        gap: 6px;
+        flex-wrap: wrap;
+    }
+    .match-pagination .match-page-btn {
+        min-width: 32px;
+    }
+    .match-pagination .match-page-btn.is-active {
+        background-color: #2563eb;
+        border-color: #2563eb;
+        color: #fff;
+    }
 </style>
+
 <div id="competitorProductMatchLayer" class="match-layer-overlay" aria-hidden="true">
     <div class="match-layer-box">
         <div class="match-layer-head">
@@ -355,10 +385,21 @@
         <div class="match-layer-body">
             <input type="hidden" id="match_competitor_idx" value="">
             <div class="match-layer-search">
+                <div class="match-brand-select-wrap">
+                    <select id="match_brand" class="dn-select2">
+                        <option value="">브랜드</option>
+                        <?php foreach ($brandForSelect ?? [] as $brand) { ?>
+                            <option value="<?= (int)($brand['BD_IDX'] ?? 0) ?>">
+                                <?= htmlspecialchars((string)($brand['BD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </div>
                 <input type="text" id="match_keyword" placeholder="상품명(CD_NAME) 검색">
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="matchKeywordClearBtn">지우기</button>
                 <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="matchSearchBtn">검색</button>
             </div>
-            <div id="match_result_status" style="margin-bottom:8px; color:#6b7280; font-size:12px;">검색어를 입력하고 검색해주세요.</div>
+            <div id="match_result_status" style="margin-bottom:8px; color:#6b7280; font-size:12px;">검색어 또는 브랜드를 선택하고 검색해주세요.</div>
             <table class="match-result-table">
                 <colgroup>
                     <col width="90px">
@@ -382,6 +423,7 @@
                     </tr>
                 </tbody>
             </table>
+            <div id="match_pagination" class="match-pagination"></div>
         </div>
         <div class="match-layer-foot">
             <div id="match_selected_info">선택된 상품 없음</div>
@@ -412,6 +454,7 @@ $(function(){
     var selectedMatchProduct = null;
     var currentMatchTarget = null;
     var isMatchProcessing = false;
+    var matchSearchPage = 1;
     var MATCH_SCROLL_STORAGE_KEY = 'competitor_product_db_scroll_top';
 
     function saveScrollWrapPosition() {
@@ -456,6 +499,10 @@ $(function(){
         return $("<div>").text(String(text || "")).html();
     }
 
+    function decodeHtmlEntities(text) {
+        return $("<textarea>").html(String(text || "")).text();
+    }
+
     function closeMatchLayer() {
         $matchLayer.removeClass("active").attr("aria-hidden", "true");
     }
@@ -481,19 +528,46 @@ $(function(){
         var html = "";
         for (var i = 0; i < items.length; i++) {
             var item = items[i] || {};
+            var cdName = decodeHtmlEntities(item.cd_name);
+            var brandName = decodeHtmlEntities(item.brand_name || "-");
             var thumb = item.thumbnail_url
                 ? '<img src="' + escapeHtml(item.thumbnail_url) + '" class="match-thumbnail">'
                 : '<div class="match-thumbnail" style="display:flex;align-items:center;justify-content:center;font-size:11px;color:#9ca3af;">NO IMG</div>';
             html += ''
-                + '<tr class="match-result-row" data-cd-idx="' + escapeHtml(item.cd_idx) + '" data-cd-name="' + escapeHtml(item.cd_name) + '" data-brand-name="' + escapeHtml(item.brand_name) + '">'
+                + '<tr class="match-result-row" data-cd-idx="' + escapeHtml(item.cd_idx) + '" data-cd-name="' + escapeHtml(cdName) + '" data-brand-name="' + escapeHtml(brandName) + '">'
                 + '  <td class="text-center">' + thumb + '</td>'
                 + '  <td class="text-center"><b>#' + escapeHtml(item.cd_idx) + '</b></td>'
-                + '  <td>' + escapeHtml(item.cd_name) + '</td>'
-                + '  <td>' + escapeHtml(item.brand_name || '-') + '</td>'
+                + '  <td>' + escapeHtml(cdName) + '</td>'
+                + '  <td>' + escapeHtml(brandName) + '</td>'
                 + '  <td class="text-center"><button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs match-select-btn">선택</button></td>'
                 + '</tr>';
         }
         $list.html(html);
+    }
+
+    function renderMatchPagination(pagination) {
+        var $pagination = $("#match_pagination");
+        var total = Number((pagination && pagination.total) || 0);
+        var currentPage = Number((pagination && pagination.current_page) || 1);
+        var lastPage = Number((pagination && pagination.last_page) || 1);
+
+        if (total <= 0 || lastPage <= 1) {
+            $pagination.empty();
+            return;
+        }
+
+        var html = '';
+        html += '<button type="button" class="btnstyle1 btnstyle1-xs match-page-btn" data-page="' + (currentPage - 1) + '" ' + (currentPage <= 1 ? 'disabled' : '') + '>이전</button>';
+
+        var startPage = Math.max(1, currentPage - 2);
+        var endPage = Math.min(lastPage, startPage + 4);
+        startPage = Math.max(1, endPage - 4);
+        for (var p = startPage; p <= endPage; p++) {
+            html += '<button type="button" class="btnstyle1 btnstyle1-xs match-page-btn ' + (p === currentPage ? 'is-active' : '') + '" data-page="' + p + '">' + p + '</button>';
+        }
+
+        html += '<button type="button" class="btnstyle1 btnstyle1-xs match-page-btn" data-page="' + (currentPage + 1) + '" ' + (currentPage >= lastPage ? 'disabled' : '') + '>다음</button>';
+        $pagination.html(html);
     }
 
     function submitCompetitorMatch(selectedProduct) {
@@ -538,26 +612,78 @@ $(function(){
             });
     }
 
-    function searchMatchProducts() {
+    function submitCompetitorUnmatch(site, prdPk) {
+        if (isMatchProcessing) {
+            return;
+        }
+        if (!site || !prdPk) {
+            alert("매칭 해지 대상 정보가 없습니다.");
+            return;
+        }
+        if (!confirm("정말 매칭 해지 하시겠습니까?\n매칭해지 해도 다시 매칭이 가능합니다.")) {
+            return;
+        }
+
+        isMatchProcessing = true;
+        ajaxRequest('/admin/competitor/unmatch', {
+            site: site,
+            prd_pk: prdPk
+        })
+            .done(function(res) {
+                if (!(res && (res.success || res.status === 'success'))) {
+                    alert(res && res.message ? res.message : '매칭 해지에 실패했습니다.');
+                    return;
+                }
+                if (typeof toast2 === 'function') {
+                    toast2('success', '경쟁사 매칭', '매칭이 해지되었습니다.');
+                }
+                saveScrollWrapPosition();
+                location.reload();
+            })
+            .fail(function(res) {
+                alert(res && res.message ? res.message : '매칭 해지 중 오류가 발생했습니다.');
+            })
+            .always(function() {
+                isMatchProcessing = false;
+            });
+    }
+
+    function searchMatchProducts(page) {
         var keyword = $.trim($("#match_keyword").val() || "");
-        if (!keyword) {
-            alert("검색어를 입력해주세요.");
+        var brandIdx = Number($("#match_brand").val() || 0);
+        var targetPage = Number(page || 1);
+        if (targetPage <= 0) {
+            targetPage = 1;
+        }
+        if (!keyword && brandIdx <= 0) {
+            alert("검색어를 입력하거나 브랜드를 선택해주세요.");
             $("#match_keyword").focus();
             return;
         }
 
+        matchSearchPage = targetPage;
+        setSelectedMatchProduct(null);
         $("#match_result_status").text("검색 중...");
         ajaxRequest('/admin/competitor/search_product', {
             keyword: keyword,
+            brand_idx: brandIdx > 0 ? brandIdx : '',
+            page: targetPage,
             limit: 50
         })
             .done(function(res) {
                 var items = (res && res.data && res.data.items) ? res.data.items : [];
+                var pagination = (res && res.data && res.data.pagination) ? res.data.pagination : null;
                 renderMatchResults(items);
-                $("#match_result_status").text("검색 결과 " + items.length + "건");
+                renderMatchPagination(pagination);
+                if (pagination) {
+                    $("#match_result_status").text("검색 결과 " + Number(pagination.total || 0) + "건 (" + Number(pagination.current_page || 1) + "/" + Number(pagination.last_page || 1) + " 페이지)");
+                } else {
+                    $("#match_result_status").text("검색 결과 " + items.length + "건");
+                }
             })
             .fail(function(res) {
                 $("#match_result_status").text("검색 실패");
+                $("#match_pagination").empty();
                 alert(res && res.message ? res.message : "검색 중 오류가 발생했습니다.");
             });
     }
@@ -624,6 +750,7 @@ $(function(){
             $("#match_layer_competitor_image").attr("src", "").hide();
         }
         $("#match_keyword").val(competitorName);
+        $("#match_brand").val("").trigger("change");
         setSelectedMatchProduct(null);
         currentMatchTarget = {
             site: competitorSite,
@@ -632,7 +759,7 @@ $(function(){
         };
         $matchLayer.addClass("active").attr("aria-hidden", "false");
 
-        searchMatchProducts();
+        searchMatchProducts(1);
         $("#match_keyword").focus().select();
     });
 
@@ -641,15 +768,39 @@ $(function(){
     });
 
     $("#matchSearchBtn").on("click", function() {
-        searchMatchProducts();
+        searchMatchProducts(1);
+    });
+
+    $("#matchKeywordClearBtn").on("click", function() {
+        $("#match_keyword").val("").focus();
     });
 
     $("#match_keyword").on("keydown", function(e) {
         if (e.key === "Enter") {
             e.preventDefault();
-            searchMatchProducts();
+            searchMatchProducts(1);
         }
     });
+
+    $(document).on("click", ".match-page-btn", function() {
+        var page = Number($(this).data("page") || 1);
+        if ($(this).prop("disabled")) {
+            return;
+        }
+        if (page === matchSearchPage) {
+            return;
+        }
+        searchMatchProducts(page);
+    });
+
+    if ($.fn.select2 && !$("#match_brand").hasClass("select2-hidden-accessible")) {
+        $("#match_brand").select2({
+            width: "100%",
+            placeholder: "브랜드",
+            allowClear: true,
+            dropdownParent: $("#competitorProductMatchLayer .match-layer-box")
+        });
+    }
 
     $(document).on("click", ".match-select-btn", function() {
         var $row = $(this).closest(".match-result-row");
@@ -668,6 +819,12 @@ $(function(){
 
     $("#matchSelectDoneBtn").on("click", function() {
         submitCompetitorMatch(selectedMatchProduct);
+    });
+
+    $(document).on("click", ".competitor-product-unmatch-btn", function() {
+        var site = String($(this).data("competitor-site") || "").trim();
+        var prdPk = Number($(this).data("competitor-prd-pk") || 0);
+        submitCompetitorUnmatch(site, prdPk);
     });
 
     $(document).on("keydown", function(e) {
