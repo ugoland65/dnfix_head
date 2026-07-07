@@ -37,6 +37,47 @@
     .product-kind-context-layer.active {
         display: block;
     }
+    .bulk-update-modal {
+        display: none;
+        position: fixed;
+        left: 0;
+        top: 0;
+        width: 100%;
+        height: 100%;
+        z-index: 10030;
+        background: rgba(0, 0, 0, 0.5);
+    }
+    .bulk-update-modal.active {
+        display: block;
+    }
+    .bulk-update-modal-content {
+        width: 520px;
+        max-width: calc(100% - 40px);
+        background: #fff;
+        border-radius: 8px;
+        margin: 80px auto 0;
+        padding: 20px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+    }
+    .bulk-update-modal-title {
+        font-size: 18px;
+        font-weight: 700;
+        margin-bottom: 16px;
+    }
+    .bulk-update-row {
+        margin-bottom: 14px;
+    }
+    .bulk-update-row label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .bulk-update-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 16px;
+    }
 </style>
 <?php
     $categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
@@ -547,6 +588,7 @@
         선택된 상품 <span id="selected_product_count"></span>
         <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm " id="workRequestBtn">선택상품 업무요청</button>
         <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
+        <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="productUpdateBtn">선택상품 일괄수정</button>
 
         <input type='text' name='rack_change_code' id='rack_change_code' value="" placeholder="변경할 랙코드" style="width:80px;" class="m-l-30">
         <button type="button" class="btn btnstyle1 btnstyle1-info btnstyle1-sm" id="rackChangeBtn">랙 일괄변경</button>
@@ -578,6 +620,43 @@
     <div style="display:flex; justify-content:flex-end; gap:8px;">
         <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_memo2_cancel_btn">취소</button>
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_memo2_save_btn">저장</button>
+    </div>
+</div>
+<div id="productBulkUpdateModal" class="bulk-update-modal">
+    <div class="bulk-update-modal-content">
+        <div class="bulk-update-modal-title">선택상품 일괄수정</div>
+        <div class="bulk-update-row">
+            <label>수정 대상 상품 수</label>
+            <div><b id="bulkUpdateSelectedCount">0</b>건</div>
+        </div>
+        <div class="bulk-update-row">
+            <label for="bulkUpdateBrandIdx">브랜드 일괄변경</label>
+            <select id="bulkUpdateBrandIdx" style="width:100%;">
+                <option value="">브랜드를 선택하세요</option>
+                <? foreach (($brandForSelect ?? []) as $brand) { ?>
+                    <option value="<?= (int)($brand['BD_IDX'] ?? 0) ?>"><?= htmlspecialchars((string)($brand['BD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?></option>
+                <? } ?>
+            </select>
+        </div>
+        <div class="bulk-update-row">
+            <label for="bulkUpdateKind">상품 구분 일괄변경</label>
+            <select id="bulkUpdateKind" style="width:100%;">
+                <option value="">상품 구분 선택</option>
+                <? foreach (($prdKindSelect ?? []) as $kindCode => $kindName) { ?>
+                    <option value="<?= htmlspecialchars((string)$kindCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars((string)$kindName, ENT_QUOTES, 'UTF-8') ?></option>
+                <? } ?>
+            </select>
+        </div>
+        <div class="bulk-update-row" id="bulkUpdateKindSecondWrap" style="display:none;">
+            <label for="bulkUpdateKindSecond">2차 카테고리</label>
+            <select id="bulkUpdateKindSecond" style="width:100%;">
+                <option value="">2차 카테고리 선택</option>
+            </select>
+        </div>
+        <div class="bulk-update-actions">
+            <button type="button" class="btnstyle1 btnstyle1-sm" id="bulkUpdateCancelBtn">닫기</button>
+            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="bulkUpdateApplyBtn">적용</button>
+        </div>
     </div>
 </div>
 
@@ -815,6 +894,43 @@
                 $second.val(currentVal);
             }
             $second.show();
+        }
+
+        function fillBulkUpdateSecondarySelect(resetSelection) {
+            var primaryKind = String($('#bulkUpdateKind').val() || '').trim();
+            var $secondWrap = $('#bulkUpdateKindSecondWrap');
+            var $second = $('#bulkUpdateKindSecond');
+            var childOptions = Array.isArray(PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind]) ? PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY[primaryKind] : [];
+
+            $second.empty().append('<option value="">2차 카테고리 선택</option>');
+            if (childOptions.length === 0) {
+                $second.val('');
+                $secondWrap.hide();
+                return;
+            }
+
+            childOptions.forEach(function(item) {
+                if (!item || !item.key) {
+                    return;
+                }
+                $second.append($('<option>', {
+                    value: item.key,
+                    text: item.name || item.key
+                }));
+            });
+
+            if (resetSelection) {
+                $second.val('');
+            }
+            $secondWrap.show();
+        }
+
+        function getSelectedItems() {
+            var selectedItems = [];
+            $('input[name="check_idx[]"]:checked').each(function() {
+                selectedItems.push(Number($(this).val() || 0));
+            });
+            return selectedItems.filter(function(v) { return v > 0; });
         }
 
         function openCategoryLayer($cell, clientX, clientY) {
@@ -1073,13 +1189,97 @@
             closeMemoLayer();
         });
 
+        $("#productUpdateBtn").on('click', function() {
+            var selectedItems = getSelectedItems();
+            if (selectedItems.length === 0) {
+                alert('일괄수정할 상품을 선택해주세요.');
+                return;
+            }
+
+            $('#bulkUpdateSelectedCount').text(selectedItems.length);
+            $('#bulkUpdateBrandIdx').val('').trigger('change');
+            $('#bulkUpdateKind').val('');
+            $('#bulkUpdateKindSecond').val('');
+            $('#bulkUpdateKindSecondWrap').hide();
+            $('#productBulkUpdateModal').addClass('active');
+            if ($.fn.select2 && !$('#bulkUpdateBrandIdx').hasClass('select2-hidden-accessible')) {
+                $('#bulkUpdateBrandIdx').select2({
+                    width: '100%',
+                    dropdownParent: $('#productBulkUpdateModal')
+                });
+            }
+        });
+
+        $('#bulkUpdateKind').on('change', function() {
+            fillBulkUpdateSecondarySelect(true);
+        });
+
+        $('#bulkUpdateCancelBtn').on('click', function() {
+            $('#productBulkUpdateModal').removeClass('active');
+        });
+
+        $('#bulkUpdateApplyBtn').on('click', function() {
+            var selectedItems = getSelectedItems();
+            var brandIdx = Number($('#bulkUpdateBrandIdx').val() || 0);
+            var primaryKind = String($('#bulkUpdateKind').val() || '').trim();
+            var secondaryKind = String($('#bulkUpdateKindSecond').val() || '').trim();
+            var categoryCode = '';
+
+            if (selectedItems.length === 0) {
+                alert('선택된 상품이 없습니다. 다시 선택해주세요.');
+                $('#productBulkUpdateModal').removeClass('active');
+                return;
+            }
+            if (brandIdx <= 0 && !primaryKind) {
+                alert('일괄수정할 항목을 1개 이상 선택해주세요.');
+                return;
+            }
+            if (!primaryKind && secondaryKind) {
+                alert('1차 카테고리를 먼저 선택해주세요.');
+                return;
+            }
+
+            if (primaryKind) {
+                if (secondaryKind) {
+                    categoryCode = String(PRODUCT_CATEGORY_CODE_BY_KEY[secondaryKind] || '').trim();
+                }
+                if (!categoryCode) {
+                    categoryCode = String(PRODUCT_CATEGORY_CODE_BY_KEY[primaryKind] || '').trim();
+                }
+            }
+
+            var changeTargets = [];
+            if (brandIdx > 0) { changeTargets.push('브랜드'); }
+            if (primaryKind) { changeTargets.push('상품 구분'); }
+            if (!confirm(selectedItems.length + '개 상품의 ' + changeTargets.join(', ') + '를 일괄 변경할까요?')) {
+                return;
+            }
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'bulk_update_product_fields',
+                pks: selectedItems,
+                brand_idx: brandIdx > 0 ? brandIdx : '',
+                cd_kind_code: primaryKind,
+                cd_kind_code_second: secondaryKind,
+                cd_category_code: categoryCode
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '일괄수정에 실패했습니다.');
+                        return;
+                    }
+                    alert(res && res.message ? res.message : '일괄수정이 완료되었습니다.');
+                    location.reload();
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        });
+
         // 랙코드 일괄 변경
         $("#rackChangeBtn").on('click', function() {
             // 선택된 상품 확인
-            var selectedItems = [];
-            $('input[name="check_idx[]"]:checked').each(function() {
-                selectedItems.push($(this).val());
-            });
+            var selectedItems = getSelectedItems();
 
             if (selectedItems.length === 0) {
                 alert('변경할 상품을 선택해주세요.');
@@ -1125,10 +1325,7 @@
 
 		// 선택상품 업무요청
 		$("#workRequestBtn").on('click', function() {
-			var selectedItems = [];
-			$('input[name="check_idx[]"]:checked').each(function() {
-				selectedItems.push($(this).val());
-			});
+			var selectedItems = getSelectedItems();
 
 			if (selectedItems.length === 0) {
 				alert('업무요청할 상품을 선택해주세요.');
@@ -1145,10 +1342,7 @@
 
 		// 선택상품 그룹핑
 		$("#groupingBtn").on('click', function() {
-			var selectedItems = [];
-			$('input[name="check_idx[]"]:checked').each(function() {
-				selectedItems.push($(this).val());
-			});
+			var selectedItems = getSelectedItems();
 
 			if (selectedItems.length === 0) {
 				alert('그룹핑할 상품을 선택해주세요.');

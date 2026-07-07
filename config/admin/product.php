@@ -69,7 +69,13 @@ $categories = [
             [
                 'code' => '02050000',
                 'key' => 'REALDOLL',
-                'name' => '리얼돌',
+                'name' => '리얼돌/전신형',
+                'children' => []
+            ],
+            [
+                'code' => '02070000',
+                'key' => 'HEAD',
+                'name' => '헤드',
                 'children' => []
             ],
         ]

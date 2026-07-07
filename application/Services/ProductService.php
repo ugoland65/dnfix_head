@@ -1697,6 +1697,73 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 목록 화면에서 다중 상품 필드(브랜드/상품구분) 일괄 수정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function bulkUpdateProductFields(array $postData): array
+    {
+        $rawPks = $postData['pks'] ?? [];
+        if (!is_array($rawPks)) {
+            $rawPks = explode(',', (string)$rawPks);
+        }
+        $pks = array_values(array_unique(array_filter(array_map(function ($value) {
+            return (int)$value;
+        }, $rawPks), function ($value) {
+            return $value > 0;
+        })));
+
+        if (empty($pks)) {
+            throw new Exception('수정할 상품을 선택해주세요.');
+        }
+
+        $brandIdx = (int)($postData['brand_idx'] ?? 0);
+        $cdKindCode = trim((string)($postData['cd_kind_code'] ?? ''));
+        $cdKindCodeSecond = trim((string)($postData['cd_kind_code_second'] ?? ''));
+        $postedCategoryCode = trim((string)($postData['cd_category_code'] ?? ''));
+
+        if ($brandIdx <= 0 && $cdKindCode === '') {
+            throw new Exception('일괄수정할 항목을 1개 이상 선택해주세요.');
+        }
+        if ($cdKindCode === '' && $cdKindCodeSecond !== '') {
+            throw new Exception('1차 카테고리를 먼저 선택해주세요.');
+        }
+
+        $updateData = [];
+        if ($brandIdx > 0) {
+            $brandExists = BrandModel::query()
+                ->select('BD_IDX')
+                ->where('BD_IDX', '=', $brandIdx)
+                ->first();
+            if (empty($brandExists)) {
+                throw new Exception('유효하지 않은 브랜드입니다.');
+            }
+            $updateData['CD_BRAND_IDX'] = $brandIdx;
+        }
+
+        if ($cdKindCode !== '') {
+            $cdCategoryCode = $this->resolveCategoryCodeForSave($cdKindCode, $postedCategoryCode, $cdKindCodeSecond);
+            if ($cdCategoryCode === '') {
+                throw new Exception('카테고리 코드 생성에 실패했습니다.');
+            }
+            $updateData['CD_KIND_CODE'] = $cdKindCode;
+            $updateData['CD_CATEGORY_CODE'] = $cdCategoryCode;
+        }
+
+        ProductModel::query()
+            ->whereIn('CD_IDX', $pks)
+            ->update($updateData);
+
+        return [
+            'success' => true,
+            'message' => '선택한 상품 ' . number_format(count($pks)) . '건이 일괄수정되었습니다.',
+            'updated_count' => count($pks),
+            'updated_fields' => array_keys($updateData),
+        ];
+    }
+
+    /**
      * 상품 복사 등록
      *
      * @param array $postData

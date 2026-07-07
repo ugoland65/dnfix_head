@@ -570,6 +570,10 @@ class ProductController extends BaseClass
                     $result = $this->productService->copyProduct($requestData);
                     break;
 
+                case 'bulk_update_product_fields':
+                    $result = $this->productService->bulkUpdateProductFields($requestData);
+                    break;
+
                 default:
                     throw new Exception('유효하지 않은 action_mode 입니다.');
 
