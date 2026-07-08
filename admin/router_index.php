@@ -26,6 +26,7 @@ use App\Controllers\Admin\Coupang\CoupangController;
 use App\Controllers\Admin\CalendarController;
 use App\Controllers\Admin\SaleHistoryController;
 use App\Controllers\Admin\CompetitorController;
+use App\Controllers\Admin\ShowdangController;
 
 try {
 
@@ -91,6 +92,9 @@ try {
     $router->get('/sale/history/detail/{idx}', SaleHistoryController::class, 'saleHistoryDetail'); //할인 이력 상세
     $router->post('/sale/history/save', SaleHistoryController::class, 'saveSaleHistory'); //할인 이력 저장
     $router->post('/sale/history/delete', SaleHistoryController::class, 'deleteSaleHistory'); //할인 이력 삭제
+
+    $router->get('/sale/monthly_discount_management', ShowdangController::class, 'monthlyDiscountManagement'); //월간할인관리
+    $router->post('/sale/monthly_discount_management/action', ShowdangController::class, 'monthlyDiscountManagementAction'); //월간할인관리 액션
 
     // 상품 그룹핑
     $router->get('/product/grouping', ProductGroupingController::class, 'productGroupingList'); //상품 그룹핑 목록

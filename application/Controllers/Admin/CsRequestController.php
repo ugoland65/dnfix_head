@@ -31,7 +31,10 @@ class CsRequestController extends BaseClass
 
             $cs_status = $requestData['s_cs_status'] ?? '요청+처리중';
             $keyword = $requestData['s_keyword'] ?? '';
+            $s_category = trim((string)($requestData['s_category'] ?? ''));
             $order_no = trim((string)($requestData['s_order_no'] ?? ''));
+            $csConfig = config('admin.cs');
+            $csCategoryOptions = (isset($csConfig['categories']) && is_array($csConfig['categories'])) ? $csConfig['categories'] : [];
 
             if ($order_no !== '') {
                 $cs_status = '';
@@ -49,6 +52,7 @@ class CsRequestController extends BaseClass
                 'per_page' => 100,
                 'cs_status' => $cs_status,
                 'keyword' => $keyword,
+                'category' => $s_category,
                 'order_no' => $order_no,
             ];
             $csRequestList = $csRequestService->getCsRequestList($payload);
@@ -64,7 +68,9 @@ class CsRequestController extends BaseClass
             $data = [
                 's_cs_status' => $cs_status,
                 's_keyword' => $keyword,
+                's_category' => $s_category,
                 's_order_no' => $order_no,
+                'csCategoryOptions' => $csCategoryOptions,
                 'csRequestCount' => $csRequestCount,
                 'csRequestList' => $csRequestList['data'],
                 'paginationHtml' => $paginationHtml,
@@ -98,7 +104,13 @@ class CsRequestController extends BaseClass
 
             $requestData = $request->all();
             $apiMode = $requestData['apiMode'] ?? 'do';
-            $category = $requestData['category'] ?? '출고준비';
+            $csConfig = config('admin.cs');
+            $csCategoryOptions = (isset($csConfig['categories']) && is_array($csConfig['categories'])) ? $csConfig['categories'] : [];
+            $defaultCategory = !empty($csCategoryOptions) ? (string)array_key_first($csCategoryOptions) : '출고준비';
+            $category = trim((string)($requestData['category'] ?? $defaultCategory));
+            if ($category === '' || !array_key_exists($category, $csCategoryOptions)) {
+                $category = $defaultCategory;
+            }
             $orderNo = $requestData['orderNo'] ?? null;
             $orderDate = $requestData['orderDate'] ?? null;
             $paymentDt = $requestData['paymentDt'] ?? null;
@@ -119,6 +131,7 @@ class CsRequestController extends BaseClass
                 'mode' => 'create',
                 'apiMode' => $apiMode,
                 'category' => $category,
+                'csCategoryOptions' => $csCategoryOptions,
                 'actionDate' => $actionDate,
                 'orderNo' => $orderNo,
                 'orderDate' => $orderDate,
@@ -163,10 +176,13 @@ class CsRequestController extends BaseClass
             $csRequest = $csRequestService->getCsRequestDetail($idx);
             $commentService = new CommentService();
             $mentionTarget = $commentService->getMentionTarget();
+            $csConfig = config('admin.cs');
+            $csCategoryOptions = (isset($csConfig['categories']) && is_array($csConfig['categories'])) ? $csConfig['categories'] : [];
 
             $data = [
                 'mode' => 'detail',
                 'csRequest' => $csRequest,
+                'csCategoryOptions' => $csCategoryOptions,
                 'mentionTarget' => $mentionTarget,
             ];
 

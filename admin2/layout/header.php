@@ -347,6 +347,9 @@ $gnb_lang = "ko";
 							<a href="/admin/sale/history">상품 할인관리</a>
 						</li>
 						<li>
+							<a href="/admin/sale/monthly_discount_management">월간 할인 관리</a>
+						</li>
+						<li>
 							<a href="/admin/product/grouping">상품 그룹핑</a>
 						</li>
 						<li>

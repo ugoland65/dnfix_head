@@ -38,6 +38,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 </div>
 <div class="left-menu-wrap">
 	<ul <? if( $pageNameCode == "sale_history_list" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/sale/history'"><li>상품 할인관리</li></ul>
+	<ul <? if( $pageNameCode == "monthly_discount_management" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/sale/monthly_discount_management'"><li>월간 할인 관리</li></ul>
 	<ul <? if( $pageNameCode == "product_grouping_list" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/grouping'"><li>상품 그룹핑</li></ul>
 	<ul <? if( $_pageN == "set_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/set_prd'"><li>세트 상품</li></ul>
 	<ul <? if( $_pageN == "hbti_prd") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/hbti_prd'"><li>HBTI 상품/관리</li></ul>

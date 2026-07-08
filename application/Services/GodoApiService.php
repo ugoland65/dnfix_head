@@ -1486,7 +1486,7 @@ class GodoApiService extends BaseClass {
     /**
      * 고도몰 상품코드(goodsNo)로 상품 정보 조회
      * 
-     * @param string $goodsNo 상품코드
+     * @param string $goodsNos 상품코드 - 구분자 쉼표 또는 쉼표없이 단일상품으로 가능
      * @return array
      */
     public function getGodoGoodsInfoByGoodsNo($goodsNos) 
@@ -1566,6 +1566,7 @@ class GodoApiService extends BaseClass {
         return $responseData;
     }
 
+
     /**
      * 고도몰 주문 정보 조회
      * 
@@ -1589,6 +1590,7 @@ class GodoApiService extends BaseClass {
         return $responseData['data'];
 
     }
+
 
     /**
      * 고도몰 타임세일 생성
@@ -1637,6 +1639,34 @@ class GodoApiService extends BaseClass {
 
         return $responseData;
     }
+
+
+    /**
+     * 고도몰 특정카테고리에 진열된 상품 정보 수집
+     */
+    public function getGodoGoodsInfoByCategory($cateCd) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsListByCategory&cateCd='.$cateCd;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+        return $responseData;
+    }
+
+
+    /**
+     * 고도몰 월간할인 해제
+     */
+    public function releaseGodoMonthlyDiscount($goodsNo) 
+    {
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=monthlyDiscountRelease&goodsNo='.$goodsNo;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        return $responseData;
+    }
+
 
     /**
      * 고도몰 자동재고등록 및 검수 사항 자동적용

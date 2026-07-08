@@ -54,6 +54,16 @@
 						<option value="처리완료" <? if ($s_cs_status == '처리완료') echo "selected"; ?>>처리완료</option>
 					</select>
 				</ul>
+                <ul>
+                    <select name="s_category" id="s_category">
+                        <option value="">분류</option>
+                        <?php foreach (($csCategoryOptions ?? []) as $categoryCode => $categoryName) { ?>
+                            <option value="<?= htmlspecialchars((string)$categoryCode, ENT_QUOTES, 'UTF-8') ?>" <?php if ((string)($s_category ?? '') === (string)$categoryCode) echo "selected"; ?>>
+                                <?= htmlspecialchars((string)$categoryName, ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </ul>
 				<ul>
 					<input type="text" name="s_keyword" id="s_keyword" placeholder="회원 ID, 주문번호" value="<?= $s_keyword ?? '' ?>">
 				</ul>
@@ -221,6 +231,7 @@
 		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
 		var fields = {
 			's_cs_status': $("#s_cs_status").val(),
+            's_category': $("#s_category").val(),
 			's_keyword': $("#s_keyword").val(),
 		};
 
@@ -253,6 +264,11 @@
 	}
 
     $(function() {
+
+        $("#s_cs_status, #s_category").on('change', function() {
+			var params = getSearchParams();
+			navigateWithParams(params);
+        });
 
 		$("#searchBtn").on('click', function() {
 			// 검색 파라미터 수집

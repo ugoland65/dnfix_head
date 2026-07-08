@@ -8,6 +8,7 @@ use App\Core\BaseClass;
 use App\Classes\Request;
 
 use App\Services\ProductService;
+use App\Services\ProductActionService;
 use App\Services\BrandService;
 use App\Services\ProductPartnerService;
 use App\Services\PartnersService;
@@ -410,15 +411,43 @@ class ProductController extends BaseClass
     {
         try {
             $requestData = $request->all();
+            
             $prdIdx = (int)($requestData['prd_idx'] ?? 0);
             if ($prdIdx <= 0) {
                 throw new Exception('prd_idx가 올바르지 않습니다.');
             }
 
+            $productService = new ProductService();
+            $productData = $productService->getProductDataForAdmin($prdIdx);
+
             $competitorApiService = new CompetitorApiService();
+            $rowMatchesProduct = function (array $row, int $targetCdIdx): bool {
+                $legacyMatchIdx = (int)($row['match_idx'] ?? 0);
+                if ($legacyMatchIdx === $targetCdIdx) {
+                    return true;
+                }
+                $primaryMatchIdx = (int)($row['primary_match_idx'] ?? 0);
+                if ($primaryMatchIdx === $targetCdIdx) {
+                    return true;
+                }
+                $matchedItems = $row['matched_items'] ?? [];
+                if (!is_array($matchedItems)) {
+                    return false;
+                }
+                foreach ($matchedItems as $matchedItem) {
+                    if (!is_array($matchedItem)) {
+                        continue;
+                    }
+                    if ((int)($matchedItem['cd_idx'] ?? 0) === $targetCdIdx) {
+                        return true;
+                    }
+                }
+                return false;
+            };
+
             $competitorApiData = $competitorApiService->getCompetitorProducts([
                 'match_idx' => $prdIdx,
-                'sort_mode' => 'updated_at',
+                'sort_mode' => 'price_asc',
                 'page' => 1,
                 'limit' => 200,
             ]);
@@ -428,8 +457,97 @@ class ProductController extends BaseClass
                 $rows = [];
             }
 
+            $apiStatus = strtolower(trim((string)($competitorApiData['status'] ?? '')));
+            $apiMessage = (string)($competitorApiData['message'] ?? '');
+            $hasMatchIdxCollationError = (
+                $apiStatus === 'error'
+                && stripos($apiMessage, '1267') !== false
+                && stripos($apiMessage, 'collation') !== false
+            );
+
+            // 임시 우회: 운영 API에서 match_idx 조건 시 collation 오류가 발생하면,
+            // 사이트별 전체 목록을 페이지 순회 조회 후 로컬에서 매칭 필터링한다.
+            if ($hasMatchIdxCollationError) {
+                $rows = [];
+                $rowsByKey = [];
+                $scanLimit = 200;
+                $maxScanPagePerSite = 60;
+                $scanSites = ['oname', 'freebody', 'bananamall', 'rmax', 'dingdong', 'vavoomshop'];
+
+                foreach ($scanSites as $scanSite) {
+                    $scanPage = 1;
+                    $lastPage = 1;
+                    while ($scanPage <= $lastPage && $scanPage <= $maxScanPagePerSite) {
+                        $scanApiData = $competitorApiService->getCompetitorProducts([
+                            'site' => $scanSite,
+                            'sort_mode' => 'updated_at',
+                            'page' => $scanPage,
+                            'limit' => $scanLimit,
+                        ]);
+                        $scanRows = $scanApiData['data']['competitorProducts'] ?? [];
+                        if (!is_array($scanRows) || empty($scanRows)) {
+                            break;
+                        }
+
+                        foreach ($scanRows as $scanRow) {
+                            if (!is_array($scanRow)) {
+                                continue;
+                            }
+                            if (!$rowMatchesProduct($scanRow, $prdIdx)) {
+                                continue;
+                            }
+                            $rowKey = (string)($scanRow['site'] ?? '') . '::' . (string)($scanRow['prd_pk'] ?? '');
+                            $rowsByKey[$rowKey] = $scanRow;
+                        }
+
+                        $pagination = $scanApiData['data']['pagination'] ?? [];
+                        $reportedLastPage = (int)($pagination['last_page'] ?? 0);
+                        if ($reportedLastPage > 0) {
+                            $lastPage = $reportedLastPage;
+                        } else if (count($scanRows) < $scanLimit) {
+                            $lastPage = $scanPage;
+                        } else {
+                            $lastPage = max($lastPage, $scanPage + 1);
+                        }
+                        $scanPage++;
+                    }
+                }
+
+                $rows = array_values($rowsByKey);
+            }
+            if (!empty($rows)) {
+                usort($rows, function ($a, $b) {
+                    $priceA = (int)($a['price'] ?? 0);
+                    $priceB = (int)($b['price'] ?? 0);
+                    if ($priceA !== $priceB) {
+                        return $priceA <=> $priceB;
+                    }
+
+                    $timeA = strtotime((string)($a['updated_at'] ?? '')) ?: 0;
+                    $timeB = strtotime((string)($b['updated_at'] ?? '')) ?: 0;
+                    if ($timeA !== $timeB) {
+                        return $timeB <=> $timeA;
+                    }
+
+                    $siteA = (string)($a['site'] ?? '');
+                    $siteB = (string)($b['site'] ?? '');
+                    if ($siteA !== $siteB) {
+                        return strcmp($siteA, $siteB);
+                    }
+
+                    $prdPkA = (int)($a['prd_pk'] ?? 0);
+                    $prdPkB = (int)($b['prd_pk'] ?? 0);
+                    return $prdPkB <=> $prdPkA;
+                });
+            }
+
+            $configCompetitor = config('admin.competitor');
+            $competitor_data = $configCompetitor['competitor_data'] ?? [];
+
             return view('admin.product.prd_detail_competitor_product', [
                 'prd_idx' => $prdIdx,
+                'productData' => $productData,
+                'competitor_data' => $competitor_data,
                 'rows' => $rows,
             ]);
         } catch (Throwable $e) {
@@ -572,6 +690,33 @@ class ProductController extends BaseClass
 
                 case 'bulk_update_product_fields':
                     $result = $this->productService->bulkUpdateProductFields($requestData);
+                    break;
+
+                // 월간할인 해제 - 고도몰 반영까지 처리
+                case 'prd_release_monthly_discount':
+
+                    $goodsNo = trim((string)($requestData['goods_no'] ?? ''));
+                    $prdIdx = trim((string)($requestData['prd_idx'] ?? ''));
+                    $prdStockIdx = trim((string)($requestData['prd_stock_idx'] ?? ''));
+                    $fixedPrice = $requestData['fixed_price'] ?? 0;
+                    $goodsPrice = $requestData['goods_price'] ?? 0;
+                    $actionSource = trim((string)($requestData['action_source'] ?? ''));
+                    $actionSummary = trim((string)($requestData['action_summary'] ?? ''));
+                    $actionUrl = trim((string)($requestData['action_url'] ?? ($_SERVER['HTTP_REFERER'] ?? $_SERVER['REQUEST_URI'] ?? '')));
+
+                    $payload = [
+                        'goodsNo' => $goodsNo,
+                        'prdIdx' => $prdIdx,
+                        'prdStockIdx' => $prdStockIdx,
+                        'fixedPrice' => $fixedPrice,
+                        'goodsPrice' => $goodsPrice,
+                        'actionSource' => $actionSource,
+                        'actionSummary' => $actionSummary,
+                        'actionUrl' => $actionUrl,
+                    ];
+
+                    $productActionService = new ProductActionService();
+                    $result = $productActionService->prdReleaseMonthlyDiscount($payload);
                     break;
 
                 default:

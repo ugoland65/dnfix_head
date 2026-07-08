@@ -3,6 +3,9 @@
         if (!isset($mentionTarget) || !is_array($mentionTarget)) {
             $mentionTarget = [];
         }
+        if (!isset($csCategoryOptions) || !is_array($csCategoryOptions)) {
+            $csCategoryOptions = [];
+        }
     ?>
 
     <input type="hidden" name="mode" value="<?= $mode ?>">
@@ -25,13 +28,11 @@
                     <th>분류</th>
                     <td>
                         <select name="category" id="category">
-                            <option value="출고준비" <?= $category == "출고준비" ? "selected" : "" ?>>출고준비</option>
-                            <option value="환불" <?= $category == "환불" ? "selected" : "" ?>>환불</option>
-                            <option value="불량" <?= $category == "불량" ? "selected" : "" ?>>불량(QC)</option>
-                            <option value="공급사주문" <?= $category == "공급사주문" ? "selected" : "" ?>>공급사주문</option>
-                            <option value="출고지정일" <?= $category == "출고지정일" ? "selected" : "" ?>>출고지정일</option>
-                            <option value="입고후출고" <?= $category == "입고후출고" ? "selected" : "" ?>>입고후출고</option>
-                            <option value="기타" <?= $category == "기타" ? "selected" : "" ?>>기타</option>
+                            <?php foreach ($csCategoryOptions as $categoryCode => $categoryName) { ?>
+                                <option value="<?= htmlspecialchars((string)$categoryCode, ENT_QUOTES, 'UTF-8') ?>" <?= (string)$category === (string)$categoryCode ? "selected" : "" ?>>
+                                    <?= htmlspecialchars((string)$categoryName, ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php } ?>
                         </select>
                     </td>
                 </tr>
@@ -181,13 +182,11 @@
                     <th>분류</th>
                     <td>
                         <select name="category" id="category">
-                            <option value="출고준비" <?= $csRequest['category'] == "출고준비" ? "selected" : "" ?>>출고준비</option>
-                            <option value="환불" <?= $csRequest['category'] == "환불" ? "selected" : "" ?>>환불</option>
-                            <option value="불량" <?= $csRequest['category'] == "불량" ? "selected" : "" ?>>불량(QC)</option>
-                            <option value="공급사주문" <?= $csRequest['category'] == "공급사주문" ? "selected" : "" ?>>공급사주문</option>
-                            <option value="출고지정일" <?= $csRequest['category'] == "출고지정일" ? "selected" : "" ?>>출고지정일</option>
-                            <option value="입고후출고" <?= $csRequest['category'] == "입고후출고" ? "selected" : "" ?>>입고후출고</option>
-                            <option value="기타" <?= $csRequest['category'] == "기타" ? "selected" : "" ?>>기타</option>
+                            <?php foreach ($csCategoryOptions as $categoryCode => $categoryName) { ?>
+                                <option value="<?= htmlspecialchars((string)$categoryCode, ENT_QUOTES, 'UTF-8') ?>" <?= (string)($csRequest['category'] ?? '') === (string)$categoryCode ? "selected" : "" ?>>
+                                    <?= htmlspecialchars((string)$categoryName, ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php } ?>
                         </select>
                     </td>
                 </tr>

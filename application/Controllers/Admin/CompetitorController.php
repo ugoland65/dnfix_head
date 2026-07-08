@@ -34,7 +34,7 @@ class CompetitorController extends BaseClass
             $s_keyword = $requestData['s_keyword'] ?? '';
             $page = $requestData['page'] ?? 1;
             $s_status = $requestData['s_status'] ?? '';
-            $s_sort_mode = $requestData['s_sort_mode'] ?? 'code';
+            $s_sort_mode = $requestData['s_sort_mode'] ?? 'last_status_changed_at';
             $s_limit = (int)($requestData['s_limit'] ?? 100);
             if (!in_array($s_limit, [100, 200, 300, 500], true)) {
                 $s_limit = 100;
@@ -46,14 +46,8 @@ class CompetitorController extends BaseClass
                 ->get();
             $brandForSelect = is_array($brandForSelect) ? $brandForSelect : $brandForSelect->toArray();
 
-            $competitor_data = [
-                'oname' => ['name' => "오나미몰", 'code' => 'oname'],
-                'freebody' => ['name' => "프리바디", 'code' => 'freebody'],
-                'bananamall' => ['name' => "바나나몰", 'code' => 'bananamall'],
-                'rmax' => ['name' => "리얼맥스", 'code' => 'rmax'],
-                'dingdong' => ['name' => "딩동몰", 'code' => 'dingdong'],
-                'vavoomshop' => ['name' => "바붐샵", 'code' => 'vavoomshop'],
-            ];
+            $configCompetitor = config('admin.competitor');
+            $competitor_data = $configCompetitor['competitor_data'] ?? [];
 
             if( $site ){
                 $competitorApiService = new CompetitorApiService();
@@ -71,16 +65,32 @@ class CompetitorController extends BaseClass
                 $competitorRows = $CompetitorProductApiData['data']['competitorProducts'] ?? [];
                 $matchIdxs = [];
                 foreach ($competitorRows as $competitorRow) {
+                    $primaryMatchIdx = $competitorRow['primary_match_idx'] ?? ($competitorRow['match_idx'] ?? null);
+                    if ($primaryMatchIdx !== null && $primaryMatchIdx !== '' && is_numeric($primaryMatchIdx)) {
+                        $matchIdxs[] = (int)$primaryMatchIdx;
+                    }
                     $matchIdx = $competitorRow['match_idx'] ?? null;
                     if ($matchIdx !== null && $matchIdx !== '' && is_numeric($matchIdx)) {
                         $matchIdxs[] = (int)$matchIdx;
+                    }
+                    $matchedItems = $competitorRow['matched_items'] ?? [];
+                    if (is_array($matchedItems)) {
+                        foreach ($matchedItems as $matchedItem) {
+                            if (!is_array($matchedItem)) {
+                                continue;
+                            }
+                            $matchedCdIdx = $matchedItem['cd_idx'] ?? null;
+                            if ($matchedCdIdx !== null && $matchedCdIdx !== '' && is_numeric($matchedCdIdx)) {
+                                $matchIdxs[] = (int)$matchedCdIdx;
+                            }
+                        }
                     }
                 }
                 $matchIdxs = array_values(array_unique($matchIdxs));
 
                 if (!empty($matchIdxs)) {
                     $matchedProducts = ProductModel::query()
-                        ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'CD_IMG')
+                        ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'delivery_type', 'CD_IMG')
                         ->whereIn('CD_IDX', $matchIdxs)
                         ->get();
                     $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
@@ -129,12 +139,49 @@ class CompetitorController extends BaseClass
                         }
                         $brandIdx = (int)($matchedProduct['CD_BRAND_IDX'] ?? 0);
                         $img = trim((string)($matchedProduct['CD_IMG'] ?? ''));
+                        $salePrice = (int)($matchedProduct['cd_sale_price'] ?? 0);
+                        $costPrice = (int)($matchedProduct['cd_cost_price'] ?? 0);
+                        $deliveryType = trim((string)($matchedProduct['delivery_type'] ?? 'small'));
+                        if ($deliveryType === 'tiny_80') {
+                            $deliveryType = 'tiny';
+                        }
+                        $deliveryFeeMap = [
+                            'tiny' => 2300,
+                            'small' => 2800,
+                            'medium' => 3300,
+                            'large' => 5000,
+                            'xlarge' => 5400,
+                        ];
+                        $deliveryFee = (int)($deliveryFeeMap[$deliveryType] ?? 2800);
+
+                        $marginAmount = $salePrice - $costPrice;
+                        if ($salePrice > 29999) {
+                            $marginAmount = $salePrice - ($costPrice + $deliveryFee);
+                        }
+                        $marginRate = 0;
+                        if ($salePrice > 0) {
+                            $marginRate = round(($marginAmount / $salePrice) * 100, 2);
+                        }
+                        $marginGrade = '';
+                        if ($marginRate > 39) $marginGrade = 'A';
+                        else if ($marginRate >= 35) $marginGrade = 'B';
+                        else if ($marginRate >= 30) $marginGrade = 'C';
+                        else if ($marginRate >= 25) $marginGrade = 'D';
+                        else if ($marginRate >= 20) $marginGrade = 'E';
+                        else if ($marginRate >= 15) $marginGrade = 'F';
+                        else if ($marginRate >= 10) $marginGrade = 'G';
+                        else if ($marginRate >= 5) $marginGrade = 'H';
+                        else if ($marginRate > 0) $marginGrade = 'I';
+
                         $matchedProductMap[$cdIdx] = [
                             'CD_IDX' => $cdIdx,
                             'CD_NAME' => (string)($matchedProduct['CD_NAME'] ?? ''),
                             'CD_BRAND_IDX' => $brandIdx,
                             'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
-                            'cd_sale_price' => (int)($matchedProduct['cd_sale_price'] ?? 0),
+                            'cd_sale_price' => $salePrice,
+                            'cd_cost_price' => $costPrice,
+                            'margin_grade' => $marginGrade,
+                            'delivery_type' => $deliveryType,
                             'stock_qty' => (int)($stockQtyByCdIdx[$cdIdx] ?? 0),
                             'img_path' => $img !== '' ? ('/data/comparion/' . $img) : '',
                         ];
@@ -311,7 +358,11 @@ class CompetitorController extends BaseClass
 
             $site = trim((string)($requestData['site'] ?? ''));
             $prdPk = (int)($requestData['prd_pk'] ?? 0);
+            $actionMode = trim((string)($requestData['action_mode'] ?? ''));
             $matchIdx = (int)($requestData['match_idx'] ?? 0);
+            $primaryCdIdx = (int)($requestData['primary_cd_idx'] ?? 0);
+            $matchIdxListRaw = $requestData['match_idx_list'] ?? [];
+            $matchIdxList = [];
 
             if ($site === '') {
                 throw new \Exception('site is required');
@@ -319,8 +370,34 @@ class CompetitorController extends BaseClass
             if ($prdPk <= 0) {
                 throw new \Exception('prd_pk must be numeric');
             }
-            if ($matchIdx <= 0) {
-                throw new \Exception('match_idx must be numeric');
+            if (!is_array($matchIdxListRaw)) {
+                $matchIdxListRaw = [];
+            }
+            foreach ($matchIdxListRaw as $listIdx) {
+                if ($listIdx !== null && $listIdx !== '' && is_numeric($listIdx) && (int)$listIdx > 0) {
+                    $matchIdxList[] = (int)$listIdx;
+                }
+            }
+            $matchIdxList = array_values(array_unique($matchIdxList));
+
+            // 하위호환: action_mode 미지정 + match_idx 단건 호출
+            if ($actionMode === '') {
+                if ($matchIdx <= 0) {
+                    throw new \Exception('match_idx must be numeric');
+                }
+            } elseif ($actionMode === 'upsert_many') {
+                if (empty($matchIdxList)) {
+                    throw new \Exception('match_idx_list is required');
+                }
+                if ($primaryCdIdx > 0 && !in_array($primaryCdIdx, $matchIdxList, true)) {
+                    throw new \Exception('primary_cd_idx must be in match_idx_list');
+                }
+            } elseif ($actionMode === 'set_primary') {
+                if ($matchIdx <= 0) {
+                    throw new \Exception('match_idx must be numeric');
+                }
+            } else {
+                throw new \Exception('invalid action_mode');
             }
 
             $processorPk = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
@@ -334,31 +411,47 @@ class CompetitorController extends BaseClass
             $payload = [
                 'site' => $site,
                 'prd_pk' => $prdPk,
-                'match_idx' => $matchIdx,
                 'processor_pk' => $processorPk,
                 'processor_id' => $processorId,
                 'processor_name' => $processorName,
                 'match_processed_at' => date('Y-m-d H:i:s'),
             ];
+            if ($actionMode !== '') {
+                $payload['action_mode'] = $actionMode;
+            }
+            if ($actionMode === 'upsert_many') {
+                $payload['match_idx_list'] = $matchIdxList;
+                if ($primaryCdIdx > 0) {
+                    $payload['primary_cd_idx'] = $primaryCdIdx;
+                }
+            } else {
+                $payload['match_idx'] = $matchIdx;
+            }
 
             $headers = [
                 'Content-Type: application/json',
                 'X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f',
             ];
 
-            $responseRaw = HttpClient::postData('https://dnetc01.mycafe24.com/api/CompetitorProductMatch', $payload, $headers);
+            $apiResult = HttpClient::postDataWithMeta('https://dnetc01.mycafe24.com/api/CompetitorProductMatch', $payload, $headers);
+            $responseRaw = (string)($apiResult['response'] ?? '');
+            $httpCode = (int)($apiResult['http_code'] ?? 0);
+            $curlError = trim((string)($apiResult['curl_error'] ?? ''));
             if ($responseRaw === '') {
-                throw new \Exception('외부 API 응답이 비어있습니다.');
+                throw new \Exception($this->buildExternalApiEmptyResponseMessage($httpCode, $curlError));
             }
 
             $responseData = json_decode($responseRaw, true);
             if (!is_array($responseData)) {
-                throw new \Exception('외부 API 응답 파싱에 실패했습니다.');
+                throw new \Exception($this->buildExternalApiParseFailMessage($httpCode, $responseRaw));
             }
 
             $status = (string)($responseData['status'] ?? '');
             if ($status !== 'success') {
                 $errorMessage = (string)($responseData['message'] ?? '매칭 저장 실패');
+                if ($httpCode >= 400) {
+                    $errorMessage .= ' (HTTP ' . $httpCode . ')';
+                }
                 throw new \Exception($errorMessage);
             }
 
@@ -389,12 +482,20 @@ class CompetitorController extends BaseClass
 
             $site = trim((string)($requestData['site'] ?? ''));
             $prdPk = (int)($requestData['prd_pk'] ?? 0);
+            $actionMode = trim((string)($requestData['action_mode'] ?? ''));
+            $matchIdx = (int)($requestData['match_idx'] ?? 0);
 
             if ($site === '') {
                 throw new \Exception('site is required');
             }
             if ($prdPk <= 0) {
                 throw new \Exception('prd_pk must be numeric');
+            }
+            if ($actionMode === 'unmatch_one' && $matchIdx <= 0) {
+                throw new \Exception('match_idx must be numeric');
+            }
+            if ($actionMode !== '' && !in_array($actionMode, ['unmatch_one', 'unmatch_all'], true)) {
+                throw new \Exception('invalid action_mode');
             }
 
             $processorPk = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
@@ -408,32 +509,40 @@ class CompetitorController extends BaseClass
             $payload = [
                 'site' => $site,
                 'prd_pk' => $prdPk,
-                'match_idx' => 0,
-                'action_mode' => 'unmatch',
+                'action_mode' => $actionMode !== '' ? $actionMode : 'unmatch_all',
                 'processor_pk' => $processorPk,
                 'processor_id' => $processorId,
                 'processor_name' => $processorName,
                 'match_processed_at' => date('Y-m-d H:i:s'),
             ];
+            if ($payload['action_mode'] === 'unmatch_one') {
+                $payload['match_idx'] = $matchIdx;
+            }
 
             $headers = [
                 'Content-Type: application/json',
                 'X-API-KEY: DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f',
             ];
 
-            $responseRaw = HttpClient::postData('https://dnetc01.mycafe24.com/api/CompetitorProductMatch', $payload, $headers);
+            $apiResult = HttpClient::postDataWithMeta('https://dnetc01.mycafe24.com/api/CompetitorProductMatch', $payload, $headers);
+            $responseRaw = (string)($apiResult['response'] ?? '');
+            $httpCode = (int)($apiResult['http_code'] ?? 0);
+            $curlError = trim((string)($apiResult['curl_error'] ?? ''));
             if ($responseRaw === '') {
-                throw new \Exception('외부 API 응답이 비어있습니다.');
+                throw new \Exception($this->buildExternalApiEmptyResponseMessage($httpCode, $curlError));
             }
 
             $responseData = json_decode($responseRaw, true);
             if (!is_array($responseData)) {
-                throw new \Exception('외부 API 응답 파싱에 실패했습니다.');
+                throw new \Exception($this->buildExternalApiParseFailMessage($httpCode, $responseRaw));
             }
 
             $status = (string)($responseData['status'] ?? '');
             if ($status !== 'success') {
                 $errorMessage = (string)($responseData['message'] ?? '매칭 해지 실패');
+                if ($httpCode >= 400) {
+                    $errorMessage .= ' (HTTP ' . $httpCode . ')';
+                }
                 throw new \Exception($errorMessage);
             }
 
@@ -448,6 +557,46 @@ class CompetitorController extends BaseClass
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    private function buildExternalApiEmptyResponseMessage(int $httpCode, string $curlError): string
+    {
+        if ($curlError !== '') {
+            return '외부 API 호출 실패(cURL): ' . $curlError;
+        }
+        if ($httpCode > 0) {
+            return '외부 API 응답이 비어있습니다. (HTTP ' . $httpCode . ')';
+        }
+        return '외부 API 응답이 비어있습니다.';
+    }
+
+    private function buildExternalApiParseFailMessage(int $httpCode, string $responseRaw): string
+    {
+        $message = '외부 API 응답 파싱에 실패했습니다.';
+        if ($httpCode > 0) {
+            $message .= ' (HTTP ' . $httpCode . ')';
+        }
+
+        $preview = $this->createResponsePreview($responseRaw);
+        if ($preview !== '') {
+            $message .= ' 응답 미리보기: ' . $preview;
+        }
+
+        return $message;
+    }
+
+    private function createResponsePreview(string $responseRaw): string
+    {
+        $text = trim((string)preg_replace('/\s+/u', ' ', $responseRaw));
+        if ($text === '') {
+            return '';
+        }
+
+        if (strlen($text) > 180) {
+            return substr($text, 0, 180) . '...';
+        }
+
+        return $text;
     }
 
 }

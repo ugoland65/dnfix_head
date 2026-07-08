@@ -16,6 +16,12 @@ class HttpClient
         return self::sendRequest($url, 'POST', $data, $header);
     }
 
+    // POST 요청 상세 결과 반환
+    public static function postDataWithMeta($url, $data, $header = '')
+    {
+        return self::sendRequestWithMeta($url, 'POST', $data, $header);
+    }
+
     // GET 요청
     // - 기존 시그니처(getData($url, $header))와 호환
     // - getData($url, $data, $header) 형태도 지원
@@ -39,6 +45,27 @@ class HttpClient
         return self::sendRequest($url, 'GET', $data, $header);
     }
 
+    // GET 요청 상세 결과 반환
+    public static function getDataWithMeta($url, $arg1 = '', $arg2 = '')
+    {
+        $data = null;
+        $header = '';
+
+        if (is_array($arg1)) {
+            if (self::isHeaderArray($arg1) && empty($arg2)) {
+                $header = $arg1;
+            } else {
+                $data = $arg1;
+                $header = $arg2;
+            }
+        } else {
+            $header = $arg1;
+            $data = $arg2;
+        }
+
+        return self::sendRequestWithMeta($url, 'GET', $data, $header);
+    }
+
     private static function isHeaderArray($value)
     {
         if (!is_array($value)) {
@@ -58,6 +85,20 @@ class HttpClient
     // 공통 요청 처리
     private static function sendRequest($url, $method, $data = null, $header = '')
     {
+        $result = self::sendRequestWithMeta($url, $method, $data, $header);
+        return (string)($result['response'] ?? '');
+    }
+
+    // 공통 요청 처리 (메타정보 포함)
+    private static function sendRequestWithMeta($url, $method, $data = null, $header = '')
+    {
+        $result = [
+            'response' => '',
+            'http_code' => 0,
+            'curl_errno' => 0,
+            'curl_error' => '',
+        ];
+
         try {
             if ($method === 'GET' && !empty($data)) {
                 if (is_array($data)) {
@@ -82,18 +123,27 @@ class HttpClient
             curl_setopt($ch, CURLOPT_HTTPHEADER, self::setHeaders($header));
 
             $response = curl_exec($ch);
-            $httpCode = curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);
+            $curlErrno = (int)curl_errno($ch);
+            $curlError = (string)curl_error($ch);
+            curl_close($ch);
 
-            if ($httpCode >= 400) { // HTTP 에러 코드 처리
-                error_log("HTTP Error: $httpCode - $response");
-                return '';
+            $result['response'] = is_string($response) ? $response : '';
+            $result['http_code'] = $httpCode;
+            $result['curl_errno'] = $curlErrno;
+            $result['curl_error'] = $curlError;
+
+            if ($curlErrno > 0) {
+                error_log("cURL Error({$curlErrno}): {$curlError}");
+            } elseif ($httpCode >= 400) {
+                error_log("HTTP Error: {$httpCode} - {$result['response']}");
             }
 
-            curl_close($ch);
-            return $response;
+            return $result;
         } catch (\Exception $e) {
             error_log($e->getMessage());
-            return '';
+            $result['curl_error'] = $e->getMessage();
+            return $result;
         }
     }
 }

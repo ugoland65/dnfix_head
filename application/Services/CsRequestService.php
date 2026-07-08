@@ -31,6 +31,7 @@ class CsRequestService
 
         $cs_status = $criteria['cs_status'] ?? '요청+처리중';
         $keyword = $criteria['keyword'] ?? '';
+        $category = trim((string)($criteria['category'] ?? ''));
         $order_no = trim((string)($criteria['order_no'] ?? ''));
 
         $query = CsRequestModel::query()
@@ -46,6 +47,9 @@ class CsRequestService
             })
             ->when($order_no !== '', function($query) use ($order_no) {
                 $query->where('order_no', $order_no);
+            })
+            ->when($category !== '', function($query) use ($category) {
+                $query->where('category', $category);
             })
             ->when($keyword, function($query) use ($keyword) {
                 $query->where(function($keywordQuery) use ($keyword) {

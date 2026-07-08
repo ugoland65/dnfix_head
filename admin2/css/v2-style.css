@@ -50,7 +50,9 @@
 
 	.partition-body{
 		flex:1;
+		/*
 		border-right:1px solid #555555;
+		*/
 	}
 	.partition-right{
 		flex: 0 0 350px;
