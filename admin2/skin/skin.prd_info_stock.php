@@ -1,9 +1,16 @@
 <?
 	// 변수 초기화
-	$_ps_idx = $_ps_idx ?? "";
+	$_ps_idx = trim((string)($_ps_idx ?? ""));
 	$_sdate = $_sdate ?? "";
 	$_edate = $_edate ?? "";
 	$_pn = $_pn ?? 1;
+
+	if( $_ps_idx === "" ){
+?>
+<div class="admin-guide-text">재고코드가 없습니다.</div>
+<?
+		return;
+	}
 
 	$_where = " WHERE psu_stock_idx = '".$_ps_idx."' ";
 

@@ -591,6 +591,16 @@ tr.selected-row:hover {
 		white-space: normal !important;
 	}
 
+	.product-rack-code{
+		width:100px;
+		min-width:100px;
+		max-width:100px;
+		white-space: normal !important;
+		word-break: keep-all;
+		overflow-wrap: break-word;
+		line-break: auto;
+	}
+
 }
 
 table.table-st2 {

@@ -373,8 +373,12 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_info" class="active" onclick="prdInfo.mode('', 'info')">상품정보</ul>
 		<ul id="crm_menu_price" class="" onclick="prdInfo.mode('', 'price')">매입정보</ul>
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
+
+		<?php if (!empty($prd_data['ps_idx'])) { ?>
 		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
 		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고/판매 리스트</ul>
+		<?php } ?>
+
 		<ul id="crm_menu_competitor_product" class="" onclick="prdInfo.mode('', 'competitor_product')">경쟁사 판매현황</ul>
 		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
@@ -488,28 +492,27 @@ include($docRoot . "/admin2/layout/header_popup.php");
 						</dl>
 					</ul>
 				<?php } ?>
+			<?php } ?>
 
-				<?php if (!empty($prd_data['cd_godo_code'])) { ?>
-					<ul>
-						<dl>
-							<dt>쑈당몰 상품보기</dt>
-							<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
-						</dl>
-					</ul>
-					<ul>
-						<dl>
-							<dt>고도몰 상품관리</dt>
-							<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
-						</dl>
-					</ul>
-				<?php } else { ?>
-					<ul class="warning-text">
-						<i class="fas fa-exclamation-triangle"></i>
-						<p>아직 고도몰 상품번호가 등록되지 않았습니다.</p>
-						<p>고도몰 상품번호 등록해주세요.</p>
-					</ul>
-				<?php } ?>
-
+			<?php if (!empty($prd_data['cd_godo_code'])) { ?>
+				<ul>
+					<dl>
+						<dt>쑈당몰 상품보기</dt>
+						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
+					</dl>
+				</ul>
+				<ul>
+					<dl>
+						<dt>고도몰 상품관리</dt>
+						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
+					</dl>
+				</ul>
+			<?php } else { ?>
+				<ul class="warning-text">
+					<i class="fas fa-exclamation-triangle"></i>
+					<p>아직 고도몰 상품번호가 등록되지 않았습니다.</p>
+					<p>고도몰 상품번호 등록해주세요.</p>
+				</ul>
 			<?php } ?>
 
 			<ul class="right">

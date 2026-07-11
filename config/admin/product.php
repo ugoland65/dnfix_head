@@ -29,7 +29,74 @@ $categories = [
         'code' => '01000000',
         'key' => 'ONAHOLE',
         'name' => '오나홀',
-        'children' => []
+        'children' => [
+            [
+                'code' => '01010000',
+                'key' => 'ONAHOLE_COMPACT',
+                'name' => '컴팩트',
+                'children' => []
+            ],
+            [
+                'code' => '01020000',
+                'key' => 'ONAHOLE_HANDY_S',
+                'name' => '핸디형 S',
+                'children' => []
+            ],
+            [
+                'code' => '01030000',
+                'key' => 'ONAHOLE_HANDY_M',
+                'name' => '핸디형 M',
+                'children' => []
+            ],
+            [
+                'code' => '01040000',
+                'key' => 'ONAHOLE_HANDY_L',
+                'name' => '핸디형 L',
+                'children' => []
+            ],
+            [
+                'code' => '01050000',
+                'key' => 'ONAHOLE_MEDIUM_LARGE',
+                'name' => '중 / 대형',
+                'children' => []
+            ],
+            [
+                'code' => '01060000',
+                'key' => 'ONAHOLE_ELECTRIC_AUTO',
+                'name' => '전동 / 자동형',
+                'children' => []
+            ],
+            [
+                'code' => '01070000',
+                'key' => 'ONAHOLE_FERA',
+                'name' => '페라형',
+                'children' => []
+            ],
+            [
+                'code' => '01080000',
+                'key' => 'ONAHOLE_CUPHOLDER',
+                'name' => '컵홀형',
+                'children' => []
+            ],
+            [
+                'code' => '01090000',
+                'key' => 'ONAHOLE_BOTTOM',
+                'name' => '바닥오나',
+                'children' => []
+            ],
+            [
+                'code' => '01100000',
+                'key' => 'ONAHOLE_BODY_FETISH',
+                'name' => '신체 / 페타시',
+                'children' => []
+            ],
+            [
+                'code' => '01110000',
+                'key' => 'ONAHOLE_COTTON_TYPE',
+                'name' => '면타입',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '02000000',
@@ -290,10 +357,49 @@ $importing_country = [
     'dollar' => "그외 달러 국가",
 ];
 
+$sale_status_options = [
+    [
+        'code' => 'pre_registered',
+        'value' => '가등록',
+        'label' => '가등록',
+    ],
+    [
+        'code' => 'new_order',
+        'value' => '신상주문',
+        'label' => '신상주문',
+    ],
+    [
+        'code' => 'registered',
+        'value' => '등록완료',
+        'label' => '등록완료',
+    ],
+    [
+        'code' => 'waiting_sale',
+        'value' => '입고확정',
+        'label' => '입고확정',
+    ],
+    [
+        'code' => 'sale_product',
+        'value' => '판매상품',
+        'label' => '판매상품',
+    ],
+    [
+        'code' => 'purchase_agency',
+        'value' => '구매대행',
+        'label' => '구매대행',
+    ],
+    [
+        'code' => 'godo_deleted',
+        'value' => '고도몰삭제',
+        'label' => '고도몰삭제',
+    ],
+];
+
 $data = [
     'prd_kind_name' => $prd_kind_name,
     'categories' => $categories,
-    'importing_country' => $importing_country
+    'importing_country' => $importing_country,
+    'sale_status_options' => $sale_status_options,
 ];
 
 return $data;

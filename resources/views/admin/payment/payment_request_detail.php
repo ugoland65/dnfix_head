@@ -158,7 +158,11 @@
                 <tr>
                     <th>요청내용</th>
                     <td>
-                        <textarea name="memo" id="memo" rows="10"><?= $paymentRequest['memo'] ?? '' ?></textarea>
+                        <textarea name="memo" id="memo" rows="10" required><?= $paymentRequest['memo'] ?? '' ?></textarea>
+                        <div class="admin-guide-text">
+                            - 요청내용은 필수 항목입니다.<br>
+                            - 내용을 쓰면 결제담당자에게 텔레그램으로 알립니다. 별도로 알릴 필요가 없습니다.
+                        </div>
                     </td>
                 </tr>
                 <?php if ($mode == 'modify') { ?>
@@ -193,10 +197,17 @@
 </form>
 <div class="m-t-10 text-center">
     <button type="button" id="save_btn" class="btnstyle1 btnstyle1-primary btnstyle1-lg">등록</button>
+    <div id="payment_request_processing_text" class="admin-guide-text" style="display:none; margin-top:8px; color:#2563eb; font-weight:600;">
+        현재 텔레그램으로 메세지를 전송중입니다.
+    </div>
 </div>
 
 <script>
     $(function() {
+        var isSubmitting = false;
+        var $form = $('#payment_request_detail_form');
+        var $saveBtn = $('#save_btn');
+        var $processingText = $('#payment_request_processing_text');
 
         $('.calendar-input input').datepicker(clareCalendar);
 
@@ -241,6 +252,9 @@
 
         $('#save_btn').click(function(e) {
             e.preventDefault();
+            if (isSubmitting) {
+                return;
+            }
 
             var isRefund = String($('#category').val() || '').trim() === '환불';
             var godoOrderNo = String($('#godo_order_no').val() || '').trim();
@@ -250,17 +264,42 @@
                 return;
             }
 
+            var memo = String($('#memo').val() || '').trim();
+            if (memo === '') {
+                alert('요청내용은 필수입력입니다.');
+                $('#memo').focus();
+                return;
+            }
+
             var formData = $('#payment_request_detail_form').serializeArray();
+
+            isSubmitting = true;
+            $form.find('input, select, textarea, button').prop('disabled', true);
+            $saveBtn.prop('disabled', true);
+            $processingText.show();
             ajaxRequest('/admin/payment/payment_request_save', formData)
                 .then(res => {
                     if (res.success) {
-                        alert(res.message);
-                        window.location.reload();
+                        if (window.opener && !window.opener.closed) {
+                            window.opener.location.reload();
+                        }
+                        window.close();
+                        setTimeout(function() {
+                            window.location.reload();
+                        }, 200);
                     } else {
+                        isSubmitting = false;
+                        $form.find('input, select, textarea, button').prop('disabled', false);
+                        $saveBtn.prop('disabled', false);
+                        $processingText.hide();
                         alert(res.message);
                     }
                 })
                 .catch(err => {
+                    isSubmitting = false;
+                    $form.find('input, select, textarea, button').prop('disabled', false);
+                    $saveBtn.prop('disabled', false);
+                    $processingText.hide();
                     alert(err.message);
                 });
         });

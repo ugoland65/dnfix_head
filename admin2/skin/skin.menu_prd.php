@@ -11,12 +11,11 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul>상품 목록</ul>
 </div>
 <div class="left-menu-wrap">
-	<ul <? if( $_pageN == "prd_reg") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_reg'"><li>상품 등록</li></ul>
-
 	<?php /*
+	<ul <? if( $_pageN == "prd_reg") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_reg'"><li>상품 등록</li></ul>
 	<ul <? if( $_pageN == "prd_db") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/prd/prd_db'"><li>상품 DB (구)</li></ul>
 	*/ ?>
-
+	<ul <? if( $pageNameCode == "prd_db_create") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/prd_db_create'"><li>상품 DB 생성</li></ul>
 	<ul <? if( $pageNameCode == "prd_db") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_db'"><li>상품 DB</li></ul>
 	<ul <? if( $pageNameCode == "product_stock") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/product/product_stock'"><li>보유상품 관리</li></ul>
 

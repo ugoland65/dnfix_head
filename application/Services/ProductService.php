@@ -115,6 +115,7 @@ class ProductService extends BaseClass
         $s_work_task_done = strtoupper(trim((string)($criteria['s_work_task_done'] ?? '')));
         $search_value = $criteria['search_value'] ?? null;
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
+        $s_sale_status = trim((string)($criteria['s_sale_status'] ?? ''));
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
 
         $since = $criteria['since'] ?? null;
@@ -188,6 +189,10 @@ class ProductService extends BaseClass
         if ($s_discontinued) {
             
             $query->where('A.is_discontinued', $s_discontinued);
+        }
+
+        if ($s_sale_status !== '') {
+            $query->where('A.sale_status', $s_sale_status);
         }
 
         // 마진율 그룹 검색 (A~I)
@@ -1034,6 +1039,13 @@ class ProductService extends BaseClass
                 }
             }
 
+            if (!empty($productData['cd_spec'])) {
+                $productData['cd_spec'] = json_decode($productData['cd_spec'] ?? '{}', true);
+                if (!is_array($productData['cd_spec'])) {
+                    $productData['cd_spec'] = [];
+                }
+            }
+
             $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
         }
 
@@ -1099,6 +1111,14 @@ class ProductService extends BaseClass
                 $productData['cd_weight_fn'] = json_decode($productData['cd_weight_fn'] ?? '{}', true);
                 if (!is_array($productData['cd_weight_fn'])) {
                     $productData['cd_weight_fn'] = [];
+                }
+            }
+
+            // cd_spec 디코딩
+            if (!empty($productData['cd_spec'])) {
+                $productData['cd_spec'] = json_decode($productData['cd_spec'] ?? '{}', true);
+                if (!is_array($productData['cd_spec'])) {
+                    $productData['cd_spec'] = [];
                 }
             }
 
@@ -1229,9 +1249,9 @@ class ProductService extends BaseClass
     {
 
         $idx = (int)($postData['idx'] ?? 0);
-        
+
         if ($idx <= 0) {
-            throw new Exception('상품 idx가 올바르지 않습니다.');
+            return $this->createProduct($postData);
         }
 
         $auth = AdminAuth::user() ?? [];
@@ -1355,6 +1375,7 @@ class ProductService extends BaseClass
             (string)($postData['cd_category_code'] ?? ''),
             (string)($postData['cd_kind_code_second'] ?? '')
         );
+        $saleStatus = trim((string)($postData['sale_status'] ?? ''));
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
         $cdName = (string)($postData['cd_name'] ?? '');
@@ -1457,6 +1478,8 @@ class ProductService extends BaseClass
 
         $cdWeightData = ['1' => $cdWeight1, '2' => $cdWeight2, '3' => $cdWeight3, '4' => $cdWeight4];
         $cdWeightFn = json_encode($cdWeightData);
+        $cdSpecData = $this->buildCdSpecForSave($cdCategoryCode, $postData);
+        $cdSpec = empty($cdSpecData) ? null : json_encode($cdSpecData, JSON_UNESCAPED_UNICODE);
 
         $cdRegData = json_decode($oldProduct['cd_reg'] ?? '{}', true);
         if (!is_array($cdRegData) || empty($cdRegData)) {
@@ -1485,6 +1508,7 @@ class ProductService extends BaseClass
         $updateData = [
             'CD_KIND_CODE' => $cdKindCode,
             'CD_CATEGORY_CODE' => $cdCategoryCode,
+            'sale_status' => $saleStatus,
             'CD_BRAND_IDX' => $cdBrandIdx,
             'CD_BRAND2_IDX' => $cdBrand2Idx,
             'CD_NAME' => $cdName,
@@ -1504,6 +1528,7 @@ class ProductService extends BaseClass
             'CD_SIZE2' => $cdSize2,
             'cd_size_fn' => $cdSizeFn,
             'cd_weight_fn' => $cdWeightFn,
+            'cd_spec' => $cdSpec,
             'CD_CODE' => $cdCode,
             'CD_CODE2' => $cdCode2,
             'cd_reg' => $cdReg,
@@ -1614,6 +1639,354 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 상품 신규 생성
+     *
+     * @param array $postData
+     * @return array
+     */
+    private function createProduct(array $postData): array
+    {
+        $auth = AdminAuth::user() ?? [];
+        $adIdx = (string)($auth['sess_idx'] ?? '0');
+        $regData = [
+            'date' => date('Y-m-d H:i:s'),
+            'idx' => $auth['sess_idx'] ?? null,
+            'id' => $auth['sess_id'] ?? '',
+            'name' => $auth['sess_name'] ?? '',
+            'ip' => AdminAuth::getIp(),
+            'domain' => AdminAuth::getDomain(),
+        ];
+
+        $uploadsDir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\') . '/data/comparion';
+        $imageStorage = new ImageStorage();
+
+        $cdAddImgData = [
+            'add1' => ['filename' => ''],
+            'add2' => ['filename' => ''],
+            'add3' => ['filename' => ''],
+        ];
+
+        $imgName = '';
+        $imgName2 = '';
+        $imgAdd1 = '';
+        $imgAdd2 = '';
+        $imgAdd3 = '';
+
+        $mainFile = $_FILES['cd_img'] ?? null;
+        $iconFile = $_FILES['cd_img2'] ?? null;
+        $add1File = $_FILES['cd_add1'] ?? null;
+        $add2File = $_FILES['cd_add2'] ?? null;
+        $add3File = $_FILES['cd_add3'] ?? null;
+        $outImg = (string)($postData['out_img'] ?? '');
+        $hasUploadedFile = !empty($mainFile['name'] ?? '')
+            || !empty($iconFile['name'] ?? '')
+            || !empty($add1File['name'] ?? '')
+            || !empty($add2File['name'] ?? '')
+            || !empty($add3File['name'] ?? '');
+
+        if (!empty($mainFile['name'] ?? '')) {
+            $saveFileName = 'prd_' . $adIdx . '_' . time();
+            $imgName = $imageStorage->storeUploaded($mainFile, $uploadsDir, $saveFileName, 302, 302);
+        } elseif ($outImg !== '') {
+            $saveFileName = 'prd_' . $adIdx . '_' . time();
+            $imgName = $imageStorage->storeFromUrl($outImg, $uploadsDir, $saveFileName, 302, 302);
+        }
+
+        if (!empty($iconFile['name'] ?? '')) {
+            $saveFileName = 'prd_icon_' . $adIdx . '_' . time();
+            $imgName2 = $imageStorage->storeUploaded($iconFile, $uploadsDir, $saveFileName, 100, 100);
+        }
+
+        if (!empty($add1File['name'] ?? '')) {
+            $saveFileName = 'prd_invoice_' . $adIdx . '_' . time();
+            $imgAdd1 = $imageStorage->storeUploaded($add1File, $uploadsDir, $saveFileName);
+        }
+
+        if (!empty($add2File['name'] ?? '')) {
+            $saveFileName = 'prd_c19_' . $adIdx . '_' . time();
+            $imgAdd2 = $imageStorage->storeUploaded($add2File, $uploadsDir, $saveFileName, 302, 302);
+        }
+
+        if (!empty($add3File['name'] ?? '')) {
+            $saveFileName = 'prd_ship_' . $adIdx . '_' . time();
+            $imgAdd3 = $imageStorage->storeUploaded($add3File, $uploadsDir, $saveFileName);
+        }
+
+        $cdAddImgData = [
+            'add1' => [
+                'name' => '인보이스이미지',
+                'filename' => $imgAdd1,
+            ],
+            'add2' => [
+                'name' => '19금대체이미지',
+                'filename' => $imgAdd2,
+            ],
+            'add3' => [
+                'name' => '출고이미지',
+                'filename' => $imgAdd3,
+            ],
+        ];
+
+        $imgMode = (string)($postData['img_mode'] ?? 'this');
+        if ($hasUploadedFile) {
+            $imgMode = 'this';
+        }
+
+        $cdKindCode = (string)($postData['cd_kind_code'] ?? '');
+        $cdCategoryCode = $this->resolveCategoryCodeForSave(
+            $cdKindCode,
+            (string)($postData['cd_category_code'] ?? ''),
+            (string)($postData['cd_kind_code_second'] ?? '')
+        );
+        $saleStatus = trim((string)($postData['sale_status'] ?? '가등록'));
+        if ($saleStatus === '') {
+            $saleStatus = '가등록';
+        }
+        $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
+        $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
+        $cdName = (string)($postData['cd_name'] ?? '');
+        $cdNameOg = (string)($postData['cd_name_og'] ?? '');
+        $cdNameEn = (string)($postData['cd_name_en'] ?? '');
+        $cdCont = (string)($postData['cd_cont'] ?? '');
+        $cdMemo = (string)($postData['cd_memo'] ?? '');
+        $cdMemo2 = (string)($postData['cd_memo2'] ?? '');
+        $cdMemo3 = (string)($postData['cd_memo3'] ?? '');
+        $cdSearchTerm = (string)($postData['cd_search_term'] ?? '');
+        $cdReleaseDate = !empty($postData['cd_release_date']) ? (string)$postData['cd_release_date'] : '0000-00-00';
+        $cdSizeW = (string)($postData['cd_size_w'] ?? '');
+        $cdSizeH = (string)($postData['cd_size_h'] ?? '');
+        $cdSizeD = (string)($postData['cd_size_d'] ?? '');
+        $cdSize2 = (string)($postData['cd_size2'] ?? '');
+        $cdWeight1 = (string)($postData['cd_weight_1'] ?? '');
+        $cdWeight2 = (string)($postData['cd_weight_2'] ?? '');
+        $cdWeight3 = (string)($postData['cd_weight_3'] ?? '');
+        $cdWeight4 = (string)($postData['cd_weight_4'] ?? '');
+        $cdCode = (string)($postData['cd_code'] ?? '');
+        $cdCode2 = (string)($postData['cd_code2'] ?? '');
+        $cdCode3 = (string)($postData['cd_code3'] ?? '');
+        $cdNational = (string)($postData['cd_national'] ?? '');
+        $cdInvName1 = (string)($postData['cd_inv_name1'] ?? '');
+        $cdInvName2 = (string)($postData['cd_inv_name2'] ?? '');
+        $cdInvMaterial = (string)($postData['cd_inv_material'] ?? '');
+        $cdCoo = (string)($postData['cd_coo'] ?? '');
+        $cdGodoCode = !empty($postData['cd_godo_code']) ? (int)$postData['cd_godo_code'] : 0;
+        $hbti1 = $postData['hbti_1'] ?? null;
+        $hbti2 = $postData['hbti_2'] ?? null;
+        $hbti3 = $postData['hbti_3'] ?? null;
+        $hbti4 = $postData['hbti_4'] ?? null;
+        $hbtiTarget = (string)($postData['hbti_target'] ?? 'Y');
+        $cdSiteShow = (string)($postData['cd_site_show'] ?? 'Y');
+        $invoiceSizeW = (string)($postData['invoice_size_w'] ?? '');
+        $invoiceSizeH = (string)($postData['invoice_size_h'] ?? '');
+        $invoiceSizeD = (string)($postData['invoice_size_d'] ?? '');
+        $invoiceSizeCbm = (string)($postData['invoice_size_cbm'] ?? '');
+        $invoiceSizeCbmMode = (string)($postData['invoice_size_cbm_mode'] ?? '');
+        $importPlastic = (string)($postData['import_plastic'] ?? '');
+        $importPlasticAmount = (string)($postData['import_plastic_amount'] ?? '');
+        $importHscode = (string)($postData['import_hscode'] ?? '');
+        $importHscode1 = (string)($postData['import_hscode1'] ?? '');
+        $importHscode2 = (string)($postData['import_hscode2'] ?? '');
+        $referenceLinkTitles = $postData['reference_link_title'] ?? [];
+        $referenceLinkUrls = $postData['reference_link_url'] ?? [];
+        $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
+        $workTaskCodes = $postData['work_task_codes'] ?? [];
+        $workTaskDoneMap = $postData['work_task_done'] ?? [];
+
+        $cdCodeData = [
+            'jan' => $cdCode,
+            'pcode' => $cdCode2,
+            'code3' => $cdCode3,
+        ];
+        $cdSizeData = ['W' => $cdSizeW, 'H' => $cdSizeH, 'D' => $cdSizeD];
+        $cdSize = json_encode($cdSizeData);
+
+        if ($invoiceSizeCbmMode !== 'hand') {
+            $invoiceSizeCbmMode = 'auto';
+        }
+        if (
+            $invoiceSizeCbmMode === 'auto'
+            && (float)$invoiceSizeD > 0
+            && (float)$invoiceSizeH > 0
+            && (float)$invoiceSizeW > 0
+        ) {
+            $cbm = round(((float)$invoiceSizeD / 1000) * ((float)$invoiceSizeH / 1000) * ((float)$invoiceSizeW / 1000), 3);
+        } else {
+            $cbm = $invoiceSizeCbm;
+        }
+
+        $invoiceSizeData = [
+            'W' => $invoiceSizeW,
+            'H' => $invoiceSizeH,
+            'D' => $invoiceSizeD,
+            'cbm' => $cbm,
+            'cbm_mode' => $invoiceSizeCbmMode,
+        ];
+        $importInformationData = [
+            'plastic' => $importPlastic,
+            'plastic_amount' => $importPlasticAmount,
+            'hscode' => $importHscode,
+            'hscode1' => $importHscode1,
+            'hscode2' => $importHscode2,
+        ];
+        $cdSizeFnData = [
+            'package' => $cdSizeData,
+            'invoice' => $invoiceSizeData,
+            'import' => $importInformationData,
+        ];
+        $cdSizeFn = json_encode($cdSizeFnData);
+
+        $cdWeightData = ['1' => $cdWeight1, '2' => $cdWeight2, '3' => $cdWeight3, '4' => $cdWeight4];
+        $cdWeightFn = json_encode($cdWeightData);
+        $cdSpecData = $this->buildCdSpecForSave($cdCategoryCode, $postData);
+        $cdSpec = empty($cdSpecData) ? null : json_encode($cdSpecData, JSON_UNESCAPED_UNICODE);
+
+        $hbtiData = [$hbti1, $hbti2, $hbti3, $hbti4];
+        $cdHbtiData = json_encode($hbtiData, JSON_UNESCAPED_UNICODE);
+        $cdHbt = '';
+        foreach ($hbtiData as $val) {
+            if (!is_null($val) && $val !== '') {
+                $cdHbt .= $val;
+            }
+        }
+        if ($hbtiTarget === 'N') {
+            $cdHbtiData = null;
+            $cdHbt = null;
+        }
+
+        $regPayload = [
+            'reg' => [
+                'mode' => 'v3',
+                'info' => $regData,
+            ],
+        ];
+        $cdReg = json_encode($regPayload, JSON_UNESCAPED_UNICODE);
+        $now = date('Y-m-d H:i:s');
+
+        $insertData = [
+            'CD_KIND_CODE' => $cdKindCode,
+            'CD_CATEGORY_CODE' => $cdCategoryCode,
+            'sale_status' => $saleStatus,
+            'CD_BRAND_IDX' => $cdBrandIdx,
+            'CD_BRAND2_IDX' => $cdBrand2Idx,
+            'CD_NAME' => $cdName,
+            'CD_NAME_OG' => $cdNameOg,
+            'CD_NAME_EN' => $cdNameEn,
+            'CD_CONT' => $cdCont,
+            'CD_MEMO' => $cdMemo,
+            'cd_memo2' => $cdMemo2,
+            'cd_memo3' => $cdMemo3,
+            'CD_SEARCH_TERM' => $cdSearchTerm,
+            'CD_RELEASE_DATE' => $cdReleaseDate,
+            'img_mode' => $imgMode,
+            'CD_IMG' => $imgName,
+            'CD_IMG2' => $imgName2,
+            'cd_add_img' => json_encode($cdAddImgData, JSON_UNESCAPED_UNICODE),
+            'CD_SIZE' => $cdSize,
+            'CD_SIZE2' => $cdSize2,
+            'cd_size_fn' => $cdSizeFn,
+            'cd_weight_fn' => $cdWeightFn,
+            'cd_spec' => $cdSpec,
+            'CD_CODE' => $cdCode,
+            'CD_CODE2' => $cdCode2,
+            'CD_CODE3' => $cdCode3,
+            'cd_code_fn' => json_encode($cdCodeData, JSON_UNESCAPED_UNICODE),
+            'cd_national' => $cdNational,
+            'CD_INV_NAME1' => $cdInvName1,
+            'CD_INV_NAME2' => $cdInvName2,
+            'CD_INV_MATERIAL' => $cdInvMaterial,
+            'CD_COO' => $cdCoo,
+            'cd_godo_code' => $cdGodoCode,
+            'cd_price_fn' => json_encode([]),
+            'cd_price_history' => json_encode([]),
+            'cd_sale_price' => 0,
+            'cd_cost_price' => 0,
+            'cd_cost_price_info' => json_encode([], JSON_UNESCAPED_UNICODE),
+            'cd_cost_price_memo' => '',
+            'cd_tier' => '',
+            'CD_MACHING_CODE' => '',
+            'CD_WEIGHT' => '',
+            'CD_WEIGHT2' => '',
+            'CD_WEIGHT3' => '',
+            'CD_COLOR' => '',
+            'CD_SUPPLEMENT' => 'N',
+            'CD_SUPPLY_PRICE_1' => 0,
+            'CD_SUPPLY_PRICE_2' => 0,
+            'CD_SUPPLY_PRICE_3' => 0,
+            'CD_SUPPLY_PRICE_4' => 0,
+            'CD_SUPPLY_PRICE_5' => 0,
+            'CD_SUPPLY_PRICE_6' => 0,
+            'CD_SUPPLY_PRICE_7' => 0,
+            'CD_SUPPLY_PRICE_8' => 0,
+            'CD_SUPPLY_PRICE_9' => 0,
+            'CD_SALE_MARGIN_PER' => 0,
+            'CD_OUT_PRICE_1' => 0,
+            'CD_OUT_PRICE_2' => 0,
+            'CD_OUT_PRICE_3' => 0,
+            'CD_OUT_PRICE_4' => 0,
+            'CD_PRICE' => 0,
+            'CD_LINK' => '',
+            'CD_LINK_COUNT' => 0,
+            'CD_LINK_IDX' => 0,
+            'CD_HASH_TAG' => '',
+            'CD_SCORE' => 0,
+            'CD_REVIEW' => 0,
+            'CD_KEEP' => 0,
+            'CD_SORT' => 0,
+            'CD_BRAND_RANK' => 0,
+            'CD_PD_INFO' => '',
+            'CD_RELATED_GOODS' => '',
+            'CD_RECOMMEND_GOODS' => '',
+            'CD_UPDATE_DATE' => 0,
+            'CD_REG_DATE' => 0,
+            'CD_HIT' => 0,
+            'comment_count' => 0,
+            'cd_hbti_data' => $cdHbtiData,
+            'cd_hbti' => $cdHbt,
+            'cd_reg_time' => $now,
+            'cd_reg' => $cdReg,
+            'cd_site_show' => $cdSiteShow,
+            'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+        ];
+
+        $newIdx = (int)ProductModel::query()->insertGetId($insertData);
+        if ($newIdx <= 0) {
+            throw new Exception('상품 생성에 실패했습니다.');
+        }
+
+        $this->syncProductWorkChecks($newIdx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
+
+        $adminActionLogService = new AdminActionLogService();
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 베이직 생성';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$newIdx,
+                'action_mode' => 'create',
+                'action_summary' => $actionSummary,
+                'before_json' => [],
+                'after_json' => $insertData,
+                'diff_json' => $insertData,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 생성 성공/실패에 영향을 주지 않는다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $newIdx,
+            'prd_idx' => $newIdx,
+        ];
+    }
+
+    /**
      * 목록 화면에서 상품 분류(1차/2차) 빠른 수정
      *
      * @param array $postData
@@ -1693,6 +2066,68 @@ class ProductService extends BaseClass
             'message' => '리스트 메모가 수정되었습니다.',
             'prd_idx' => $prdIdx,
             'cd_memo2' => $cdMemo2,
+        ];
+    }
+
+    /**
+     * 목록 화면에서 상품 상태(sale_status) 빠른 수정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function updateProductSaleStatus(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        $saleStatus = trim((string)($postData['sale_status'] ?? ''));
+
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+        if ($saleStatus === '') {
+            throw new Exception('상품상태를 선택해주세요.');
+        }
+
+        $exists = ProductModel::query()
+            ->select('CD_IDX')
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        if (empty($exists)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $saleStatusOptions = config('admin.product.sale_status_options');
+        $allowedSaleStatuses = [];
+        if (is_array($saleStatusOptions)) {
+            foreach ($saleStatusOptions as $key => $option) {
+                if (is_array($option)) {
+                    $optionValue = trim((string)($option['value'] ?? ''));
+                    if ($optionValue !== '') {
+                        $allowedSaleStatuses[] = $optionValue;
+                    }
+                    continue;
+                }
+                $legacyValue = trim((string)$key);
+                if ($legacyValue !== '') {
+                    $allowedSaleStatuses[] = $legacyValue;
+                }
+            }
+        }
+        $allowedSaleStatuses = array_values(array_unique($allowedSaleStatuses));
+        if (!empty($allowedSaleStatuses) && !in_array($saleStatus, $allowedSaleStatuses, true)) {
+            throw new Exception('유효하지 않은 상품상태입니다.');
+        }
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+                'sale_status' => $saleStatus,
+            ]);
+
+        return [
+            'success' => true,
+            'message' => '상품상태가 수정되었습니다.',
+            'prd_idx' => $prdIdx,
+            'sale_status' => $saleStatus,
         ];
     }
 
@@ -2402,6 +2837,84 @@ class ProductService extends BaseClass
         }
 
         return $map;
+    }
+
+    /**
+     * 상세스펙 저장 데이터(JSON)를 생성한다.
+     * 현재는 토르소형(02010000), 리얼돌/전신형(02050000)만 지원한다.
+     *
+     * @param string $cdCategoryCode
+     * @param array $postData
+     * @return array<string,mixed>
+     */
+    private function buildCdSpecForSave(string $cdCategoryCode, array $postData): array
+    {
+        $cdCategoryCode = trim($cdCategoryCode);
+        if (!in_array($cdCategoryCode, ['02010000', '02050000'], true)) {
+            return [];
+        }
+
+        $categoryNameByCode = $this->buildCategoryNameMapByCode();
+        $categoryName = trim((string)($categoryNameByCode[$cdCategoryCode] ?? ''));
+
+        $vendor = $this->normalizeCdSpecSizeSet($postData['cd_spec_vendor'] ?? [], $cdCategoryCode);
+        $measured = $this->normalizeCdSpecSizeSet($postData['cd_spec_measured'] ?? [], $cdCategoryCode);
+
+        return [
+            'category_code' => $cdCategoryCode,
+            'category_name' => $categoryName,
+            'vendor_size' => $vendor,
+            'measured_size' => $measured,
+        ];
+    }
+
+    /**
+     * 상세스펙 사이즈 세트를 정규화한다.
+     *
+     * @param mixed $raw
+     * @param string $cdCategoryCode
+     * @return array<string,string>
+     */
+    private function normalizeCdSpecSizeSet($raw, string $cdCategoryCode = '02050000'): array
+    {
+        $source = is_array($raw) ? $raw : [];
+        $fieldKeysByCategory = [
+            '02010000' => [
+                'body_height',
+                'weight',
+                'shoulder_width',
+                'chest_circumference',
+                'waist_circumference',
+                'hip_circumference',
+                'hip_width',
+                'thigh_circumference',
+                'leg_length',
+                'inner_length_vagina',
+                'inner_length_anal',
+            ],
+            '02050000' => [
+                'height',
+                'weight',
+                'head_length',
+                'chest_circumference',
+                'shoulder_width',
+                'waist_circumference',
+                'hip_circumference',
+                'arm_length',
+                'leg_length',
+                'foot_length',
+                'inner_length_vagina',
+                'inner_length_anal',
+            ],
+        ];
+        $fieldKeys = $fieldKeysByCategory[$cdCategoryCode] ?? $fieldKeysByCategory['02050000'];
+
+        $normalized = [];
+        foreach ($fieldKeys as $fieldKey) {
+            $normalized[$fieldKey] = trim((string)($source[$fieldKey] ?? ''));
+        }
+
+        return $normalized;
     }
 
 

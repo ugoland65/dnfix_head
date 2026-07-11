@@ -4,6 +4,7 @@ namespace App\Services;
 use Exception;
 use App\Models\PaymentRequestModel;
 use App\Core\AuthAdmin;
+use App\Utils\TelegramUtils;
 
 class PaymentRequestService
 {
@@ -81,9 +82,14 @@ class PaymentRequestService
         $kind_idx = (is_numeric($kind_idx_raw) && (string)$kind_idx_raw !== '') ? (int)$kind_idx_raw : null;
         $currency = $requestData['currency'] ?? 'KRW';
         $amount = str_replace(',', '', (string)($requestData['amount'] ?? ''));
-        $foreign_account = $requestData['foreign_account'] ?? null;
+        $memo = trim((string)($requestData['memo'] ?? ''));
+        $foreign_account = trim((string)($requestData['foreign_account'] ?? ''));
         $is_vat = $requestData['is_vat'] ?? 'Y';
         $request_date = $requestData['request_date'] ?? date('Y-m-d');
+        $depositorName = trim((string)($requestData['depositor_name'] ?? ''));
+        $bank = trim((string)($requestData['bank'] ?? ''));
+        $bankAccount = trim((string)($requestData['bank_account'] ?? ''));
+        $depositor = trim((string)($requestData['depositor'] ?? ''));
 
         $ad_pk = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
         $ad_name = AuthAdmin::getSession('sess_name');
@@ -107,20 +113,66 @@ class PaymentRequestService
             'category' => $category,
             'currency' => $currency,
             'amount' => $amount,
-            'depositor_name' => $requestData['depositor_name'],
+            'depositor_name' => $depositorName,
             'foreign_account' => $foreign_account,
             'is_vat' => $is_vat,
             'request_date' => $request_date,
-            'bank' => $requestData['bank'],
-            'bank_account' => $requestData['bank_account'],
-            'depositor' => $requestData['depositor'],
-            'memo' => $requestData['memo'],
+            'bank' => $bank,
+            'bank_account' => $bankAccount,
+            'depositor' => $depositor,
+            'memo' => $memo,
             'meta_json' => $meta_json,
             'ad_pk' => $ad_pk,
             'ad_name' => $ad_name,
         ];
 
         $result = PaymentRequestModel::insert($inputData);
+
+
+        $telegram = new TelegramUtils();
+
+        $message = "🟣 ".$category." 결제요청\n\n";
+        $message .= "━━━━━━━━━━━━━━━━━━━━\n";
+        $message .= "분류 : " . ($category ?: '-') . "\n";
+        $message .= "요청금액 : " . number_format($amount) . " " . $currency . "\n";
+        $message .= "부가세 포함 여부 : " . ($is_vat === 'Y' ? '포함' : '미포함') . "\n";
+        $message .= "무통장 입금자명 : " . ($depositorName !== '' ? $depositorName : '-') . "\n";
+        $message .= "결제 희망일 : " . ($request_date ?: '-') . "\n";
+
+        if ($kind !== null && $kind !== '') {
+            $message .= "연결 kind : " . $kind . "\n";
+        }
+        if ($kind_idx !== null) {
+            $message .= "연결 kind_idx : " . $kind_idx . "\n";
+        }
+        if (!empty($meta_json)) {
+            $metaDecoded = json_decode($meta_json, true);
+            if (is_array($metaDecoded) && !empty($metaDecoded['godo_order_no'])) {
+                $message .= "고도몰 주문번호 : " . $metaDecoded['godo_order_no'] . "\n";
+            }
+        }
+
+        $message .= "━━━━━━━━━━━━━━━━━━━━\n";
+
+        if ($foreign_account !== '') {
+            $message .= "해외계좌 : " . $foreign_account . "\n";
+        } else {
+            $message .= "결제계좌 : " . (($bank !== '') ? $bank : '-') . " " . (($bankAccount !== '') ? $bankAccount : '-') . "\n";
+            $message .= "예금주 : " . (($depositor !== '') ? $depositor : '-') . "\n";
+        }
+        $message .= "━━━━━━━━━━━━━━━━━━━━\n\n";
+        $message .= "요청내용\n";
+        $message .= ($memo !== '' ? $memo : '(요청내용 없음)') . "\n\n";
+        $message .= "————————————\n\n";
+        $message .= "요청일 : " . date('Y-m-d H:i:s') . "\n";
+        $message .= "등록자 : " . $ad_name . "\n";
+        $message .= "————————————\n\n";
+
+        // parse_mode HTML 사용 시 memo 내 특수문자로 전송 실패할 수 있어 plain text로 보낸다.
+        $chatId = "-1003769602878";
+        $telegramResult = $telegram->sendMessage($chatId, $message);
+
+
 
         return $result;
 
@@ -201,6 +253,42 @@ class PaymentRequestService
         ];
 
         $result = PaymentRequestModel::update(['idx' => $idx], $updateData);
+
+        if ($status === '처리완료') {
+            try {
+                $adminServices = new AdminServices();
+                $paymentRequestInfo = PaymentRequestModel::find($idx);
+                $target_mb_idx = 0;
+                if (is_array($paymentRequestInfo)) {
+                    $target_mb_idx = (int)($paymentRequestInfo['ad_pk'] ?? 0);
+                } elseif (is_object($paymentRequestInfo)) {
+                    $target_mb_idx = (int)($paymentRequestInfo->ad_pk ?? 0);
+                }
+                if ($target_mb_idx <= 0) {
+                    return $result;
+                }
+
+                $mentionTargetTelegramIds = $adminServices->getMentionTargetTelegramId($target_mb_idx);
+
+                if (!empty($mentionTargetTelegramIds)) {
+                    $telegram = new TelegramUtils();
+                    $message = "🟢 결제요청 처리완료\n";
+                    $message .= "분류 : " . ($category ?: '-') . "\n";
+                    $message .= "요청금액 : " . $amount . " " . $currency . "\n";
+                    $message .= "결제요청이 처리완료 되었습니다.";
+
+                    foreach ($mentionTargetTelegramIds as $mentionTargetTelegramId) {
+                        $token = trim((string)($mentionTargetTelegramId['ad_telegram_token'] ?? ''));
+                        if ($token === '') {
+                            continue;
+                        }
+                        $telegram->sendMessage($token, $message);
+                    }
+                }
+            } catch (\Throwable $e) {
+                error_log('[PaymentRequestService] complete notify failed: ' . $e->getMessage());
+            }
+        }
 
         return $result;
 

@@ -1,4 +1,21 @@
 <style>
+
+.img-upload-wrap{ font-size:0; }
+.img-upload-wrap > ul{ 
+	width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
+	h3{
+		font-size:15px;
+		font-weight:600;
+	}
+}
+.img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
+
+.img-upload-file-wrap{
+	display:flex;
+	flex-direction:column;
+	gap:5px;
+}
+
 .prd-image-preview-trigger {
     cursor: zoom-in;
 }
@@ -38,10 +55,36 @@
     right: 16px;
     z-index: 10000;
 }
+
 </style>
+<?php
+    $productData = (isset($productData) && is_array($productData)) ? $productData : [];
+    $productData = array_merge([
+        'CD_IDX' => '',
+        'sale_status' => '가등록',
+        'CD_KIND_CODE' => '',
+        'CD_CATEGORY_CODE' => '',
+        'img_mode' => 'this',
+        'is_sale_month' => 0,
+        'is_sale_special' => 0,
+        'is_discontinued' => 0,
+        'hbti_target' => 'Y',
+        'cd_site_show' => 'Y',
+    ], $productData);
+    if (!isset($productData['cd_add_img']) || !is_array($productData['cd_add_img'])) {
+        $productData['cd_add_img'] = [];
+    }
+    if (!isset($productData['cd_size_fn']) || !is_array($productData['cd_size_fn'])) {
+        $productData['cd_size_fn'] = [];
+    }
+    if (!isset($productData['cd_hbti_data']) || !is_array($productData['cd_hbti_data'])) {
+        $productData['cd_hbti_data'] = [];
+    }
+?>
 <form name='prd_form' id='prd_form' method='post' enctype="multipart/form-data" autocomplete="off">
 
     <input type="hidden" name="idx" value="<?= $productData['CD_IDX'] ?? '' ?>">
+    <input type="hidden" name="is_create_mode" value="<?= empty($productData['CD_IDX']) ? 'Y' : 'N' ?>">
 
     <table class="table-style ">
         <colgroup>
@@ -55,6 +98,66 @@
         </tr>
 
         <tbody>
+
+            <tr>
+                <th>상품상태</th>
+                <td>
+                    <?php
+                        $productConfig = config('admin.product');
+                        $rawSaleStatusOptions = (isset($productConfig['sale_status_options']) && is_array($productConfig['sale_status_options']))
+                            ? $productConfig['sale_status_options']
+                            : [];
+                        $saleStatusOptions = [];
+                        foreach ($rawSaleStatusOptions as $key => $option) {
+                            if (is_array($option)) {
+                                $optionCode = trim((string)($option['code'] ?? ''));
+                                $optionValue = trim((string)($option['value'] ?? ''));
+                                $optionLabel = trim((string)($option['label'] ?? $optionValue));
+                                if ($optionValue === '') {
+                                    continue;
+                                }
+                                $saleStatusOptions[] = [
+                                    'code' => $optionCode,
+                                    'value' => $optionValue,
+                                    'label' => ($optionLabel !== '' ? $optionLabel : $optionValue),
+                                ];
+                            } else {
+                                $optionValue = trim((string)$key);
+                                $optionLabel = trim((string)$option);
+                                if ($optionValue === '') {
+                                    continue;
+                                }
+                                $saleStatusOptions[] = [
+                                    'code' => '',
+                                    'value' => $optionValue,
+                                    'label' => ($optionLabel !== '' ? $optionLabel : $optionValue),
+                                ];
+                            }
+                        }
+                        if (empty($saleStatusOptions)) {
+                            $saleStatusOptions = [
+                                ['code' => 'pre_registered', 'value' => '가등록', 'label' => '가등록'],
+                                ['code' => 'new_order', 'value' => '신상주문', 'label' => '신상주문'],
+                                ['code' => 'waiting_sale', 'value' => '판매대기', 'label' => '판매대기'],
+                                ['code' => 'registered', 'value' => '등록완료', 'label' => '등록완료'],
+                                ['code' => 'godo_deleted', 'value' => '고도몰삭제', 'label' => '고도몰삭제'],
+                            ];
+                        }
+                        $currentSaleStatus = (string)($productData['sale_status'] ?? '');
+                    ?>
+                    <select name="sale_status">
+                        <?php foreach ($saleStatusOptions as $statusOption) { ?>
+                            <option
+                                value="<?= htmlspecialchars((string)($statusOption['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                data-status-code="<?= htmlspecialchars((string)($statusOption['code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                <?php if ($currentSaleStatus === (string)($statusOption['value'] ?? '')) echo "selected"; ?>>
+                                <?= htmlspecialchars((string)($statusOption['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </td>
+            </tr>
+
             <tr>
                 <th>상품 구분</th>
                 <td>
@@ -97,10 +200,16 @@
                         }
 
                         $selectedKindCode = trim((string)($productData['CD_KIND_CODE'] ?? ''));
+                        $isHbtiKind = ($selectedKindCode === 'ONAHOLE');
                         $selectedCategoryCode = trim((string)($productData['CD_CATEGORY_CODE'] ?? ''));
                         if ($selectedCategoryCode === '' && isset($categoryCodeByKind[$selectedKindCode])) {
                             $selectedCategoryCode = (string)$categoryCodeByKind[$selectedKindCode];
                         }
+                        $cdSpecData = (isset($productData['cd_spec']) && is_array($productData['cd_spec'])) ? $productData['cd_spec'] : [];
+                        $cdSpecVendorData = (isset($cdSpecData['vendor_size']) && is_array($cdSpecData['vendor_size'])) ? $cdSpecData['vendor_size'] : [];
+                        $cdSpecMeasuredData = (isset($cdSpecData['measured_size']) && is_array($cdSpecData['measured_size'])) ? $cdSpecData['measured_size'] : [];
+                        $isTorsoCategory = ($selectedCategoryCode === '02010000');
+                        $isRealdollFullBodyCategory = ($selectedCategoryCode === '02050000');
 
                         $selectedSecondKindKey = '';
                         $selectedKindChildren = $categoryChildrenByKind[$selectedKindCode] ?? [];
@@ -506,7 +615,7 @@
             </tr>
         </tbody>
 
-        <tbody>
+        <tbody id="hbti-section-title" style="<?php if (!$isHbtiKind) echo 'display:none;'; ?>">
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
@@ -518,17 +627,18 @@
         </tbody>
 
         <!-- HBTI 설정 -->
-        <tbody>
+        <tbody id="hbti-section-config" style="<?php if (!$isHbtiKind) echo 'display:none;'; ?>">
             <tr>
                 <th>HBTI 대상</th>
                 <td>
-                    <label><input type="checkbox" name="hbti_target" value="N" <?php if (($productData['hbti_target'] ?? '') == "N") echo "checked"; ?>> 비대상</label>
+                    <input type="hidden" name="hbti_target" id="hbti_target_hidden_n" value="N" <?php if ($isHbtiKind) echo "disabled"; ?>>
+                    <label><input type="checkbox" name="hbti_target" value="N" <?php if (($productData['hbti_target'] ?? '') == "N") echo "checked"; ?> <?php if (!$isHbtiKind) echo "disabled"; ?>> 비대상</label>
                     <div class="admin-guide-text">
                         - 비대상 체크후 저장하면 HBTI 설정값이 초기화 되고 기존 데이터는 삭제됩니다.
                     </div>
                 </td>
             </tr>
-            <tr id="hbti-config-row" style="<?php if (($productData['hbti_target'] ?? '') == 'N') echo 'display:none;'; ?>">
+            <tr id="hbti-config-row" style="<?php if (($productData['hbti_target'] ?? '') == 'N' || !$isHbtiKind) echo 'display:none;'; ?>">
                 <th>HBTI</th>
                 <td>
 
@@ -677,8 +787,8 @@
                         <tr>
                             <th>오나디비 노출</th>
                             <td>
-                                <label><input type="radio" name="cd_site_show" value="Y" <?php if (($productData['cd_site_show'] ?? '') == "Y" || !($productData['cd_site_show'] ?? '')) echo "checked"; ?>> 노출</label>
-                                <label><input type="radio" name="cd_site_show" value="N" <?php if (($productData['cd_site_show'] ?? '') == "N") echo "checked"; ?>> 비노출</label>
+                                <label><input type="radio" name="cd_site_show" value="Y" <?php if (($productData['cd_site_show'] ?? '') == "Y" ) echo "checked"; ?>> 노출</label>
+                                <label><input type="radio" name="cd_site_show" value="N" <?php if (($productData['cd_site_show'] ?? '') == "N" || !($productData['cd_site_show'] ?? '')) echo "checked"; ?>> 비노출</label>
                             </td>
                         </tr>
                     </table>
@@ -709,6 +819,161 @@
                 <td>
                     <div class="calendar-input">
                         <input type='text' name='cd_release_date' value="<?= $productData['CD_RELEASE_DATE'] ?? '' ?>">
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <th>상품 상세스펙</th>
+                <td>
+                    <div id="cd-spec-02010000-wrap" style="<?php if (!$isTorsoCategory) echo 'display:none;'; ?>">
+                        <table class="table-style border01">
+                            <colgroup>
+                                <col width="180px" />
+                                <col />
+                                <col />
+                            </colgroup>
+                            <tr>
+                                <th>항목</th>
+                                <th>업체제공 수치</th>
+                                <th>실측 수치</th>
+                            </tr>
+                            <tr>
+                                <th>신체높이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[body_height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['body_height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[body_height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['body_height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>무게(체중) (kg)</th>
+                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>어깨 너비 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>가슴둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>허리둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>엉덩이 둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>엉덩이 너비 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[hip_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[hip_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>허벅지 둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>다리길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[leg_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 (질) (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 (애널) (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                        </table>
+                        <div class="admin-guide-text">
+                            - 2차 카테고리가 토르소형(02010000)일 때만 저장됩니다.
+                        </div>
+                    </div>
+                    <div id="cd-spec-02050000-wrap" style="<?php if (!$isRealdollFullBodyCategory) echo 'display:none;'; ?>">
+                        <table class="table-style border01">
+                            <colgroup>
+                                <col width="180px" />
+                                <col />
+                                <col />
+                            </colgroup>
+                            <tr>
+                                <th>항목</th>
+                                <th>업체제공 수치</th>
+                                <th>실측 수치</th>
+                            </tr>
+                            <tr>
+                                <th>신장 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>무게 (kg)</th>
+                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>머리길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[head_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['head_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[head_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['head_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>가슴둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>어깨너비 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>허리둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>엉덩이둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>팔길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[arm_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['arm_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[arm_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['arm_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>다리길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[leg_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>발길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[foot_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['foot_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[foot_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['foot_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 (질) (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 (애널) (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                        </table>
+                        <div class="admin-guide-text">
+                            - 2차 카테고리가 리얼돌/전신형(02050000)일 때만 저장됩니다.
+                        </div>
                     </div>
                 </td>
             </tr>
@@ -938,18 +1203,15 @@
 
         </tbody>
 
-
     </table>
 
 </form>
 
-<?php if (!empty($productData['CD_IDX'])) { ?>
-    <div class="button-wrap-back">
-    </div>
-    <div class="button-wrap">
-        <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="prdDetailBasicForm.save()">상품수정</button>
-    </div>
-<?php } ?>
+<div class="button-wrap-back">
+</div>
+<div class="button-wrap">
+    <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="prdDetailBasicForm.save()"><?= !empty($productData['CD_IDX']) ? '상품수정' : '상품등록' ?></button>
+</div>
 
 <div id="prd_image_preview_modal" class="prd-image-preview-modal">
     <div class="prd-image-preview-content">
@@ -1122,6 +1384,20 @@
                     }
 
                     alert(data.message || '저장 완료');
+                    const isCreateMode = String(formData.get('is_create_mode') || 'N') === 'Y';
+                    const currentIdx = Number(formData.get('idx') || 0);
+                    const savedIdx = Number(((data.data && data.data.prd_idx) || (data.data && data.data.idx) || 0));
+                    if (isCreateMode && currentIdx <= 0 && savedIdx > 0) {
+                        try {
+                            if (typeof onlyAD !== 'undefined' && onlyAD && typeof onlyAD.prdView === 'function') {
+                                onlyAD.prdView(String(savedIdx), 'info');
+                            }
+                        } catch (e) {
+                            console.error('onlyAD.prdView failed:', e);
+                        }
+                        window.location.replace('/admin/product/product_db');
+                        return;
+                    }
                     window.location.reload();
                 })
                 .catch(error => {
@@ -1144,6 +1420,8 @@
         const categoryCodeByKind = <?= json_encode($categoryCodeByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const categoryChildrenByKind = <?= json_encode($categoryChildrenByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const $cdSpec02010000Wrap = $('#cd-spec-02010000-wrap');
+        const $cdSpec02050000Wrap = $('#cd-spec-02050000-wrap');
         let hasAppliedInitialSecondCategory = false;
 
         function resolveCategoryCodeByKind(kindKey) {
@@ -1169,6 +1447,31 @@
             }
 
             $('#cd_category_code').val(categoryCode);
+            toggleCdSpecFieldsByCategoryCode();
+        }
+
+        function toggleCdSpecFieldsByCategoryCode() {
+            const categoryCode = String($('#cd_category_code').val() || '').trim();
+            const isTorsoCategory = categoryCode === '02010000';
+            const isRealdollCategory = categoryCode === '02050000';
+            const $torsoInputs = $cdSpec02010000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["]');
+            const $realdollInputs = $cdSpec02050000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["]');
+
+            if (isTorsoCategory) {
+                $cdSpec02010000Wrap.show();
+                $torsoInputs.prop('disabled', false);
+            } else {
+                $cdSpec02010000Wrap.hide();
+                $torsoInputs.prop('disabled', true);
+            }
+
+            if (isRealdollCategory) {
+                $cdSpec02050000Wrap.show();
+                $realdollInputs.prop('disabled', false);
+            } else {
+                $cdSpec02050000Wrap.hide();
+                $realdollInputs.prop('disabled', true);
+            }
         }
 
         function renderSecondCategorySelect(resetSelection) {
@@ -1277,10 +1580,38 @@
             $(".calendar-input input").datepicker(clareCalendar);
         }
 
+        const $kindCodeSelect = $('select[name="cd_kind_code"]');
+        const $hbtiSectionTitle = $('#hbti-section-title');
+        const $hbtiSectionConfig = $('#hbti-section-config');
+        const $hbtiTargetHiddenN = $('#hbti_target_hidden_n');
         const $hbtiTargetCheckbox = $('input[name="hbti_target"][value="N"]');
         const $hbtiConfigRow = $('#hbti-config-row');
 
+        function isHbtiEligibleKind() {
+            return String($kindCodeSelect.val() || '').trim() === 'ONAHOLE';
+        }
+
+        function toggleHbtiSectionByKind() {
+            const isEligible = isHbtiEligibleKind();
+            $hbtiSectionTitle.toggle(isEligible);
+            $hbtiSectionConfig.toggle(isEligible);
+
+            if (isEligible) {
+                $hbtiTargetCheckbox.prop('disabled', false);
+                $hbtiTargetHiddenN.prop('disabled', true);
+            } else {
+                // 비대상 강제 저장 (체크 상태는 유지)
+                $hbtiTargetCheckbox.prop('disabled', true);
+                $hbtiTargetHiddenN.prop('disabled', false);
+                $hbtiConfigRow.hide();
+            }
+        }
+
         function toggleHbtiConfigRow() {
+            if (!isHbtiEligibleKind()) {
+                $hbtiConfigRow.hide();
+                return;
+            }
             if ($hbtiTargetCheckbox.is(':checked')) {
                 $hbtiConfigRow.hide();
             } else {
@@ -1337,6 +1668,11 @@
         });
 
         $hbtiTargetCheckbox.on('change', toggleHbtiConfigRow);
+        $kindCodeSelect.on('change', function() {
+            toggleHbtiSectionByKind();
+            toggleHbtiConfigRow();
+        });
+        toggleHbtiSectionByKind();
         toggleHbtiConfigRow();
 
         $('#add_reference_link_btn').on('click', function() {

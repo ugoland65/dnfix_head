@@ -58,6 +58,7 @@ class ProductController extends BaseClass
             $search_value = $requestData['search_value'] ?? null;
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
+            $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null;
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
@@ -77,6 +78,7 @@ class ProductController extends BaseClass
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
+                's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
@@ -102,6 +104,7 @@ class ProductController extends BaseClass
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
             $categories = $config_product['categories'] ?? [];
+            $saleStatusOptions = $config_product['sale_status_options'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
@@ -111,6 +114,7 @@ class ProductController extends BaseClass
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
+                's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
@@ -122,6 +126,7 @@ class ProductController extends BaseClass
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
                 'categories' => $categories,
+                'sale_status_options' => $saleStatusOptions,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -155,10 +160,10 @@ class ProductController extends BaseClass
             $requestData = $request->all();
 
             $page = $requestData['page'] ?? 1;
-            $sort_mode = $requestData['sort_mode'] ?? 'stock';
+            $sort_mode = $requestData['sort_mode'] ?? 'idx';
             $rack_code = $requestData['rack_code'] ?? null;
 
-            $in_stock = $requestData['in_stock'] ?? 'have';
+            $in_stock = $requestData['in_stock'] ?? 'all';
             $s_brand = $requestData['s_brand'] ?? null;
             $s_prd_kind = $requestData['s_prd_kind'] ?? null;
             $s_prd_kind_second = $requestData['s_prd_kind_second'] ?? null;
@@ -167,6 +172,7 @@ class ProductController extends BaseClass
             $search_value = $requestData['search_value'] ?? null;
             $rack_code = $requestData['rack_code'] ?? null;
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
+            $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종여부
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
@@ -187,6 +193,7 @@ class ProductController extends BaseClass
                 's_margin_group' => $s_margin_group,
                 'search_value' => $search_value,
                 's_sale_mode' => $s_sale_mode,
+                's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
@@ -212,6 +219,7 @@ class ProductController extends BaseClass
             $prdKindSelect = $config_product['prd_kind_name'] ?? [];
             $importingCountrySelect = $config_product['importing_country'] ?? [];
             $categories = $config_product['categories'] ?? [];
+            $saleStatusOptions = $config_product['sale_status_options'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
 
             $data = [
@@ -221,6 +229,7 @@ class ProductController extends BaseClass
                 's_importing_country' => $s_importing_country,
                 's_margin_group' => $s_margin_group,
                 's_sale_mode' => $s_sale_mode,
+                's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
@@ -232,6 +241,7 @@ class ProductController extends BaseClass
                 'prdKindSelect' => $prdKindSelect,
                 'importingCountrySelect' => $importingCountrySelect,
                 'categories' => $categories,
+                'sale_status_options' => $saleStatusOptions,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -252,6 +262,73 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 DB 생성 화면
+     *
+     * @param Request $request
+     * @return view
+     */
+    public function prdDbCreate(Request $request)
+    {
+        try {
+            $config_product = config('admin.product');
+            $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+            $categories = $config_product['categories'] ?? [];
+            $saleStatusOptions = $config_product['sale_status_options'] ?? [];
+
+            $brandService = new BrandService();
+            $brandForSelect = $brandService->getBrandForSelect();
+
+            $productData = [
+                'CD_IDX' => '',
+                'sale_status' => '가등록',
+                'CD_KIND_CODE' => '',
+                'CD_CATEGORY_CODE' => '',
+                'CD_BRAND_IDX' => '',
+                'CD_BRAND2_IDX' => '',
+                'img_mode' => 'this',
+                'cd_add_img' => [
+                    'add1' => ['filename' => ''],
+                    'add2' => ['filename' => ''],
+                    'add3' => ['filename' => ''],
+                ],
+                'CD_SIZE' => [],
+                'cd_weight_fn' => [],
+                'cd_size_fn' => [
+                    'package' => [],
+                    'invoice' => [],
+                    'import' => [],
+                ],
+                'cd_hbti_data' => [],
+                'hbti_target' => 'Y',
+                'cd_site_show' => 'Y',
+                'cd_reference_links' => [],
+                'work_check_list' => [],
+                'is_sale_month' => 0,
+                'is_sale_special' => 0,
+                'is_discontinued' => 0,
+            ];
+
+            $data = [
+                'mode' => 'new',
+                'prd_idx' => null,
+                'productData' => $productData,
+                'prd_kind_name' => $prd_kind_name,
+                'categories' => $categories,
+                'brandForSelect' => $brandForSelect,
+                'sale_status_options' => $saleStatusOptions,
+            ];
+
+            return view('admin.product.prd_db_create', $data)
+                ->extends('admin.layout.layout', ['pageGroup2' => 'prd', 'pageNameCode' => 'prd_db_create']);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
      * 상품 디테일 (베이직)
      */
     public function prdDetailBasicPage(Request $request)
@@ -267,6 +344,7 @@ class ProductController extends BaseClass
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
             $categories = $config_product['categories'] ?? [];
+            $saleStatusOptions = $config_product['sale_status_options'] ?? [];
 
             // 브랜드 셀렉트바를 위한 조회
             $brandService = new BrandService();
@@ -278,7 +356,8 @@ class ProductController extends BaseClass
                 'productData' => $productData,
                 'prd_kind_name' => $prd_kind_name,
                 'categories' => $categories,
-                'brandForSelect' => $brandForSelect
+                'brandForSelect' => $brandForSelect,
+                'sale_status_options' => $saleStatusOptions,
             ];
 
             return view('admin.product.prd_detail_basic', $data);
@@ -682,6 +761,10 @@ class ProductController extends BaseClass
 
                 case 'update_product_memo2':
                     $result = $this->productService->updateProductMemo2($requestData);
+                    break;
+
+                case 'update_product_sale_status':
+                    $result = $this->productService->updateProductSaleStatus($requestData);
                     break;
 
                 case 'copy_product':

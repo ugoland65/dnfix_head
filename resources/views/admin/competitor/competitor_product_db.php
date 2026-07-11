@@ -102,6 +102,7 @@
                             <th class="">이미지</th>
                             <th class="">사이트<br>카테고리</th>
                             <th style="width:100px; min-width:100px; max-width:100px;">브랜드</th>
+                            <th>바로가기</th>
                             <th class="" style="width:300px;">상품명</th>
                             <th>판매가</th>
                             <th>변경이력</th>
@@ -149,6 +150,14 @@
                             </td>
                             <td class="text-left"><?=$row['category'] ?? ''?></td>
                             <td class="text-center" style="width:100px; min-width:100px; max-width:100px; white-space: normal !important;"><?=$row['brand_name']?></td>
+                            <td class="text-center">
+                                <button
+                                    type="button"
+                                    class="btnstyle1 btnstyle1-xs competitor-detail-link-btn"
+                                    data-detail-url="<?= htmlspecialchars((string)($row['detail_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                    바로가기
+                                </button>
+                            </td>
                             <td class="text-left" style="white-space: normal !important;">
                                 <b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?=$row['name']?></a></b>
                             </td>
@@ -270,13 +279,16 @@
                                             ];
                                             $deliveryFee = (int)($deliveryFeeMap[$deliveryType] ?? 2800);
 
-                                            $calculateMarginInfo = function ($salePrice, $costPrice, $shippingFee) {
+                                            $calculateMarginInfo = function ($salePrice, $costPrice, $shippingFee, $useShippingDeduction = null) {
                                                 $salePrice = (int)$salePrice;
                                                 $costPrice = (int)$costPrice;
                                                 $shippingFee = (int)$shippingFee;
+                                                $shouldDeductShipping = is_bool($useShippingDeduction)
+                                                    ? $useShippingDeduction
+                                                    : ($salePrice > 29999);
 
                                                 $marginAmount = $salePrice - $costPrice;
-                                                if ($salePrice > 29999) {
+                                                if ($shouldDeductShipping) {
                                                     $marginAmount = $salePrice - ($costPrice + $shippingFee);
                                                 }
                                                 $marginRate = 0;
@@ -302,8 +314,11 @@
                                                 ];
                                             };
 
-                                            $currentMarginInfo = $calculateMarginInfo($ourSalePrice, $ourCostPrice, $deliveryFee);
-                                            $adjustedMarginInfo = $calculateMarginInfo($adjustedSalePrice, $ourCostPrice, $deliveryFee);
+                                            // 비교 구간에서는 배송비 차감 기준을 현재 판매가 기준으로 고정해
+                                            // 가격을 내렸을 때 마진이 역전 증가하는 케이스를 방지한다.
+                                            $baseUseShippingDeduction = ($ourSalePrice > 29999);
+                                            $currentMarginInfo = $calculateMarginInfo($ourSalePrice, $ourCostPrice, $deliveryFee, $baseUseShippingDeduction);
+                                            $adjustedMarginInfo = $calculateMarginInfo($adjustedSalePrice, $ourCostPrice, $deliveryFee, $baseUseShippingDeduction);
 
                                             $priceDiff = $ourSalePrice - $competitorPrice;
                                             $priceDiffColor = '#111827';
@@ -1114,6 +1129,23 @@ $(function(){
         var prdPk = Number($(this).data("competitor-prd-pk") || 0);
         var matchIdx = Number($(this).data("match-idx") || 0);
         submitCompetitorSetPrimary(site, prdPk, matchIdx);
+    });
+
+    $(document).on("click", ".competitor-detail-link-btn", function() {
+        var detailUrl = String($(this).data("detail-url") || "").trim();
+        if (!detailUrl) {
+            alert("상세 링크가 없습니다.");
+            return;
+        }
+        if (!/^https?:\/\//i.test(detailUrl)) {
+            alert("올바른 상세 링크가 아닙니다.");
+            return;
+        }
+
+        var popup = window.open(detailUrl, "_blank", "noopener,noreferrer");
+        if (popup) {
+            popup.opener = null;
+        }
     });
 
     $(document).on("keydown", function(e) {

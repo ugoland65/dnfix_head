@@ -180,39 +180,8 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .stock-write-box{ padding:15px 15px 0 15px; }
 .stock-write-box ul{ font-size:15px; }
 
-.table-style{}
-.table-style th{ text-align:center; }
-.table-style td.none-bg{ 
-	background-color:#dddddd; border:none !important; padding: 0 !important; 
-	div{
-		display:flex;
-		padding:0  0 5px 0;
-		>ul{
-			&.right{
-				margin-left:auto;
-			}
-		}
-		
-	}
-}
-.table-style td.title{}
-.table-style td h1{ display:inline-block; font-size:20px; font-weight:600; padding:5px; }
-.table-style input[type=text]{ width:100%; }
-.img-upload-wrap{ font-size:0; }
-.img-upload-wrap > ul{ 
-	width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
-	h3{
-		font-size:15px;
-		font-weight:600;
-	}
-}
-.img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
 
-.img-upload-file-wrap{
-	display:flex;
-	flex-direction:column;
-	gap:5px;
-}
+
 
 .cd-img-text-wrap{
 	width:100%;

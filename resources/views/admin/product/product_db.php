@@ -3,20 +3,23 @@
 </div>
 <style>
     .product-kind-cell,
-    .product-name-cell {
+    .product-name-cell,
+    .product-sale-status-cell {
         cursor: context-menu;
         position: relative;
         transition: box-shadow 0.12s ease, background-color 0.12s ease;
     }
     .product-kind-cell.product-kind-selected,
-    .product-name-cell.product-kind-selected {
+    .product-name-cell.product-kind-selected,
+    .product-sale-status-cell.product-kind-selected {
         outline: 2px solid #2f6fed;
         outline-offset: -2px;
         background-color: #eef4ff;
         z-index: 1;
     }
     .product-kind-cell.product-kind-updated,
-    .product-name-cell.product-kind-updated {
+    .product-name-cell.product-kind-updated,
+    .product-sale-status-cell.product-kind-updated {
         outline: 2px solid #16a34a;
         outline-offset: -2px;
         background-color: #ecfdf3;
@@ -149,6 +152,52 @@
                     <option value="no" <? if( $in_stock == 'no' ) echo "selected";?>>재고없음</option>
 				</select>
 			</ul>
+            <ul>
+                <?php
+                    $rawSaleStatusOptions = (isset($sale_status_options) && is_array($sale_status_options))
+                        ? $sale_status_options
+                        : [];
+                    $saleStatusOptions = [];
+                    foreach ($rawSaleStatusOptions as $key => $option) {
+                        if (is_array($option)) {
+                            $optionCode = trim((string)($option['code'] ?? ''));
+                            $optionValue = trim((string)($option['value'] ?? ''));
+                            $optionLabel = trim((string)($option['label'] ?? $optionValue));
+                            if ($optionValue === '') {
+                                continue;
+                            }
+                            $saleStatusOptions[] = [
+                                'code' => $optionCode,
+                                'value' => $optionValue,
+                                'label' => ($optionLabel !== '' ? $optionLabel : $optionValue),
+                            ];
+                        } else {
+                            $optionValue = trim((string)$key);
+                            $optionLabel = trim((string)$option);
+                            if ($optionValue === '') {
+                                continue;
+                            }
+                            $saleStatusOptions[] = [
+                                'code' => '',
+                                'value' => $optionValue,
+                                'label' => ($optionLabel !== '' ? $optionLabel : $optionValue),
+                            ];
+                        }
+                    }
+                    $currentSaleStatus = (string)($s_sale_status ?? '');
+                ?>
+                <select name="s_sale_status" id="s_sale_status" >
+                    <option value="">상품상태</option>
+                    <?php foreach ($saleStatusOptions as $statusOption) { ?>
+                        <option
+                            value="<?= htmlspecialchars((string)($statusOption['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                            data-status-code="<?= htmlspecialchars((string)($statusOption['code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                            <?php if ($currentSaleStatus === (string)($statusOption['value'] ?? '')) echo 'selected'; ?>>
+                            <?= htmlspecialchars((string)($statusOption['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </ul>
 			<ul class="">
 				<select name="s_brand" id="s_brand" class="dn-select2">
 					<option value="">브랜드</option>
@@ -288,10 +337,12 @@
                             <tr class="list">
                                 <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
                                 <th class="list-idx">고유번호</th>
+                                <th>상태</th>
                                 <th>이미지</th>
                                 <th>분류</th>
                                 <th>상품명</th>
                                 <th>브랜드</th>
+                                <th>고도몰<br>상품코드</th>
                                 <th>바코드</th>
                                 <th>출시일</th>
 
@@ -383,6 +434,19 @@
                                 <tr>
                                     <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"></td>
                                     <td class="text-center"><?=$product['CD_IDX']?></td>
+                                    <td class="text-center product-sale-status-cell"
+                                        data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                        data-current-sale-status="<?= htmlspecialchars((string)($product['sale_status'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                        <span class="sale-status-text">
+                                            <?php if (($product['sale_status'] ?? '') === '신상주문') { ?>
+                                                <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#dc2626; color:#fff; font-weight:600; font-size:12px;">신상주문</span>
+                                            <?php } elseif (($product['sale_status'] ?? '') === '구매대행') { ?>
+                                                <span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#555; color:#fff; font-weight:600; font-size:12px;">구매대행</span>
+                                            <?php } else { ?>
+                                                <?= htmlspecialchars((string)($product['sale_status'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                            <?php } ?>
+                                        </span>
+                                    </td>
                                     <td class="p-5">
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><img src="<?=$img_path?>" style="height:70px; border:1px solid #eee !important;"></p>
                                     </td>
@@ -433,6 +497,23 @@
                                             <a href="/admin/product/product_db?s_brand=<?=$product['CD_BRAND2_IDX']?>"><?=$product['brand2_name']?></a>
                                         <?php } ?>
                                     </td>
+
+                                    <td class="text-center">
+										<?php if( !empty($product['cd_godo_code']) ){ ?>
+											<div style="font-size: 12px;">
+												#<?= $product['cd_godo_code'] ?>
+											</div>
+											<div class="m-t-3">
+												<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $product['cd_godo_code'] ?>);">쑈당몰 상품보기</button>
+											</div>
+											<div class="m-t-5">
+												<button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $product['cd_godo_code'] ?>);">관리자 상품보기</button>
+											</div>
+										<?php } else { ?>
+											<span class="text-red"></span>
+										<?php } ?>
+									</td>
+
                                     <td><?=$product['barcode']?></td>
 
                                     <!-- 출시일 -->
@@ -541,6 +622,23 @@
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_memo2_save_btn">저장</button>
     </div>
 </div>
+<div id="productSaleStatusContextLayer" class="product-kind-context-layer" aria-hidden="true">
+    <div style="font-weight:700; margin-bottom:8px;">상품상태 수정</div>
+    <div style="margin-bottom:10px;">
+        <select id="quick_sale_status_select" style="width:100%;">
+            <option value="">상품상태 선택</option>
+            <?php foreach ($saleStatusOptions as $statusOption) { ?>
+                <option value="<?= htmlspecialchars((string)($statusOption['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <?= htmlspecialchars((string)($statusOption['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                </option>
+            <?php } ?>
+        </select>
+    </div>
+    <div style="display:flex; justify-content:flex-end; gap:8px;">
+        <button type="button" class="btnstyle1 btnstyle1-sm" id="quick_sale_status_cancel_btn">취소</button>
+        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_sale_status_save_btn">저장</button>
+    </div>
+</div>
 <div id="productBulkUpdateModal" class="bulk-update-modal">
     <div class="bulk-update-modal-content">
         <div class="bulk-update-modal-title">선택상품 일괄수정</div>
@@ -584,6 +682,7 @@ const PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY = <?= json_encode($categoryChildrenBy
 const PRODUCT_CATEGORY_NAME_BY_KEY = <?= json_encode($categoryNameByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const PRODUCT_CATEGORY_NAME_BY_CODE = <?= json_encode($categoryNameByCode ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const PRODUCT_CATEGORY_CODE_BY_KEY = <?= json_encode($categoryCodeByKey ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+const PRODUCT_SALE_STATUS_OPTIONS = <?= json_encode($saleStatusOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 
 function select_all() {
 		var checkboxes = document.getElementsByName('check_idx[]');
@@ -618,6 +717,7 @@ function select_all() {
             's_prd_kind_second': $("#s_prd_kind_second").val(),
 			'search_value': $("#search_value").val(),
 			's_brand': $("#s_brand").val(),
+            's_sale_status': $("#s_sale_status").val(),
 			's_importing_country': $("#s_importing_country").val(),
 			's_margin_group': $("#s_margin_group").val(),
             's_sale_mode': $("#s_sale_mode").val(),
@@ -704,9 +804,25 @@ function select_all() {
     $(function(){
         var $categoryLayer = $('#productCategoryContextLayer');
         var $memoLayer = $('#productMemoContextLayer');
+        var $saleStatusLayer = $('#productSaleStatusContextLayer');
         var $selectedCategoryCell = null;
         var $selectedMemoCell = null;
+        var $selectedSaleStatusCell = null;
         var $updatedCategoryCell = null;
+        var saleStatusLabelByValue = {};
+        var saleStatusCodeByValue = {};
+
+        (PRODUCT_SALE_STATUS_OPTIONS || []).forEach(function(item) {
+            if (!item) {
+                return;
+            }
+            var value = String(item.value || '').trim();
+            if (!value) {
+                return;
+            }
+            saleStatusLabelByValue[value] = String(item.label || value);
+            saleStatusCodeByValue[value] = String(item.code || '').trim();
+        });
 
         function setUpdatedCategoryCell($cell) {
             if ($updatedCategoryCell && $updatedCategoryCell.length) {
@@ -739,6 +855,14 @@ function select_all() {
                 $selectedMemoCell.removeClass('product-kind-selected');
             }
             $selectedMemoCell = null;
+        }
+
+        function closeSaleStatusLayer() {
+            $saleStatusLayer.removeClass('active').hide().attr('aria-hidden', 'true');
+            if ($selectedSaleStatusCell && $selectedSaleStatusCell.length) {
+                $selectedSaleStatusCell.removeClass('product-kind-selected');
+            }
+            $selectedSaleStatusCell = null;
         }
 
         function positionLayer($layer, clientX, clientY) {
@@ -899,6 +1023,7 @@ function select_all() {
                 return;
             }
 
+            closeSaleStatusLayer();
             closeMemoLayer();
             closeCategoryLayer();
             $selectedCategoryCell = $cell;
@@ -919,6 +1044,7 @@ function select_all() {
                 return;
             }
 
+            closeSaleStatusLayer();
             closeCategoryLayer();
             closeMemoLayer();
             $selectedMemoCell = $cell;
@@ -929,6 +1055,56 @@ function select_all() {
 
             positionLayer($memoLayer, clientX, clientY);
             $('#quick_memo2_input').trigger('focus').trigger('select');
+        }
+
+        function openSaleStatusLayer($cell, clientX, clientY) {
+            var prdIdx = Number($cell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                return;
+            }
+
+            closeCategoryLayer();
+            closeMemoLayer();
+            closeSaleStatusLayer();
+            $selectedSaleStatusCell = $cell;
+            $selectedSaleStatusCell.addClass('product-kind-selected');
+
+            var currentSaleStatus = String($cell.data('current-sale-status') || '').trim();
+            $('#quick_sale_status_select').val(currentSaleStatus);
+            positionLayer($saleStatusLayer, clientX, clientY);
+            $('#quick_sale_status_select').trigger('focus');
+        }
+
+        function escapeHtml(raw) {
+            return String(raw || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function renderSaleStatusHtml(statusValue) {
+            var value = String(statusValue || '').trim();
+            if (!value) {
+                return '';
+            }
+            var statusCode = String(saleStatusCodeByValue[value] || '').trim();
+            var statusLabel = String(saleStatusLabelByValue[value] || value);
+            if (statusCode === 'new_order' || value === '신상주문') {
+                return '<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#dc2626; color:#fff; font-weight:700; font-size:12px;">' + escapeHtml(statusLabel) + '</span>';
+            }
+            if (statusCode === 'purchase_agency' || value === '구매대행') {
+                return '<span style="display:inline-block; padding:2px 8px; border-radius:12px; background:#555; color:#fff; font-weight:700; font-size:12px;">' + escapeHtml(statusLabel) + '</span>';
+            }
+            return escapeHtml(statusLabel);
+        }
+
+        function applyProductSaleStatus($cell, saleStatus) {
+            var normalizedStatus = String(saleStatus || '').trim();
+            $cell.data('current-sale-status', normalizedStatus);
+            $cell.attr('data-current-sale-status', normalizedStatus);
+            $cell.find('.sale-status-text').html(renderSaleStatusHtml(normalizedStatus));
         }
 
         function applyProductMemo2($cell, memoText) {
@@ -990,6 +1166,10 @@ function select_all() {
             navigateWithParams(params);
         });
 
+        $("#s_sale_status").change(function(){
+            $("#searchBtn").trigger('click');
+        });
+
         $("#search_value").on('keydown', function(e){
             if (e.key === 'Enter') {
                 e.preventDefault();
@@ -1007,6 +1187,11 @@ function select_all() {
             openMemoLayer($(this), e.clientX, e.clientY);
         });
 
+        $(document).on('contextmenu', '.product-sale-status-cell', function(e) {
+            e.preventDefault();
+            openSaleStatusLayer($(this), e.clientX, e.clientY);
+        });
+
         $('#quick_category_primary').on('change', function() {
             fillSecondarySelect($(this).val(), '');
         });
@@ -1017,6 +1202,10 @@ function select_all() {
 
         $('#quick_memo2_cancel_btn').on('click', function() {
             closeMemoLayer();
+        });
+
+        $('#quick_sale_status_cancel_btn').on('click', function() {
+            closeSaleStatusLayer();
         });
 
         $('#quick_category_save_btn').on('click', function() {
@@ -1119,6 +1308,44 @@ function select_all() {
                 });
         }
 
+        function saveQuickSaleStatus() {
+            if (!$selectedSaleStatusCell || !$selectedSaleStatusCell.length) {
+                closeSaleStatusLayer();
+                return;
+            }
+
+            var prdIdx = Number($selectedSaleStatusCell.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                closeSaleStatusLayer();
+                return;
+            }
+
+            var nextSaleStatus = String($('#quick_sale_status_select').val() || '').trim();
+            if (!nextSaleStatus) {
+                alert('상품상태를 선택해주세요.');
+                return;
+            }
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'update_product_sale_status',
+                prd_idx: prdIdx,
+                sale_status: nextSaleStatus
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '상품상태 저장에 실패했습니다.');
+                        return;
+                    }
+                    var savedStatus = String((res && res.data && res.data.sale_status) ? res.data.sale_status : nextSaleStatus).trim();
+                    applyProductSaleStatus($selectedSaleStatusCell, savedStatus);
+                    setUpdatedCategoryCell($selectedSaleStatusCell);
+                    closeSaleStatusLayer();
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        }
+
         $('#quick_memo2_save_btn').on('click', function() {
             saveQuickMemo2();
         });
@@ -1130,17 +1357,31 @@ function select_all() {
             }
         });
 
+        $('#quick_sale_status_save_btn').on('click', function() {
+            saveQuickSaleStatus();
+        });
+
+        $('#quick_sale_status_select').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                saveQuickSaleStatus();
+            }
+        });
+
         $(document).on('click', function(e) {
             clearUpdatedCategoryCell();
             var $target = $(e.target);
             if (
                 !$target.closest('#productCategoryContextLayer').length &&
                 !$target.closest('#productMemoContextLayer').length &&
+                !$target.closest('#productSaleStatusContextLayer').length &&
                 !$target.closest('.product-kind-cell').length &&
-                !$target.closest('.product-name-cell').length
+                !$target.closest('.product-name-cell').length &&
+                !$target.closest('.product-sale-status-cell').length
             ) {
                 closeCategoryLayer();
                 closeMemoLayer();
+                closeSaleStatusLayer();
             }
         });
 
@@ -1148,12 +1389,14 @@ function select_all() {
             if (e.key === 'Escape') {
                 closeCategoryLayer();
                 closeMemoLayer();
+                closeSaleStatusLayer();
             }
         });
 
         $(window).on('scroll resize', function() {
             closeCategoryLayer();
             closeMemoLayer();
+            closeSaleStatusLayer();
         });
 
 		// 선택상품 업무요청
