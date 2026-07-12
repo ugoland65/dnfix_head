@@ -357,6 +357,54 @@ $importing_country = [
     'dollar' => "그외 달러 국가",
 ];
 
+$purchase_type_options = [
+    [
+        'code' => 'direct_purchase',
+        'value' => '사입',
+        'label' => '사입',
+    ],
+    [
+        'code' => 'purchase_agency',
+        'value' => '구매대행',
+        'label' => '구매대행',
+    ],
+    [
+        'code' => 'consignment',
+        'value' => '위탁',
+        'label' => '위탁',
+    ],
+    [
+        'code' => 'oem',
+        'value' => 'OEM',
+        'label' => 'OEM',
+    ],
+    [
+        'code' => 'odm',
+        'value' => 'ODM',
+        'label' => 'ODM',
+    ],
+    [
+        'code' => 'direct_import',
+        'value' => '직수입',
+        'label' => '직수입',
+    ],
+    [
+        'code' => 'preorder_purchase',
+        'value' => '예약구매',
+        'label' => '예약구매',
+    ],
+    [
+        'code' => 'domestic_wholesale',
+        'value' => '국내도매',
+        'label' => '국내도매',
+    ],
+    [
+        'code' => 'overseas_wholesale',
+        'value' => '해외도매',
+        'label' => '해외도매(1688)',
+    ],
+];
+
 $sale_status_options = [
     [
         'code' => 'pre_registered',
@@ -399,6 +447,7 @@ $data = [
     'prd_kind_name' => $prd_kind_name,
     'categories' => $categories,
     'importing_country' => $importing_country,
+    'purchase_type_options' => $purchase_type_options,
     'sale_status_options' => $sale_status_options,
 ];
 

@@ -120,6 +120,7 @@ class ProductService extends BaseClass
 
         $since = $criteria['since'] ?? null;
         $idxs = $criteria['idxs'] ?? [];
+        $godo_codes = $criteria['godo_codes'] ?? [];
 
         if (is_string($idxs)) {
             $idxs = array_filter(array_map('trim', explode(',', $idxs)), function($v) {
@@ -134,6 +135,21 @@ class ProductService extends BaseClass
             return $v > 0;
         }));
 
+        if (is_string($godo_codes)) {
+            $godo_codes = array_filter(array_map('trim', explode(',', $godo_codes)), function($v) {
+                return $v !== '';
+            });
+        }
+        if (!is_array($godo_codes)) {
+            $godo_codes = [];
+        }
+        $godo_codes = array_values(array_unique(array_map(function($v) {
+            return trim((string)$v);
+        }, $godo_codes)));
+        $godo_codes = array_values(array_filter($godo_codes, function($v) {
+            return $v !== '';
+        }));
+
 
         // 기본 쿼리
         $query = ProductModel::query()
@@ -142,6 +158,11 @@ class ProductService extends BaseClass
         // 특정 상품 idx 집합만 조회
         if (!empty($idxs)) {
             $query->whereIn('A.CD_IDX', $idxs);
+        }
+
+        // 특정 고도 상품코드 집합만 조회
+        if (!empty($godo_codes)) {
+            $query->whereIn('A.CD_GODO_CODE', $godo_codes);
         }
 
         // 브랜드 검색
@@ -379,6 +400,46 @@ class ProductService extends BaseClass
         ];
 
         return $this->getProductListForAdmin($criteria);
+    }
+
+
+    /**
+     * 고도 상품코드(CD_GODO_CODE) Where In 조회
+     *
+     * @param array|string $godoCodes
+     * @return array
+     */
+    public function getProductWhereInGodoCode($godoCodes)
+    {
+        if (empty($godoCodes)) {
+            return [];
+        }
+
+        $criteria = [
+            'paging' => false,
+            'godo_codes' => $godoCodes,
+            'show_mode' => '',
+            'sort_mode' => 'idx',
+        ];
+
+        $rows = $this->getProductListForAdmin($criteria);
+        if (!is_array($rows) || empty($rows)) {
+            return [];
+        }
+
+        $mapped = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $godoCode = trim((string)($row['cd_godo_code'] ?? ''));
+            if ($godoCode === '') {
+                continue;
+            }
+            $mapped[$godoCode] = $row;
+        }
+
+        return $mapped;
     }
 
 
@@ -1908,25 +1969,6 @@ class ProductService extends BaseClass
             'CD_WEIGHT2' => '',
             'CD_WEIGHT3' => '',
             'CD_COLOR' => '',
-            'CD_SUPPLEMENT' => 'N',
-            'CD_SUPPLY_PRICE_1' => 0,
-            'CD_SUPPLY_PRICE_2' => 0,
-            'CD_SUPPLY_PRICE_3' => 0,
-            'CD_SUPPLY_PRICE_4' => 0,
-            'CD_SUPPLY_PRICE_5' => 0,
-            'CD_SUPPLY_PRICE_6' => 0,
-            'CD_SUPPLY_PRICE_7' => 0,
-            'CD_SUPPLY_PRICE_8' => 0,
-            'CD_SUPPLY_PRICE_9' => 0,
-            'CD_SALE_MARGIN_PER' => 0,
-            'CD_OUT_PRICE_1' => 0,
-            'CD_OUT_PRICE_2' => 0,
-            'CD_OUT_PRICE_3' => 0,
-            'CD_OUT_PRICE_4' => 0,
-            'CD_PRICE' => 0,
-            'CD_LINK' => '',
-            'CD_LINK_COUNT' => 0,
-            'CD_LINK_IDX' => 0,
             'CD_HASH_TAG' => '',
             'CD_SCORE' => 0,
             'CD_REVIEW' => 0,
@@ -2288,6 +2330,7 @@ class ProductService extends BaseClass
         }
         $cdWeight4 = (string)($postData['cd_weight_4'] ?? ($oldWeightFnData['4'] ?? ''));
         $cdSalePriceRaw = (string)($postData['cd_sale_price'] ?? '0');
+        $cdFixedPriceRaw = (string)($postData['cd_fixed_price'] ?? ($oldProduct['cd_fixed_price'] ?? '0'));
         $costCalKind = (string)($postData['cost_cal_kind'] ?? '');
         $cdNational = (string)($postData['cd_national'] ?? '');
         $costCalPrice = (string)($postData['cost_cal_price'] ?? '');
@@ -2312,6 +2355,45 @@ class ProductService extends BaseClass
         $costP = (string)($postData['cost_p'] ?? ($postData['cd_cost_price'] ?? '0'));
         $supplierPrdIdx = (int)($postData['supplier_prd_idx'] ?? 0);
         $cdCostPriceMemo = (string)($postData['cd_cost_price_memo'] ?? '');
+        $purchaseType = trim((string)($postData['purchase_type'] ?? ($oldProduct['purchase_type'] ?? '사입')));
+        $purchaseTypeOptions = config('admin.product.purchase_type_options');
+        $purchaseTypeValueMap = [];
+        $purchaseTypeLabelToValueMap = [];
+        if (is_array($purchaseTypeOptions)) {
+            foreach ($purchaseTypeOptions as $option) {
+                if (is_array($option)) {
+                    $optionValue = trim((string)($option['value'] ?? ''));
+                    $optionLabel = trim((string)($option['label'] ?? $optionValue));
+                    if ($optionValue === '') {
+                        continue;
+                    }
+                    $purchaseTypeValueMap[$optionValue] = true;
+                    if ($optionLabel !== '') {
+                        $purchaseTypeLabelToValueMap[$optionLabel] = $optionValue;
+                    }
+                    continue;
+                }
+                $legacyValue = trim((string)$option);
+                if ($legacyValue === '') {
+                    continue;
+                }
+                $purchaseTypeValueMap[$legacyValue] = true;
+                $purchaseTypeLabelToValueMap[$legacyValue] = $legacyValue;
+            }
+        }
+        if ($purchaseType !== '' && isset($purchaseTypeLabelToValueMap[$purchaseType])) {
+            $purchaseType = (string)$purchaseTypeLabelToValueMap[$purchaseType];
+        }
+        if (!empty($purchaseTypeValueMap)) {
+            if ($purchaseType === '') {
+                $purchaseType = (string)(array_key_first($purchaseTypeValueMap) ?? '사입');
+            }
+            if (!isset($purchaseTypeValueMap[$purchaseType])) {
+                throw new Exception('유효하지 않은 매입 방식입니다.');
+            }
+        } elseif ($purchaseType === '') {
+            $purchaseType = '사입';
+        }
 
         if ($deliveryType === 'tiny_80') {
             $deliveryType = 'tiny';
@@ -2371,6 +2453,7 @@ class ProductService extends BaseClass
         ]);
 
         $cdSalePrice = (int)str_replace(',', '', $cdSalePriceRaw);
+        $cdFixedPrice = (int)str_replace(',', '', $cdFixedPriceRaw);
         $cdCostPrice = (string)str_replace(',', '', $costP);
         $additionalCostList = [];
         $additionalCostTotal = 0;
@@ -2447,10 +2530,12 @@ class ProductService extends BaseClass
 
         $updateData = [
             'cd_national' => $cdNational,
+            'purchase_type' => $purchaseType,
             'CD_SIZE' => $cdSize,
             'cd_size_fn' => $cdSizeFn,
             'cd_weight_fn' => $cdWeightFn,
             'cd_sale_price' => $cdSalePrice,
+            'cd_fixed_price' => $cdFixedPrice,
             'cd_cost_price' => $cdCostPrice,
             'delivery_type' => $deliveryType,
             'cd_cost_price_info' => $cdCostPriceInfo,
@@ -2492,6 +2577,97 @@ class ProductService extends BaseClass
             'message' => '완료',
             'msg' => '완료',
             'idx' => $idx,
+        ];
+    }
+
+    /**
+     * 상품 매입정보 저장 후 고도몰 판매가/원가를 업데이트한다.
+     *
+     * @param array $postData
+     * @return array
+     * @throws Exception
+     */
+    public function saveProductPriceAndGodoUpdate(array $postData): array
+    {
+        $saveResult = $this->saveProductPrice($postData);
+        if (!($saveResult['success'] ?? false)) {
+            throw new Exception((string)($saveResult['message'] ?? '상품 가격 저장에 실패했습니다.'));
+        }
+
+        $goodsNo = trim((string)($postData['goods_no'] ?? ($postData['cd_godo_code'] ?? '')));
+        if ($goodsNo === '') {
+            throw new Exception('고도몰 상품 코드가 비어있습니다. 고도몰 상품 코드를 우선 입력하여 매칭해주세요');
+        }
+
+        $salePriceRaw = str_replace(',', '', trim((string)($postData['cd_sale_price'] ?? '')));
+        if ($salePriceRaw === '' || !preg_match('/^\d+$/', $salePriceRaw)) {
+            throw new Exception('판매가 값이 올바르지 않습니다.');
+        }
+
+        $costPriceRaw = str_replace(',', '', trim((string)($postData['cd_cost_price'] ?? '')));
+        if ($costPriceRaw === '' || !preg_match('/^\d+$/', $costPriceRaw)) {
+            throw new Exception('원가 값이 올바르지 않습니다.');
+        }
+
+        $marginGroup = strtoupper(trim((string)($postData['margin_group'] ?? '')));
+        if (!preg_match('/^[A-I]$/', $marginGroup)) {
+            $marginInfo = $this->calculateMarginInfo((int)$salePriceRaw, (int)$costPriceRaw);
+            $marginGroup = strtoupper(trim((string)($marginInfo['margin_grade'] ?? '')));
+        }
+        if ($marginGroup === '') {
+            $marginGroup = 'I';
+        }
+
+        $godoApiService = new GodoApiService();
+        $godoResponse = $godoApiService->updateGodoGoodsPrice(
+            $goodsNo,
+            $salePriceRaw,
+            $costPriceRaw,
+            $marginGroup
+        );
+
+        // 일반 매입정보 수정 로그(update_price)와 별도로,
+        // 고도몰 가격 업데이트 완료 이력을 추가로 남긴다.
+        try {
+            $targetIdx = (int)($saveResult['idx'] ?? ($postData['idx'] ?? 0));
+            $godoLogBefore = [
+                'goods_no' => $goodsNo,
+                'sale_price' => null,
+                'cost_price' => null,
+                'margin_group' => null,
+                'godo_result' => null,
+            ];
+            $godoLogAfter = [
+                'goods_no' => $goodsNo,
+                'sale_price' => (int)$salePriceRaw,
+                'cost_price' => (int)$costPriceRaw,
+                'margin_group' => $marginGroup,
+                'godo_result' => 'success',
+                'godo_response' => $godoResponse,
+            ];
+
+            $adminActionLogService = new AdminActionLogService();
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$targetIdx,
+                'action_mode' => 'update_price_godo',
+                'action_summary' => '상품 매입정보 수정 + 고도몰 판매가/원가 업데이트 완료',
+                'before_json' => $godoLogBefore,
+                'after_json' => $godoLogAfter,
+                'diff_json' => $adminActionLogService->buildDiff($godoLogBefore, $godoLogAfter),
+                'action_url' => ($_SERVER['REQUEST_URI'] ?? null),
+            ]);
+        } catch (\Throwable $e) {
+            // 고도몰 업데이트 로그 실패는 실제 처리 성공/실패에 영향 주지 않음
+        }
+
+        return [
+            'success' => true,
+            'message' => '현재 페이지 저장 후 고도몰 판매가/원가 업데이트를 완료했습니다.',
+            'idx' => (int)($saveResult['idx'] ?? 0),
+            'margin_group' => $marginGroup,
+            'godo_response' => $godoResponse,
         ];
     }
 

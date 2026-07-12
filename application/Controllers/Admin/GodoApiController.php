@@ -8,9 +8,12 @@ use App\Core\BaseClass;
 use App\Classes\Request;
 use App\Models\ProductModel;
 use App\Models\CsRequestModel;
+use App\Models\GodoOrderGoodsModel;
 
 use App\Services\ProductStockService;
 use App\Services\GodoApiService;
+use App\Services\GodoOrderSyncService;
+use App\Services\GodoPurchaseOrderService;
 use App\Utils\HttpClient; 
 
 class GodoApiController extends BaseClass
@@ -63,7 +66,7 @@ class GodoApiController extends BaseClass
                 ]);
 
         } catch (Exception $e) {
-            return view('admin.errors.404', [
+            return view('onadb.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
         }
@@ -102,10 +105,16 @@ class GodoApiController extends BaseClass
 
             $orderRows = $orderList['orderData']['data'] ?? [];
             $orderNos = [];
+            $orderGoodsSnos = [];
             foreach ($orderRows as $orderRow) {
                 $orderNo = (string)($orderRow['orderNo'] ?? '');
                 if ($orderNo !== '') {
                     $orderNos[$orderNo] = true;
+                }
+
+                $orderGoodsSno = $this->normalizeOrderGoodsSno($orderRow['orderGoodsSno'] ?? null);
+                if ($orderGoodsSno !== null) {
+                    $orderGoodsSnos[$orderGoodsSno] = true;
                 }
             }
 
@@ -127,12 +136,36 @@ class GodoApiController extends BaseClass
                 }
             }
 
+            $purchaseStatusMap = [];
+            $purchaseOrderIdxMap = [];
+            $savedOrderGoodsMap = [];
+            if (!empty($orderGoodsSnos)) {
+                $purchaseStatusRows = GodoOrderGoodsModel::query()
+                    ->select(['order_goods_sno', 'purchase_status', 'purchase_order_idx'])
+                    ->whereIn('order_goods_sno', array_keys($orderGoodsSnos))
+                    ->get()
+                    ->toArray();
+
+                foreach ($purchaseStatusRows as $statusRow) {
+                    $orderGoodsSno = $this->normalizeOrderGoodsSno($statusRow['order_goods_sno'] ?? null);
+                    if ($orderGoodsSno === null) {
+                        continue;
+                    }
+                    $savedOrderGoodsMap[$orderGoodsSno] = true;
+                    $purchaseStatusMap[$orderGoodsSno] = (string)($statusRow['purchase_status'] ?? '');
+                    $purchaseOrderIdxMap[$orderGoodsSno] = (int)($statusRow['purchase_order_idx'] ?? 0);
+                }
+            }
+
             $data = [
                 'start_date' => $start_date,
                 'end_date' => $end_date,
                 'mode' => $mode,
                 'orderList' => $orderList['orderData'] ?? [],
                 'csRequestCountMap' => $csRequestCountMap,
+                'purchaseStatusMap' => $purchaseStatusMap,
+                'purchaseOrderIdxMap' => $purchaseOrderIdxMap,
+                'savedOrderGoodsMap' => $savedOrderGoodsMap,
             ];
 
             return view('admin.order.godo_order_goods_list', $data)
@@ -142,7 +175,7 @@ class GodoApiController extends BaseClass
                 ]);
 
         } catch (Exception $e) {
-            return view('admin.errors.404', [
+            return view('onadb.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
         }
@@ -150,7 +183,7 @@ class GodoApiController extends BaseClass
 
 
     /**
-     * 고도몰 주문 - 구매대행
+     * 고도몰 주문 (개별주문)
      * 
      * @param Request $request 요청 데이터
      * @return view
@@ -169,20 +202,34 @@ class GodoApiController extends BaseClass
             $mode = $requestData['mode'] ?? 'p';
      
             $payload = [
+                'prd_type' => 'prdDB',
                 'start_date' => $start_date,
                 'end_date' => $end_date,
                 'mode' => $mode,
-                'scmNo' => 18,
+                'scmNo' => '14,18',
             ];
             $godoApiService = new GodoApiService();
             $orderList = $godoApiService->getOrderGoodsList($payload);
+            try {
+                (new GodoOrderSyncService())->syncOrderGoodsList($orderList);
+            } catch (\Throwable $syncException) {
+                // 동기화 실패로 목록 화면 진입까지 막히지 않도록 화면 렌더링은 계속 진행한다.
+            }
+
+            //dd($orderList);
 
             $orderRows = $orderList['orderData']['data'] ?? [];
             $orderNos = [];
+            $orderGoodsSnos = [];
             foreach ($orderRows as $orderRow) {
                 $orderNo = (string)($orderRow['orderNo'] ?? '');
                 if ($orderNo !== '') {
                     $orderNos[$orderNo] = true;
+                }
+
+                $orderGoodsSno = $this->normalizeOrderGoodsSno($orderRow['orderGoodsSno'] ?? null);
+                if ($orderGoodsSno !== null) {
+                    $orderGoodsSnos[$orderGoodsSno] = true;
                 }
             }
 
@@ -204,12 +251,36 @@ class GodoApiController extends BaseClass
                 }
             }
 
+            $purchaseStatusMap = [];
+            $purchaseOrderIdxMap = [];
+            $savedOrderGoodsMap = [];
+            if (!empty($orderGoodsSnos)) {
+                $purchaseStatusRows = GodoOrderGoodsModel::query()
+                    ->select(['order_goods_sno', 'purchase_status', 'purchase_order_idx'])
+                    ->whereIn('order_goods_sno', array_keys($orderGoodsSnos))
+                    ->get()
+                    ->toArray();
+
+                foreach ($purchaseStatusRows as $statusRow) {
+                    $orderGoodsSno = $this->normalizeOrderGoodsSno($statusRow['order_goods_sno'] ?? null);
+                    if ($orderGoodsSno === null) {
+                        continue;
+                    }
+                    $savedOrderGoodsMap[$orderGoodsSno] = true;
+                    $purchaseStatusMap[$orderGoodsSno] = (string)($statusRow['purchase_status'] ?? '');
+                    $purchaseOrderIdxMap[$orderGoodsSno] = (int)($statusRow['purchase_order_idx'] ?? 0);
+                }
+            }
+
             $data = [
                 'start_date' => $start_date,
                 'end_date' => $end_date,
                 'mode' => $mode,
                 'orderList' => $orderList['orderData'] ?? [],
                 'csRequestCountMap' => $csRequestCountMap,
+                'purchaseStatusMap' => $purchaseStatusMap,
+                'purchaseOrderIdxMap' => $purchaseOrderIdxMap,
+                'savedOrderGoodsMap' => $savedOrderGoodsMap,
             ];
 
             return view('admin.order.godo_order_purchase_list', $data)
@@ -219,11 +290,78 @@ class GodoApiController extends BaseClass
                 ]);
 
         } catch (Exception $e) {
-            return view('admin.errors.404', [
+            return view('onadb.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
         }
 
+    }
+
+    /**
+     * 고도몰 구매대행 주문 선택건으로 발주서를 생성한다.
+     *
+     * @param Request $request
+     * @return \App\Core\JsonResponse
+     */
+    public function createGodoPurchaseOrderSheet(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $orderGoodsSnos = $requestData['order_goods_snos'] ?? [];
+            if (is_string($orderGoodsSnos)) {
+                $orderGoodsSnos = array_filter(array_map('trim', explode(',', $orderGoodsSnos)), function ($value) {
+                    return $value !== '';
+                });
+            }
+            if (!is_array($orderGoodsSnos)) {
+                $orderGoodsSnos = [];
+            }
+            $orderName = trim((string)($requestData['order_name'] ?? ''));
+
+            $purchaseOrderService = new GodoPurchaseOrderService();
+            $result = $purchaseOrderService->createPurchaseOrderSheet($orderGoodsSnos, $orderName);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '발주서가 생성되었습니다.',
+                'purchase_order_idx' => (int)($result['purchase_order_idx'] ?? 0),
+                'download_url' => (string)($result['download_url'] ?? ''),
+            ]);
+        } catch (Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ]);
+        }
+    }
+
+    /**
+     * 발주서 CSV 다운로드
+     *
+     * @param Request $request
+     * @return string
+     */
+    public function downloadGodoPurchaseOrderExcel(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $purchaseOrderIdx = (int)($requestData['purchase_order_idx'] ?? 0);
+
+            $purchaseOrderService = new GodoPurchaseOrderService();
+            $csvPayload = $purchaseOrderService->buildPurchaseOrderCsv($purchaseOrderIdx);
+
+            $filename = (string)($csvPayload['filename'] ?? ('purchase_order_' . $purchaseOrderIdx . '.xlsx'));
+            $encodedFilename = rawurlencode($filename);
+
+            header('Content-Type: application/vnd.openxmlformats-officedocument.spreadsheetml.sheet');
+            header("Content-Disposition: attachment; filename*=UTF-8''" . $encodedFilename);
+            header('Pragma: no-cache');
+            header('Expires: 0');
+
+            return (string)($csvPayload['content'] ?? '');
+        } catch (Exception $e) {
+            return $e->getMessage();
+        }
     }
 
 
@@ -339,6 +477,25 @@ class GodoApiController extends BaseClass
 
         return $data;
 
+    }
+
+    /**
+     * orderGoodsSno 키 정규화
+     * - 숫자만 허용
+     * - 선행 0 제거
+     *
+     * @param mixed $value
+     * @return string|null
+     */
+    private function normalizeOrderGoodsSno($value)
+    {
+        $value = trim((string)$value);
+        if ($value === '' || !ctype_digit($value)) {
+            return null;
+        }
+
+        $normalized = ltrim($value, '0');
+        return $normalized === '' ? '0' : $normalized;
     }
 
 } 

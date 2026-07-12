@@ -48,30 +48,89 @@
         <tbody>
             <tr>
                 <td colspan="2" class="none-bg title">
-                    <h1>상품 매입정보</h1>
+                    <h1>상품 매입/판매 정보</h1>
                 </td>
             </tr>
             <tr>
                 <th>매입 방식</th>
                 <td>
-
                     <?php
-                    /*
-                    if (!isset($_arr_national)) {
-                        $_arr_national = [];
-                    }
-                    for ($i=0; $i<count($_arr_national); $i++){
-                        if (!is_array($_arr_national[$i])) continue;
-                    ?>
-                    <label><input type="radio" name="cd_national" value="<?=$_arr_national[$i]['code'] ?? ''?>" <?php if( ($productData['cd_national'] ?? '') == ($_arr_national[$i]['code'] ?? '') ) echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew()"> <?=$_arr_national[$i]['name'] ?? ''?>(<?=$_arr_national[$i]['code'] ?? ''?>)</label>
-                    <?php } 
-                    */
-                    ?>
+                        $rawPurchaseTypeOptions = (isset($purchase_type_options) && is_array($purchase_type_options))
+                            ? $purchase_type_options
+                            : [];
+                        $purchaseTypeOptions = [];
+                        foreach ($rawPurchaseTypeOptions as $rawPurchaseTypeOption) {
+                            if (is_array($rawPurchaseTypeOption)) {
+                                $optionCode = trim((string)($rawPurchaseTypeOption['code'] ?? ''));
+                                $optionValue = trim((string)($rawPurchaseTypeOption['value'] ?? ''));
+                                $optionLabel = trim((string)($rawPurchaseTypeOption['label'] ?? $optionValue));
+                                if ($optionValue === '') {
+                                    continue;
+                                }
+                                $purchaseTypeOptions[] = [
+                                    'code' => $optionCode,
+                                    'value' => $optionValue,
+                                    'label' => ($optionLabel !== '' ? $optionLabel : $optionValue),
+                                ];
+                                continue;
+                            }
 
-                    <label><input type="radio" name="cd_national" value="jp" <?php if ($productData['cd_national'] == "jp") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 일본수입</label>
-                    <label class="m-l-10"><input type="radio" name="cd_national" value="cn" <?php if ($productData['cd_national'] == "cn") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 중국수입</label>
-                    <label class="m-l-10"><input type="radio" name="cd_national" value="dollar" <?php if ($productData['cd_national'] == "dollar") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 달러</label>
-                    <label class="m-l-10"><input type="radio" name="cd_national" value="kr" <?php if ($productData['cd_national'] == "kr") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 한국사입</label>
+                            $optionValue = trim((string)$rawPurchaseTypeOption);
+                            if ($optionValue === '') {
+                                continue;
+                            }
+                            $purchaseTypeOptions[] = [
+                                'code' => '',
+                                'value' => $optionValue,
+                                'label' => $optionValue,
+                            ];
+                        }
+                        if (empty($purchaseTypeOptions)) {
+                            $purchaseTypeOptions = [
+                                ['code' => 'direct_purchase', 'value' => '사입', 'label' => '사입'],
+                                ['code' => 'purchase_agency', 'value' => '구매대행', 'label' => '구매대행'],
+                                ['code' => 'consignment', 'value' => '위탁', 'label' => '위탁'],
+                                ['code' => 'oem', 'value' => 'OEM', 'label' => 'OEM'],
+                                ['code' => 'odm', 'value' => 'ODM', 'label' => 'ODM'],
+                                ['code' => 'direct_import', 'value' => '직수입', 'label' => '직수입'],
+                                ['code' => 'preorder_purchase', 'value' => '예약구매', 'label' => '예약구매'],
+                                ['code' => 'domestic_wholesale', 'value' => '국내도매', 'label' => '국내도매'],
+                                ['code' => 'overseas_wholesale', 'value' => '해외도매', 'label' => '해외도매(1688)'],
+                            ];
+                        }
+
+                        $currentPurchaseType = trim((string)($productData['purchase_type'] ?? ''));
+                        if ($currentPurchaseType === '') {
+                            $currentPurchaseType = '사입';
+                        }
+                        foreach ($purchaseTypeOptions as $__purchaseTypeOption) {
+                            $candidateValue = trim((string)($__purchaseTypeOption['value'] ?? ''));
+                            $candidateLabel = trim((string)($__purchaseTypeOption['label'] ?? $candidateValue));
+                            if ($candidateLabel !== '' && $currentPurchaseType === $candidateLabel && $candidateValue !== '') {
+                                $currentPurchaseType = $candidateValue;
+                                break;
+                            }
+                        }
+                    ?>
+                    <select name="purchase_type">
+                        <?php foreach ($purchaseTypeOptions as $purchaseTypeOption) { ?>
+                            <option
+                                value="<?= htmlspecialchars((string)($purchaseTypeOption['value'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                data-purchase-type-code="<?= htmlspecialchars((string)($purchaseTypeOption['code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                <?= $currentPurchaseType === (string)($purchaseTypeOption['value'] ?? '') ? 'selected' : '' ?>>
+                                <?= htmlspecialchars((string)($purchaseTypeOption['label'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                            </option>
+                        <?php } ?>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <th>수입국가</th>
+                <td>
+                    <label><input type="radio" name="cd_national" value="jp" <?php if ($productData['cd_national'] == "jp") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 일본</label>
+                    <label class="m-l-10"><input type="radio" name="cd_national" value="cn" <?php if ($productData['cd_national'] == "cn") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 중국</label>
+                    <label class="m-l-10"><input type="radio" name="cd_national" value="dollar" <?php if ($productData['cd_national'] == "dollar") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 달러국가</label>
+                    <label class="m-l-10"><input type="radio" name="cd_national" value="kr" <?php if ($productData['cd_national'] == "kr") echo "checked"; ?> onclick="prdInfoPrice.costCalculationNew(); prdInfoPrice.toggleCostCalculatorVisibility();"> 한국</label>
                 </td>
             </tr>
             <tr>
@@ -190,6 +249,13 @@
             </tr>
 
             <tr>
+                <th>정가</th>
+                <td>
+                    <input type='text' name="cd_fixed_price" id="cd_fixed_price" value="<?= number_format($productData['cd_fixed_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;'> 원
+                </td>
+            </tr>
+
+            <tr>
                 <th>쑈당몰 판매가</th>
                 <td>
                     <input type='text' name='cd_sale_price' id='cd_sale_price' value="<?= number_format($productData['cd_sale_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this ); prdInfoPrice.updateSaleMarginSummary();" style='width:100px;'> 원
@@ -213,6 +279,17 @@
                     </div>
                     <div class="m-t-6">
                         <textarea name="cd_cost_price_memo" style="height:80px;" placeholder="원가 메모"><?= $productData['cd_cost_price_memo'] ?? '' ?></textarea>
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <th>고도몰 업데이트</th>
+                <td>
+                    <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-md" onclick="prdInfoPrice.costSaveAndGodoUpdate(this);" data-goods-no="<?= htmlspecialchars((string)($productData['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">판매가,원가 고도몰 업데이트</button>
+                    <div class="admin-guide-text">
+                        - 판매가와, 원가를 입력후 고도몰 업데이트 버튼을 클릭하면 판매가와, 원가가 고도몰에 업데이트 됩니다.<br>
+                        - 마진그룹 카테고리도 자동으로 설정됩니다.
                     </div>
                 </td>
             </tr>
@@ -335,6 +412,11 @@
             <tr id="cost-calculator-row">
                 <th>원가 계산기</th>
                 <td>
+
+                    <div id="cost_cal_delivery_warning" class="cost-cal-delivery-warning">
+                        배송비 값을 입력해주세요. 배송비값은 kg당 배송비 입니다.
+                    </div>
+
                     <div id="cost_calculator_content" style="<?php if (!$showCostCalculator) echo 'display:none;'; ?>">
                         <div id="cost_cal_msg" style="display:none; color:#ff0000; font-size:17px;">[주문종류]를 선택해주세요.</div>
 
@@ -520,6 +602,18 @@
 <style type="text/css">
 	.button-wrap-back{ height:60px; }
 	.button-wrap{ width:calc(100% - 205px); height:60px; line-height:60px; text-align:center; background:rgba(0,0,0,.4); border-top:1px solid #000; position:fixed; bottom:0; right:0;  }
+    .cost-cal-delivery-warning {
+        display: none;
+        margin-bottom: 8px;
+        padding: 10px 12px;
+        border-radius: 6px;
+        border: 1px solid #dc2626;
+        background: #dc2626;
+        color: #ffffff;
+        font-weight: 700;
+        font-size: 13px;
+        line-height: 1.4;
+    }
 </style>
 <div class="button-wrap-back">
 </div>
@@ -665,6 +759,7 @@
             var additionalCostItems = additionalCostData.items;
             var additionalCostTotal = Number(additionalCostData.total || 0);
             updateAdditionalCostSummary();
+            $("#cost_cal_delivery_warning").hide();
 
             var incidentalCostDisplayText = "";
             var additionalCostDisplayText = "";
@@ -735,7 +830,8 @@
 
                 if (!deliveryCostInput) {
                     $("#cost_cal_delivery").focus();
-                    alert("배송비 값을 입력해주세요. 배송비값은 kg당 배송비 입니다.");
+                    // alert("배송비 값을 입력해주세요. 배송비값은 kg당 배송비 입니다.");
+                    $("#cost_cal_delivery_warning").show();
                     return false;
                 }
 
@@ -1023,6 +1119,79 @@
 
         }
 
+        /**
+         * 매입정보 저장 + 고도몰 판매가/원가 업데이트
+         * @param {HTMLElement} buttonEl
+         * @returns {boolean}
+         */
+        function costSaveAndGodoUpdate(buttonEl) {
+
+            var goodsNo = String($(buttonEl).data("goods-no") || "").trim();
+            if (!goodsNo) {
+                alert("고도몰 상품 코드가 비어있습니다. 고도몰 상품 코드를 우선 입력하여 매칭해주세요");
+                return false;
+            }
+
+            var salePrice = GC.uncomma($("#cd_sale_price").val() || "");
+            if (!salePrice) {
+                $("#cd_sale_price").focus();
+                alert("판매가 값을 입력해주세요.");
+                return false;
+            }
+
+            var costPrice = GC.uncomma($("#cd_cost_price").val() || "");
+            if (!costPrice) {
+                $("#cd_cost_price").focus();
+                alert("원가 값을 입력해주세요.");
+                return false;
+            }
+
+            var marginGroup = String($("#margin_grade_badge").text() || "").trim().toUpperCase();
+
+            var confirmMessage =
+                "현재 페이지를 저장하고\n" +
+                "고도몰 상품코드 : #" + goodsNo + "에\n" +
+                "판매가 : " + GC.comma(salePrice) + "\n" +
+                "원가 : " + GC.comma(costPrice) + "를 변경 업데이트를 진행하시겠습니까?";
+
+            if (!confirm(confirmMessage)) {
+                return false;
+            }
+
+            var formData = $("#prd_price_form").serializeArray();
+            formData.push({ name: "goods_no", value: goodsNo });
+            formData.push({ name: "margin_group", value: marginGroup });
+
+            $.ajax({
+                url: "/admin/product/saveProductPriceAndGodoUpdate",
+                data: formData,
+                type: "POST",
+                dataType: "json",
+                success: function(res) {
+                    if (res.success == true) {
+                        toast2("success", "상품가격정보", "상품가격정보 저장 및 고도몰 업데이트 완료");
+                        prdView.mode('price');
+                    } else {
+                        showAlert("Error", res.message || res.msg || "처리에 실패했습니다.", "alert2");
+                        return false;
+                    }
+                },
+                error: function(request, status, error) {
+                    var responseMsg = "";
+                    try {
+                        responseMsg = (request.responseJSON && request.responseJSON.message) ? request.responseJSON.message : "";
+                    } catch (e) {
+                        responseMsg = "";
+                    }
+                    console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                    showAlert("Error", responseMsg || "에러", "alert2");
+                    return false;
+                }
+            });
+
+            return true;
+        }
+
         function toggleCostCalculatorVisibility() {
 
             var purchaseType = $(':input:radio[name=cd_national]:checked').val() || "";
@@ -1080,6 +1249,7 @@
             updateSaleMarginSummary,
             updateDeliveryTypeRecommendation,
             costSave,
+            costSaveAndGodoUpdate,
             toggleCostCalculatorVisibility,
             addAdditionalCostRow: function(reason, amount) {
                 var reasonText = String(reason || "");

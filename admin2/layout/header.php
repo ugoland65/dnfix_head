@@ -392,7 +392,7 @@ $gnb_lang = "ko";
 							<a href="/ad/order/stock_excel">일일 재고관리</a>
 						</li>
 						<li>
-							<a href="/admin/order/sheet/list">주문/발주</a>
+							<a href="/admin/order/sheet/list">주문서 리스트</a>
 						</li>
 						<li>
 							<a href="/admin/order/godo_order_list">고도몰 주문가져오기</a>
@@ -401,10 +401,10 @@ $gnb_lang = "ko";
 							<a href="/admin/order/godo_order">고도몰주문 (상품)</a>
 						</li>
 						<li>
-							<a href="/admin/order/godo_order_goods_list">고도몰주문 (공급사)</a>
+							<a href="/admin/order/godo_order_goods_list">고도몰주문 (위탁상품)</a>
 						</li>
 						<li>
-							<a href="/admin/order/godo_order_purchase_list">고도몰주문 (구매대행)</a>
+							<a href="/admin/order/godo_order_purchase_list">고도몰주문 (개별주문)</a>
 						</li>
 						<li>
 							<a href="/admin/sales/sales_ranking_by_period">기간별 판매 조회</a>

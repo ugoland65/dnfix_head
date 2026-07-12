@@ -22,6 +22,7 @@ use App\Controllers\Admin\ProductGroupingController;
 use App\Controllers\Admin\PaymentRequestController;
 use App\Controllers\Admin\OrderGroupController;
 use App\Controllers\Admin\OrderController;
+use App\Controllers\Admin\PurchaseController;
 use App\Controllers\Admin\Coupang\CoupangController;
 use App\Controllers\Admin\CalendarController;
 use App\Controllers\Admin\SaleHistoryController;
@@ -109,6 +110,7 @@ try {
     // 상품 처리
     $router->post('/product/saveProduct', ProductController::class, 'saveProduct'); //상품 저장
     $router->post('/product/saveProductPrice', ProductController::class, 'saveProductPrice'); //상품 매입정보 저장
+    $router->post('/product/saveProductPriceAndGodoUpdate', ProductController::class, 'saveProductPriceAndGodoUpdate'); //상품 매입정보 저장 + 고도몰 가격 업데이트
     $router->post('/product/stock/action', ProductStockController::class, 'productStockAction'); //상품 재고 처리 액션
     $router->post('/product/proc/rack_change_batch', ProductProcController::class, 'rackChangeBatch'); //랙코드 일괄변경
     $router->post('/product/action', ProductController::class, 'productAction'); //상품 처리 액션
@@ -149,8 +151,14 @@ try {
 
     $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
-    $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문서 상품별 조회
+    $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문 (위탁상품)
     $router->get('/order/godo_order_purchase_list', GodoApiController::class, 'godoOrderPurchaseList'); //구매대행 주문서 조회
+    $router->get('/order/purchase/list', PurchaseController::class, 'purchaseOrderList'); //구매대행 발주서 리스트
+    $router->get('/order/purchase/detail', PurchaseController::class, 'purchaseOrderDetail'); //구매대행 발주서 상세
+    $router->post('/order/purchase/delete', PurchaseController::class, 'purchaseOrderDelete'); //구매대행 발주서 삭제
+    $router->post('/order/purchase/merge', PurchaseController::class, 'purchaseOrderMerge'); //구매대행 발주서 병합
+    $router->post('/order/godo_order_purchase/create_sheet', GodoApiController::class, 'createGodoPurchaseOrderSheet'); //구매대행 선택상품 발주서 생성
+    $router->get('/order/godo_order_purchase/excel', GodoApiController::class, 'downloadGodoPurchaseOrderExcel'); //구매대행 발주서 CSV 다운로드
     
     //주문서 재고 일괄등록
 

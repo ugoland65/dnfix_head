@@ -15,6 +15,9 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 	<ul <? if( $pageNameCode == "order_sheet_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/sheet/list'">
 		<li>주문서 리스트</li>
 	</ul>
+	<ul <? if( $pageNameCode == "purchase_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/purchase/list'">
+		<li>개별 발주서 리스트</li>
+	</ul>
 	<? /*
 		<ul <? if( $_page == "order_sheet_main") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/order_sheet_main'"><li>주문서 리스트 (구)</li></ul>
 	<ul <? if( $_page == "order_sheet") echo "class='leftMenuNow' "; ?> onclick="location.href='/ad/order/order_sheet'"><li>주문서 v.4</li></ul>
@@ -41,10 +44,10 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 		<li>주문 가져오기 (상품별)</li>
 	</ul>
 	<ul <? if( $pageNameCode == "godo_order_goods_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_goods_list'">
-		<li>주문 가져오기 (공급사)</li>
+		<li>주문 가져오기 (위탁상품)</li>
 	</ul>
 	<ul <? if( $pageNameCode == "godo_order_purchase_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/godo_order_purchase_list'">
-		<li>주문 가져오기 (구매대행)</li>
+		<li>주문 가져오기 (개별주문)</li>
 	</ul>
 
 

@@ -770,3 +770,264 @@ table.table-st2 {
 	color: #fff;
 	font-weight: 600;
 }
+
+/* 주문서 리스트 */
+.layout-style1 {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	align-items: center;
+	gap: 10px;
+	box-sizing: border-box;
+
+	>ul {
+
+		width: 350px;
+		height: 100%;
+		padding: 0;
+
+		.layout-style1-section-top {
+			height: 30px;
+		}
+
+		.layout-style1-section {
+			height: calc(100% - 30px);
+			border: 1px solid #ccc;
+			background-color: #fff;
+		}
+
+	}
+
+	>ul:first-child {
+		flex: 1;
+	}
+
+}
+
+.order_goods_list {
+
+	display: none;
+
+	.table-st1 {
+		border-top: 1px solid #b4b4b4;
+		border-left: 1px solid #b4b4b4;
+		border-bottom: 1px solid #b4b4b4;
+
+		thead tr {
+			position: static;
+		}
+
+		tfoot>tr {
+			position: static;
+		}
+	}
+}
+
+
+
+.order-handle-label {
+	display: block;
+	margin-right: 6px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.4;
+}
+
+.order-handle-label-refund {
+	background: #fff4e5;
+	color: #b25a00;
+	border: 1px solid #ffd59a;
+}
+
+.order-handle-label-approved {
+	background: #edf9f0;
+	color: #1f7a35;
+	border: 1px solid #b8e7c2;
+}
+
+.order-handle-label-rejected {
+	background: #fff1f1;
+	color: #b42318;
+	border: 1px solid #f4c2c0;
+}
+
+.order-save-label {
+	display: inline-block;
+	min-width: 56px;
+	padding: 2px 8px;
+	border-radius: 999px;
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1.4;
+}
+
+.order-save-label-saved {
+	background: #edf9f0;
+	color: #1f7a35;
+	border: 1px solid #b8e7c2;
+}
+
+.order-save-label-unsaved {
+	background: #fff1f1;
+	color: #b42318;
+	border: 1px solid #f4c2c0;
+}
+
+.copy-cell-wrap {
+	display: inline-flex;
+	align-items: center;
+	gap: 3px;
+}
+
+.copy-btn {
+	border: 1px solid #d0d7de;
+	background: #f2f4f7;
+	color: #57606a;
+	border-radius: 6px;
+	width: 20px;
+	height: 20px;
+	padding: 0;
+	cursor: pointer;
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	position: relative;
+}
+
+.copy-btn:hover {
+	background: #e9edf2;
+}
+
+.copy-btn.is-copied {
+	border-color: #16a34a;
+	background: #16a34a;
+	color: #ffffff;
+}
+
+.copy-btn.is-copied .copy-icon {
+	display: none;
+}
+
+.copy-btn.is-copied::before {
+	content: '✓';
+	font-size: 12px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.copy-btn.is-copied::after {
+	content: '복사됨';
+	position: absolute;
+	top: -22px;
+	left: 50%;
+	transform: translateX(-50%);
+	background: #111827;
+	color: #ffffff;
+	font-size: 10px;
+	line-height: 1;
+	padding: 3px 6px;
+	border-radius: 4px;
+	white-space: nowrap;
+	z-index: 2;
+}
+
+.copy-btn .copy-icon {
+	width: 16px;
+	height: 16px;
+	display: block;
+	color: currentColor;
+}
+
+.partner-match-card {
+	display: flex;
+	align-items: flex-start;
+	gap: 10px;
+	width: 250px;
+	padding: 5px 6px;
+	border: 1px solid #e3e7ee;
+	border-radius: 8px;
+	background: #f5f7fa;
+	cursor: pointer;
+	transition: background-color 0.15s ease, border-color 0.15s ease;
+}
+
+.partner-match-card:hover {
+	background: #eaf1ff;
+	border-color: #9db7ea;
+}
+
+.partner-match-thumb {
+	width: 40px;
+	height: 40px;
+	border-radius: 4px;
+	object-fit: cover;
+	flex-shrink: 0;
+}
+
+.partner-match-info {
+	line-height: 1.5;
+	color: #1f2937;
+	min-width: 0;
+	flex: 1;
+}
+
+.partner-match-name {
+	display: block;
+	max-width: 100%;
+	overflow: hidden;
+	text-overflow: ellipsis;
+	white-space: nowrap;
+}
+
+.table-st1 tbody tr.is-selected-row td {
+	background-color: #eef5ff !important;
+}
+
+.order-sync-loading-modal {
+	position: fixed;
+	inset: 0;
+	z-index: 99999;
+	display: none;
+	align-items: center;
+	justify-content: center;
+	background: rgba(15, 23, 42, 0.55);
+}
+
+.order-sync-loading-modal.is-visible {
+	display: flex;
+}
+
+.order-sync-loading-modal__box {
+	width: min(520px, calc(100% - 40px));
+	border-radius: 12px;
+	background: #ffffff;
+	box-shadow: 0 14px 40px rgba(0, 0, 0, 0.24);
+	padding: 28px 24px;
+	text-align: center;
+}
+
+.order-sync-loading-modal__spinner {
+	width: 44px;
+	height: 44px;
+	margin: 0 auto 14px;
+	border: 4px solid #dbe4ff;
+	border-top-color: #2563eb;
+	border-radius: 50%;
+	animation: order-sync-spin 0.8s linear infinite;
+}
+
+.order-sync-loading-modal__text {
+	margin: 0;
+	font-size: 16px;
+	font-weight: 700;
+	color: #1f2937;
+	line-height: 1.6;
+}
+
+@keyframes order-sync-spin {
+	to {
+		transform: rotate(360deg);
+	}
+}

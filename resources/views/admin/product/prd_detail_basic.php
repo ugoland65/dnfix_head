@@ -69,7 +69,7 @@
         'is_sale_special' => 0,
         'is_discontinued' => 0,
         'hbti_target' => 'Y',
-        'cd_site_show' => 'Y',
+        'cd_site_show' => 'N',
     ], $productData);
     if (!isset($productData['cd_add_img']) || !is_array($productData['cd_add_img'])) {
         $productData['cd_add_img'] = [];
@@ -787,8 +787,8 @@
                         <tr>
                             <th>오나디비 노출</th>
                             <td>
-                                <label><input type="radio" name="cd_site_show" value="Y" <?php if (($productData['cd_site_show'] ?? '') == "Y" ) echo "checked"; ?>> 노출</label>
-                                <label><input type="radio" name="cd_site_show" value="N" <?php if (($productData['cd_site_show'] ?? '') == "N" || !($productData['cd_site_show'] ?? '')) echo "checked"; ?>> 비노출</label>
+                                <label><input type="radio" name="cd_site_show" value="Y" <?php if (($productData['cd_site_show'] ?? '') == "Y") echo "checked"; ?>> 노출</label>
+                                <label><input type="radio" name="cd_site_show" value="N" <?php if (($productData['cd_site_show'] ?? '') == "N" || (($productData['cd_site_show'] ?? '') === '' && empty($productData['CD_IDX'] ?? ''))) echo "checked"; ?>> 비노출</label>
                             </td>
                         </tr>
                     </table>

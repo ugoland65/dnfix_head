@@ -371,7 +371,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			*/ 
 		?>
 		<ul id="crm_menu_info" class="active" onclick="prdInfo.mode('', 'info')">상품정보</ul>
-		<ul id="crm_menu_price" class="" onclick="prdInfo.mode('', 'price')">매입정보</ul>
+		<ul id="crm_menu_price" class="" onclick="prdInfo.mode('', 'price')">매입/판매 정보</ul>
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 
 		<?php if (!empty($prd_data['ps_idx'])) { ?>

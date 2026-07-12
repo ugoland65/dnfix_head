@@ -21,7 +21,12 @@ class GodoApiService extends BaseClass {
         $apiUrl = 'https://showdang.co.kr/dnfix/api/member_hbti_reports_api.php?mode='.$mode;
         $response = HttpClient::getData($apiUrl);
         
-        $apiData = json_decode($response, true);
+        // orderGoodsSno 같은 큰 숫자 키가 float/scientific 표기로 깨지지 않도록
+        // bigint는 문자열로 유지해서 이후 동기화 키(order_goods_sno) 매핑을 안정화한다.
+        $apiData = json_decode($response, true, 512, JSON_BIGINT_AS_STRING);
+        if (!is_array($apiData)) {
+            $apiData = [];
+        }
 
         return $apiData;
 
@@ -62,7 +67,12 @@ class GodoApiService extends BaseClass {
 
         
 
-        $apiData = json_decode($response, true);
+        // orderGoodsSno/orderNo가 큰 숫자인 경우 float/scientific 변환을 막기 위해
+        // bigint를 문자열로 유지한다.
+        $apiData = json_decode($response, true, 512, JSON_BIGINT_AS_STRING);
+        if (!is_array($apiData)) {
+            $apiData = [];
+        }
 
         $errorGoodsList = []; // 오류 데이터 저장
         $numericGoodsList = [];
@@ -618,6 +628,7 @@ class GodoApiService extends BaseClass {
     public function getOrderGoodsList($criteria) 
     {
         
+        $prd_type = $criteria['prd_type'] ?? 'prdPartner';
         $mode = $criteria['mode'] ?? 'b';
         $start_date = $criteria['start_date'] ?? date('Y-m-d');
         $end_date = $criteria['end_date'] ?? date('Y-m-d');
@@ -626,7 +637,15 @@ class GodoApiService extends BaseClass {
         $apiUrl = 'https://showdang.co.kr/dnfix/api/order_api.php?apiMode=orderGoods&scmNo='.$scmNo.'&mode='.$mode.'&start_date='.$start_date.'&end_date='.$end_date;
         $response = HttpClient::getData($apiUrl);
 
-        $apiData = json_decode($response, true);
+        // orderGoodsSno/orderNo 같은 bigint 키는 문자열로 유지해야
+        // 화면 체크박스 값/DB 키 매칭이 깨지지 않는다.
+        $apiData = json_decode($response, true, 512, JSON_BIGINT_AS_STRING);
+        if (!is_array($apiData)) {
+            $apiData = [];
+        }
+        if (!isset($apiData['data']) || !is_array($apiData['data'])) {
+            $apiData['data'] = [];
+        }
 
         //dd($apiData);
 
@@ -651,7 +670,7 @@ class GodoApiService extends BaseClass {
             17 => '리퍼브',	
             18 => '구매대행',	
             19 => '예비1',	
-            20 => '예비2',		
+            20 => '예비2',
         ];
 
         $otherGoodNos = [];
@@ -705,20 +724,37 @@ class GodoApiService extends BaseClass {
         unset($order);
 
         $otherGoodNos = array_values(array_unique($otherGoodNos));
-        $productPartnerData = [];
-        if (!empty($otherGoodNos)) {
-            $productPartnerService = new ProductPartnerService();
-            $productPartnerData = $productPartnerService->getProductPartnerWhereInGodoGoodsNo($otherGoodNos);
-        }
-        foreach ($apiData['data'] as &$order) {
-            $goodsNo = (string)($order['goodsNo'] ?? '');
-            $order['ProductPartner'] = $goodsNo !== '' && isset($productPartnerData[$goodsNo])
-                ? $productPartnerData[$goodsNo]
-                : null;
-        }
-        unset($order);
 
+        if( $prd_type == 'prdDB' ){
+
+            $productData = [];
+            if (!empty($otherGoodNos)) {
+                $productService = new ProductService();
+                $productData = $productService->getProductWhereInGodoCode($otherGoodNos);
+            }
+            foreach ($apiData['data'] as &$order) {
+                $goodsNo = (string)($order['goodsNo'] ?? '');
+                $order['Product'] = $goodsNo !== '' && isset($productData[$goodsNo])
+                    ? $productData[$goodsNo]
+                    : null;
+            }
+            unset($order);
+        }else{
+            $productPartnerData = [];
+            if (!empty($otherGoodNos)) {
+                $productPartnerService = new ProductPartnerService();
+                $productPartnerData = $productPartnerService->getProductPartnerWhereInGodoGoodsNo($otherGoodNos);
+            }
+            foreach ($apiData['data'] as &$order) {
+                $goodsNo = (string)($order['goodsNo'] ?? '');
+                $order['ProductPartner'] = $goodsNo !== '' && isset($productPartnerData[$goodsNo])
+                    ? $productPartnerData[$goodsNo]
+                    : null;
+            }
+            unset($order);
+        }
         
+        //dd($apiData);
 
         $result = [
             'start_date' => $start_date,
@@ -1555,6 +1591,63 @@ class GodoApiService extends BaseClass {
         $costPrice = (string)((int)$costPriceRaw);
 
         $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=costUpdate&goodsNo='.$goodsNo.'&costPrice='.$costPrice;
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+
+        //dd($responseData);
+        if(!is_array($responseData)){
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+
+        return $responseData;
+    }
+
+
+    /**
+     * 상품 판매가 + 원가정보 마진그룹까지 업데이트
+     * 
+     * @param string $goodsNo 상품번호
+     * @param string $costPrice 원가
+     * @return array
+     */
+    public function updateGodoGoodsPrice($goodsNo, $salePrice, $costPrice, $marginGroup) 
+    {
+
+        if(empty($goodsNo)){
+            throw new \Exception('상품번호가 비어있습니다.');
+        }
+        if(empty($salePrice)){
+            throw new \Exception('판매가가 비어있습니다.');
+        }
+
+        /*
+        if(empty($marginGroup)){
+            throw new \Exception('마진그룹이 비어있습니다.');
+        }
+        */
+
+        if(empty($costPrice)){
+            throw new \Exception('원가가 비어있습니다.');
+        }
+
+        $goodsNo = trim((string)$goodsNo);
+        if (!preg_match('/^\d+$/', $goodsNo)) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $salePriceRaw = str_replace(',', '', trim((string)$salePrice));
+        if (!preg_match('/^\d+$/', $salePriceRaw)) {
+            throw new \Exception('판매가는 숫자만 입력 가능합니다.');
+        }
+        $salePrice = (string)((int)$salePriceRaw);
+
+        $costPriceRaw = str_replace(',', '', trim((string)$costPrice));
+        if (!preg_match('/^\d+$/', $costPriceRaw)) {
+            throw new \Exception('원가는 숫자만 입력 가능합니다.');
+        }
+        $costPrice = (string)((int)$costPriceRaw);
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsPriceUpdate&goodsNo='.$goodsNo.'&salePrice='.$salePrice.'&costPrice='.$costPrice.'&marginGroup='.$marginGroup;
         $response = HttpClient::getData($apiUrl);
         $responseData = json_decode($response, true);
 

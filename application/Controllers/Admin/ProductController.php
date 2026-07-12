@@ -300,7 +300,7 @@ class ProductController extends BaseClass
                 ],
                 'cd_hbti_data' => [],
                 'hbti_target' => 'Y',
-                'cd_site_show' => 'Y',
+                'cd_site_show' => 'N',
                 'cd_reference_links' => [],
                 'work_check_list' => [],
                 'is_sale_month' => 0,
@@ -320,6 +320,7 @@ class ProductController extends BaseClass
 
             return view('admin.product.prd_db_create', $data)
                 ->extends('admin.layout.layout', ['pageGroup2' => 'prd', 'pageNameCode' => 'prd_db_create']);
+                
         } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
@@ -340,6 +341,10 @@ class ProductController extends BaseClass
 
             $productService = new ProductService();
             $productData = $productService->getProductDataForAdmin($prdIdx);
+            $configProduct = config('admin.product');
+            $purchaseTypeOptions = $configProduct['purchase_type_options'] ?? [];
+            $configProduct = config('admin.product');
+            $purchaseTypeOptions = $configProduct['purchase_type_options'] ?? [];
 
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
@@ -388,6 +393,7 @@ class ProductController extends BaseClass
 
             $data = [
                 'productData' => $productData,
+                'purchase_type_options' => $purchaseTypeOptions,
             ];
 
             return view('admin.product.prd_detail_price', $data);
@@ -683,6 +689,40 @@ class ProductController extends BaseClass
             
             $productService = new ProductService();
             $result = $productService->saveProductPrice($requestData);
+
+            if ($result['success']) {
+                return response()->json([
+                    'success' => true,
+                    'message' => $result['message'] ?? '상품 정보가 저장되었습니다.',
+                    'data' => $result,
+                ]);
+            }
+
+            return response()->json([
+                'success' => false,
+                'message' => $result['message'] ?? $result['msg'] ?? '상품 정보 저장에 실패했습니다.',
+                'data' => $result,
+            ], 400);
+
+        } catch (\Exception $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
+    /**
+     * 상품 매입정보 저장 + 고도몰 가격 업데이트
+     */
+    public function saveProductPriceAndGodoUpdate(Request $request)
+    {
+        try{
+
+            $requestData = $request->all();
+
+            $productService = new ProductService();
+            $result = $productService->saveProductPriceAndGodoUpdate($requestData);
 
             if ($result['success']) {
                 return response()->json([

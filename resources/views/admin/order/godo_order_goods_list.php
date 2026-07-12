@@ -188,7 +188,7 @@
 </style>
 
 <div id="contents_head">
-    <h1>고도몰 주문 (공급사)</h1>
+    <h1>고도몰 주문 (위탁상품)</h1>
     <div class="m-l-20">
         <select name="mode" id="mode">
             <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
@@ -224,14 +224,15 @@
                     <table class="table-st1">
                         <thead>
                             <tr>
-                                <th class="">No</th>
+                                <th class="list-checkbox"><input type="checkbox" name="" onclick="select_all()"></th>
+                                <th class="list-idx">No</th>
                                 <th class="">주문번호</th>
                                 <th class="">주문일</th>
                                 <th class="">결제일</th>
                                 <th class="">공급사</th>
                                 <th class="">주문상품</th>
                                 <th class="">주문상품명</th>
-                                <th class="">주문수량</th>
+                                <th class="">주문<br>수량</th>
                                 <th class="">매칭상품</th>
                                 <th class="">공급사링크</th>
                                 <th class="">C/S 요청</th>
@@ -255,7 +256,8 @@
                                 $no++;
                             ?>
                                 <tr>
-                                    <td><?= $no ?></td>
+                                    <td><input type="checkbox" name="check_idx[]" value="<?= $order['orderGoodsSno'] ?>"></td>
+                                    <td class="text-center"><?= $no ?></td>
                                     <td>
                                         <?php if ($order['userHandleFl'] == 'r') { ?>
                                             <span class="order-handle-label order-handle-label-refund">환불요청중</span>
@@ -266,8 +268,14 @@
                                         <?php } ?>
                                         <a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $order['orderNo'] ?>" target="_blank"><?= $order['orderNo'] ?></a>
                                     </td>
-                                    <td><?= date('y.m.d H:i', strtotime($order['regDt'])) ?></td>
-                                    <td><?= date('y.m.d H:i', strtotime($order['paymentDt'])) ?></td>
+                                    <td class="text-center">
+                                        <p><?= date('y.m.d', strtotime($order['regDt'])) ?></p>
+                                        <b><?= date('H:i', strtotime($order['regDt'])) ?></b>
+                                    </td>
+                                    <td class="text-center">
+                                        <p><?= date('y.m.d', strtotime($order['paymentDt'])) ?></p>
+                                        <b><?= date('H:i', strtotime($order['paymentDt'])) ?></b>
+                                    </td>
                                     <td>
                                         <?= $order['scmName'] ?>
                                     </td>

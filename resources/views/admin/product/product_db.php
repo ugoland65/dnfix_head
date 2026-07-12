@@ -1,5 +1,10 @@
 <div id="contents_head">
 	<h1>상품 DB</h1>
+    <div class="right after-select-action-btn-wrap">
+        <button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="location.href='/admin/product/prd_db_create'" >
+            상품 DB생성
+        </button>
+    </div>
 </div>
 <style>
     .product-kind-cell,
