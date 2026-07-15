@@ -60,6 +60,7 @@ class ProductController extends BaseClass
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
             $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null;
+            $s_label_idx = $requestData['s_label_idx'] ?? null;
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
@@ -80,6 +81,7 @@ class ProductController extends BaseClass
                 's_sale_mode' => $s_sale_mode,
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
+                's_label_idx' => $s_label_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
             ];
@@ -106,6 +108,7 @@ class ProductController extends BaseClass
             $categories = $config_product['categories'] ?? [];
             $saleStatusOptions = $config_product['sale_status_options'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
+            $productLabelForSelect = $this->productService->getActiveProductLabelOptions();
 
             $data = [
                 's_brand' => $s_brand,
@@ -116,6 +119,7 @@ class ProductController extends BaseClass
                 's_sale_mode' => $s_sale_mode,
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
+                's_label_idx' => $s_label_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
@@ -127,6 +131,7 @@ class ProductController extends BaseClass
                 'importingCountrySelect' => $importingCountrySelect,
                 'categories' => $categories,
                 'sale_status_options' => $saleStatusOptions,
+                'product_label_for_select' => $productLabelForSelect,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -174,6 +179,7 @@ class ProductController extends BaseClass
             $s_sale_mode = $requestData['s_sale_mode'] ?? null;
             $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종여부
+            $s_label_idx = $requestData['s_label_idx'] ?? null;
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
@@ -195,6 +201,7 @@ class ProductController extends BaseClass
                 's_sale_mode' => $s_sale_mode,
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
+                's_label_idx' => $s_label_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
             ];
@@ -221,6 +228,7 @@ class ProductController extends BaseClass
             $categories = $config_product['categories'] ?? [];
             $saleStatusOptions = $config_product['sale_status_options'] ?? [];
             $workTaskItemOptions = $this->productService->getWorkCheckItemsForFilter($s_prd_kind);
+            $productLabelForSelect = $this->productService->getActiveProductLabelOptions();
 
             $data = [
                 's_brand' => $s_brand,
@@ -231,6 +239,7 @@ class ProductController extends BaseClass
                 's_sale_mode' => $s_sale_mode,
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
+                's_label_idx' => $s_label_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
@@ -242,6 +251,7 @@ class ProductController extends BaseClass
                 'importingCountrySelect' => $importingCountrySelect,
                 'categories' => $categories,
                 'sale_status_options' => $saleStatusOptions,
+                'product_label_for_select' => $productLabelForSelect,
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -303,6 +313,8 @@ class ProductController extends BaseClass
                 'cd_site_show' => 'N',
                 'cd_reference_links' => [],
                 'work_check_list' => [],
+                'product_label_options' => $this->productService->getActiveProductLabelOptions(),
+                'selected_product_label_idxs' => [],
                 'is_sale_month' => 0,
                 'is_sale_special' => 0,
                 'is_discontinued' => 0,

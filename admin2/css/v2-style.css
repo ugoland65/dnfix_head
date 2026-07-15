@@ -107,6 +107,10 @@
 	background-color:#222121;
 }
 
+.on_sale_label.RANDOM{
+	background-color:#dc3545;
+}
+
 /* 공통 배지 */
 .grade-badge{
 	display:inline-block;

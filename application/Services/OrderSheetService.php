@@ -13,6 +13,8 @@ use App\Models\OrderGroupProductModel;
 use App\Models\ProductModel;
 use App\Models\ProductStockModel;
 use App\Models\ProductStockUnitModel;
+use App\Models\ProductLabelModel;
+use App\Models\ProductLabelMappingModel;
 
 class OrderSheetService
 {
@@ -2305,6 +2307,75 @@ class OrderSheetService
                 ->keyBy('CD_IDX')
                 ->toArray();
 
+        }
+
+        if (!empty($orderSheetProductList) && !empty($prd_idxs)) {
+            try {
+                $mappingRows = ProductLabelMappingModel::query()
+                    ->select(['product_idx', 'label_idx', 'display_order'])
+                    ->where('product_type', 'prdDB')
+                    ->whereIn('product_idx', $prd_idxs)
+                    ->orderBy('product_idx', 'asc')
+                    ->orderBy('display_order', 'asc')
+                    ->orderBy('idx', 'asc')
+                    ->get()
+                    ->toArray();
+            } catch (\Throwable $e) {
+                $mappingRows = [];
+            }
+
+            $labelMap = [];
+            if (!empty($mappingRows)) {
+                $labelIdxs = array_values(array_unique(array_filter(array_map(function ($row) {
+                    return (int)($row['label_idx'] ?? 0);
+                }, $mappingRows), function ($idx) {
+                    return $idx > 0;
+                })));
+
+                if (!empty($labelIdxs)) {
+                    try {
+                        $labelRows = ProductLabelModel::query()
+                            ->select(['idx', 'label_code', 'label_name', 'icon_path', 'is_active'])
+                            ->whereIn('idx', $labelIdxs)
+                            ->where('is_active', 1)
+                            ->get()
+                            ->toArray();
+                        foreach ($labelRows as $labelRow) {
+                            $labelIdx = (int)($labelRow['idx'] ?? 0);
+                            if ($labelIdx <= 0) {
+                                continue;
+                            }
+                            $labelMap[$labelIdx] = [
+                                'idx' => $labelIdx,
+                                'label_code' => (string)($labelRow['label_code'] ?? ''),
+                                'label_name' => (string)($labelRow['label_name'] ?? ''),
+                                'icon_path' => (string)($labelRow['icon_path'] ?? ''),
+                            ];
+                        }
+                    } catch (\Throwable $e) {
+                        $labelMap = [];
+                    }
+                }
+            }
+
+            $labelsByProductIdx = [];
+            foreach ($mappingRows as $mappingRow) {
+                $productIdx = (int)($mappingRow['product_idx'] ?? 0);
+                $labelIdx = (int)($mappingRow['label_idx'] ?? 0);
+                if ($productIdx <= 0 || $labelIdx <= 0 || !isset($labelMap[$labelIdx])) {
+                    continue;
+                }
+                if (!isset($labelsByProductIdx[$productIdx])) {
+                    $labelsByProductIdx[$productIdx] = [];
+                }
+                $labelsByProductIdx[$productIdx][] = $labelMap[$labelIdx];
+            }
+
+            foreach ($orderSheetProductList as &$product) {
+                $productIdx = (int)($product['CD_IDX'] ?? 0);
+                $product['product_labels'] = $labelsByProductIdx[$productIdx] ?? [];
+            }
+            unset($product);
         }
 
         foreach ($orderSheetProductList as &$product) {

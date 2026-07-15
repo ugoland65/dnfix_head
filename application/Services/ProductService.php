@@ -8,6 +8,8 @@ use App\Models\BrandModel;
 use App\Models\ProductStockModel;
 use App\Models\ProductWorkCheckItemModel;
 use App\Models\ProductWorkCheckStatusModel;
+use App\Models\ProductLabelModel;
+use App\Models\ProductLabelMappingModel;
 use App\Auth\AdminAuth;
 use App\Classes\ImageStorage;
 use App\Services\AdminActionLogService;
@@ -117,6 +119,7 @@ class ProductService extends BaseClass
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
         $s_sale_status = trim((string)($criteria['s_sale_status'] ?? ''));
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
+        $s_label_idx = (int)($criteria['s_label_idx'] ?? 0);
 
         $since = $criteria['since'] ?? null;
         $idxs = $criteria['idxs'] ?? [];
@@ -214,6 +217,19 @@ class ProductService extends BaseClass
 
         if ($s_sale_status !== '') {
             $query->where('A.sale_status', $s_sale_status);
+        }
+
+        // 상품라벨 검색
+        if ($s_label_idx > 0) {
+            $query->whereRaw("
+                EXISTS (
+                    SELECT 1
+                    FROM product_label_mappings PLM
+                    WHERE PLM.product_type = ?
+                      AND PLM.product_idx = A.CD_IDX
+                      AND PLM.label_idx = ?
+                )
+            ", ['prdDB', $s_label_idx]);
         }
 
         // 마진율 그룹 검색 (A~I)
@@ -368,6 +384,8 @@ class ProductService extends BaseClass
             $product = $this->processProductData($product, $prd_kind_name, $_national_text, $categoryNameByCode);
         }
         unset($product); // 참조 변수 해제
+
+        $products = $this->attachProductLabels($products, 'prdDB');
 
         if ($paging) {
             $result['data'] = $products;
@@ -874,6 +892,117 @@ class ProductService extends BaseClass
         return $result;
     }
 
+    /**
+     * 상품 목록에 라벨 목록 추가
+     *
+     * @param array $products
+     * @param string $productType
+     * @return array
+     */
+    private function attachProductLabels(array $products, string $productType = 'prdDB'): array
+    {
+        if (empty($products)) {
+            return $products;
+        }
+
+        $productType = trim($productType);
+        if ($productType === '') {
+            return $products;
+        }
+
+        $productIdxs = array_values(array_unique(array_filter(array_map(function ($product) {
+            return (int)($product['CD_IDX'] ?? 0);
+        }, $products), function ($idx) {
+            return $idx > 0;
+        })));
+
+        if (empty($productIdxs)) {
+            return $products;
+        }
+
+        try {
+            $mappingRows = ProductLabelMappingModel::query()
+                ->select(['product_idx', 'label_idx', 'display_order'])
+                ->where('product_type', $productType)
+                ->whereIn('product_idx', $productIdxs)
+                ->orderBy('product_idx', 'asc')
+                ->orderBy('display_order', 'asc')
+                ->orderBy('idx', 'asc')
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $mappingRows = [];
+        }
+
+        if (empty($mappingRows)) {
+            foreach ($products as &$product) {
+                $product['product_labels'] = [];
+            }
+            unset($product);
+            return $products;
+        }
+
+        $labelIdxs = array_values(array_unique(array_filter(array_map(function ($row) {
+            return (int)($row['label_idx'] ?? 0);
+        }, $mappingRows), function ($idx) {
+            return $idx > 0;
+        })));
+
+        if (empty($labelIdxs)) {
+            foreach ($products as &$product) {
+                $product['product_labels'] = [];
+            }
+            unset($product);
+            return $products;
+        }
+
+        $labelRows = [];
+        try {
+            $labelRows = ProductLabelModel::query()
+                ->select(['idx', 'label_code', 'label_name', 'is_active'])
+                ->whereIn('idx', $labelIdxs)
+                ->where('is_active', 1)
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            $labelRows = [];
+        }
+
+        $labelMap = [];
+        foreach ($labelRows as $labelRow) {
+            $labelIdx = (int)($labelRow['idx'] ?? 0);
+            if ($labelIdx <= 0) {
+                continue;
+            }
+            $labelMap[$labelIdx] = [
+                'idx' => $labelIdx,
+                'label_code' => (string)($labelRow['label_code'] ?? ''),
+                'label_name' => (string)($labelRow['label_name'] ?? ''),
+            ];
+        }
+
+        $labelsByProductIdx = [];
+        foreach ($mappingRows as $mappingRow) {
+            $productIdx = (int)($mappingRow['product_idx'] ?? 0);
+            $labelIdx = (int)($mappingRow['label_idx'] ?? 0);
+            if ($productIdx <= 0 || $labelIdx <= 0 || !isset($labelMap[$labelIdx])) {
+                continue;
+            }
+            if (!isset($labelsByProductIdx[$productIdx])) {
+                $labelsByProductIdx[$productIdx] = [];
+            }
+            $labelsByProductIdx[$productIdx][] = $labelMap[$labelIdx];
+        }
+
+        foreach ($products as &$product) {
+            $productIdx = (int)($product['CD_IDX'] ?? 0);
+            $product['product_labels'] = $labelsByProductIdx[$productIdx] ?? [];
+        }
+        unset($product);
+
+        return $products;
+    }
+
 
     /**
      * 상품 목록 조회 (구버전)
@@ -1228,6 +1357,14 @@ class ProductService extends BaseClass
                 (int)($productData['CD_IDX'] ?? 0),
                 (string)($productData['CD_KIND_CODE'] ?? '')
             );
+            $productData['product_label_options'] = $this->getActiveProductLabelOptions();
+            $productData['product_label_mappings'] = $this->getProductLabelMappingsForProduct(
+                'prdDB',
+                (int)($productData['CD_IDX'] ?? 0)
+            );
+            $productData['selected_product_label_idxs'] = array_values(array_map(function ($row) {
+                return (int)($row['label_idx'] ?? 0);
+            }, $productData['product_label_mappings']));
 
             // hbti_target 설정
             if (!isset($productData['hbti_target'])) {
@@ -1494,6 +1631,7 @@ class ProductService extends BaseClass
         $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
         $workTaskCodes = $postData['work_task_codes'] ?? [];
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
+        $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
 
         $cdCodeData['jan'] = $cdCode;
         $cdCodeData['pcode'] = $cdCode2;
@@ -1610,6 +1748,7 @@ class ProductService extends BaseClass
             ->where('CD_IDX', '=', $idx)
             ->update($updateData);
         $beforeWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
+        $beforeProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
 
         $beforeStockData = [];
         if (!empty($psIdx)) {
@@ -1642,9 +1781,12 @@ class ProductService extends BaseClass
         }
         $beforeData['ps_discount_target_yn'] = $beforeDiscountTargetYn;
         $beforeData['work_check_list'] = $beforeWorkCheckList;
+        $beforeData['product_label_mappings'] = $beforeProductLabelMappings;
 
         $this->syncProductWorkChecks($idx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
         $afterWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
+        $this->syncProductLabelMappings($idx, 'prdDB', $productLabelIdxs);
+        $afterProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
 
         $afterData = array_merge($oldProduct, $updateData);
         $afterDiscountTargetYn = $beforeDiscountTargetYn;
@@ -1660,6 +1802,7 @@ class ProductService extends BaseClass
         }
         $afterData['ps_discount_target_yn'] = $afterDiscountTargetYn;
         $afterData['work_check_list'] = $afterWorkCheckList;
+        $afterData['product_label_mappings'] = $afterProductLabelMappings;
 
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
@@ -1673,6 +1816,9 @@ class ProductService extends BaseClass
         }
         if (json_encode($beforeWorkCheckList, JSON_UNESCAPED_UNICODE) !== json_encode($afterWorkCheckList, JSON_UNESCAPED_UNICODE)) {
             $actionSummary .= ' (작업체크 변경)';
+        }
+        if (json_encode($beforeProductLabelMappings, JSON_UNESCAPED_UNICODE) !== json_encode($afterProductLabelMappings, JSON_UNESCAPED_UNICODE)) {
+            $actionSummary .= ' (상품라벨 변경)';
         }
         $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
         try {
@@ -1852,6 +1998,7 @@ class ProductService extends BaseClass
         $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
         $workTaskCodes = $postData['work_task_codes'] ?? [];
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
+        $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
 
         $cdCodeData = [
             'jan' => $cdCode,
@@ -1996,6 +2143,8 @@ class ProductService extends BaseClass
         }
 
         $this->syncProductWorkChecks($newIdx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
+        $this->syncProductLabelMappings($newIdx, 'prdDB', $productLabelIdxs);
+        $createdProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $newIdx);
 
         $adminActionLogService = new AdminActionLogService();
         $actionSummary = (string)($postData['action_summary'] ?? '');
@@ -2011,8 +2160,8 @@ class ProductService extends BaseClass
                 'action_mode' => 'create',
                 'action_summary' => $actionSummary,
                 'before_json' => [],
-                'after_json' => $insertData,
-                'diff_json' => $insertData,
+                'after_json' => array_merge($insertData, ['product_label_mappings' => $createdProductLabelMappings]),
+                'diff_json' => array_merge($insertData, ['product_label_mappings' => $createdProductLabelMappings]),
                 'action_url' => $actionUrl !== '' ? $actionUrl : null,
             ]);
         } catch (\Throwable $e) {
@@ -2901,6 +3050,234 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 활성 상품 라벨 목록 조회
+     *
+     * @return array
+     */
+    public function getActiveProductLabelOptions(): array
+    {
+        try {
+            $rows = ProductLabelModel::query()
+                ->select(['idx', 'label_code', 'label_name', 'icon_path', 'display_order', 'is_active'])
+                ->where('is_active', 1)
+                ->orderBy('display_order', 'asc')
+                ->orderBy('idx', 'asc')
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        $result = [];
+        foreach ($rows as $row) {
+            $idx = (int)($row['idx'] ?? 0);
+            if ($idx <= 0) {
+                continue;
+            }
+            $result[] = [
+                'idx' => $idx,
+                'label_code' => (string)($row['label_code'] ?? ''),
+                'label_name' => (string)($row['label_name'] ?? ''),
+                'icon_path' => (string)($row['icon_path'] ?? ''),
+                'display_order' => (int)($row['display_order'] ?? 0),
+                'is_active' => (int)($row['is_active'] ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * 상품에 연결된 라벨 매핑 목록 조회
+     *
+     * @param string $productType
+     * @param int $productIdx
+     * @return array
+     */
+    private function getProductLabelMappingsForProduct(string $productType, int $productIdx): array
+    {
+        $productType = trim($productType);
+        if ($productType === '' || $productIdx <= 0) {
+            return [];
+        }
+
+        try {
+            $mappingRows = ProductLabelMappingModel::query()
+                ->select(['idx', 'product_type', 'product_idx', 'label_idx', 'started_at', 'ended_at', 'display_order', 'created_at', 'updated_at'])
+                ->where('product_type', $productType)
+                ->where('product_idx', $productIdx)
+                ->orderBy('display_order', 'asc')
+                ->orderBy('idx', 'asc')
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return [];
+        }
+
+        if (empty($mappingRows)) {
+            return [];
+        }
+
+        $labelIdxs = array_values(array_unique(array_filter(array_map(function ($row) {
+            return (int)($row['label_idx'] ?? 0);
+        }, $mappingRows), function ($labelIdx) {
+            return $labelIdx > 0;
+        })));
+
+        $labelMap = [];
+        if (!empty($labelIdxs)) {
+            try {
+                $labelRows = ProductLabelModel::query()
+                    ->select(['idx', 'label_code', 'label_name', 'icon_path', 'is_active'])
+                    ->whereIn('idx', $labelIdxs)
+                    ->get()
+                    ->toArray();
+                foreach ($labelRows as $labelRow) {
+                    $labelMap[(int)($labelRow['idx'] ?? 0)] = [
+                        'label_code' => (string)($labelRow['label_code'] ?? ''),
+                        'label_name' => (string)($labelRow['label_name'] ?? ''),
+                        'icon_path' => (string)($labelRow['icon_path'] ?? ''),
+                        'is_active' => (int)($labelRow['is_active'] ?? 0),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $labelMap = [];
+            }
+        }
+
+        $result = [];
+        foreach ($mappingRows as $row) {
+            $labelIdx = (int)($row['label_idx'] ?? 0);
+            if ($labelIdx <= 0) {
+                continue;
+            }
+            $labelInfo = $labelMap[$labelIdx] ?? [];
+            $result[] = [
+                'idx' => (int)($row['idx'] ?? 0),
+                'product_type' => (string)($row['product_type'] ?? ''),
+                'product_idx' => (int)($row['product_idx'] ?? 0),
+                'label_idx' => $labelIdx,
+                'started_at' => (string)($row['started_at'] ?? ''),
+                'ended_at' => (string)($row['ended_at'] ?? ''),
+                'display_order' => (int)($row['display_order'] ?? 0),
+                'label_code' => (string)($labelInfo['label_code'] ?? ''),
+                'label_name' => (string)($labelInfo['label_name'] ?? ''),
+                'icon_path' => (string)($labelInfo['icon_path'] ?? ''),
+                'is_active' => (int)($labelInfo['is_active'] ?? 0),
+            ];
+        }
+
+        return $result;
+    }
+
+    /**
+     * 상품 라벨 선택 값 정규화
+     *
+     * @param mixed $raw
+     * @return array
+     */
+    private function normalizeProductLabelIdxs($raw): array
+    {
+        if (!is_array($raw)) {
+            $raw = [$raw];
+        }
+
+        return array_values(array_unique(array_filter(array_map(function ($value) {
+            return (int)$value;
+        }, $raw), function ($value) {
+            return $value > 0;
+        })));
+    }
+
+    /**
+     * 상품 라벨 매핑 저장
+     *
+     * @param int $productIdx
+     * @param string $productType
+     * @param array $labelIdxs
+     * @return void
+     */
+    private function syncProductLabelMappings(int $productIdx, string $productType, array $labelIdxs): void
+    {
+        if ($productIdx <= 0) {
+            return;
+        }
+
+        $productType = trim($productType);
+        if ($productType === '') {
+            return;
+        }
+
+        $labelIdxs = $this->normalizeProductLabelIdxs($labelIdxs);
+
+        if (empty($labelIdxs)) {
+            try {
+                ProductLabelMappingModel::where('product_type', $productType)
+                    ->where('product_idx', $productIdx)
+                    ->delete();
+            } catch (\Throwable $e) {
+                // no-op
+            }
+            return;
+        }
+
+        try {
+            $existingLabelRows = ProductLabelModel::query()
+                ->select(['idx'])
+                ->whereIn('idx', $labelIdxs)
+                ->get()
+                ->toArray();
+        } catch (\Throwable $e) {
+            return;
+        }
+
+        $validLabelIdxs = array_values(array_unique(array_filter(array_map(function ($row) {
+            return (int)($row['idx'] ?? 0);
+        }, $existingLabelRows), function ($value) {
+            return $value > 0;
+        })));
+
+        if (empty($validLabelIdxs)) {
+            try {
+                ProductLabelMappingModel::where('product_type', $productType)
+                    ->where('product_idx', $productIdx)
+                    ->delete();
+            } catch (\Throwable $e) {
+                // no-op
+            }
+            return;
+        }
+
+        try {
+            ProductLabelMappingModel::where('product_type', $productType)
+                ->where('product_idx', $productIdx)
+                ->whereNotIn('label_idx', $validLabelIdxs)
+                ->delete();
+        } catch (\Throwable $e) {
+            // no-op
+        }
+
+        foreach ($validLabelIdxs as $sortOffset => $labelIdx) {
+            try {
+                ProductLabelMappingModel::updateOrCreate(
+                    [
+                        'product_type' => $productType,
+                        'product_idx' => $productIdx,
+                        'label_idx' => $labelIdx,
+                    ],
+                    [
+                        'display_order' => $sortOffset + 1,
+                        'started_at' => null,
+                        'ended_at' => null,
+                    ]
+                );
+            } catch (\Throwable $e) {
+                continue;
+            }
+        }
+    }
+
+    /**
      * 상품 저장 시 카테고리 코드를 결정한다.
      * - 2차 카테고리가 선택되면 해당 코드 우선
      * - 2차가 없거나 미선택이면 1차(상품구분) 코드 사용
@@ -3067,6 +3444,7 @@ class ProductService extends BaseClass
                 'leg_length',
                 'inner_length_vagina',
                 'inner_length_anal',
+                'material',
             ],
             '02050000' => [
                 'height',
@@ -3081,6 +3459,7 @@ class ProductService extends BaseClass
                 'foot_length',
                 'inner_length_vagina',
                 'inner_length_anal',
+                'material',
             ],
         ];
         $fieldKeys = $fieldKeysByCategory[$cdCategoryCode] ?? $fieldKeysByCategory['02050000'];

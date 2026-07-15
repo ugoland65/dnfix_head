@@ -203,6 +203,36 @@
                     <?php } ?>
                 </select>
             </ul>
+
+            <ul>
+                <?php
+                    $productLabelForSelect = (isset($product_label_for_select) && is_array($product_label_for_select))
+                        ? $product_label_for_select
+                        : [];
+                    $currentLabelIdx = (int)($s_label_idx ?? 0);
+                ?>
+                <select name="s_label_idx" id="s_label_idx">
+                    <option value="">라벨</option>
+                    <?php foreach ($productLabelForSelect as $labelOption) { ?>
+                        <?php
+                            $labelIdx = (int)($labelOption['idx'] ?? 0);
+                            if ($labelIdx <= 0) {
+                                continue;
+                            }
+                            $labelName = trim((string)($labelOption['label_name'] ?? ''));
+                            $labelCode = trim((string)($labelOption['label_code'] ?? ''));
+                            $labelText = $labelName !== '' ? $labelName : $labelCode;
+                            if ($labelText === '') {
+                                $labelText = '라벨#' . $labelIdx;
+                            }
+                        ?>
+                        <option value="<?= $labelIdx ?>" <?php if ($currentLabelIdx === $labelIdx) echo 'selected'; ?>>
+                            <?= htmlspecialchars($labelText, ENT_QUOTES, 'UTF-8') ?>
+                        </option>
+                    <?php } ?>
+                </select>
+            </ul>
+
 			<ul class="">
 				<select name="s_brand" id="s_brand" class="dn-select2">
 					<option value="">브랜드</option>
@@ -489,6 +519,21 @@
                                             <label class="on_sale_label xs discontinued">단종</label>
                                         <?php } ?>
 
+                                        <?php
+                                            $productLabels = (isset($product['product_labels']) && is_array($product['product_labels']))
+                                                ? $product['product_labels']
+                                                : [];
+                                        ?>
+                                        <?php foreach ($productLabels as $productLabel) { ?>
+                                            <?php
+                                                $rawLabelCode = trim((string)($productLabel['label_code'] ?? ''));
+                                                $labelClassCode = preg_replace('/[^a-zA-Z0-9_-]/', '', $rawLabelCode);
+                                                $labelName = trim((string)($productLabel['label_name'] ?? ''));
+                                            ?>
+                                            <?php if ($labelName === '') { continue; } ?>
+                                            <label class="on_sale_label xs <?= htmlspecialchars($labelClassCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($labelName, ENT_QUOTES, 'UTF-8') ?></label>
+                                        <?php } ?>
+
                                         <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
                                         <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
                                             <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
@@ -726,6 +771,7 @@ function select_all() {
 			's_importing_country': $("#s_importing_country").val(),
 			's_margin_group': $("#s_margin_group").val(),
             's_sale_mode': $("#s_sale_mode").val(),
+            's_label_idx': $("#s_label_idx").val(),
             's_work_task_code': $("#s_work_task_code").val(),
             's_work_task_done': $("#s_work_task_done").val(),
 			'sort_mode': $("#sort_kind").val(),

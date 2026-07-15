@@ -1,60 +1,60 @@
 <style>
 
-.img-upload-wrap{ font-size:0; }
-.img-upload-wrap > ul{ 
-	width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
-	h3{
-		font-size:15px;
-		font-weight:600;
-	}
-}
-.img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
+    .img-upload-wrap{ font-size:0; }
+    .img-upload-wrap > ul{ 
+        width:25%; text-align:center; display:inline-block; padding:4px; vertical-align:top; 
+        h3{
+            font-size:15px;
+            font-weight:600;
+        }
+    }
+    .img-upload-wrap > ul > div.img-box{ border:1px solid #ddd; padding:10px; }
 
-.img-upload-file-wrap{
-	display:flex;
-	flex-direction:column;
-	gap:5px;
-}
+    .img-upload-file-wrap{
+        display:flex;
+        flex-direction:column;
+        gap:5px;
+    }
 
-.prd-image-preview-trigger {
-    cursor: zoom-in;
-}
-.prd-image-preview-modal {
-    position: fixed;
-    inset: 0;
-    z-index: 9999;
-    background: rgba(0, 0, 0, 0.75);
-    display: none;
-    align-items: center;
-    justify-content: center;
-    padding: 20px;
-}
-.prd-image-preview-modal.is-open {
-    display: flex;
-}
-.prd-image-preview-content {
-    position: relative;
-    max-width: 1000px;
-    max-height: 1000px;
-    width: 100%;
-    display: flex;
-    align-items: center;
-    justify-content: center;
-}
-.prd-image-preview-modal img {
-    max-width: 1000px;
-    max-height: 1000px;
-    width: auto;
-    height: auto;
-    border: 1px solid #e5e7eb;
-    background: #fff;
-}
-.prd-image-preview-close {
-    position: fixed;
-    top: 16px;
-    right: 16px;
-    z-index: 10000;
-}
+    .prd-image-preview-trigger {
+        cursor: zoom-in;
+    }
+    .prd-image-preview-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 9999;
+        background: rgba(0, 0, 0, 0.75);
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+    }
+    .prd-image-preview-modal.is-open {
+        display: flex;
+    }
+    .prd-image-preview-content {
+        position: relative;
+        max-width: 1000px;
+        max-height: 1000px;
+        width: 100%;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+    }
+    .prd-image-preview-modal img {
+        max-width: 1000px;
+        max-height: 1000px;
+        width: auto;
+        height: auto;
+        border: 1px solid #e5e7eb;
+        background: #fff;
+    }
+    .prd-image-preview-close {
+        position: fixed;
+        top: 16px;
+        right: 16px;
+        z-index: 10000;
+    }
 
 </style>
 <?php
@@ -70,6 +70,8 @@
         'is_discontinued' => 0,
         'hbti_target' => 'Y',
         'cd_site_show' => 'N',
+        'product_label_options' => [],
+        'selected_product_label_idxs' => [],
     ], $productData);
     if (!isset($productData['cd_add_img']) || !is_array($productData['cd_add_img'])) {
         $productData['cd_add_img'] = [];
@@ -438,6 +440,62 @@
                 <td colspan="2" class="none-bg" style="height:15px;"></td>
             </tr>
 
+
+            <tr>
+                <th>상품라벨</th>
+                <td>
+                    <?php
+                        $productLabelOptions = (isset($productData['product_label_options']) && is_array($productData['product_label_options']))
+                            ? $productData['product_label_options']
+                            : [];
+                        $selectedProductLabelIdxs = (isset($productData['selected_product_label_idxs']) && is_array($productData['selected_product_label_idxs']))
+                            ? $productData['selected_product_label_idxs']
+                            : [];
+                        $selectedProductLabelMap = array_fill_keys(array_map('intval', $selectedProductLabelIdxs), true);
+                    ?>
+                    <?php if (!empty($productLabelOptions)) { ?>
+                        <div style="display:flex; flex-wrap:wrap; gap:10px;">
+                            <?php foreach ($productLabelOptions as $labelRow) { ?>
+                                <?php
+                                    $labelIdx = (int)($labelRow['idx'] ?? 0);
+                                    if ($labelIdx <= 0) {
+                                        continue;
+                                    }
+                                    $labelCode = (string)($labelRow['label_code'] ?? '');
+                                    $labelName = (string)($labelRow['label_name'] ?? '');
+                                    $labelIconPathRaw = trim((string)($labelRow['icon_path'] ?? ''));
+                                    $labelIconUrl = '';
+                                    if ($labelIconPathRaw !== '') {
+                                        if (preg_match('/^https?:\/\//i', $labelIconPathRaw) === 1 || strpos($labelIconPathRaw, '/') === 0) {
+                                            $labelIconUrl = $labelIconPathRaw;
+                                        } else {
+                                            $labelIconUrl = '/' . ltrim($labelIconPathRaw, '/');
+                                        }
+                                    }
+                                    $isChecked = isset($selectedProductLabelMap[$labelIdx]);
+                                ?>
+                                <label style="display:inline-flex; align-items:center; gap:8px; padding:8px 10px; border-radius:8px; border:1px solid #d1d5db; background:#f9fafb; min-width:220px;">
+                                    <input type="checkbox" name="product_label_idxs[]" value="<?= $labelIdx ?>" <?= $isChecked ? 'checked' : '' ?>>
+                                    <?php if ($labelIconUrl !== '') { ?>
+                                        <img src="<?= htmlspecialchars($labelIconUrl, ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($labelName !== '' ? $labelName : $labelCode, ENT_QUOTES, 'UTF-8') ?>" style="width:22px; height:22px; object-fit:contain; border:1px solid #e5e7eb; background:#fff;">
+                                    <?php } ?>
+                                    <span style="font-weight:600; color:#111827;"><?= htmlspecialchars($labelName !== '' ? $labelName : $labelCode, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if ($labelCode !== '') { ?>
+                                        <span style="margin-left:auto; font-size:11px; color:#6b7280;"><?= htmlspecialchars($labelCode, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php } ?>
+                                </label>
+                            <?php } ?>
+                        </div>
+                        <div class="admin-guide-text m-t-8">
+                            - 체크한 라벨이 상품에 연결되며, 화면 표시 순서는 위 목록 순서를 따릅니다.
+                        </div>
+                    <?php } else { ?>
+                        <div class="admin-guide-text">
+                            - 활성화된 상품 라벨이 없습니다. `product_labels` 테이블에 라벨을 등록해 주세요.
+                        </div>
+                    <?php } ?>
+                </td>
+            </tr>
             <tr>
                 <th>작업체크</th>
                 <td>
@@ -893,6 +951,11 @@
                                 <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                                 <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
+                            <tr>
+                                <th>소재</th>
+                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
                         </table>
                         <div class="admin-guide-text">
                             - 2차 카테고리가 토르소형(02010000)일 때만 저장됩니다.
@@ -969,6 +1032,11 @@
                                 <th>내부길이 (애널) (cm)</th>
                                 <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                                 <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>소재</th>
+                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                         </table>
                         <div class="admin-guide-text">

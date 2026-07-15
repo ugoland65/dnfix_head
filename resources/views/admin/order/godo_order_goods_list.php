@@ -185,6 +185,79 @@
         text-overflow: ellipsis;
         white-space: nowrap;
     }
+
+
+
+    .tap-order-goods-list-wrap{
+        display:flex;
+        height:35px;
+        align-items:flex-end;
+        gap:3px;
+        padding:0 0;
+        box-sizing:border-box;
+    }
+
+    .tap-order-goods-list-wrap > ul{
+        display:flex;
+        align-items:center;
+        justify-content:center;
+        min-width:96px;
+        height:35px;
+        padding:0 14px;
+        margin:0;
+        list-style:none;
+        border:1px solid #c7d2e0;
+        border-bottom:none;
+        border-top-left-radius:8px;
+        border-top-right-radius:8px;
+        background:#eef2f7;
+        color:#57606a;
+        font-size:12px;
+        font-weight:600;
+        line-height:1;
+        cursor:pointer;
+        box-sizing:border-box;
+        transition:background-color .15s ease, color .15s ease, border-color .15s ease;
+    }
+
+    .tap-order-goods-list-wrap > ul:hover{
+        background:#e7eef8;
+        color:#334155;
+    }
+
+    .tap-order-goods-list-wrap > ul.active{
+        background:#ffffff;
+        color:#1d4ed8;
+        border-color:#8fb1ff;
+        font-weight:700;
+        position:relative;
+        top:1px;
+    }
+
+    .table-st1 tbody tr.supplier-group-title-row td{
+        background:#eef4ff;
+        color:#1e3a8a;
+        font-weight:700;
+        border-top:2px solid #b9ceff;
+    }
+
+    .table-st1 tbody tr.supplier-group-subtotal-row td{
+        background:#f8fbff;
+        color:#1f2937;
+        font-weight:700;
+        text-align:left;
+        border-bottom:1px solid #d9e4ff;
+    }
+
+    .tap-order-goods-list-wrap + .scroll-wrap{
+        height:calc(100% - 35px);
+        border:1px solid #d0d7de;
+        border-top:none;
+        border-bottom-left-radius:8px;
+        border-bottom-right-radius:8px;
+        background:#fff;
+    }
+
 </style>
 
 <div id="contents_head">
@@ -219,6 +292,10 @@
 
         <div class="layout-style1">
             <ul>
+                <div class="tap-order-goods-list-wrap" id="order-goods-sort-tabs">
+                    <ul class="active" data-sort-view="default">주문일시순</ul>
+                    <ul data-sort-view="supplier">공급사별 주문정렬 보기</ul>
+                </div>
                 <div class="scroll-wrap">
 
                     <table class="table-st1">
@@ -253,9 +330,18 @@
                                 if (!is_array($order) || !isset($order['orderNo'])) {
                                     continue;
                                 }
+                                $scmNameRaw = trim((string)($order['scmName'] ?? ''));
+                                $scmSubNameRaw = '';
+                                if ($scmNameRaw === '모브') {
+                                    $scmSubNameRaw = trim((string)($order['ProductPartner']['supplier_2nd_name'] ?? ''));
+                                }
+                                $orderPriceRaw = (float)($order['ProductPartner']['order_price'] ?? 0);
                                 $no++;
                             ?>
-                                <tr>
+                                <tr
+                                    data-scm-name="<?= htmlspecialchars($scmNameRaw, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-scm-sub-name="<?= htmlspecialchars($scmSubNameRaw, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-order-price="<?= htmlspecialchars((string)$orderPriceRaw, ENT_QUOTES, 'UTF-8') ?>">
                                     <td><input type="checkbox" name="check_idx[]" value="<?= $order['orderGoodsSno'] ?>"></td>
                                     <td class="text-center"><?= $no ?></td>
                                     <td>
@@ -278,6 +364,9 @@
                                     </td>
                                     <td>
                                         <?= $order['scmName'] ?>
+                                        <?php if ( $order['scmName'] == "모브" )  { ?>
+                                            <p><?= htmlspecialchars((string)($order['ProductPartner']['supplier_2nd_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></p>
+                                        <?php } ?>
                                     </td>
                                     <td><img src="<?= $order['thumbImageUrl'] ?>" style="width:50px; height: 50px;"></td>
                                     <td>
@@ -494,6 +583,89 @@
     }
 
     $(document).ready(function() {
+        var $orderTableBody = $('.table-st1 tbody');
+        var originalRows = $orderTableBody.find('tr').toArray();
+        var tableColumnCount = $('.table-st1 thead th').length || 20;
+
+        function normalizeGroupLabel(rawText, fallbackText) {
+            var value = $.trim(String(rawText || ''));
+            return value !== '' ? value : fallbackText;
+        }
+
+        function getGroupInfo($row) {
+            var scmName = normalizeGroupLabel($row.data('scm-name'), '공급사 미지정');
+            var scmSubName = normalizeGroupLabel($row.data('scm-sub-name'), '');
+            var groupLabel = scmName;
+            if (scmName === '모브') {
+                scmSubName = normalizeGroupLabel(scmSubName, '(2차 공급사 미지정)');
+                groupLabel = scmName + ' / ' + scmSubName;
+            }
+            return {
+                key: scmName === '모브' ? (scmName + '||' + scmSubName) : scmName,
+                label: groupLabel
+            };
+        }
+
+        function renderDefaultRows() {
+            $orderTableBody.empty();
+            $.each(originalRows, function(_, row) {
+                $orderTableBody.append(row);
+            });
+        }
+
+        function renderSupplierGroupedRows() {
+            var groups = {};
+
+            $.each(originalRows, function(_, row) {
+                var $row = $(row);
+                var groupInfo = getGroupInfo($row);
+                var orderPrice = parseFloat($row.data('order-price')) || 0;
+                if (!groups[groupInfo.key]) {
+                    groups[groupInfo.key] = {
+                        label: groupInfo.label,
+                        rows: [],
+                        subtotal: 0
+                    };
+                }
+                groups[groupInfo.key].rows.push(row);
+                groups[groupInfo.key].subtotal += orderPrice;
+            });
+
+            var sortedKeys = Object.keys(groups).sort(function(a, b) {
+                return groups[a].label.localeCompare(groups[b].label, 'ko');
+            });
+
+            $orderTableBody.empty();
+            $.each(sortedKeys, function(_, key) {
+                var group = groups[key];
+                var $titleRow = $('<tr class="supplier-group-title-row"><td colspan="' + tableColumnCount + '"></td></tr>');
+                $titleRow.find('td').text(group.label);
+                $orderTableBody.append($titleRow);
+
+                $.each(group.rows, function(_, row) {
+                    $orderTableBody.append(row);
+                });
+
+                var subtotalText = '주문가 : ' + group.subtotal.toLocaleString('ko-KR') + ' 원';
+                var $subtotalRow = $('<tr class="supplier-group-subtotal-row"><td colspan="' + tableColumnCount + '"></td></tr>');
+                $subtotalRow.find('td').text(subtotalText);
+                $orderTableBody.append($subtotalRow);
+            });
+        }
+
+        $('#order-goods-sort-tabs').on('click', 'ul', function() {
+            var $tab = $(this);
+            var viewMode = String($tab.data('sort-view') || 'default');
+
+            $('#order-goods-sort-tabs > ul').removeClass('active');
+            $tab.addClass('active');
+
+            if (viewMode === 'supplier') {
+                renderSupplierGroupedRows();
+                return;
+            }
+            renderDefaultRows();
+        });
 
         $('#search_btn').on('click', function() {
             var mode = $('#mode').val();

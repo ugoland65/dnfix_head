@@ -338,6 +338,7 @@
                 <th style="width:40px;"></th>
                 <th style="width:60px;">IDX<br>재고코드</th>
                 <th style="width:86px;">주문코드</th>
+                <th>바코드</th>
                 <th>이미지</th>
                 <th>상품명</th>
                 <th>상품처리</th>
@@ -480,6 +481,12 @@
                         <?php } ?>
                     </td>
 
+                    <!-- 상품 바코드 -->
+                    <td class="text-center">
+                        <!-- 상품 바코드 -->
+                        <?php if (!empty($item['product']['CD_CODE'])) { ?><?= $item['product']['CD_CODE'] ?><?php } ?>
+                    </td>
+
                     <!-- 상품 이미지 -->
                     <td style="width:70px;">
                         <img src="<?= $img_path ?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">
@@ -502,8 +509,20 @@
                         </div>
                         <?php } ?>
 
-                        <!-- 상품 바코드 -->
-                        <?php if (!empty($item['product']['CD_CODE'])) { ?><div><?= $item['product']['CD_CODE'] ?></div><?php } ?>
+                        <?php
+                            $productLabels = (isset($item['product']['product_labels']) && is_array($item['product']['product_labels']))
+                                ? $item['product']['product_labels']
+                                : [];
+                        ?>
+                        <?php foreach ($productLabels as $productLabel) { ?>
+                            <?php
+                                $rawLabelCode = trim((string)($productLabel['label_code'] ?? ''));
+                                $labelClassCode = preg_replace('/[^a-zA-Z0-9_-]/', '', $rawLabelCode);
+                                $labelName = trim((string)($productLabel['label_name'] ?? ''));
+                            ?>
+                            <?php if ($labelName === '') { continue; } ?>
+                            <label class="on_sale_label xs <?= htmlspecialchars($labelClassCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($labelName, ENT_QUOTES, 'UTF-8') ?></label>
+                        <?php } ?>
                         <div class="p-t-5" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" style="cursor:pointer;">
                             <?php /*
                             <button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">보기</button> 
