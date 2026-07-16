@@ -110,6 +110,15 @@
 .on_sale_label.RANDOM{
 	background-color:#dc3545;
 }
+.on_sale_label.EVENT{
+	background-color:#480e8a;
+}
+.on_sale_label.NEW{
+	background-color:#00924e;
+}
+.on_sale_label.BEST{
+	background-color:#ff5100;
+}
 
 /* 공통 배지 */
 .grade-badge{

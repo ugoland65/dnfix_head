@@ -508,7 +508,7 @@
 
                                     <td class="product-name-cell"
                                         data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
-                                        data-current-memo2="<?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                        data-current-memo2="<?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" >
                                         <?php if( $product['is_sale_month'] ){ ?>
                                             <label class="on_sale_label xs monthly">월간할인</label>
                                         <?php } ?>
@@ -534,7 +534,7 @@
                                             <label class="on_sale_label xs <?= htmlspecialchars($labelClassCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($labelName, ENT_QUOTES, 'UTF-8') ?></label>
                                         <?php } ?>
 
-                                        <p onclick="onlyAD.prdView('<?=$product['CD_IDX']?>','info');" style="cursor:pointer;" ><b><?=$product['CD_NAME']?></b></p>
+                                        <p><b><?=$product['CD_NAME']?></b></p>
                                         <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
                                             <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
                                         </div>
