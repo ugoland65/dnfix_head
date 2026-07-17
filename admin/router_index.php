@@ -132,6 +132,7 @@ try {
     $router->post('/competitor/search_product', CompetitorController::class, 'searchComparisonProducts'); //경쟁사 상품 매칭용 상품DB 검색
     $router->post('/competitor/match', CompetitorController::class, 'matchCompetitorProduct'); //경쟁사 상품 매칭 저장
     $router->post('/competitor/unmatch', CompetitorController::class, 'unmatchCompetitorProduct'); //경쟁사 상품 매칭 해지
+    $router->post('/competitor/adjust_matched_product_price', CompetitorController::class, 'adjustMatchedProductPrice'); //경쟁사 기준 상품/고도몰 가격 조정
 
     // 재고/발주 관리
     $router->get('/order/sheet', OrderSheetController::class, 'orderSheetPage'); //주문서 작업 페이지

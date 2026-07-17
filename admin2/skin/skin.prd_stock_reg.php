@@ -19,10 +19,10 @@ if( $_idx ){
 	<form id="form1">
 
 <? if( $_idx ){ ?>
-	<input type="hidden" name="a_mode" id="a_mode" value="stock_info_modify" >
+	<input type="hidden" name="action_mode" id="action_mode" value="update_stock_change_record" >
 	<input type="hidden" name="idx" value="<?=$_idx?>" >
 <? }else{ ?>
-	<input type="hidden" name="a_mode" id="a_mode" value="stock_info_reg" >
+	<input type="hidden" name="action_mode" id="action_mode" value="register_stock_change" >
 <? } ?>
 	<input type="hidden" name="ps_idx" value="<?=$_ps_idx?>" >
 
@@ -127,16 +127,17 @@ var stockReg = function() {
 			var formData = $("#form1").serializeArray();
 
 			$.ajax({
-				url: "/ad/processing/prd",
+				url: "/admin/product/stock/action",
 				data : formData,
 				type: "POST",
 				dataType: "json",
 				success: function(res){
 					if ( res.success == true ){
+						var resultData = res.data || {};
 						
-						if( $("#a_mode").val() == "stock_info_reg" ){
-							$("#now_stock").html(res.stock);
-							$("#now_stock_hold").html(res.stock_hold);
+						if( $("#action_mode").val() == "register_stock_change" ){
+							$("#now_stock").html(resultData.stock || 0);
+							$("#now_stock_hold").html(resultData.stock_hold || 0);
 							prdInfo.mode('1', 'stock');
 							prdInfo.stockModifyClose();
 						}else{
@@ -145,7 +146,7 @@ var stockReg = function() {
 						}
 
 					}else{
-						showAlert("Error", res.msg, "alert2" );
+						showAlert("Error", res.message || res.msg || "처리에 실패했습니다.", "alert2" );
 						return false;
 					}
 				},

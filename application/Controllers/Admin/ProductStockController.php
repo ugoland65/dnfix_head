@@ -32,6 +32,16 @@ class ProductStockController extends BaseClass
                     $result = $productStockService->createStockCode($requestData);
                     break;
 
+                // 재고 변경 등록
+                case 'register_stock_change':
+                    $result = $productStockService->registerStockChange($requestData);
+                    break;
+
+                // 재고 이력 수정
+                case 'update_stock_change_record':
+                    $result = $productStockService->updateStockChangeRecord($requestData);
+                    break;
+
                 // 상품 세일 설정
                 case 'set_product_sale':
                     $result = $productStockService->setProductSale($requestData);
@@ -41,6 +51,9 @@ class ProductStockController extends BaseClass
                 case 'unset_product_sale':
                     $result = $productStockService->unsetProductSale($requestData);
                     break;
+
+                default:
+                    throw new Exception('지원하지 않는 재고 처리 요청입니다.');
             }
 
             $message = (is_array($result) && isset($result['message'])) ? $result['message'] : '처리 완료';

@@ -1340,7 +1340,13 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 상품 재고변경 등록
 ////////////////////////////////////////////////////////////////////////////////////////////////
-}elseif( $_a_mode == "stock_info_reg" ){
+/**
+ * @deprecated 2026-07-16
+ * 재고 변경등록은 ProductStockService::registerStockChange() 및
+ * /admin/product/stock/action (action_mode=register_stock_change)으로 이관됨.
+ * 직접 레거시 요청도 차단하기 위해 이 분기는 항상 비활성화한다.
+ */
+}elseif( false && $_a_mode == "stock_info_reg" ){
 
 	$_ps_idx = $_POST['ps_idx'] ?? "";
 	$_stock_mode = $_POST['stock_mode'] ?? "";
@@ -1577,7 +1583,13 @@ if( $_a_mode == "prd_reg" ){
 ////////////////////////////////////////////////////////////////////////////////////////////////
 // 상품 유닛 수정
 ////////////////////////////////////////////////////////////////////////////////////////////////
-}elseif( $_a_mode == "stock_info_modify" ){
+/**
+ * @deprecated 2026-07-16
+ * 재고 이력 수정은 ProductStockService::updateStockChangeRecord() 및
+ * /admin/product/stock/action (action_mode=update_stock_change_record)으로 이관됨.
+ * 직접 레거시 요청도 차단하기 위해 이 분기는 항상 비활성화한다.
+ */
+}elseif( false && $_a_mode == "stock_info_modify" ){
 
 	$_idx = $_POST['idx'] ?? "";
 	$_stock_kind = $_POST['stock_kind'] ?? "";

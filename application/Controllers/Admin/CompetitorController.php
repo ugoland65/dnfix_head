@@ -12,6 +12,7 @@ use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
 use App\Services\CompetitorApiService;
+use App\Services\ProductService;
 
 class CompetitorController extends BaseClass
 {
@@ -90,7 +91,7 @@ class CompetitorController extends BaseClass
 
                 if (!empty($matchIdxs)) {
                     $matchedProducts = ProductModel::query()
-                        ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'delivery_type', 'CD_IMG')
+                        ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code', 'delivery_type', 'CD_IMG')
                         ->whereIn('CD_IDX', $matchIdxs)
                         ->get();
                     $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
@@ -180,6 +181,7 @@ class CompetitorController extends BaseClass
                             'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
                             'cd_sale_price' => $salePrice,
                             'cd_cost_price' => $costPrice,
+                            'cd_godo_code' => (string)($matchedProduct['cd_godo_code'] ?? ''),
                             'margin_grade' => $marginGrade,
                             'delivery_type' => $deliveryType,
                             'stock_qty' => (int)($stockQtyByCdIdx[$cdIdx] ?? 0),
@@ -335,6 +337,31 @@ class CompetitorController extends BaseClass
                         'last_page' => (int)($paginationResult['last_page'] ?? 1),
                     ],
                 ],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 경쟁사 가격 기준으로 상품 판매가와 고도몰 가격을 갱신한다.
+     *
+     * @param Request $request
+     * @return \App\Core\Response
+     */
+    public function adjustMatchedProductPrice(Request $request)
+    {
+        try {
+            $productService = new ProductService();
+            $result = $productService->adjustProductSalePriceAndGodoUpdate($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '판매가 및 고도몰 가격을 업데이트했습니다.',
+                'data' => $result,
             ]);
         } catch (Throwable $e) {
             return response()->json([

@@ -5,6 +5,7 @@ namespace App\Services;
 use Exception;
 use App\Core\BaseClass;
 use App\Models\ProductStockModel;
+use App\Models\ProductStockUnitModel;
 use App\Services\ProductService;
 use App\Core\AuthAdmin;
 use App\Services\AdminActionLogService;
@@ -163,6 +164,284 @@ class ProductStockService extends BaseClass
         }
 
         return $row->toArray();
+    }
+
+    /**
+     * 재고 변경 멱등성 토큰 처리 여부 확인
+     *
+     * @param string $stockToken
+     * @return bool
+     */
+    public function hasStockChangeToken(string $stockToken): bool
+    {
+        $stockToken = trim($stockToken);
+        if ($stockToken === '') {
+            return false;
+        }
+
+        return ProductStockUnitModel::query()
+            ->where('psu_token', '=', $stockToken)
+            ->exists();
+    }
+
+    /**
+     * 상품 재고 변경 등록
+     * - 입/출고, 보류 전환 및 보류 재고 입/출고를 처리하고 재고 이력을 남긴다.
+     *
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function registerStockChange(array $data): array
+    {
+        $psIdx = (int)($data['ps_idx'] ?? 0);
+        $stockMode = trim((string)($data['stock_mode'] ?? ''));
+        $stockKind = trim((string)($data['stock_kind'] ?? '조정'));
+        $stockMemo = trim((string)($data['stock_memo'] ?? ''));
+        $stockDay = trim((string)($data['stock_day'] ?? date('Y-m-d')));
+        $stockQtyRaw = trim((string)($data['stock_qty'] ?? ''));
+        $stockToken = trim((string)($data['psu_token'] ?? ''));
+
+        if ($psIdx <= 0) {
+            throw new Exception('재고코드가 올바르지 않습니다.');
+        }
+        if (!in_array($stockMode, ['plus', 'minus', 'to_hold', 'to_stock', 'plus_hold', 'minus_hold'], true)) {
+            throw new Exception('재고 변경 종류가 올바르지 않습니다.');
+        }
+        if ($stockQtyRaw === '' || !preg_match('/^\d+$/', $stockQtyRaw)) {
+            throw new Exception('수량을 입력해 주세요.');
+        }
+        if ($stockDay === '' || !preg_match('/^\d{4}-\d{2}-\d{2}$/', $stockDay)) {
+            throw new Exception('날짜 형식이 올바르지 않습니다.');
+        }
+
+        $stockQty = (int)$stockQtyRaw;
+        if ($stockToken !== '' && $this->hasStockChangeToken($stockToken)) {
+            return $this->buildAlreadyProcessedStockChangeResult($psIdx);
+        }
+
+        $stock = ProductStockModel::query()
+            ->where('ps_idx', '=', $psIdx)
+            ->first();
+        if (empty($stock)) {
+            throw new Exception('상품 재고가 존재하지 않습니다.');
+        }
+        $stock = is_array($stock) ? $stock : $stock->toArray();
+
+        $beforeStock = (int)($stock['ps_stock'] ?? 0);
+        $beforeStockHold = (int)($stock['ps_stock_hold'] ?? 0);
+        $beforeStockAll = (int)($stock['ps_stock_all'] ?? 0);
+        $afterStock = $beforeStock;
+        $afterStockHold = $beforeStockHold;
+        $afterStockAll = $beforeStockAll;
+
+        switch ($stockMode) {
+            case 'plus':
+                $afterStock += $stockQty;
+                if ($stockKind === '신규입고') {
+                    $afterStockAll += $stockQty;
+                }
+                break;
+            case 'minus':
+                $afterStock -= $stockQty;
+                break;
+            case 'to_hold':
+                $afterStock -= $stockQty;
+                $afterStockHold += $stockQty;
+                break;
+            case 'to_stock':
+                $afterStock += $stockQty;
+                $afterStockHold -= $stockQty;
+                break;
+            case 'plus_hold':
+                $afterStockHold += $stockQty;
+                break;
+            case 'minus_hold':
+                $afterStockHold -= $stockQty;
+                break;
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $adminId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+        $adminName = (string)(AuthAdmin::getSession('sess_name') ?? '');
+        $reg = json_encode([
+            'reg' => [
+                'mode' => 'prd_info',
+                'info' => AuthAdmin::getConnectionInfo(),
+            ],
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        $unitRows = [];
+        $appendUnitRow = function (string $mode, int $quantity, int $resultStock, ?string $token = null) use (&$unitRows, $psIdx, $stockDay, $stockKind, $stockMemo, $adminId, $now, $reg): void {
+            $unitRows[] = [
+                'psu_stock_idx' => $psIdx,
+                'psu_day' => $stockDay,
+                'psu_mode' => $mode,
+                'psu_qry' => $quantity,
+                'psu_stock' => $resultStock,
+                'psu_kind' => $stockKind,
+                'psu_memo' => $stockMemo,
+                'psu_token' => $token,
+                'psu_id' => $adminId,
+                'psu_date' => time(),
+                'reg' => $reg,
+            ];
+        };
+
+        if ($stockMode === 'to_hold') {
+            $appendUnitRow('minus_to_hold', $stockQty, $afterStock, $stockToken !== '' ? $stockToken . ':stock' : null);
+            $appendUnitRow('to_hold', $stockQty, $afterStockHold, $stockToken !== '' ? $stockToken . ':hold' : null);
+        } elseif ($stockMode === 'to_stock') {
+            $appendUnitRow('plus_to_stock', $stockQty, $afterStock, $stockToken !== '' ? $stockToken . ':stock' : null);
+            $appendUnitRow('to_stock', $stockQty, $afterStockHold, $stockToken !== '' ? $stockToken . ':hold' : null);
+        } else {
+            $unitResultStock = in_array($stockMode, ['plus_hold', 'minus_hold'], true) ? $afterStockHold : $afterStock;
+            $appendUnitRow($stockMode, $stockQty, $unitResultStock, $stockToken !== '' ? $stockToken : null);
+        }
+
+        $connection = app('db');
+        $ownsTransaction = $connection instanceof \PDO && !$connection->inTransaction();
+        try {
+            if ($ownsTransaction) {
+                $connection->beginTransaction();
+            }
+
+            ProductStockModel::query()
+                ->where('ps_idx', '=', $psIdx)
+                ->update([
+                    'ps_stock' => $afterStock,
+                    'ps_stock_hold' => $afterStockHold,
+                    'ps_stock_all' => $afterStockAll,
+                    'ps_update_date' => $now,
+                ]);
+
+            foreach ($unitRows as $unitRow) {
+                ProductStockUnitModel::query()->insert($unitRow);
+            }
+
+            if ($ownsTransaction && $connection->inTransaction()) {
+                $connection->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            if (
+                $stockToken !== ''
+                && $e instanceof \PDOException
+                && (
+                    (string)$e->getCode() === '23000'
+                    || stripos($e->getMessage(), 'duplicate') !== false
+                )
+            ) {
+                return $this->buildAlreadyProcessedStockChangeResult($psIdx);
+            }
+            throw $e;
+        }
+
+        $afterData = [
+            'ps_idx' => $psIdx,
+            'ps_prd_idx' => (int)($stock['ps_prd_idx'] ?? 0),
+            'ps_stock' => $afterStock,
+            'ps_stock_hold' => $afterStockHold,
+            'ps_stock_all' => $afterStockAll,
+        ];
+        try {
+            $adminActionLogService = new AdminActionLogService();
+            $beforeData = [
+                'ps_idx' => $psIdx,
+                'ps_prd_idx' => (int)($stock['ps_prd_idx'] ?? 0),
+                'ps_stock' => $beforeStock,
+                'ps_stock_hold' => $beforeStockHold,
+                'ps_stock_all' => $beforeStockAll,
+            ];
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'prd_stock',
+                'target_pk' => (string)($stock['ps_prd_idx'] ?? ''),
+                'action_mode' => 'register_stock_change',
+                'action_summary' => '재고 변경등록 (' . $stockMode . ', ' . $stockQty . ')',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $adminActionLogService->buildDiff($beforeData, $afterData),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 실패는 재고 처리 성공 여부에 영향을 주지 않는다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '재고 변경이 완료되었습니다.',
+            'stock' => $afterStock,
+            'stock_hold' => $afterStockHold,
+            'stock_all' => $afterStockAll,
+            'ps_idx' => $psIdx,
+        ];
+    }
+
+    /**
+     * 멱등성 토큰이 이미 처리된 경우의 현재 재고 응답 생성
+     *
+     * @param int $psIdx
+     * @return array
+     */
+    private function buildAlreadyProcessedStockChangeResult(int $psIdx): array
+    {
+        $currentStock = ProductStockModel::query()
+            ->select(['ps_stock', 'ps_stock_hold', 'ps_stock_all'])
+            ->where('ps_idx', '=', $psIdx)
+            ->first();
+        $currentStock = $currentStock ? (is_array($currentStock) ? $currentStock : $currentStock->toArray()) : [];
+
+        return [
+            'success' => true,
+            'message' => '이미 처리된 재고 변경입니다.',
+            'already_processed' => true,
+            'stock' => (int)($currentStock['ps_stock'] ?? 0),
+            'stock_hold' => (int)($currentStock['ps_stock_hold'] ?? 0),
+            'stock_all' => (int)($currentStock['ps_stock_all'] ?? 0),
+            'ps_idx' => $psIdx,
+        ];
+    }
+
+    /**
+     * 상품 재고 이력의 종류와 메모를 수정한다.
+     *
+     * @param array $data
+     * @return array
+     * @throws Exception
+     */
+    public function updateStockChangeRecord(array $data): array
+    {
+        $unitIdx = (int)($data['idx'] ?? 0);
+        $stockKind = trim((string)($data['stock_kind'] ?? ''));
+        $stockMemo = trim((string)($data['stock_memo'] ?? ''));
+
+        if ($unitIdx <= 0) {
+            throw new Exception('재고 이력 번호가 올바르지 않습니다.');
+        }
+
+        $unit = ProductStockUnitModel::query()
+            ->where('psu_idx', '=', $unitIdx)
+            ->first();
+        if (empty($unit)) {
+            throw new Exception('재고 이력을 찾을 수 없습니다.');
+        }
+        $unit = is_array($unit) ? $unit : $unit->toArray();
+
+        ProductStockUnitModel::query()
+            ->where('psu_idx', '=', $unitIdx)
+            ->update([
+                'psu_kind' => $stockKind,
+                'psu_memo' => $stockMemo,
+            ]);
+
+        return [
+            'success' => true,
+            'message' => '재고 이력이 수정되었습니다.',
+            'idx' => $unitIdx,
+        ];
     }
 
 

@@ -136,7 +136,7 @@ if( $_a_mode == "day_stock" ){
 				psu_memo = '".$_psu_memo."',
 				psu_id = '".$_ad_id."',
 				psu_date = '".$check_time ."',
-				psu_token = '',
+				psu_token = NULL,
 				reg = '".$_reg."' ";
 			sql_query_error($query);
 

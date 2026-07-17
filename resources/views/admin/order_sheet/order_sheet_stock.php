@@ -78,25 +78,30 @@
         </div>
 
         <table class="table-list m-t-10">
-            <tr>
-                <th>상품번호<br>재고코드</th>
-                <th>이미지</th>
-                <th>상품명</th>
-                <th>바코드</th>
-                <th style="width:70px;">현재고</th>
-                <th style="width:70px;">고도몰<br/>현재고</th>
-                <th style="width:70px;">재입고알림<br/>요청수</th>
-                <th>매칭/검수</th>
-                <th>고도몰<br>카테고리</th>
-                <th>주문수량</th>
-                <th>실입고수량</th>
-                <th>최종적용수량</th>
-                <th>메모</th>
-            </tr>
+            <thead>
+                <tr>
+                    <th>상품번호<br>재고코드</th>
+                    <th>이미지</th>
+                    <th>상품명</th>
+                    <th>바코드</th>
+                    <th style="width:70px;">현재고</th>
+                    <th style="width:70px;">고도몰<br/>현재고</th>
+                    <th style="width:70px;">재입고알림<br/>요청수</th>
+                    <th>매칭/검수</th>
+                    <th>고도몰<br>카테고리</th>
+                    <th>주문수량</th>
+                    <th>실입고수량</th>
+                    <th>최종적용수량</th>
+                    <th>메모</th>
+                </tr>
+            </thead>
+
+            <tbody>
             <?php $godoInspectionService = new \App\Services\GodoInspectionService(); ?>
             <?php foreach ($stockItems as $rowIndex => $item) { ?>
                 <?php
-                $rowBg = !empty($item['is_false']) ? '#eee' : '#fff';
+                $stockProcessed = (isset($item['stock_processed']) && is_array($item['stock_processed'])) ? $item['stock_processed'] : [];
+                $rowBg = !empty($stockProcessed) ? '#fff9db' : (!empty($item['is_false']) ? '#eee' : '#fff');
                 $pidx = (int)($item['pidx'] ?? 0);
                 $psIdx = (int)($item['ps_idx'] ?? 0);
                 $qty = (int)($item['qty'] ?? 0);
@@ -352,7 +357,7 @@
                             <?php if (!empty($item['is_false'])) { ?>
                                 -
                             <?php } else { ?>
-                                <span class="final-apply-qty-text"><?= number_format($currentStockQty + $qty) ?></span>
+                                <span class="final-apply-qty-text"><?= number_format(!empty($stockProcessed) ? $currentStockQty : ($currentStockQty + $qty)) ?></span>
                             <?php } ?>
                         </div>
                         <?php if ($isMatchedByGoodsNo) { ?>
@@ -361,6 +366,7 @@
                                     type="button"
                                     class="btnstyle1 btnstyle1-inverse btnstyle1-xs btn-godo-process"
                                     data-pidx="<?= (int)$pidx ?>"
+                                    data-ps-idx="<?= (int)$psIdx ?>"
                                     data-goods-no="<?= htmlspecialchars($goodsNo !== '' ? $goodsNo : $cdGodoCode, ENT_QUOTES, 'UTF-8') ?>"
                                     data-intranet-barcode="<?= htmlspecialchars((string)$intranetBarcode, ENT_QUOTES, 'UTF-8') ?>"
                                     data-intranet-cost-price="<?= htmlspecialchars((string)$intranetCostPriceRaw, ENT_QUOTES, 'UTF-8') ?>"
@@ -369,9 +375,29 @@
                                     data-category-add-cds="<?= htmlspecialchars((string)$categoryAddCodesForSync, ENT_QUOTES, 'UTF-8') ?>"
                                     data-category-delete-cds="<?= htmlspecialchars((string)$categoryDeleteCodesForSync, ENT_QUOTES, 'UTF-8') ?>"
                                     onclick="orderSheetStockPopup.godoProcess(this)"
+                                    <?= !empty($stockProcessed) ? 'disabled' : '' ?>
                                 >
-                                    고도몰 재고+검수 처리
+                                    <?= !empty($stockProcessed) ? '재고 반영완료' : '고도몰 재고+검수 처리' ?>
                                 </button>
+                                <?php if (!empty($stockProcessed)) { ?>
+                                    <div class="m-t-4" style="font-size:11px; color:#15803d; line-height:1.5;">
+                                        <div>재고 반영완료</div>
+                                        <div><?= htmlspecialchars((string)($stockProcessed['processed_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?><?= !empty($stockProcessed['processed_by']) ? ' · ' . htmlspecialchars((string)$stockProcessed['processed_by'], ENT_QUOTES, 'UTF-8') : '' ?></div>
+                                    </div>
+                                <?php } ?>
+                                <?php $godoProcessLog = (isset($item['godo_process_log']) && is_array($item['godo_process_log'])) ? $item['godo_process_log'] : []; ?>
+                                <?php if (!empty($godoProcessLog)) { ?>
+                                    <?php
+                                        $processedBy = trim((string)($godoProcessLog['executor_name'] ?? ''));
+                                        if ($processedBy === '') {
+                                            $processedBy = trim((string)($godoProcessLog['executor_id'] ?? ''));
+                                        }
+                                    ?>
+                                    <div class="m-t-4" style="font-size:11px; color:#15803d; line-height:1.5;">
+                                        <div><?= htmlspecialchars((string)($godoProcessLog['status'] ?? '처리완료'), ENT_QUOTES, 'UTF-8') ?></div>
+                                        <div><?= htmlspecialchars((string)($godoProcessLog['executed_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?><?= $processedBy !== '' ? ' · ' . htmlspecialchars($processedBy, ENT_QUOTES, 'UTF-8') : '' ?></div>
+                                    </div>
+                                <?php } ?>
                             </div>
                         <?php } ?>
                         
@@ -383,6 +409,7 @@
                     </td>
                 </tr>
             <?php } ?>
+            </tbody>
         </table>
     </form>
 </div>
@@ -484,6 +511,8 @@ var orderSheetStockPopup = function () {
             var $btn = $(btn);
             var goodsNo = String($btn.data('goodsNo') || '').trim();
             var pidx = Number($btn.data('pidx') || 0);
+            var psIdx = Number($btn.data('psIdx') || 0);
+            var orderSheetIdx = Number($('#form_os_stock input[name="os_idx"]').val() || 0);
             var $row = $btn.closest('tr');
             var stockInputQtyRaw = String($row.find('.stock-apply-qty-input').val() || '').trim();
             var stockInputQty = Number(String(stockInputQtyRaw).replace(/[^0-9\-]/g, ''));
@@ -523,6 +552,12 @@ var orderSheetStockPopup = function () {
                 var issueName = checkedIssues[ci];
                 if (issueName) {
                     checkedIssueMap[issueName] = true;
+                }
+            }
+            var checkedAutoIssues = [];
+            for (var autoIssueName in checkedAutoIssueMap) {
+                if (Object.prototype.hasOwnProperty.call(checkedAutoIssueMap, autoIssueName)) {
+                    checkedAutoIssues.push(autoIssueName);
                 }
             }
             var manualSoldOutIssueName = '현재 품절(수동) 상태';
@@ -594,7 +629,7 @@ var orderSheetStockPopup = function () {
                 godoApiPreviewUrl += '&deleteCategoryCds=' + encodeURIComponent(deleteCategoryString);
             }
 
-            alert('고도몰 API URL 미리보기\n' + godoApiPreviewUrl);
+            //alert('고도몰 API URL 미리보기\n' + godoApiPreviewUrl);
 
             if (!confirm('해당 상품을 고도몰 처리하시겠습니까?')) {
                 return;
@@ -607,11 +642,13 @@ var orderSheetStockPopup = function () {
                 dataType: 'json',
                 data: {
                     action_mode: 'orderSheetSingleGodoInspection',
+                    os_idx: orderSheetIdx,
                     goods_no: goodsNo,
                     pidx: pidx,
+                    ps_idx: psIdx,
                     stock_qty: stockQty,
                     stock_input_qty: stockInputQty > 0 ? String(stockInputQty) : '',
-                    selected_auto_issues: checkedIssues.join(','),
+                    selected_auto_issues: checkedAutoIssues.join(','),
                     intranet_sale_price: intranetSalePrice,
                     column_updates: columnUpdateString,
                     add_category_cds: addCategoryString,
@@ -622,6 +659,7 @@ var orderSheetStockPopup = function () {
                     if (res && res.success === true) {
                         var doneGoodsNo = (res.goods_no || goodsNo || '').toString();
                         alert('고도몰 처리 완료' + (doneGoodsNo ? '\n상품번호: ' + doneGoodsNo : ''));
+                        location.reload();
                         return;
                     }
                     var msg = (res && (res.message || res.msg)) ? (res.message || res.msg) : '고도몰 처리에 실패했습니다.';

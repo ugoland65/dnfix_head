@@ -994,7 +994,7 @@ if( $_a_mode == "orderSheet_reg" ){
 			psu_stock = '".$_psu_stock."',
 			psu_kind = '신규입고',
 			psu_memo = '".$_this_s_memo."',
-			psu_token = '',
+			psu_token = NULL,
 			psu_id = '".$_ad_id."',
 			psu_date = '".$check_time ."',
 			reg = '' ";

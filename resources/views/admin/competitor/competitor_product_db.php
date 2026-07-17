@@ -386,22 +386,44 @@
                                                 원가 : <?php if ($ourCostPrice > 0) { ?><b><?= number_format($ourCostPrice) ?></b><?php } else { ?>원가정보가 없습니다<?php } ?><br>
                                                 <?php if ($ourCostPrice > 0) { ?>
                                                     마진그룹 : 마진율 <b><?= number_format((float)($currentMarginInfo['margin_rate'] ?? 0), 2) ?>%</b> / 그룹 <b><?= htmlspecialchars(($ourMarginGrade !== '' ? $ourMarginGrade : '-'), ENT_QUOTES, 'UTF-8') ?></b><br>
-                                                <?php } ?>
-                                                <?php if ($competitorPrice > 0) { ?>
-                                                    가격차이 :
-                                                    <span style="color:<?= $priceDiffColor ?>;">
-                                                        <b>
-                                                            <?php if ($priceDiff > 0) { ?>+<?php } ?>
-                                                            <?= number_format($priceDiff) ?>
-                                                        </b>
-                                                    </span>
-                                                    <?= $priceDiffText ?><br>
-                                                    <?php if ($priceDiff !== 0) { ?>
-                                                        조정가 :
-                                                        <b style="color:<?= $adjustmentColor ?>;"><?= number_format($adjustedSalePrice) ?></b>
-                                                        (<span><?php if ($adjustmentAmount > 0) { ?>+<?php } ?><?= number_format($adjustmentAmount) ?></span>)<br>
-                                                        마진금 <b><?= number_format((int)$currentMarginInfo['margin_amount']) ?></b> → <b><?= number_format((int)$adjustedMarginInfo['margin_amount']) ?></b> <br>
-                                                        마진율 <b><?= number_format((float)($currentMarginInfo['margin_rate'] ?? 0), 2) ?>% → <?= number_format((float)($adjustedMarginInfo['margin_rate'] ?? 0), 2) ?>%</b> / 그룹 <b><?= htmlspecialchars(($ourMarginGrade !== '' ? $ourMarginGrade : '-'), ENT_QUOTES, 'UTF-8') ?> → <?= htmlspecialchars(($adjustedMarginInfo['grade'] !== '' ? $adjustedMarginInfo['grade'] : '-'), ENT_QUOTES, 'UTF-8') ?></b>
+                                                    <?php if ($competitorPrice > 0) { ?>
+                                                        가격차이 :
+                                                        <span style="color:<?= $priceDiffColor ?>;">
+                                                            <b>
+                                                                <?php if ($priceDiff > 0) { ?>+<?php } ?>
+                                                                <?= number_format($priceDiff) ?>
+                                                            </b>
+                                                        </span>
+                                                        <?= $priceDiffText ?><br>
+                                                        <?php if ($priceDiff !== 0) { ?>
+
+                                                            <div>
+                                                                조정가 :
+                                                                <b style="color:<?= $adjustmentColor ?>;"><?= number_format($adjustedSalePrice) ?></b>
+                                                                (<span><?php if ($adjustmentAmount > 0) { ?>+<?php } ?><?= number_format($adjustmentAmount) ?></span>)
+                                                                <?php if( $matchedProduct['cd_godo_code'] !== '' ){ ?>
+                                                                    <button
+                                                                        type="button"
+                                                                        class="btnstyle1 btnstyle1-danger btnstyle1-xs competitor-product-adjust-price-btn"
+                                                                        data-prd-idx="<?= (int)($matchedProduct['CD_IDX'] ?? 0) ?>"
+                                                                        data-adjusted-sale-price="<?= (int)$adjustedSalePrice ?>"
+                                                                        data-cost-price="<?= (int)$ourCostPrice ?>"
+                                                                        data-godo-code="<?= htmlspecialchars((string)($matchedProduct['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                                        data-competitor-site="<?= htmlspecialchars((string)($row['site'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                                        data-competitor-site-name="<?= htmlspecialchars($rowSiteName, ENT_QUOTES, 'UTF-8') ?>"
+                                                                        data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
+                                                                        data-competitor-name="<?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                                        data-competitor-price="<?= (int)$competitorPrice ?>"
+                                                                        data-competitor-detail-url="<?= htmlspecialchars((string)($row['detail_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                                                        이가격으로 조정
+                                                                    </button>
+                                                                <?php } ?>
+                                                            </div>
+
+
+                                                            마진금 <b><?= number_format((int)$currentMarginInfo['margin_amount']) ?></b> → <b><?= number_format((int)$adjustedMarginInfo['margin_amount']) ?></b> <br>
+                                                            마진율 <b><?= number_format((float)($currentMarginInfo['margin_rate'] ?? 0), 2) ?>% → <?= number_format((float)($adjustedMarginInfo['margin_rate'] ?? 0), 2) ?>%</b> / 그룹 <b><?= htmlspecialchars(($ourMarginGrade !== '' ? $ourMarginGrade : '-'), ENT_QUOTES, 'UTF-8') ?> → <?= htmlspecialchars(($adjustedMarginInfo['grade'] !== '' ? $adjustedMarginInfo['grade'] : '-'), ENT_QUOTES, 'UTF-8') ?></b>
+                                                        <?php } ?>
                                                     <?php } ?>
                                                 <?php } ?>
                                             </div>
@@ -1122,6 +1144,64 @@ $(function(){
         var prdPk = Number($(this).data("competitor-prd-pk") || 0);
         var matchIdx = Number($(this).data("match-idx") || 0);
         submitCompetitorUnmatchOne(site, prdPk, matchIdx);
+    });
+
+    $(document).on("click", ".competitor-product-adjust-price-btn", function() {
+        var $btn = $(this);
+        var prdIdx = Number($btn.data("prd-idx") || 0);
+        var adjustedSalePrice = Number($btn.data("adjusted-sale-price") || 0);
+        var costPrice = Number($btn.data("cost-price") || 0);
+        var godoCode = String($btn.data("godo-code") || "").trim();
+        var competitorSite = String($btn.data("competitor-site") || "").trim();
+        var competitorSiteName = String($btn.data("competitor-site-name") || "").trim();
+        var competitorPrdPk = Number($btn.data("competitor-prd-pk") || 0);
+        var competitorName = String($btn.data("competitor-name") || "").trim();
+        var competitorPrice = Number($btn.data("competitor-price") || 0);
+        var competitorDetailUrl = String($btn.data("competitor-detail-url") || "").trim();
+
+        if (prdIdx <= 0 || adjustedSalePrice <= 0 || costPrice <= 0 || !godoCode || !competitorSite || competitorPrdPk <= 0) {
+            alert("가격 조정에 필요한 상품, 경쟁사 기준가, 원가 또는 고도몰 상품코드 정보가 없습니다.");
+            return;
+        }
+
+        if (!confirm(
+            "판매가를 " + adjustedSalePrice.toLocaleString() + "원으로 조정하고,\n"
+            + "고도몰 상품 #" + godoCode + "의 판매가와 원가(" + costPrice.toLocaleString() + "원)를 업데이트할까요?"
+        )) {
+            return;
+        }
+
+        saveScrollWrapPosition();
+        $btn.prop("disabled", true).text("업데이트 중...");
+        $.ajax({
+            url: "/admin/competitor/adjust_matched_product_price",
+            type: "POST",
+            dataType: "json",
+            data: {
+                prd_idx: prdIdx,
+                adjusted_sale_price: adjustedSalePrice,
+                cd_cost_price: costPrice,
+                cd_godo_code: godoCode,
+                competitor_site: competitorSite,
+                competitor_site_name: competitorSiteName,
+                competitor_prd_pk: competitorPrdPk,
+                competitor_name: competitorName,
+                competitor_price: competitorPrice,
+                competitor_detail_url: competitorDetailUrl
+            }
+        }).done(function(res) {
+            if (!(res && res.success)) {
+                alert((res && res.message) ? res.message : "가격 업데이트에 실패했습니다.");
+                return;
+            }
+            alert(res.message || "가격 업데이트를 완료했습니다.");
+            location.reload();
+        }).fail(function(xhr) {
+            var response = xhr.responseJSON || {};
+            alert(response.message || "가격 업데이트 중 오류가 발생했습니다.");
+        }).always(function() {
+            $btn.prop("disabled", false).text("이가격으로 조정");
+        });
     });
 
     $(document).on("click", ".competitor-product-set-primary-btn", function() {

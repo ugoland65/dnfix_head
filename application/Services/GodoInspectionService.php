@@ -117,6 +117,7 @@ class GodoInspectionService
         $godoStockFl = strtolower(trim((string)($item['godo_stock_fl'] ?? '')));
         $godoSoldOutFl = strtolower(trim((string)($item['godo_sold_out_fl'] ?? '')));
         $currentStockQty = (int)($item['stock_qty'] ?? 0);
+        $godoStockQty = (int)($item['godo_stock_qty'] ?? 0);
         $orderQty = (int)($item['qty'] ?? 0);
         $psInDate = trim((string)($item['ps_in_date'] ?? ''));
 
@@ -310,6 +311,7 @@ class GodoInspectionService
             $godoStockFl,
             $godoSoldOutFl,
             $currentStockQty,
+            $godoStockQty,
             $orderQty,
             $psInDate,
             $godoCategoryLines
@@ -571,6 +573,7 @@ class GodoInspectionService
         string $godoStockFl,
         string $godoSoldOutFl,
         int $currentStockQty,
+        int $godoStockQty,
         int $orderQty,
         string $psInDate,
         array $godoCategoryLines
@@ -623,6 +626,31 @@ class GodoInspectionService
                             . '<span>입고유형: <b>' . $expectedCategoryName . '</b></span>' . "\n"
                             . '<span>진열 권장 카테고리: <b>' . $expectedCategoryCode . '</b> (' . $expectedCategoryName . ')</span>' . "\n"
                             . '<span>010001(신규입고예정) 또는 010002(재입고 예정) 중 하나는 진열되어야 합니다.</span>',
+                    ];
+                }
+            }
+
+            // 인트라넷과 고도몰 모두 재고가 있으면 입고완료 카테고리 진열 여부를 확인한다.
+            if ($currentStockQty > 0 && $godoStockQty > 0) {
+                $hasCompletedDisplayCategory = false;
+                foreach ($godoCategoryLines as $categoryRow) {
+                    if (!is_array($categoryRow)) {
+                        continue;
+                    }
+                    $cateCd = trim((string)($categoryRow['cateCd'] ?? ''));
+                    $catePrefix = substr($cateCd, 0, 6);
+                    if ($catePrefix === '016001' || $catePrefix === '016002') {
+                        $hasCompletedDisplayCategory = true;
+                        break;
+                    }
+                }
+
+                if (!$hasCompletedDisplayCategory) {
+                    $inspectionIssues[] = [
+                        'required' => '참고',
+                        'issue' => '입고완료 카테고리 미진열',
+                        'solution' => '<span>입고가 완료되었으므로 입고완료 카테고리 중 하나라도 진열해야 합니다.</span>' . "\n"
+                            . '<span>016001(신규 업데이트) 또는 016002(재입고 완료) 중 하나는 진열되어야 합니다.</span>',
                     ];
                 }
             }

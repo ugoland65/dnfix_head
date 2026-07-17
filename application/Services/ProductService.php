@@ -2821,6 +2821,135 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 경쟁사 가격 기준으로 상품 판매가와 고도몰 판매가/원가를 갱신한다.
+     * 원가와 고도몰 상품코드는 DB 값을 기준으로 검증해 클라이언트 변조를 방지한다.
+     *
+     * @param array $postData
+     * @return array
+     * @throws Exception
+     */
+    public function adjustProductSalePriceAndGodoUpdate(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 정보가 올바르지 않습니다.');
+        }
+
+        $salePriceRaw = str_replace(',', '', trim((string)($postData['adjusted_sale_price'] ?? '')));
+        if ($salePriceRaw === '' || !preg_match('/^\d+$/', $salePriceRaw) || (int)$salePriceRaw <= 0) {
+            throw new Exception('조정 판매가 값이 올바르지 않습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select(['CD_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code'])
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '') {
+            throw new Exception('고도몰 상품 코드가 등록되지 않은 상품입니다.');
+        }
+
+        $postedGoodsNo = trim((string)($postData['cd_godo_code'] ?? ''));
+        if ($postedGoodsNo !== '' && $postedGoodsNo !== $goodsNo) {
+            throw new Exception('고도몰 상품 코드가 일치하지 않습니다.');
+        }
+
+        $costPrice = (int)($product['cd_cost_price'] ?? 0);
+        if ($costPrice <= 0) {
+            throw new Exception('원가정보가 없는 상품은 고도몰 가격을 조정할 수 없습니다.');
+        }
+
+        $postedCostPrice = trim((string)($postData['cd_cost_price'] ?? ''));
+        if ($postedCostPrice !== '' && (int)str_replace(',', '', $postedCostPrice) !== $costPrice) {
+            throw new Exception('원가정보가 변경되어 다시 조회 후 처리해주세요.');
+        }
+
+        $salePrice = (int)$salePriceRaw;
+        $marginInfo = $this->calculateMarginInfo($salePrice, $costPrice);
+        $marginGroup = strtoupper(trim((string)($marginInfo['margin_grade'] ?? '')));
+        if ($marginGroup === '') {
+            $marginGroup = 'I';
+        }
+
+        $competitorSite = trim((string)($postData['competitor_site'] ?? ''));
+        $competitorPrdPk = (int)($postData['competitor_prd_pk'] ?? 0);
+        $competitorPrice = (int)str_replace(',', '', trim((string)($postData['competitor_price'] ?? '0')));
+        if ($competitorSite === '' || $competitorPrdPk <= 0 || $competitorPrice !== $salePrice) {
+            throw new Exception('가격 조정 기준 경쟁사 상품 정보가 올바르지 않습니다.');
+        }
+        $competitorReference = [
+            'site' => $competitorSite,
+            'site_name' => trim((string)($postData['competitor_site_name'] ?? '')),
+            'prd_pk' => $competitorPrdPk,
+            'name' => trim((string)($postData['competitor_name'] ?? '')),
+            'price' => $competitorPrice,
+            'detail_url' => trim((string)($postData['competitor_detail_url'] ?? '')),
+        ];
+
+        $godoApiService = new GodoApiService();
+        $godoResponse = $godoApiService->updateGodoGoodsPrice(
+            $goodsNo,
+            (string)$salePrice,
+            (string)$costPrice,
+            $marginGroup
+        );
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+                'cd_sale_price' => $salePrice,
+            ]);
+
+        try {
+            $beforeData = [
+                'cd_sale_price' => (int)($product['cd_sale_price'] ?? 0),
+                'cd_cost_price' => $costPrice,
+                'cd_godo_code' => $goodsNo,
+                'margin_group' => null,
+                'competitor_reference' => null,
+            ];
+            $afterData = [
+                'cd_sale_price' => $salePrice,
+                'cd_cost_price' => $costPrice,
+                'cd_godo_code' => $goodsNo,
+                'margin_group' => $marginGroup,
+                'competitor_reference' => $competitorReference,
+                'godo_response' => $godoResponse,
+            ];
+            $adminActionLogService = new AdminActionLogService();
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'update_price_godo',
+                'action_summary' => '경쟁사 참고 가격 기준 판매가 및 고도몰 가격/원가 업데이트',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $adminActionLogService->buildDiff($beforeData, $afterData),
+                'action_url' => ($_SERVER['REQUEST_URI'] ?? null),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 실패는 고도몰/상품 가격 업데이트 성공 여부에 영향을 주지 않는다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '조정가와 원가를 고도몰에 업데이트했습니다.',
+            'idx' => $prdIdx,
+            'sale_price' => $salePrice,
+            'cost_price' => $costPrice,
+            'goods_no' => $goodsNo,
+            'margin_group' => $marginGroup,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+    /**
      * 체크리스트 항목 조회 (분류 필터 지원)
      *
      * @param string|null $kindCode

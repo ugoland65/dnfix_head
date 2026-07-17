@@ -13,6 +13,7 @@ use App\Models\OrderGroupProductModel;
 use App\Models\ProductModel;
 use App\Models\ProductStockModel;
 use App\Models\ProductStockUnitModel;
+use App\Models\InspectionProcessLogModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
 
@@ -596,6 +597,77 @@ class OrderSheetService
             }
         }
 
+        $stockProcessedByPsIdx = [];
+        $stockProcessTokensByPsIdx = [];
+        foreach ($productMap as $productRow) {
+            $psIdx = (int)($productRow['ps_idx'] ?? 0);
+            if ($psIdx <= 0) {
+                continue;
+            }
+            $stockProcessTokensByPsIdx[$psIdx] = 'order_sheet_godo_stock:' . $idx . ':' . $psIdx;
+        }
+        if (!empty($stockProcessTokensByPsIdx)) {
+            try {
+                $processedStockRows = ProductStockUnitModel::query()
+                    ->select(['psu_stock_idx', 'psu_token', 'psu_date', 'psu_id'])
+                    ->whereIn('psu_token', array_values($stockProcessTokensByPsIdx))
+                    ->get()
+                    ->toArray();
+                foreach ($processedStockRows as $processedStockRow) {
+                    $psIdx = (int)($processedStockRow['psu_stock_idx'] ?? 0);
+                    if ($psIdx <= 0) {
+                        continue;
+                    }
+                    $processedTimestamp = (int)($processedStockRow['psu_date'] ?? 0);
+                    $stockProcessedByPsIdx[$psIdx] = [
+                        'processed_at' => $processedTimestamp > 0 ? date('Y-m-d H:i:s', $processedTimestamp) : '',
+                        'processed_by' => (string)($processedStockRow['psu_id'] ?? ''),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $stockProcessedByPsIdx = [];
+            }
+        }
+
+        $godoProcessLogByProductIdx = [];
+        if (!empty($pidxList)) {
+            try {
+                $godoProcessLogs = InspectionProcessLogModel::query()
+                    ->select([
+                        'prd_idx',
+                        'executor_admin_id',
+                        'executor_admin_name',
+                        'executed_at',
+                        'result_content',
+                    ])
+                    ->where('location_code', '=', InspectionProcessLogService::LOCATION_ORDER_SHEET_STOCK_SINGLE)
+                    ->where('relation_pk', '=', $idx)
+                    ->whereIn('prd_idx', $pidxList)
+                    ->orderBy('ipl_idx', 'desc')
+                    ->get()
+                    ->toArray();
+
+                foreach ($godoProcessLogs as $godoProcessLog) {
+                    $productIdx = (int)($godoProcessLog['prd_idx'] ?? 0);
+                    if ($productIdx <= 0 || isset($godoProcessLogByProductIdx[$productIdx])) {
+                        continue;
+                    }
+                    $resultContent = json_decode((string)($godoProcessLog['result_content'] ?? '{}'), true);
+                    if (!is_array($resultContent)) {
+                        $resultContent = [];
+                    }
+                    $godoProcessLogByProductIdx[$productIdx] = [
+                        'status' => !empty($resultContent['success']) ? '처리완료' : '처리기록',
+                        'executed_at' => (string)($godoProcessLog['executed_at'] ?? ''),
+                        'executor_name' => (string)($godoProcessLog['executor_admin_name'] ?? ''),
+                        'executor_id' => (string)($godoProcessLog['executor_admin_id'] ?? ''),
+                    ];
+                }
+            } catch (\Throwable $e) {
+                $godoProcessLogByProductIdx = [];
+            }
+        }
+
         $godoApiStartAt = microtime(true);
         $godoGoodsMap = [];
         $godoApiErrorMessage = '';
@@ -746,6 +818,8 @@ class OrderSheetService
                 'is_discontinued' => (int)($product['is_discontinued'] ?? 0),
                 'restock_request_count' => $restockRequestCount,
                 'godo_category_lines' => $godoCategoryLines,
+                'godo_process_log' => $godoProcessLogByProductIdx[$pidx] ?? null,
+                'stock_processed' => $stockProcessedByPsIdx[$psIdx] ?? null,
             ];
         }
 
@@ -944,6 +1018,7 @@ class OrderSheetService
         $sessionId = (string)(AuthAdmin::getSession('sess_id') ?? '');
         $sessionName = (string)(AuthAdmin::getSession('sess_name') ?? '');
         $actionTime = date('Y-m-d H:i:s');
+        $actionTimestamp = time();
         $reg = [
             'date' => $actionTime,
             'id' => $sessionId,
@@ -954,10 +1029,24 @@ class OrderSheetService
 
         $processedCount = 0;
         $processedRows = [];
+        $skippedRows = [];
         foreach ($psIdxRows as $i => $psIdxRaw) {
             $psIdx = (int)$psIdxRaw;
             $qty = (int)($qtyRows[$i] ?? 0);
             if ($psIdx <= 0 || $qty <= 0) {
+                continue;
+            }
+
+            $stockProcessToken = 'order_sheet_godo_stock:' . $orderSheetIdx . ':' . $psIdx;
+            $alreadyProcessed = ProductStockUnitModel::query()
+                ->where('psu_token', '=', $stockProcessToken)
+                ->exists();
+            if ($alreadyProcessed) {
+                $skippedRows[] = [
+                    'ps_idx' => $psIdx,
+                    'qty' => $qty,
+                    'reason' => '고도몰 단건 처리에서 이미 재고 반영됨',
+                ];
                 continue;
             }
 
@@ -1001,9 +1090,9 @@ class OrderSheetService
                     'psu_stock' => $afterStock,
                     'psu_kind' => '신규입고',
                     'psu_memo' => $lineMemo,
-                    'psu_token' => '',
+                    'psu_token' => null,
                     'psu_id' => $sessionId,
-                    'psu_date' => $actionTime,
+                    'psu_date' => $actionTimestamp,
                     'reg' => '',
                 ]);
 
@@ -1063,6 +1152,8 @@ class OrderSheetService
             'msg' => '완료',
             'message' => '재고가 일괄 등록되었습니다.',
             'processed_count' => $processedCount,
+            'skipped_count' => count($skippedRows),
+            'skipped_rows' => $skippedRows,
             'order_sheet_idx' => $orderSheetIdx,
             'stock_state' => $nextOoStock,
             'updated_by' => $sessionIdx,
@@ -1081,6 +1172,7 @@ class OrderSheetService
                     'stock_all_memo' => $stockAllMemo,
                     'requested_line_count' => count($psIdxRows),
                     'processed_rows' => $processedRows,
+                    'skipped_rows' => $skippedRows,
                 ],
                 'result_content' => $resultPayload,
             ]);
@@ -1102,6 +1194,8 @@ class OrderSheetService
     {
         $goodsNo = trim((string)($requestData['goods_no'] ?? ''));
         $pidx = (int)($requestData['pidx'] ?? 0);
+        $psIdx = (int)($requestData['ps_idx'] ?? 0);
+        $orderSheetIdx = (int)($requestData['os_idx'] ?? 0);
         $stockQty = null;
         if (array_key_exists('stock_qty', $requestData)) {
             $stockQtyRaw = trim((string)$requestData['stock_qty']);
@@ -1142,6 +1236,33 @@ class OrderSheetService
             throw new Exception('고도몰 상품번호가 없어 처리할 수 없습니다.');
         }
 
+        if ($psIdx <= 0 && $pidx > 0) {
+            $stockRow = ProductStockModel::query()
+                ->select(['ps_idx'])
+                ->where('ps_prd_idx', '=', $pidx)
+                ->first();
+            $stockRow = $stockRow ? (is_array($stockRow) ? $stockRow : $stockRow->toArray()) : [];
+            $psIdx = (int)($stockRow['ps_idx'] ?? 0);
+        }
+
+        $stockProcessToken = '';
+        $productStockService = new ProductStockService();
+        if ($orderSheetIdx > 0 && $psIdx > 0) {
+            $stockProcessToken = 'order_sheet_godo_stock:' . $orderSheetIdx . ':' . $psIdx;
+            if ($productStockService->hasStockChangeToken($stockProcessToken)) {
+                return [
+                    'success' => true,
+                    'msg' => '이미 처리됨',
+                    'message' => '이미 재고 반영까지 완료된 상품입니다.',
+                    'already_processed' => true,
+                    'order_sheet_idx' => $orderSheetIdx,
+                    'prd_idx' => $pidx,
+                    'ps_idx' => $psIdx,
+                    'goods_no' => $goodsNo,
+                ];
+            }
+        }
+
         if ($isManualSoldOutIssueSelected && ($stockInputQty === null || $stockInputQty <= 0)) {
             return [
                 'success' => true,
@@ -1180,12 +1301,23 @@ class OrderSheetService
             $columnUpdates = implode(',', $columnUpdatePairs);
         }
 
+        $intranetUpdatedColumns = [];
+        if (in_array('상품번호 불일치', $selectedAutoIssues, true) && $pidx > 0) {
+            ProductModel::query()
+                ->where('CD_IDX', '=', $pidx)
+                ->update([
+                    'cd_godo_code' => $goodsNo,
+                ]);
+            $intranetUpdatedColumns[] = 'cd_godo_code';
+        }
+
         if ($pidx > 0 && $intranetSalePrice !== '' && is_numeric($intranetSalePrice)) {
             ProductModel::query()
                 ->where('CD_IDX', '=', $pidx)
                 ->update([
                     'cd_sale_price' => $intranetSalePrice,
                 ]);
+            $intranetUpdatedColumns[] = 'cd_sale_price';
         }
 
         $godoApiService = new GodoApiService();
@@ -1197,17 +1329,73 @@ class OrderSheetService
             'deleteCategoryCds' => $deleteCategoryCds,
         ]);
 
-        return [
+        $stockChangeResult = [];
+        if ($stockInputQty !== null && $stockInputQty > 0) {
+            if ($psIdx <= 0 || $stockProcessToken === '') {
+                throw new Exception('재고 반영에 필요한 주문서 또는 재고코드 정보가 없습니다.');
+            }
+            $stockChangeResult = $productStockService->registerStockChange([
+                'ps_idx' => $psIdx,
+                'stock_mode' => 'plus',
+                'stock_kind' => '신규입고',
+                'stock_qty' => $stockInputQty,
+                'stock_day' => date('Y-m-d'),
+                'stock_memo' => '주문서 고도몰 재고+검수 처리',
+                'psu_token' => $stockProcessToken,
+            ]);
+        }
+
+        $resultPayload = [
             'success' => true,
             'msg' => '완료',
             'message' => '고도몰 처리가 완료되었습니다.',
+            'order_sheet_idx' => $orderSheetIdx,
+            'prd_idx' => $pidx,
+            'ps_idx' => $psIdx,
             'goods_no' => $goodsNo,
             'stock_qty' => $stockQty,
             'column_updates' => $columnUpdates,
             'add_category_cds' => $addCategoryCds,
             'delete_category_cds' => $deleteCategoryCds,
+            'intranet_updated_columns' => $intranetUpdatedColumns,
             'response' => $responseData,
+            'stock_change' => $stockChangeResult,
         ];
+
+        try {
+            $sessionIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+            $sessionId = (string)(AuthAdmin::getSession('sess_id') ?? '');
+            $sessionName = (string)(AuthAdmin::getSession('sess_name') ?? '');
+            $executedAt = date('Y-m-d H:i:s');
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $inspectionProcessLogService->logProductSingleGodoInspection([
+                'location_code' => InspectionProcessLogService::LOCATION_ORDER_SHEET_STOCK_SINGLE,
+                'relation_pk' => $orderSheetIdx,
+                'prd_idx' => $pidx,
+                'ps_idx' => $psIdx,
+                'godo_goods_no' => $goodsNo,
+                'executor_admin_idx' => $sessionIdx,
+                'executor_admin_id' => $sessionId,
+                'executor_admin_name' => $sessionName,
+                'executed_at' => $executedAt,
+                'process_content' => [
+                    'stock_qty' => $stockQty,
+                    'stock_input_qty' => $stockInputQty,
+                    'selected_auto_issues' => $selectedAutoIssues,
+                    'intranet_sale_price' => $intranetSalePrice,
+                    'column_updates' => $columnUpdates,
+                    'add_category_cds' => $addCategoryCds,
+                    'delete_category_cds' => $deleteCategoryCds,
+                ],
+                'result_content' => $resultPayload,
+            ]);
+            $resultPayload['processed_at'] = $executedAt;
+            $resultPayload['processed_by'] = $sessionName !== '' ? $sessionName : $sessionId;
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 실제 고도몰 처리 성공/실패에 영향을 주지 않는다.
+        }
+
+        return $resultPayload;
     }
 
 
