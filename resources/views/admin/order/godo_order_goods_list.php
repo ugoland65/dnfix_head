@@ -467,7 +467,8 @@
             </ul>
             <ul>
                 <div class="scroll-wrap">
-
+                    모브 남은 예치금 : <span id="mob-pay-balance">0</span>
+                    <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="getMobPayBalance();">예치금 조회</button>
                 </div>
             </ul>
         </div>
@@ -479,6 +480,27 @@
 </div>
 
 <script>
+    function getMobPayBalance() {
+        var $button = $('button[onclick="getMobPayBalance();"]');
+        $button.prop('disabled', true).text('조회 중...');
+
+        $.ajax({
+            url: '/admin/order/mob_pay_balance',
+            type: 'POST',
+            dataType: 'json'
+        }).done(function(response) {
+            if (!(response && response.success)) {
+                alert((response && response.message) || '모브 예치금 조회에 실패했습니다.');
+                return;
+            }
+            $('#mob-pay-balance').text(Number(response.available_deposit || 0).toLocaleString('ko-KR') + '원');
+        }).fail(function(xhr) {
+            var response = xhr.responseJSON || {};
+            alert(response.message || '모브 예치금 조회에 실패했습니다.');
+        }).always(function() {
+            $button.prop('disabled', false).text('예치금 조회');
+        });
+    }
 
     function copyTextWithFallback(text) {
         var textarea = document.createElement('textarea');

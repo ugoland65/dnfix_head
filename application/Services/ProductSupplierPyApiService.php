@@ -204,4 +204,27 @@ class ProductSupplierPyApiService
         }
     }
 
+    /**
+     * 모브 예치금 조회
+     * 
+     * @return array
+     */
+    public function getMobPayBalance($data)
+    {
+        $url = $this->domain."/mobe/available-deposit";
+        $headers = [
+            'Accept: application/json',
+            'X-API-KEY: '.$this->apiKey,
+        ];
+        $response = HttpClient::getData($url, $headers);
+        $responseData = json_decode($response, true);
+
+        if (!is_array($responseData) || empty($responseData['success'])) {
+            throw new \Exception((string)($responseData['message'] ?? '모브 예치금 조회에 실패했습니다.'));
+        }
+
+        return [
+            'available_deposit' => (int)($responseData['available_deposit'] ?? 0),
+        ];
+    }
 }

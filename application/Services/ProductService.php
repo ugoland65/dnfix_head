@@ -3563,9 +3563,12 @@ class ProductService extends BaseClass
         $fieldKeysByCategory = [
             '02010000' => [
                 'body_height',
+                'overall_width',
+                'overall_depth',
                 'weight',
                 'shoulder_width',
                 'chest_circumference',
+                'underbust_circumference',
                 'waist_circumference',
                 'hip_circumference',
                 'hip_width',

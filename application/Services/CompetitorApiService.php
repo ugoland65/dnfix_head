@@ -27,6 +27,7 @@ class CompetitorApiService
         $keywordMode = trim((string)($params['keyword_mode'] ?? ''));
         $keyword = trim((string)($params['keyword'] ?? ''));
         $matchIdx = (int)($params['match_idx'] ?? 0);
+        $productId = (int)($params['product_id'] ?? 0);
 
         if ($site !== '') {
             $query['site'] = $site;
@@ -45,6 +46,9 @@ class CompetitorApiService
         }
         if ($matchIdx > 0) {
             $query['match_idx'] = $matchIdx;
+        }
+        if ($productId > 0) {
+            $query['product_id'] = $productId;
         }
 
         $url = $this->domain . '/api/CompetitorProduct?' . http_build_query($query);

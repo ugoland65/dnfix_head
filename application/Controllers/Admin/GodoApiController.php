@@ -14,6 +14,7 @@ use App\Services\ProductStockService;
 use App\Services\GodoApiService;
 use App\Services\GodoOrderSyncService;
 use App\Services\GodoPurchaseOrderService;
+use App\Services\ProductSupplierPyApiService;
 use App\Utils\HttpClient; 
 
 class GodoApiController extends BaseClass
@@ -178,6 +179,27 @@ class GodoApiController extends BaseClass
             return view('onadb.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
+        }
+    }
+
+    /**
+     * 모브 가용 예치금을 조회한다.
+     */
+    public function getMobPayBalance(Request $request)
+    {
+        try {
+            $productSupplierPyApiService = new ProductSupplierPyApiService();
+            $result = $productSupplierPyApiService->getMobPayBalance($request->all());
+
+            return response()->json([
+                'success' => true,
+                'available_deposit' => (int)($result['available_deposit'] ?? 0),
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => '모브 예치금 조회에 실패했습니다.',
+            ], 400);
         }
     }
 

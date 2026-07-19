@@ -133,6 +133,9 @@ try {
     $router->post('/competitor/match', CompetitorController::class, 'matchCompetitorProduct'); //경쟁사 상품 매칭 저장
     $router->post('/competitor/unmatch', CompetitorController::class, 'unmatchCompetitorProduct'); //경쟁사 상품 매칭 해지
     $router->post('/competitor/adjust_matched_product_price', CompetitorController::class, 'adjustMatchedProductPrice'); //경쟁사 기준 상품/고도몰 가격 조정
+    // 임시 비활성화: B 경쟁사 상세 팝업 티켓 발급/보안 중계
+    // $router->post('/competitor/popup-ticket', CompetitorController::class, 'issueCompetitorPopupTicket');
+    // $router->get('/competitor/popup-launch', CompetitorController::class, 'competitorPopupLaunchPage');
 
     // 재고/발주 관리
     $router->get('/order/sheet', OrderSheetController::class, 'orderSheetPage'); //주문서 작업 페이지
@@ -153,6 +156,7 @@ try {
     $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문 (위탁상품)
+    $router->post('/order/mob_pay_balance', GodoApiController::class, 'getMobPayBalance'); //모브 예치금 조회
     $router->get('/order/godo_order_purchase_list', GodoApiController::class, 'godoOrderPurchaseList'); //구매대행 주문서 조회
     $router->get('/order/purchase/list', PurchaseController::class, 'purchaseOrderList'); //구매대행 발주서 리스트
     $router->get('/order/purchase/detail', PurchaseController::class, 'purchaseOrderDetail'); //구매대행 발주서 상세

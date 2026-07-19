@@ -159,9 +159,37 @@
                                 </button>
                             </td>
                             <td class="text-left" style="white-space: normal !important;">
-                                <b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?=$row['name']?></a></b>
+                                <?php foreach (($row['event_tags_json'] ?? []) as $eventTag) { ?>
+                                    <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:#dc2626; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
+                                <?php } ?>
+                                <p><b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?=$row['name']?></a></b></p>
+
+                                <?php if ($row['memo']): ?>
+                                    <p><span style="font-size:12px; color:#ff0000;"><?= htmlspecialchars($row['memo'], ENT_QUOTES, 'UTF-8') ?></span></p>
+                                <?php endif; ?>
                             </td>
-                            <td class="text-right"><b><?=number_format($row['price'])?></b></td>
+                            <td class="text-right">
+                                <?php
+                                    $discountPercent = (float)($row['discount_percent'] ?? 0);
+                                    $originalPrice = (int)($row['original_price'] ?? 0);
+                                    $salePrice = (int)($row['price'] ?? 0);
+                                    $calculatedDiscountPercent = 0;
+                                    if ($discountPercent <= 0 && $originalPrice > 0 && $salePrice !== $originalPrice) {
+                                        $calculatedDiscountPercent = round((($originalPrice - $salePrice) / $originalPrice) * 100);
+                                    }
+                                ?>
+                                <div style="margin-bottom:2px;">
+                                    <?php if ($discountPercent > 0): ?>
+                                        <p><span style="font-size:12px; color:#ff0000;"><b><?= number_format($discountPercent, 0) ?></b>%</span></p>
+                                    <?php elseif ($calculatedDiscountPercent !== 0): ?>
+                                        <p><span style="font-size:12px; color:#16a34a;"><b><?= number_format($calculatedDiscountPercent) ?></b>%</span></p>
+                                    <?php endif; ?>
+                                    <?php if ($originalPrice > 0): ?>
+                                        <span style="font-size:12px; color:#6b7280;"><?= number_format($originalPrice) ?></span>
+                                    <?php endif; ?>
+                                </div>
+                                <b style="font-size:14px;"><?= number_format($salePrice) ?></b>
+                            </td>
                             <td class="text-center">
                                 <?=($row['info_change_count'] ?? 0)?>
                             </td>

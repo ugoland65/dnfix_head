@@ -168,10 +168,12 @@ function goSupplierProduct(site, code){
 
 // 경쟁사 상품정보
 function goCompetitorProductEdit( site, id ){
+	// 임시: B ticket 기반 보안 팝업을 비활성화하고 기존 상세 URL을 직접 연다.
 	window.open(
-		"https://dnetc01.mycafe24.com/api/CompetitorProductDetail?site="+site+"&product_id="+id, 
-		"competitorProductDetail_"+site+"_"+id, 
-		"width=800,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		"https://dnetc01.mycafe24.com/api/CompetitorProductDetail?site="+site+"&product_id="+id,
+		"competitorProductDetail_"+site+"_"+id,
+		"width=800,height=800,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no"
+	);
 }
 
 // 공급사 상품정보

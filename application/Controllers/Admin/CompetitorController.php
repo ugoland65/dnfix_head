@@ -12,6 +12,7 @@ use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
 use App\Services\CompetitorApiService;
+use App\Services\CompetitorPopupTicketService;
 use App\Services\ProductService;
 
 class CompetitorController extends BaseClass
@@ -64,6 +65,25 @@ class CompetitorController extends BaseClass
                 ]);
 
                 $competitorRows = $CompetitorProductApiData['data']['competitorProducts'] ?? [];
+                foreach ($competitorRows as &$competitorRow) {
+                    if (!is_array($competitorRow)) {
+                        continue;
+                    }
+
+                    $eventTags = $competitorRow['event_tags_json'] ?? [];
+                    if (is_string($eventTags)) {
+                        $eventTags = json_decode($eventTags, true);
+                    }
+                    if (!is_array($eventTags)) {
+                        $eventTags = [];
+                    }
+
+                    $competitorRow['event_tags_json'] = array_values(array_filter($eventTags, static function ($eventTag) {
+                        return is_string($eventTag) && trim($eventTag) !== '';
+                    }));
+                }
+                unset($competitorRow);
+                $CompetitorProductApiData['data']['competitorProducts'] = $competitorRows;
                 $matchIdxs = [];
                 foreach ($competitorRows as $competitorRow) {
                     $primaryMatchIdx = $competitorRow['primary_match_idx'] ?? ($competitorRow['match_idx'] ?? null);
@@ -369,6 +389,71 @@ class CompetitorController extends BaseClass
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    /**
+     * B 경쟁사 상세 팝업용 단기 서명 티켓을 발급한다.
+     */
+    public function issueCompetitorPopupTicket(Request $request)
+    {
+        $requestId = bin2hex(random_bytes(12));
+        try {
+            $site = trim((string)$request->input('site', ''));
+            $productId = (int)$request->input('product_id', 0);
+            $userId = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+            $userLoginId = trim((string)(AuthAdmin::getSession('sess_id') ?? ''));
+            if ($userId <= 0 || $userLoginId === '') {
+                throw new \RuntimeException('unauthenticated');
+            }
+
+            // 세션 값만 신뢰하지 않고 현재 A DB의 관리자 계정을 재확인한다.
+            $stmt = $this->db->prepare('SELECT idx FROM admin WHERE idx = :idx AND ad_id = :ad_id LIMIT 1');
+            $stmt->execute(['idx' => $userId, 'ad_id' => $userLoginId]);
+            if (!$stmt->fetch()) {
+                throw new \RuntimeException('unauthenticated');
+            }
+
+            $service = new CompetitorPopupTicketService($this->db);
+            $result = $service->issue($userId, $site, $productId, $requestId, AuthAdmin::getIp());
+            return response()->json([
+                'success' => true,
+                'popup_url' => $result['popup_url'],
+                'expires_at' => $result['expires_at'],
+            ]);
+        } catch (Throwable $e) {
+            error_log(json_encode([
+                'event' => 'competitor_popup_ticket_denied',
+                'reason' => $e->getMessage(),
+                'request_id' => $requestId,
+            ], JSON_UNESCAPED_SLASHES));
+            return response()->json([
+                'success' => false,
+                'message' => '팝업 접근 권한이 없거나 요청을 처리할 수 없습니다.',
+            ], 403);
+        }
+    }
+
+    /**
+     * noopener 팝업 내부에서 ticket을 발급한 뒤 B launch URL로 이동한다.
+     */
+    public function competitorPopupLaunchPage(Request $request)
+    {
+        $site = trim((string)$request->input('site', ''));
+        $productId = (int)$request->input('product_id', 0);
+        $payload = json_encode([
+            'site' => $site,
+            'product_id' => $productId,
+        ], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+
+        return '<!doctype html><html lang="ko"><head><meta charset="utf-8">'
+            . '<meta name="referrer" content="no-referrer"><title>경쟁사 상품 상세</title></head><body>'
+            . '<p id="message">보안 연결을 준비하고 있습니다...</p><script>'
+            . '(function(){var data=' . $payload . ';'
+            . 'fetch("/admin/competitor/popup-ticket",{method:"POST",headers:{"Content-Type":"application/x-www-form-urlencoded;charset=UTF-8","Accept":"application/json"},body:new URLSearchParams(data)})'
+            . '.then(function(response){return response.json().then(function(body){if(!response.ok||!body.success||!body.popup_url){throw new Error(body.message||"팝업 접근 권한이 없습니다.");}return body;});})'
+            . '.then(function(body){window.location.replace(body.popup_url);})'
+            . '.catch(function(error){document.getElementById("message").textContent=error.message||"팝업 접근 권한이 없습니다.";});'
+            . '})();</script></body></html>';
     }
 
     /**

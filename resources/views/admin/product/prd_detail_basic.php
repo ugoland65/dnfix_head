@@ -902,6 +902,22 @@
                                 <td><input type="text" name="cd_spec_measured[body_height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['body_height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
+                                <th>전체 너비 (cm)</th>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[overall_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['overall_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Width
+                                </td>
+                                <td><input type="text" name="cd_spec_measured[overall_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['overall_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>전체 깊이 (cm)</th>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[overall_depth]" value="<?= htmlspecialchars((string)($cdSpecVendorData['overall_depth'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Depth,  Long
+                                </td>
+                                <td><input type="text" name="cd_spec_measured[overall_depth]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['overall_depth'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
                                 <th>무게(체중) (kg)</th>
                                 <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                                 <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
@@ -913,8 +929,19 @@
                             </tr>
                             <tr>
                                 <th>가슴둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Upper bust
+                            </td>
                                 <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>밑가슴 둘레 (cm)</th>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Under bust
+                                </td>
+                                <td><input type="text" name="cd_spec_measured[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
                                 <th>허리둘레 (cm)</th>
@@ -953,7 +980,10 @@
                             </tr>
                             <tr>
                                 <th>소재</th>
-                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    TPE, 플래티넘 실리콘(백금)
+                            </td>
                                 <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                         </table>
