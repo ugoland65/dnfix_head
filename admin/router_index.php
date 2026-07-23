@@ -157,6 +157,8 @@ try {
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)
     $router->get('/order/godo_order_goods_list', GodoApiController::class, 'godoOrderGoodsList'); //고도몰 주문 (위탁상품)
     $router->post('/order/mob_pay_balance', GodoApiController::class, 'getMobPayBalance'); //모브 예치금 조회
+    $router->post('/order/mobe_orders/sync', GodoApiController::class, 'syncMobeOrders'); //모브 구매내역 데이터 갱신
+    $router->post('/order/mobe_orders/match', GodoApiController::class, 'matchMobeOrders'); //모브 구매내역 매칭
     $router->get('/order/godo_order_purchase_list', GodoApiController::class, 'godoOrderPurchaseList'); //구매대행 주문서 조회
     $router->get('/order/purchase/list', PurchaseController::class, 'purchaseOrderList'); //구매대행 발주서 리스트
     $router->get('/order/purchase/detail', PurchaseController::class, 'purchaseOrderDetail'); //구매대행 발주서 상세

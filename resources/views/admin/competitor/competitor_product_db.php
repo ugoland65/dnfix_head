@@ -785,7 +785,7 @@ $(function(){
                 + '<tr class="match-result-row" data-cd-idx="' + escapeHtml(item.cd_idx) + '" data-cd-name="' + escapeHtml(cdName) + '" data-brand-name="' + escapeHtml(brandName) + '">'
                 + '  <td class="text-center">' + thumb + '</td>'
                 + '  <td class="text-center"><b>#' + escapeHtml(item.cd_idx) + '</b></td>'
-                + '  <td>' + escapeHtml(cdName) + '</td>'
+                + '  <td><p  onclick="onlyAD.prdView(' + escapeHtml(item.cd_idx) + ',\'info\');" style="cursor:pointer;">' + escapeHtml(cdName) + '</p></td>'
                 + '  <td>' + escapeHtml(brandName) + '</td>'
                 + '  <td class="text-center"><button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs match-select-btn">선택</button></td>'
                 + '</tr>';

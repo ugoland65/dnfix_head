@@ -42,6 +42,8 @@ class GodoOrderGoodsModel extends BaseModel
         'api_synced_at',
         'godo_updated_at',
         'raw_data',
+        'mobe_order_data',
+        'mobe_matched_at',
         'created_at',
         'updated_at',
     ];

@@ -15,6 +15,7 @@ use App\Services\GodoApiService;
 use App\Services\GodoOrderSyncService;
 use App\Services\GodoPurchaseOrderService;
 use App\Services\ProductSupplierPyApiService;
+use App\Services\GodoOrderMobeMatchService;
 use App\Utils\HttpClient; 
 
 class GodoApiController extends BaseClass
@@ -103,6 +104,11 @@ class GodoApiController extends BaseClass
             ];
             $godoApiService = new GodoApiService();
             $orderList = $godoApiService->getOrderGoodsList($payload);
+            try {
+                (new GodoOrderSyncService())->syncOrderGoodsList($orderList);
+            } catch (\Throwable $syncException) {
+                // 동기화 실패로 목록 화면 진입까지 막히지 않도록 화면 렌더링은 계속 진행한다.
+            }
 
             $orderRows = $orderList['orderData']['data'] ?? [];
             $orderNos = [];
@@ -140,9 +146,10 @@ class GodoApiController extends BaseClass
             $purchaseStatusMap = [];
             $purchaseOrderIdxMap = [];
             $savedOrderGoodsMap = [];
+            $mobeOrderDataMap = [];
             if (!empty($orderGoodsSnos)) {
                 $purchaseStatusRows = GodoOrderGoodsModel::query()
-                    ->select(['order_goods_sno', 'purchase_status', 'purchase_order_idx'])
+                    ->select(['order_goods_sno', 'purchase_status', 'purchase_order_idx', 'mobe_order_data'])
                     ->whereIn('order_goods_sno', array_keys($orderGoodsSnos))
                     ->get()
                     ->toArray();
@@ -155,6 +162,10 @@ class GodoApiController extends BaseClass
                     $savedOrderGoodsMap[$orderGoodsSno] = true;
                     $purchaseStatusMap[$orderGoodsSno] = (string)($statusRow['purchase_status'] ?? '');
                     $purchaseOrderIdxMap[$orderGoodsSno] = (int)($statusRow['purchase_order_idx'] ?? 0);
+                    $mobeOrderData = json_decode((string)($statusRow['mobe_order_data'] ?? ''), true);
+                    if (is_array($mobeOrderData)) {
+                        $mobeOrderDataMap[$orderGoodsSno] = $mobeOrderData;
+                    }
                 }
             }
 
@@ -167,6 +178,7 @@ class GodoApiController extends BaseClass
                 'purchaseStatusMap' => $purchaseStatusMap,
                 'purchaseOrderIdxMap' => $purchaseOrderIdxMap,
                 'savedOrderGoodsMap' => $savedOrderGoodsMap,
+                'mobeOrderDataMap' => $mobeOrderDataMap,
             ];
 
             return view('admin.order.godo_order_goods_list', $data)
@@ -199,6 +211,49 @@ class GodoApiController extends BaseClass
             return response()->json([
                 'success' => false,
                 'message' => '모브 예치금 조회에 실패했습니다.',
+            ], 400);
+        }
+    }
+
+    /**
+     * 모브 구매내역을 수집하고 최근 주문 상태를 갱신한다.
+     */
+    public function syncMobeOrders(Request $request)
+    {
+        try {
+            $productSupplierPyApiService = new ProductSupplierPyApiService();
+            $result = $productSupplierPyApiService->syncMobeOrders($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => '모브 구매내역 데이터 갱신이 완료되었습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 모브 구매내역과 저장된 고도몰 주문상품을 매칭해 배송정보를 저장한다.
+     */
+    public function matchMobeOrders(Request $request)
+    {
+        try {
+            $result = (new GodoOrderMobeMatchService())->matchMobeOrders($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => '모브 구매내역 매칭이 완료되었습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
             ], 400);
         }
     }

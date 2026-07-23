@@ -924,7 +924,10 @@
                             </tr>
                             <tr>
                                 <th>어깨 너비 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Shoulder Width
+                                </td>
                                 <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
@@ -945,12 +948,18 @@
                             </tr>
                             <tr>
                                 <th>허리둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Waistline
+                                </td>
                                 <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
                                 <th>엉덩이 둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Hipline
+                                </td>
                                 <td><input type="text" name="cd_spec_measured[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
@@ -960,12 +969,18 @@
                             </tr>
                             <tr>
                                 <th>허벅지 둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Thigh Circumference
+                                </td>
                                 <td><input type="text" name="cd_spec_measured[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
                                 <th>다리길이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td>
+                                    <input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
+                                    Leg length
+                                </td>
                                 <td><input type="text" name="cd_spec_measured[leg_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>

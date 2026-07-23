@@ -147,7 +147,7 @@
 
     .partner-match-card {
         display: flex;
-        align-items: flex-start;
+        align-items: center;
         gap: 10px;
         width: 250px;
         padding: 5px 6px;
@@ -184,6 +184,16 @@
         overflow: hidden;
         text-overflow: ellipsis;
         white-space: nowrap;
+    }
+
+    .margin-grade-badge {
+        display: inline-block;
+        min-width: 22px;
+        padding: 2px 8px;
+        border-radius: 999px;
+        color: #fff;
+        font-weight: 700;
+        line-height: 1.2;
     }
 
 
@@ -293,8 +303,8 @@
         <div class="layout-style1">
             <ul>
                 <div class="tap-order-goods-list-wrap" id="order-goods-sort-tabs">
-                    <ul class="active" data-sort-view="default">주문일시순</ul>
-                    <ul data-sort-view="supplier">공급사별 주문정렬 보기</ul>
+                    <ul data-sort-view="default">주문일시순</ul>
+                    <ul class="active" data-sort-view="supplier">공급사별 주문정렬 보기</ul>
                 </div>
                 <div class="scroll-wrap">
 
@@ -311,7 +321,15 @@
                                 <th class="">주문상품명</th>
                                 <th class="">주문<br>수량</th>
                                 <th class="">매칭상품</th>
+
                                 <th class="">공급사링크</th>
+                                <th class="">마진율</th>
+                                <th class="">검수상태</th>
+                                <th class="">저장상태</th>
+                                <th class="">발주상태</th>
+
+                                <th class="">연동데이터</th>
+                                
                                 <th class="">C/S 요청</th>
                                 <th class="">C/S 등록수</th>
                                 <th class="">수령자명</th>
@@ -325,23 +343,84 @@
                         </thead>
                         <tbody>
                             <?php
+                            $savedOrderGoodsMap = $savedOrderGoodsMap ?? [];
+                            $purchaseStatusMap = $purchaseStatusMap ?? [];
+                            $mobeOrderDataMap = $mobeOrderDataMap ?? [];
+                            $hasValidDateValue = static function ($value) {
+                                $text = trim((string)($value ?? ''));
+                                if ($text === '') {
+                                    return false;
+                                }
+                                if (in_array(strtolower($text), ['null', 'undefined', 'none', 'n/a', '-'], true)) {
+                                    return false;
+                                }
+                                return preg_match('/^0{4}-0{2}-0{2}(?:[\sT].*)?$/', $text) !== 1;
+                            };
                             $no = 0;
                             foreach ($orderList['data'] as $order) {
                                 if (!is_array($order) || !isset($order['orderNo'])) {
                                     continue;
                                 }
+                                $productPartner = is_array($order['ProductPartner'] ?? null) ? $order['ProductPartner'] : [];
                                 $scmNameRaw = trim((string)($order['scmName'] ?? ''));
                                 $scmSubNameRaw = '';
                                 if ($scmNameRaw === '모브') {
-                                    $scmSubNameRaw = trim((string)($order['ProductPartner']['supplier_2nd_name'] ?? ''));
+                                    $scmSubNameRaw = trim((string)($productPartner['supplier_2nd_name'] ?? ''));
                                 }
-                                $orderPriceRaw = (float)($order['ProductPartner']['order_price'] ?? 0);
+                                $orderPriceRaw = (float)($productPartner['order_price'] ?? 0);
+                                $salePrice = (float)($order['goodsPrice'] ?? 0);
+                                $marginPer = $salePrice > 0 ? (($salePrice - $orderPriceRaw) / $salePrice) * 100 : 0;
+                                $marginRateText = rtrim(rtrim(number_format($marginPer, 2, '.', ''), '0'), '.');
+                                $marginGrade = '';
+                                $marginGradeColor = '';
+                                if ($marginPer > 39) {
+                                    $marginGrade = 'A';
+                                    $marginGradeColor = '#28a745';
+                                } elseif ($marginPer >= 35) {
+                                    $marginGrade = 'B';
+                                    $marginGradeColor = '#20c997';
+                                } elseif ($marginPer >= 30) {
+                                    $marginGrade = 'C';
+                                    $marginGradeColor = '#17a2b8';
+                                } elseif ($marginPer >= 25) {
+                                    $marginGrade = 'D';
+                                    $marginGradeColor = '#0dcaf0';
+                                } elseif ($marginPer >= 20) {
+                                    $marginGrade = 'E';
+                                    $marginGradeColor = '#ffc107';
+                                } elseif ($marginPer >= 15) {
+                                    $marginGrade = 'F';
+                                    $marginGradeColor = '#fd7e14';
+                                } elseif ($marginPer >= 10) {
+                                    $marginGrade = 'G';
+                                    $marginGradeColor = '#dc3545';
+                                } elseif ($marginPer >= 5) {
+                                    $marginGrade = 'H';
+                                    $marginGradeColor = '#d63384';
+                                } elseif ($marginPer > 0) {
+                                    $marginGrade = 'I';
+                                    $marginGradeColor = '#6c757d';
+                                }
+                                $supplierPrdPk = trim((string)($productPartner['supplier_prd_pk'] ?? ''));
+                                $productPartnerIdx = (int)($productPartner['idx'] ?? 0);
+                                $isMatchedProviderProduct = $productPartnerIdx > 0 && $supplierPrdPk !== '';
+                                $dataInspectMessages = [];
+                                if ($isMatchedProviderProduct) {
+                                    if (!$hasValidDateValue($productPartner['detail_crawler_date'] ?? null)) {
+                                        $dataInspectMessages[] = '공급사 크롤링 안됨';
+                                    }
+                                    if (!$hasValidDateValue($productPartner['godo_loaded_at'] ?? null)) {
+                                        $dataInspectMessages[] = '고도몰 로드 안됨';
+                                    }
+                                }
                                 $no++;
                             ?>
                                 <tr
                                     data-scm-name="<?= htmlspecialchars($scmNameRaw, ENT_QUOTES, 'UTF-8') ?>"
                                     data-scm-sub-name="<?= htmlspecialchars($scmSubNameRaw, ENT_QUOTES, 'UTF-8') ?>"
-                                    data-order-price="<?= htmlspecialchars((string)$orderPriceRaw, ENT_QUOTES, 'UTF-8') ?>">
+                                    data-order-price="<?= htmlspecialchars((string)$orderPriceRaw, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-payment-dt="<?= htmlspecialchars((string)($order['paymentDt'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    data-order-goods-sno="<?= htmlspecialchars((string)($order['orderGoodsSno'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                     <td><input type="checkbox" name="check_idx[]" value="<?= $order['orderGoodsSno'] ?>"></td>
                                     <td class="text-center"><?= $no ?></td>
                                     <td>
@@ -369,7 +448,9 @@
                                         <?php } ?>
                                     </td>
                                     <td><img src="<?= $order['thumbImageUrl'] ?>" style="width:50px; height: 50px;"></td>
+
                                     <td>
+
                                         <b><?= $order['goodsNm'] ?></b>
                                         <?php if (!empty($order['optionInfo'])) { ?>
                                             <div class="option-info">
@@ -380,25 +461,109 @@
                                                 <?php } ?>
                                             </div>
                                         <?php } ?>
+
+                                        <div class="m-t-3">
+                                            판매가 : <b><?= number_format($order['goodsPrice']) ?></b>
+                                        </div>
+
+                                        <div class="m-t-3">
+                                            <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= $order['goodsNo'] ?>);">쑈당몰 상품보기</button>
+                                            <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= $order['goodsNo'] ?>);">관리자 상품보기</button>
+                                        </div>
                                     </td>
+
                                     <td class="text-center"><?= $order['goodsCnt'] ?></td>
                                     <td>
-                                        <?php if (isset($order['ProductPartner']) && !empty($order['ProductPartner']['supplier_prd_pk'])) { ?>
-                                            <div class="partner-match-card" onclick="prdProviderQuick('<?= $order['ProductPartner']['idx'] ?>');">
-                                                <img class="partner-match-thumb" src="<?= $order['ProductPartner']['supplier_img_src'] ?>">
+                                        <?php if ($isMatchedProviderProduct) { ?>
+                                            <div class="partner-match-card" onclick="prdProviderQuick('<?= $order['ProductPartner']['idx'] ?>');" 
+                                                data-prd-idx="<?= htmlspecialchars((string)$productPartnerIdx, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-supplier-site="<?= htmlspecialchars((string)($productPartner['supplier_site'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                                data-supplier-prd-pk="<?= htmlspecialchars($supplierPrdPk, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-godo-goods-no="<?= htmlspecialchars((string)($order['goodsNo'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                            >
+                                                <img class="partner-match-thumb" src="<?= $productPartner['supplier_img_src'] ?>">
                                                 <div class="partner-match-info">
-                                                    <span class="partner-match-name"><?= $order['ProductPartner']['name_p'] ?></span>
-                                                    주문가 : <?= number_format($order['ProductPartner']['order_price']) ?> | 원가 : <?= number_format($order['ProductPartner']['cost_price']) ?></br>
-                                                    <?php if ((int)($order['ProductPartner']['order_price'] ?? 0) <= 0 || (int)($order['ProductPartner']['cost_price'] ?? 0) <= 0) { ?>
+                                                    <p><?= $productPartner['supplier_status'] ?></p>
+                                                    <span class="partner-match-name"><?= $productPartner['name_p'] ?></span>
+                                                    주문가 : <b><?= number_format($productPartner['order_price']) ?></b> | 원가 : <?= number_format($productPartner['cost_price']) ?></br>
+                                                    <?php if ((int)($productPartner['order_price'] ?? 0) <= 0 || (int)($productPartner['cost_price'] ?? 0) <= 0) { ?>
                                                         <span style="color:#d9534f; font-weight:700;">경고: 주문가 또는 원가가 0원입니다.</span>
                                                     <?php } ?>
                                                 </div>
                                             </div>
+                                        <?php } else { ?>
+                                            <span style="color:#dc3545; font-weight:bold;">매칭 우선 해주세요</span>
                                         <?php } ?>
                                     </td>
+
+                                    <!-- 공급사링크 -->
                                     <td>
                                         <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="goSupplierProduct('<?= $order['ProductPartner']['supplier_site'] ?>', '<?= $order['ProductPartner']['supplier_prd_pk'] ?>');">공급사링크</button>
                                     </td>
+
+                                    <td class="text-center">
+                                        <?php if ($isMatchedProviderProduct) { ?>
+                                            <?php if ($marginGrade !== '') { ?>
+                                                <div><span class="margin-grade-badge" style="background-color:<?= $marginGradeColor ?>;"><?= $marginGrade ?></span></div>
+                                                <div class="m-t-3"><?= $marginRateText ?>%</div>
+                                            <?php } else { ?>
+                                                0%
+                                            <?php } ?>
+                                        <?php } else { ?>
+                                            -
+                                        <?php } ?>
+                                    </td>
+                                    <td class="text-center data-inspection-status" data-prd-idx="<?= htmlspecialchars((string)$productPartnerIdx, ENT_QUOTES, 'UTF-8') ?>">
+                                        <?php if (!$isMatchedProviderProduct) { ?>
+                                            -
+                                        <?php } elseif (!empty($dataInspectMessages)) { ?>
+                                            <span style="color:#dc3545; font-weight:bold;"><?= implode('<br>', $dataInspectMessages) ?></span>
+                                        <?php } else { ?>
+                                            <span style="color:#198754; font-weight:bold;">정상</span>
+                                        <?php } ?>
+                                    </td>
+                                    <?php
+                                    $orderGoodsSnoRaw = trim((string)($order['orderGoodsSno'] ?? ''));
+                                    $orderGoodsSno = null;
+                                    if ($orderGoodsSnoRaw !== '' && preg_match('/^\d+$/', $orderGoodsSnoRaw)) {
+                                        $orderGoodsSno = ltrim($orderGoodsSnoRaw, '0');
+                                        if ($orderGoodsSno === '') {
+                                            $orderGoodsSno = '0';
+                                        }
+                                    }
+                                    $isSavedOrderGoods = $orderGoodsSno !== null && isset($savedOrderGoodsMap[$orderGoodsSno]);
+                                    $purchaseStatus = $isSavedOrderGoods
+                                        ? trim((string)($purchaseStatusMap[$orderGoodsSno] ?? ''))
+                                        : '';
+                                    $mobeOrderData = $isSavedOrderGoods && is_array($mobeOrderDataMap[$orderGoodsSno] ?? null)
+                                        ? $mobeOrderDataMap[$orderGoodsSno]
+                                        : [];
+                                    ?>
+                                    <td class="text-center">
+                                        <?php if ($isSavedOrderGoods) { ?>
+                                            <span class="order-save-label order-save-label-saved">저장됨</span>
+                                        <?php } else { ?>
+                                            <span class="order-save-label order-save-label-unsaved">미저장</span>
+                                        <?php } ?>
+                                    </td>
+
+                                    <!-- 발주상태 -->
+                                    <td class="text-center">
+                                        <?= $purchaseStatus !== '' ? htmlspecialchars($purchaseStatus, ENT_QUOTES, 'UTF-8') : '-' ?>
+                                    </td>
+                                    
+                                    <td class="text-left" style="font-size:11px; line-height:1.5;">
+                                        <?php if (empty($mobeOrderData)) { ?>
+                                            -
+                                        <?php } else { ?>
+                                            <div>주문번호: <?= htmlspecialchars((string)($mobeOrderData['order_number'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></div>
+                                            <div>주문일: <?= htmlspecialchars((string)($mobeOrderData['ordered_at'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></div>
+                                            <div>결제: <?= htmlspecialchars((string)($mobeOrderData['payment_method'] ?? '-'), ENT_QUOTES, 'UTF-8') ?> / <?= number_format((float)($mobeOrderData['payment_total'] ?? 0)) ?>원</div>
+                                            <div>배송: <?= htmlspecialchars((string)($mobeOrderData['shipping_status'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></div>
+                                            <div>배송사/송장: <?= htmlspecialchars((string)($mobeOrderData['carrier_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?> / <?= htmlspecialchars((string)($mobeOrderData['tracking_number'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></div>
+                                        <?php } ?>
+                                    </td>
+
                                     <td>
                                         <button type="button" class="btnstyle1 btnstyle1-xs" 
 
@@ -466,9 +631,25 @@
                 </div>
             </ul>
             <ul>
-                <div class="scroll-wrap">
-                    모브 남은 예치금 : <span id="mob-pay-balance">0</span>
-                    <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="getMobPayBalance();">예치금 조회</button>
+                <div class="scroll-wrap p-10">
+
+                    <div>
+                        모브 남은 예치금 : <span id="mob-pay-balance">0</span>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="getMobPayBalance();">예치금 조회</button>
+                    </div>
+
+                    <div class="m-t-5">
+                        <button type="button" id="inspect-all-products-btn" class="btnstyle1 btnstyle1-sm">STEP 1 : 전체 상품 검수</button>
+                    </div>
+
+                    <div class="m-t-5">
+                        <button type="button" id="sync-mobe-orders-btn" class="btnstyle1 btnstyle1-sm">STEP 2 : 모브 구매내역 데이터 갱신</button>
+                    </div>
+
+                    <div class="m-t-5">
+                        <button type="button" id="match-mobe-orders-btn" class="btnstyle1 btnstyle1-sm">STEP 3 : 모브 구매내역 매칭하기</button>
+                    </div>
+
                 </div>
             </ul>
         </div>
@@ -499,6 +680,94 @@
             alert(response.message || '모브 예치금 조회에 실패했습니다.');
         }).always(function() {
             $button.prop('disabled', false).text('예치금 조회');
+        });
+    }
+
+    function syncMobeOrders() {
+        var $button = $('#sync-mobe-orders-btn');
+        $button.prop('disabled', true).text('모브 구매내역 갱신 중...');
+
+        $.ajax({
+            url: '/admin/order/mobe_orders/sync',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                max_pages: 2,
+                refresh_recent_days: 30
+            }
+        }).done(function(response) {
+            if (!(response && response.success)) {
+                alert((response && response.message) || '모브 구매내역 데이터 갱신에 실패했습니다.');
+                return;
+            }
+            alert(response.message || '모브 구매내역 데이터 갱신이 완료되었습니다.');
+        }).fail(function(xhr) {
+            var response = xhr.responseJSON || {};
+            alert(response.message || '모브 구매내역 데이터 갱신에 실패했습니다.');
+        }).always(function() {
+            $button.prop('disabled', false).text('STEP 2 : 모브 구매내역 데이터 갱신');
+        });
+    }
+
+    function matchMobeOrders() {
+        var $button = $('#match-mobe-orders-btn');
+        var orderGoodsSnos = [];
+        var usedOrderGoodsSnoMap = {};
+        var orderedAtStart = '';
+        $('.table-st1 tbody').find('tr').each(function() {
+            var $row = $(this);
+            var paymentDateText = $.trim(String($row.data('payment-dt') || ''));
+            var paymentDate = paymentDateText.slice(0, 10);
+            if (/^\d{4}-\d{2}-\d{2}$/.test(paymentDate) && (orderedAtStart === '' || paymentDate < orderedAtStart)) {
+                orderedAtStart = paymentDate;
+            }
+            if (!$row.find('.order-save-label-saved').length) {
+                return;
+            }
+            var orderGoodsSno = $.trim(String($row.data('order-goods-sno') || ''));
+            if (orderGoodsSno && !usedOrderGoodsSnoMap[orderGoodsSno]) {
+                usedOrderGoodsSnoMap[orderGoodsSno] = true;
+                orderGoodsSnos.push(orderGoodsSno);
+            }
+        });
+        if (!orderGoodsSnos.length) {
+            alert('저장된 주문상품이 없습니다.');
+            return;
+        }
+        if (!orderedAtStart) {
+            alert('조회 목록에서 결제일을 찾을 수 없습니다.');
+            return;
+        }
+
+        $button.prop('disabled', true).text('모브 구매내역 매칭 중...');
+
+        $.ajax({
+            url: '/admin/order/mobe_orders/match',
+            type: 'POST',
+            dataType: 'json',
+            data: {
+                ordered_at_start: orderedAtStart,
+                order_goods_snos: orderGoodsSnos
+            }
+        }).done(function(response) {
+            if (!(response && response.success)) {
+                alert((response && response.message) || '모브 구매내역 매칭에 실패했습니다.');
+                return;
+            }
+
+            var result = response.data || {};
+            alert(
+                (response.message || '모브 구매내역 매칭이 완료되었습니다.')
+                + '\n매칭: ' + Number(result.matched_count || 0) + '건'
+                + '\n공급사배송완료 변경: ' + Number(result.shipping_completed_count || 0) + '건'
+                + '\n미매칭: ' + Number(result.unmatched_count || 0) + '건'
+            );
+            location.reload();
+        }).fail(function(xhr) {
+            var response = xhr.responseJSON || {};
+            alert(response.message || '모브 구매내역 매칭에 실패했습니다.');
+        }).always(function() {
+            $button.prop('disabled', false).text('STEP 3 : 모브 구매내역 매칭하기');
         });
     }
 
@@ -609,6 +878,120 @@
         var originalRows = $orderTableBody.find('tr').toArray();
         var tableColumnCount = $('.table-st1 thead th').length || 20;
 
+        function collectInspectionTargets($scope) {
+            var targets = [];
+            var usedPrdIdxMap = {};
+
+            $scope.find('.partner-match-card').each(function() {
+                var $card = $(this);
+                var prdIdx = $.trim(String($card.data('prd-idx') || ''));
+                var supplierPrdPk = $.trim(String($card.data('supplier-prd-pk') || ''));
+                var godoGoodsNo = $.trim(String($card.data('godo-goods-no') || ''));
+
+                // 같은 위탁상품이 여러 주문에 포함된 경우 한 번만 갱신한다.
+                if (!prdIdx || !supplierPrdPk || !godoGoodsNo || usedPrdIdxMap[prdIdx]) {
+                    return;
+                }
+
+                usedPrdIdxMap[prdIdx] = true;
+                targets.push({
+                    prd_idx: prdIdx,
+                    supplier_prd_pk: supplierPrdPk,
+                    godo_goods_no: godoGoodsNo
+                });
+            });
+
+            return targets;
+        }
+
+        function requestSupplierProductInspection(target) {
+            return $.ajax({
+                url: '/admin/provider_product/action',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action_mode: 'update_supplier_product_detail',
+                    prd_idx: target.prd_idx,
+                    supplier_prd_pk: target.supplier_prd_pk
+                }
+            }).then(function(response) {
+                if (response && response.status === 'success') {
+                    return response;
+                }
+                return $.Deferred().reject((response && response.message) || '공급사 상품 검수 실패').promise();
+            });
+        }
+
+        function requestGodoGoodsInspection(target) {
+            return $.ajax({
+                url: '/router/loadGodoGoodsInfo/',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    prd_idx: target.prd_idx,
+                    godo_goodsNo: target.godo_goods_no
+                }
+            }).then(function(response) {
+                if (response && response.status === 'success') {
+                    return response;
+                }
+                return $.Deferred().reject((response && response.message) || '고도몰 상품 정보 갱신 실패').promise();
+            });
+        }
+
+        function markInspectionPassed(prdIdx) {
+            $('.data-inspection-status').filter(function() {
+                return String($(this).data('prd-idx') || '') === String(prdIdx || '');
+            }).html('<span style="color:#198754; font-weight:bold;">정상</span>');
+        }
+
+        function runProductInspection(targets, $button, buttonText) {
+            if (!targets.length) {
+                alert('검수할 매칭 위탁상품이 없습니다.');
+                return;
+            }
+
+            var index = 0;
+            var successCount = 0;
+            var failCount = 0;
+            $button.prop('disabled', true);
+
+            var runNext = function() {
+                if (index >= targets.length) {
+                    $button.prop('disabled', false).text(buttonText);
+                    alert('상품 검수 완료 (성공 ' + successCount + '건, 실패 ' + failCount + '건)');
+                    return;
+                }
+
+                var target = targets[index++];
+                $button.text('검수 중... ' + index + '/' + targets.length);
+
+                // 할인상품 검수와 동일하게 크롤링 실패 후에도 고도몰 적재를 시도한다.
+                requestSupplierProductInspection(target)
+                    .done(function() {
+                        requestGodoGoodsInspection(target)
+                            .done(function() {
+                                successCount++;
+                                markInspectionPassed(target.prd_idx);
+                            })
+                            .fail(function() {
+                                failCount++;
+                            })
+                            .always(function() {
+                                setTimeout(runNext, 200);
+                            });
+                    })
+                    .fail(function() {
+                        failCount++;
+                        requestGodoGoodsInspection(target).always(function() {
+                            setTimeout(runNext, 200);
+                        });
+                    });
+            };
+
+            runNext();
+        }
+
         function normalizeGroupLabel(rawText, fallbackText) {
             var value = $.trim(String(rawText || ''));
             return value !== '' ? value : fallbackText;
@@ -670,7 +1053,9 @@
 
                 var subtotalText = '주문가 : ' + group.subtotal.toLocaleString('ko-KR') + ' 원';
                 var $subtotalRow = $('<tr class="supplier-group-subtotal-row"><td colspan="' + tableColumnCount + '"></td></tr>');
-                $subtotalRow.find('td').text(subtotalText);
+                $subtotalRow.find('td')
+                    .append(document.createTextNode(subtotalText + ' '))
+                    .append($('<button type="button" class="btnstyle1 btnstyle1-xs inspect-supplier-group-btn">이 공급사 상품 검수</button>'));
                 $orderTableBody.append($subtotalRow);
             });
         }
@@ -687,6 +1072,36 @@
                 return;
             }
             renderDefaultRows();
+        });
+
+        renderSupplierGroupedRows();
+
+        $('#inspect-all-products-btn').on('click', function() {
+            runProductInspection(
+                collectInspectionTargets($orderTableBody),
+                $(this),
+                '전체 상품 검수'
+            );
+        });
+
+        $('#sync-mobe-orders-btn').on('click', function() {
+            syncMobeOrders();
+        });
+
+        $('#match-mobe-orders-btn').on('click', function() {
+            matchMobeOrders();
+        });
+
+        $orderTableBody.on('click', '.inspect-supplier-group-btn', function() {
+            var $button = $(this);
+            var $groupRows = $button.closest('tr').prevUntil('.supplier-group-title-row').filter(function() {
+                return !$(this).hasClass('supplier-group-subtotal-row');
+            });
+            runProductInspection(
+                collectInspectionTargets($groupRows),
+                $button,
+                '이 공급사 상품 검수'
+            );
         });
 
         $('#search_btn').on('click', function() {

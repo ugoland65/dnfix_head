@@ -227,4 +227,47 @@ class ProductSupplierPyApiService
             'available_deposit' => (int)($responseData['available_deposit'] ?? 0),
         ];
     }
+
+    
+    /**
+     * 모브 주문을 수집하고 최근 주문 상태를 갱신한다.
+     *
+     * @param array $data max_pages, refresh_recent_days
+     * @return array 수집 페이지 수, 신규/갱신 주문 수, 상세 요청 수를 포함한 API 응답
+     */
+    public function syncMobeOrders($data = [])
+    {
+        $maxPages = (int)($data['max_pages'] ?? 2);
+        $refreshRecentDays = (int)($data['refresh_recent_days'] ?? 30);
+
+        if ($maxPages < 1) {
+            throw new \InvalidArgumentException('max_pages는 1 이상이어야 합니다.');
+        }
+        if ($refreshRecentDays < 0) {
+            throw new \InvalidArgumentException('refresh_recent_days는 0 이상이어야 합니다.');
+        }
+
+        $url = $this->domain . '/mobe/orders/sync';
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-API-Key: ' . $this->apiKey,
+        ];
+        $payload = [
+            'max_pages' => $maxPages,
+            'refresh_recent_days' => $refreshRecentDays,
+        ];
+
+        $response = HttpClient::postData($url, $payload, $headers);
+        $responseData = json_decode($response, true);
+
+        if (!is_array($responseData) || empty($responseData['success'])) {
+            $message = is_array($responseData)
+                ? (string)($responseData['message'] ?? '모브 주문 동기화에 실패했습니다.')
+                : '모브 주문 동기화 API 응답 파싱에 실패했습니다.';
+            throw new \Exception($message);
+        }
+
+        return $responseData;
+    }
 }

@@ -289,5 +289,35 @@ class ProductPartnerApiService
 
     }
 
+    /**
+     * 모브 구매내역을 조회한다.
+     *
+     * @param array $data 조회 조건 API payload
+     * @return array
+     */
+    public function getMobeOrders($data = [])
+    {
+        $url = $this->domain . '/api/MobeOrder';
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-API-KEY: ' . $this->apiKey,
+        ];
+
+        $response = HttpClient::postData($url, (array)$data, $headers);
+        $responseData = json_decode($response, true);
+
+        if (!is_array($responseData)) {
+            throw new \Exception('모브 구매내역 API 응답 파싱에 실패했습니다.');
+        }
+
+        $statusCode = (int)($responseData['status_code'] ?? $responseData['status'] ?? 0);
+        if ($statusCode === 401) {
+            throw new \Exception('모브 구매내역 API 인증에 실패했습니다.');
+        }
+
+        return $responseData;
+    }
+
 
 }
