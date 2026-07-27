@@ -55,6 +55,42 @@
         right: 16px;
         z-index: 10000;
     }
+    .product-section-nav {
+        position: fixed;
+        top: 75px;
+        left: calc(50% + 100px);
+        z-index: 1001;
+        max-width: calc(100vw - 32px);
+        transform: translateX(-50%);
+        padding: 5px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    }
+    .product-section-nav-list {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+    .product-section-nav-button {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+    .product-section-nav-button:hover,
+    .product-section-nav-button.is-active {
+        background: #2563eb;
+        color: #fff;
+    }
 
 </style>
 <?php
@@ -83,6 +119,19 @@
         $productData['cd_hbti_data'] = [];
     }
 ?>
+
+<nav id="product_section_nav" class="product-section-nav" aria-label="상품 상세 섹션 바로가기">
+    <div class="product-section-nav-list">
+        <button type="button" class="product-section-nav-button is-active" data-section-target="product-basic-section">기본정보</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-reference-section">참고자료</button>
+        <button type="button" class="product-section-nav-button" data-section-target="hbti-section-title">HBTI</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-godo-section">고도몰</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-site-section">사이트</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-detail-section">상세정보</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-stock-section">재고/주문</button>
+    </div>
+</nav>
+
 <form name='prd_form' id='prd_form' method='post' enctype="multipart/form-data" autocomplete="off">
 
     <input type="hidden" name="idx" value="<?= $productData['CD_IDX'] ?? '' ?>">
@@ -93,7 +142,7 @@
             <col width="150px" />
             <col />
         </colgroup>
-        <tr>
+        <tr id="product-basic-section">
             <td colspan="2" class="none-bg title">
                 <h1>상품 기본정보</h1>
             </td>
@@ -228,7 +277,7 @@
                         <select name="cd_kind_code">
                             <option value=''>상품 구분 선택</option>
                             <?php foreach ($prd_kind_name as $key => $kind) { ?>
-                                <option value="<?= $key ?>" <?php if ($productData['CD_KIND_CODE'] == $key) echo "selected"; ?>><?= $kind ?></option>
+                                <option value="<?= $key ?>" <?php if ( $productData['CD_KIND_CODE'] == $key) echo "selected"; ?>><?= $kind ?></option>
                             <?php } ?>
                         </select>
                         <input type="hidden" name="cd_category_code" id="cd_category_code" value="<?= htmlspecialchars($selectedCategoryCode, ENT_QUOTES, 'UTF-8') ?>">
@@ -238,6 +287,24 @@
                             </select>
                         </div>
                     </div>
+
+                    <div id="onahole-second-category-guide" style="<?= ($selectedKindCode === 'ONAHOLE' && $selectedSecondKindKey === '') ? '' : 'display:none;' ?>">
+                        <h3>오나홀 2차 카테고리</h3>
+                        <ul>
+                            콤팩트 - 100g 이하<br>
+                            핸디형 S  - ( 100~299g )<br>
+                            핸디형 M - ( 300~650g )<br>
+                            핸디형 L - ( 650g 이상 ~ 1kg )<br>
+                            중/대형 - ( 1kg 이상 )<br>
+                            전동/자동형<br>
+                            페라형<br>
+                            컵홀형<br>
+                            바닥오나<br>
+                            신체/페티쉬<br>
+                            면타입<br>
+                        </ul>
+                    </div>
+
                 </td>
             </tr>
             <tr>
@@ -608,7 +675,7 @@
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
-            <tr>
+            <tr id="product-reference-section">
                 <td colspan="2" class="none-bg title">
                     <h1>참고자료</h1>
                 </td>
@@ -771,7 +838,7 @@
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
-            <tr>
+            <tr id="product-godo-section">
                 <td colspan="2" class="none-bg title">
                     <h1>고도몰</h1>
                 </td>
@@ -825,7 +892,7 @@
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
-            <tr>
+            <tr id="product-site-section">
                 <td colspan="2" class="none-bg title">
                     <h1>사이트 (오나디비)</h1>
                 </td>
@@ -864,7 +931,7 @@
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
-            <tr>
+            <tr id="product-detail-section">
                 <td colspan="2" class="none-bg title">
                     <h1>상품 상세정보</h1>
                 </td>
@@ -1180,7 +1247,7 @@
             <tr>
                 <td colspan="2" class="none-bg" style="height:10px;"></td>
             </tr>
-            <tr>
+            <tr id="product-stock-section">
                 <td colspan="2" class="none-bg title">
                     <h1>재고/주문 정보</h1>
                 </td>
@@ -1561,6 +1628,7 @@
 
             $('#cd_category_code').val(categoryCode);
             toggleCdSpecFieldsByCategoryCode();
+            $('#onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
         }
 
         function toggleCdSpecFieldsByCategoryCode() {
@@ -1821,6 +1889,46 @@
                 $titleInput.val(domainLabel);
             }
         });
+
+        var $productSectionNav = $('#product_section_nav');
+        var $productSectionNavButtons = $productSectionNav.find('.product-section-nav-button');
+        var updateProductSectionNav = function() {
+            var scrollPosition = $(window).scrollTop() + $productSectionNav.outerHeight() + 24;
+            var $activeButton = null;
+
+            $productSectionNavButtons.each(function() {
+                var $button = $(this);
+                var $section = $('#' + $button.data('section-target'));
+                var isVisible = $section.length && $section.is(':visible');
+                $button.toggle(isVisible);
+
+                if (isVisible && $section.offset().top <= scrollPosition) {
+                    $activeButton = $button;
+                }
+            });
+
+            if ($activeButton) {
+                $productSectionNavButtons.removeClass('is-active').removeAttr('aria-current');
+                $activeButton.addClass('is-active').attr('aria-current', 'page');
+            }
+        };
+
+        $productSectionNavButtons.on('click', function() {
+            var $button = $(this);
+            var $section = $('#' + $button.data('section-target'));
+            if (!$section.length || !$section.is(':visible')) {
+                return;
+            }
+
+            $('html, body').stop(true).animate({
+                scrollTop: Math.max(0, $section.offset().top - $productSectionNav.outerHeight() - 40)
+            }, 250);
+        });
+
+        $(window).off('scroll.productSectionNav resize.productSectionNav')
+            .on('scroll.productSectionNav resize.productSectionNav', updateProductSectionNav);
+        $kindCodeSelect.on('change.productSectionNav', updateProductSectionNav);
+        updateProductSectionNav();
 
         const $imagePreviewModal = $('#prd_image_preview_modal');
         const $imagePreviewTarget = $('#prd_image_preview_target');

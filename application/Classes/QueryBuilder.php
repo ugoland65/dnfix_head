@@ -1173,7 +1173,8 @@ class QueryBuilder
                 case 'nested':
                     // 중첩 쿼리 처리
                     $nestedQuery = $where['query'];
-                    $nestedParams = [];
+                    // 부모 쿼리의 바인딩을 이어받아 파라미터 이름 충돌을 방지한다.
+                    $nestedParams = $params;
                     $nestedWhere = $nestedQuery->buildWhereClause($nestedParams);
                     
                     // WHERE 키워드 제거
@@ -1189,16 +1190,9 @@ class QueryBuilder
                         $clauses[] = "($nestedWhere)";
                     }
                     
-                    // 중첩 파라미터를 메인 파라미터 배열에 병합
-                    foreach ($nestedParams as $key => $value) {
-                        if (is_int($key)) {
-                            // 위치 기반 바인딩
-                            $params[] = $value;
-                        } else {
-                            // 이름 기반 바인딩
-                            $params[$key] = $value;
-                        }
-                    }
+                    // 중첩 쿼리가 부모 바인딩을 포함한 상태로 추가한 값을 유지한다.
+                    $params = $nestedParams;
+                    $paramIndex = count($params);
                     break;
 
                 case 'exists':

@@ -170,27 +170,29 @@ class ProductService extends BaseClass
 
         // 브랜드 검색
         if( $s_brand ){
-            $query->where('A.CD_BRAND_IDX', $s_brand)
-                ->orWhere('A.CD_BRAND2_IDX', $s_brand);
+            $query->where(function ($query) use ($s_brand) {
+                $query->where('A.CD_BRAND_IDX', $s_brand)
+                    ->orWhere('A.CD_BRAND2_IDX', $s_brand);
+            });
         }
 
-        if ($since) {
+        if ( $since ) {
             $query->where('D.updated_at', '>=', $since);
         }
 
         // 검색어 처리
         if( $search_value ){
             $query->where(function($query) use ($search_value) {
-                $query->whereRaw("INSTR(LOWER(A.CD_NAME), LOWER(?))", [$search_value])
-                    ->orWhereRaw("INSTR(replace(A.CD_NAME,' ',''), LOWER(?))", [$search_value])
-                    ->orWhereRaw("INSTR(LOWER(A.CD_NAME_OG), LOWER(?))", [$search_value])
-                    ->orWhereRaw("INSTR(LOWER(A.CD_SEARCH_TERM), LOWER(?))", [$search_value])
-                    ->orWhereRaw("INSTR(A.cd_code_fn, ?)", [$search_value]);
+                $query->whereRaw("INSTR(LOWER(A.CD_NAME), LOWER(:search_value))", ['search_value' => $search_value])
+                    ->orWhereRaw("INSTR(replace(A.CD_NAME,' ',''), LOWER(:search_value))", ['search_value' => $search_value])
+                    ->orWhereRaw("INSTR(LOWER(A.CD_NAME_OG), LOWER(:search_value))", ['search_value' => $search_value])
+                    ->orWhereRaw("INSTR(LOWER(A.CD_SEARCH_TERM), LOWER(:search_value))", ['search_value' => $search_value])
+                    ->orWhereRaw("INSTR(A.cd_code_fn, :search_value)", ['search_value' => $search_value]);
             });
         }
 
         // 상품 종류 검색
-        if ($s_prd_kind) {
+        if ( $s_prd_kind ) {
             $query->where('A.CD_KIND_CODE', $s_prd_kind);
         }
         if (!empty($s_prd_kind_second)) {
@@ -2879,15 +2881,59 @@ class ProductService extends BaseClass
         $competitorSite = trim((string)($postData['competitor_site'] ?? ''));
         $competitorPrdPk = (int)($postData['competitor_prd_pk'] ?? 0);
         $competitorPrice = (int)str_replace(',', '', trim((string)($postData['competitor_price'] ?? '0')));
-        if ($competitorSite === '' || $competitorPrdPk <= 0 || $competitorPrice !== $salePrice) {
+        $competitorFinalPrice = (int)str_replace(',', '', trim((string)($postData['competitor_final_price'] ?? '0')));
+        $priceAdjustmentType = trim((string)($postData['price_adjustment_type'] ?? 'final'));
+        if (!in_array($priceAdjustmentType, ['sale', 'final'], true)) {
+            throw new Exception('가격 조정 방식이 올바르지 않습니다.');
+        }
+        if ($competitorSite === '' || $competitorPrdPk <= 0 || $competitorPrice <= 0) {
             throw new Exception('가격 조정 기준 경쟁사 상품 정보가 올바르지 않습니다.');
         }
+
+        if ($competitorFinalPrice > 0) {
+            $competitorConfig = config('admin.competitor');
+            $competitorSiteData = $competitorConfig['competitor_data'][$competitorSite] ?? [];
+            if (!is_array($competitorSiteData)) {
+                throw new Exception('경쟁사 배송비 설정을 찾을 수 없습니다.');
+            }
+
+            $shippingMethod = trim((string)($competitorSiteData['shipping_method'] ?? ''));
+            $shippingFee = (int)($competitorSiteData['shipping_fee'] ?? 0);
+            $freeShippingThreshold = (int)($competitorSiteData['free_shipping_threshold'] ?? 0);
+            $expectedCompetitorFinalPrice = $competitorPrice;
+            if ($shippingMethod !== '금액별무료배송'
+                || $freeShippingThreshold <= 0
+                || $competitorPrice < $freeShippingThreshold
+            ) {
+                $expectedCompetitorFinalPrice += $shippingFee;
+            }
+
+            $expectedSalePrice = $expectedCompetitorFinalPrice > 30000
+                ? $expectedCompetitorFinalPrice
+                : $expectedCompetitorFinalPrice - 2500;
+
+            if ($competitorFinalPrice !== $expectedCompetitorFinalPrice) {
+                throw new Exception('경쟁사 최종가 정보가 올바르지 않습니다.');
+            }
+            if ($priceAdjustmentType === 'final' && $salePrice !== $expectedSalePrice) {
+                throw new Exception('경쟁사 최종가 기준 조정 판매가 정보가 올바르지 않습니다.');
+            }
+        }
+
+        if ($priceAdjustmentType === 'sale' && $competitorPrice !== $salePrice) {
+            throw new Exception('경쟁사 판매가 기준 조정 판매가 정보가 올바르지 않습니다.');
+        }
+        if ($competitorFinalPrice <= 0 && $competitorPrice !== $salePrice) {
+            throw new Exception('가격 조정 기준 경쟁사 상품 정보가 올바르지 않습니다.');
+        }
+
         $competitorReference = [
             'site' => $competitorSite,
             'site_name' => trim((string)($postData['competitor_site_name'] ?? '')),
             'prd_pk' => $competitorPrdPk,
             'name' => trim((string)($postData['competitor_name'] ?? '')),
             'price' => $competitorPrice,
+            'final_price' => $competitorFinalPrice > 0 ? $competitorFinalPrice : $competitorPrice,
             'detail_url' => trim((string)($postData['competitor_detail_url'] ?? '')),
         ];
 
@@ -3847,6 +3893,7 @@ class ProductService extends BaseClass
             ->select([
                 'A.CD_IDX',
                 'A.CD_KIND_CODE',
+                'A.CD_CATEGORY_CODE',
                 'A.CD_NAME',
                 'A.CD_IMG',
                 'A.CD_CODE',
@@ -3861,20 +3908,29 @@ class ProductService extends BaseClass
                 'C.BD_NAME',
             ])
             ->first();
+            
         $product = $productRow ? $productRow->toArray() : [];
         if (empty($product)) {
             throw new Exception('상품 정보를 찾을 수 없습니다.');
         }
 
         $resolvedPsIdx = $psIdx > 0 ? $psIdx : (int)($product['ps_idx'] ?? 0);
+        $godoCode = trim((string)($product['cd_godo_code'] ?? ''));
         $godoApiErrorMessage = '';
         $godoGoods = [];
         $godoApiStartAt = microtime(true);
 
-        if ($resolvedPsIdx > 0) {
+        if ($godoCode !== '' || $resolvedPsIdx > 0) {
             try {
                 $godoApiService = new GodoApiService();
-                $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                if ($godoCode !== '') {
+                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, 'Y');
+                    $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
+                        ? $godoGoodsResponse['data']
+                        : $godoGoodsResponse;
+                } else {
+                    $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                }
                 if (!is_array($godoGoodsRows)) {
                     $godoGoodsRows = [];
                 }
@@ -3882,8 +3938,11 @@ class ProductService extends BaseClass
                     if (!is_array($godoRow)) {
                         continue;
                     }
-                    $goodsCd = trim((string)($godoRow['goodsCd'] ?? ''));
-                    if ($goodsCd === (string)$resolvedPsIdx) {
+                    $matchedValue = $godoCode !== ''
+                        ? trim((string)($godoRow['goodsNo'] ?? ''))
+                        : trim((string)($godoRow['goodsCd'] ?? ''));
+                    $expectedValue = $godoCode !== '' ? $godoCode : (string)$resolvedPsIdx;
+                    if ($matchedValue === $expectedValue) {
                         $godoGoods = $godoRow;
                         break;
                     }
@@ -3925,6 +3984,7 @@ class ProductService extends BaseClass
             'qty' => 0,
             'is_false' => false,
             'cd_kind_code' => trim((string)($product['CD_KIND_CODE'] ?? '')),
+            'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
             'brand_name' => (string)($product['BD_NAME'] ?? ''),
             'name' => (string)($product['CD_NAME'] ?? ''),
             'barcode' => (string)($product['CD_CODE'] ?? ''),

@@ -48,6 +48,24 @@
         ];
     };
 
+    $getCompetitorFinalPrice = function (array $row) use ($competitor_data): int {
+        $salePrice = (int)($row['price'] ?? 0);
+        $siteCode = trim((string)($row['site'] ?? ''));
+        $siteData = $competitor_data[$siteCode] ?? [];
+        if (!is_array($siteData)) {
+            return $salePrice;
+        }
+
+        $shippingMethod = trim((string)($siteData['shipping_method'] ?? ''));
+        $shippingFee = (int)($siteData['shipping_fee'] ?? 0);
+        $freeShippingThreshold = (int)($siteData['free_shipping_threshold'] ?? 0);
+        $isFreeShipping = $shippingMethod === '금액별무료배송'
+            && $freeShippingThreshold > 0
+            && $salePrice >= $freeShippingThreshold;
+
+        return $isFreeShipping ? $salePrice : $salePrice + $shippingFee;
+    };
+
     $minPrice = null;
     $maxPrice = null;
     if (!empty($rows) && is_array($rows)) {
@@ -55,12 +73,12 @@
             if (!is_array($row)) {
                 continue;
             }
-            $rowPrice = (int)($row['price'] ?? 0);
-            if ($minPrice === null || $rowPrice < $minPrice) {
-                $minPrice = $rowPrice;
+            $rowFinalPrice = $getCompetitorFinalPrice($row);
+            if ($minPrice === null || $rowFinalPrice < $minPrice) {
+                $minPrice = $rowFinalPrice;
             }
-            if ($maxPrice === null || $rowPrice > $maxPrice) {
-                $maxPrice = $rowPrice;
+            if ($maxPrice === null || $rowFinalPrice > $maxPrice) {
+                $maxPrice = $rowFinalPrice;
             }
         }
     }
@@ -72,10 +90,14 @@
     }
 
     $currentMarginInfo = $calculateMarginInfo($ourSalePrice, $ourCostPrice, $deliveryFee);
-    $adjustedSalePrice = $minPrice;
+    $ourFinalPrice = $ourSalePrice > 30000 ? $ourSalePrice : $ourSalePrice + 2500;
+    $adjustedFinalPrice = $minPrice;
+    $adjustedSalePrice = $adjustedFinalPrice > 30000
+        ? $adjustedFinalPrice
+        : max(0, $adjustedFinalPrice - 2500);
     $adjustedMarginInfo = $calculateMarginInfo($adjustedSalePrice, $ourCostPrice, $deliveryFee);
 
-    $priceDiff = $ourSalePrice - $minPrice;
+    $priceDiff = $ourFinalPrice - $adjustedFinalPrice;
     $priceDiffColor = '#111827';
     $priceDiffText = '동일';
     if ($priceDiff > 0) {
@@ -123,6 +145,10 @@
         background: #fff;
         padding: 6px 8px;
         font-size: 12px;
+        b{
+            font-size: 15px;
+            font-weight: 700;
+        }
     }
     .competitor-adjust-box {
         margin-top: 10px;
@@ -140,13 +166,13 @@
         <div class="competitor-report-chip">책정원가 : <b><?= number_format($ourCostPrice) ?></b> 원</div>
         <div class="competitor-report-chip">마진율 : <b><?= number_format((float)($currentMarginInfo['margin_rate'] ?? 0), 2) ?></b> %</div>
         <div class="competitor-report-chip">마진그룹 : <b><?= htmlspecialchars(($ourMarginGrade !== '' ? $ourMarginGrade : '-'), ENT_QUOTES, 'UTF-8') ?></b></div>
-        <div class="competitor-report-chip">최저가 : <b><?= number_format($minPrice) ?></b> 원</div>
-        <div class="competitor-report-chip">최고가 : <b><?= number_format($maxPrice) ?></b> 원</div>
+        <div class="competitor-report-chip">최저 최종가 : <b><?= number_format($minPrice) ?></b> 원</div>
+        <div class="competitor-report-chip">최고 최종가 : <b><?= number_format($maxPrice) ?></b> 원</div>
     </div>
 
     <div class="competitor-adjust-box">
         <b>가격조정 (최저가 기준)</b><br>
-        가격차이 :
+        최종가격차이 :
         <span style="color:<?= $priceDiffColor ?>;">
             <b><?php if ($priceDiff > 0) { ?>+<?php } ?><?= number_format($priceDiff) ?></b>
         </span>
@@ -173,6 +199,7 @@
                 <th style="width:70px;">이미지</th>
                 <th>상품명</th>
                 <th style="width:110px;">판매가</th>
+                <th style="width:110px;">최종가</th>
                 <th style="width:110px;">조정가</th>
                 <th style="width:130px;">수정일</th>
                 
@@ -210,9 +237,10 @@
                         <td class="text-right">
                             <?php
                                 $rowPrice = (int)($row['price'] ?? 0);
-                                $isMinPrice = ($rowPrice === (int)$minPrice);
-                                $isMaxPrice = ($rowPrice === (int)$maxPrice);
-                                $isSameAsOurPrice = ($rowPrice === (int)$ourSalePrice);
+                                $rowFinalPrice = $getCompetitorFinalPrice($row);
+                                $isMinPrice = ($rowFinalPrice === (int)$minPrice);
+                                $isMaxPrice = ($rowFinalPrice === (int)$maxPrice);
+                                $isSameAsOurPrice = ($rowFinalPrice === (int)$ourFinalPrice);
                             ?>
                             <?php if ($isMinPrice || $isMaxPrice || $isSameAsOurPrice) { ?>
                                 <div style="margin-bottom:2px;">
@@ -228,10 +256,56 @@
                                 </div>
                             <?php } ?>
                             <b><?= number_format($rowPrice) ?></b>
+
+                            <?php if (!empty($productData['cd_godo_code'])) { ?>
+                                <div class="m-t-5">
+                                    <button
+                                        type="button"
+                                        class="btnstyle1 btnstyle1-xs product-competitor-adjust-price-btn"
+                                        data-prd-idx="<?= $productIdx ?>"
+                                        data-price-adjustment-type="sale"
+                                        data-adjusted-sale-price="<?= (int)$rowPrice ?>"
+                                        data-cost-price="<?= (int)$ourCostPrice ?>"
+                                        data-godo-code="<?= htmlspecialchars((string)($productData['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-competitor-site="<?= htmlspecialchars((string)($row['site'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-competitor-site-name="<?= htmlspecialchars($rowSiteName, ENT_QUOTES, 'UTF-8') ?>"
+                                        data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
+                                        data-competitor-name="<?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-competitor-price="<?= (int)$rowPrice ?>"
+                                        data-competitor-final-price="<?= (int)$rowFinalPrice ?>"
+                                        data-competitor-detail-url="<?= htmlspecialchars((string)($row['detail_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                                        판매가로 맞춤
+                                    </button>
+                                </div>
+                            <?php } ?>
+
                         </td>
                         <td class="text-right">
                             <?php
-                                $rowPriceDiff = $ourSalePrice - $rowPrice;
+                                $shippingMethod = is_array($rowSiteInfo) ? (string)($rowSiteInfo['shipping_method'] ?? '') : '';
+                                $shippingFee = is_array($rowSiteInfo) ? (int)($rowSiteInfo['shipping_fee'] ?? 0) : 0;
+                                $freeShippingThreshold = is_array($rowSiteInfo) ? (int)($rowSiteInfo['free_shipping_threshold'] ?? 0) : 0;
+                                $isFreeShipping = $shippingMethod === '금액별무료배송'
+                                    && $freeShippingThreshold > 0
+                                    && $rowPrice >= $freeShippingThreshold;
+                                $rowFinalPrice = $isFreeShipping
+                                    ? $rowPrice
+                                    : $rowPrice + $shippingFee;
+                            ?>
+                            <?php if ($isFreeShipping) { ?>
+                                <span style="display:inline-block; padding:1px 5px; border-radius:10px; background:#16a34a; color:#fff; font-size:11px;">무료배송</span><br>
+                            <?php } elseif ($shippingFee > 0) { ?>
+                                <span style="font-size:11px; color:#6b7280;">배송비</span> <b><?= number_format($shippingFee) ?></b>원<br>
+                            <?php } else { ?>
+                                <span style="font-size:11px; color:#6b7280;">배송비</span> <b>-</b><br>
+                            <?php } ?>
+                            <div class="m-t-5">
+                                <b style="font-size:14px;"><?= number_format($rowFinalPrice) ?></b>원
+                            </div>
+                        </td>
+                        <td class="text-right">
+                            <?php
+                                $rowPriceDiff = $ourFinalPrice - $rowFinalPrice;
                                 $rowPriceDiffColor = '#111827';
                                 $rowPriceDiffText = '동일';
                                 if ($rowPriceDiff > 0) {
@@ -242,7 +316,9 @@
                                     $rowPriceDiffText = '낮음';
                                 }
 
-                                $rowAdjustedSalePrice = $rowPrice;
+                                $rowAdjustedSalePrice = $rowFinalPrice > 30000
+                                    ? $rowFinalPrice
+                                    : max(0, $rowFinalPrice - 2500);
                                 $rowAdjustmentAmount = $rowAdjustedSalePrice - $ourSalePrice;
                                 $rowAdjustmentColor = '#111827';
                                 if ($rowAdjustmentAmount < 0) {
@@ -252,8 +328,8 @@
                                 }
                                 $rowAdjustedMarginInfo = $calculateMarginInfo($rowAdjustedSalePrice, $ourCostPrice, $deliveryFee);
                             ?>
-                            <?php if ($ourCostPrice > 0 && $rowPrice > 0) { ?>
-                                가격차이 :
+                            <?php if ($ourCostPrice > 0 && $rowFinalPrice > 0) { ?>
+                                최종가격차이 :
                                 <span style="color:<?= $rowPriceDiffColor ?>;">
                                     <b><?php if ($rowPriceDiff > 0) { ?>+<?php } ?><?= number_format($rowPriceDiff) ?></b>
                                 </span>
@@ -263,10 +339,12 @@
                                     <b style="color:<?= $rowAdjustmentColor ?>;"><?= number_format($rowAdjustedSalePrice) ?></b>
                                     (<span><?php if ($rowAdjustmentAmount > 0) { ?>+<?php } ?><?= number_format($rowAdjustmentAmount) ?></span>)<br>
                                     <?php if (!empty($productData['cd_godo_code'])) { ?>
+
                                         <button
                                             type="button"
                                             class="btnstyle1 btnstyle1-danger btnstyle1-xs product-competitor-adjust-price-btn"
                                             data-prd-idx="<?= $productIdx ?>"
+                                        data-price-adjustment-type="final"
                                             data-adjusted-sale-price="<?= (int)$rowAdjustedSalePrice ?>"
                                             data-cost-price="<?= (int)$ourCostPrice ?>"
                                             data-godo-code="<?= htmlspecialchars((string)($productData['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
@@ -275,8 +353,9 @@
                                             data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
                                             data-competitor-name="<?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                             data-competitor-price="<?= (int)$rowPrice ?>"
+                                            data-competitor-final-price="<?= (int)$rowFinalPrice ?>"
                                             data-competitor-detail-url="<?= htmlspecialchars((string)($row['detail_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
-                                            이가격으로 조정
+                                            최종가 ( <?= number_format($rowAdjustedSalePrice) ?> )로 맞춤
                                         </button><br>
                                     <?php } ?>
                                     마진금 <b><?= number_format((int)$currentMarginInfo['margin_amount']) ?></b> → <b><?= number_format((int)$rowAdjustedMarginInfo['margin_amount']) ?></b><br>
@@ -297,7 +376,7 @@
                 <?php } ?>
             <?php } else { ?>
                 <tr>
-                    <td colspan="7" class="text-center">매칭된 경쟁사 판매 데이터가 없습니다.</td>
+                    <td colspan="8" class="text-center">매칭된 경쟁사 판매 데이터가 없습니다.</td>
                 </tr>
             <?php } ?>
             </tbody>
@@ -310,6 +389,7 @@
         .on('click.productCompetitorAdjustPrice', '.product-competitor-adjust-price-btn', function() {
             var $btn = $(this);
             var prdIdx = Number($btn.data('prd-idx') || 0);
+            var priceAdjustmentType = String($btn.data('price-adjustment-type') || 'final').trim();
             var adjustedSalePrice = Number($btn.data('adjusted-sale-price') || 0);
             var costPrice = Number($btn.data('cost-price') || 0);
             var godoCode = String($btn.data('godo-code') || '').trim();
@@ -318,9 +398,10 @@
             var competitorPrdPk = Number($btn.data('competitor-prd-pk') || 0);
             var competitorName = String($btn.data('competitor-name') || '').trim();
             var competitorPrice = Number($btn.data('competitor-price') || 0);
+            var competitorFinalPrice = Number($btn.data('competitor-final-price') || 0);
             var competitorDetailUrl = String($btn.data('competitor-detail-url') || '').trim();
 
-            if (prdIdx <= 0 || adjustedSalePrice <= 0 || costPrice <= 0 || !godoCode || !competitorSite || competitorPrdPk <= 0) {
+            if (prdIdx <= 0 || adjustedSalePrice <= 0 || costPrice <= 0 || !godoCode || !competitorSite || competitorPrdPk <= 0 || competitorFinalPrice <= 0) {
                 alert('가격 조정에 필요한 상품, 경쟁사 기준가, 원가 또는 고도몰 상품코드 정보가 없습니다.');
                 return;
             }
@@ -339,6 +420,7 @@
                 dataType: 'json',
                 data: {
                     prd_idx: prdIdx,
+                    price_adjustment_type: priceAdjustmentType,
                     adjusted_sale_price: adjustedSalePrice,
                     cd_cost_price: costPrice,
                     cd_godo_code: godoCode,
@@ -347,6 +429,7 @@
                     competitor_prd_pk: competitorPrdPk,
                     competitor_name: competitorName,
                     competitor_price: competitorPrice,
+                    competitor_final_price: competitorFinalPrice,
                     competitor_detail_url: competitorDetailUrl
                 }
             }).done(function(res) {

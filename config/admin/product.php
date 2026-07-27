@@ -279,7 +279,62 @@ $categories = [
         'code' => '08000000',
         'key' => 'GEL',
         'name' => '윤활젤',
-        'children' => []
+        'children' => [
+            [
+                'code' => '08010000',
+                'key' => 'GEL_ONAHOLE',
+                'name' => '오나 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08020000',
+                'key' => 'GEL_BASIC',
+                'name' => '기본 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08030000',
+                'key' => 'GEL_WARMING',
+                'name' => '발열 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08040000',
+                'key' => 'GEL_MENTHOL',
+                'name' => '멘톨 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08050000',
+                'key' => 'GEL_SALIVA',
+                'name' => '타액 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08060000',
+                'key' => 'GEL_SCENTED',
+                'name' => '향기 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08070000',
+                'key' => 'GEL_ANAL',
+                'name' => '애널 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08080000',
+                'key' => 'GEL_CREAMY',
+                'name' => '백탁 윤활제',
+                'children' => []
+            ],
+            [
+                'code' => '08090000',
+                'key' => 'GEL_FUNCTIONAL_LOTION',
+                'name' => '기능성 로션',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '09000000',

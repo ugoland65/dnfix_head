@@ -2,9 +2,9 @@
 	<h1>경쟁사 상품DB</h1>
     <h3>경쟁사 사이트에서 크롤링(수집)된 상품입니다.</h3>
     <div class="m-l-10">
-<!--
+        <!--
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="competitorProductSyncBtn">상품 동기화</button>
--->
+        -->
     </div>
     <div id="head_write_btn">
 	</div>
@@ -105,6 +105,7 @@
                             <th>바로가기</th>
                             <th class="" style="width:300px;">상품명</th>
                             <th>판매가</th>
+                            <th>배송비</th>
                             <th>변경이력</th>
                             <th>수정일<br>등록일</th>
                             <th>판매가<br>변경일</th>
@@ -158,7 +159,7 @@
                                     바로가기
                                 </button>
                             </td>
-                            <td class="text-left" style="white-space: normal !important;">
+                            <td class="text-left" style="min-width:150px; white-space: normal !important;">
                                 <?php foreach (($row['event_tags_json'] ?? []) as $eventTag) { ?>
                                     <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:#dc2626; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php } ?>
@@ -189,6 +190,30 @@
                                     <?php endif; ?>
                                 </div>
                                 <b style="font-size:14px;"><?= number_format($salePrice) ?></b>
+                            </td>
+                            <td class="text-right">
+                                <?php
+                                    $shippingMethod = is_array($rowSiteInfo) ? (string)($rowSiteInfo['shipping_method'] ?? '') : '';
+                                    $shippingFee = is_array($rowSiteInfo) ? (int)($rowSiteInfo['shipping_fee'] ?? 0) : 0;
+                                    $freeShippingThreshold = is_array($rowSiteInfo) ? (int)($rowSiteInfo['free_shipping_threshold'] ?? 0) : 0;
+                                    $isFreeShipping = $shippingMethod === '금액별무료배송'
+                                        && $freeShippingThreshold > 0
+                                        && $salePrice >= $freeShippingThreshold;
+                                    $finalPrice = $isFreeShipping
+                                        ? $salePrice
+                                        : $salePrice + $shippingFee;
+                                ?>
+                                <?php if ($isFreeShipping) { ?>
+                                    <span style="display:inline-block; padding:1px 5px; border-radius:10px; background:#16a34a; color:#fff; font-size:11px;">무료배송</span><br>
+                                <?php } elseif ($shippingFee > 0) { ?>
+                                    <span style="font-size:11px; color:#6b7280;">배송비</span> <b><?= number_format($shippingFee) ?></b>원<br>
+                                <?php } else { ?>
+                                    <span style="font-size:11px; color:#6b7280;">배송비</span> <b>-</b><br>
+                                <?php } ?>
+                                <div class="m-t-5"  >
+                                    <b style="font-size:14px;"><?= number_format($finalPrice) ?></b>원
+                                </div>
+
                             </td>
                             <td class="text-center">
                                 <?=($row['info_change_count'] ?? 0)?>
@@ -247,6 +272,7 @@
                                     data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
                                     data-competitor-image="<?= htmlspecialchars((string)($row['image_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                     data-competitor-name="<?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    data-competitor-brand-name="<?= htmlspecialchars((string)($row['brand_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                     data-existing-match-idx-list="<?= htmlspecialchars($rowMatchedCdIdxCsv, ENT_QUOTES, 'UTF-8') ?>"
                                     data-primary-match-idx="<?= $rowPrimaryMatchIdx ?>">
                                     <?= $rowMatchedCount > 0 ? ('매칭관리(' . number_format($rowMatchedCount) . ')') : '매칭' ?>
@@ -292,7 +318,13 @@
                                             $ourCostPrice = (int)($matchedProduct['cd_cost_price'] ?? 0);
                                             $ourMarginGrade = trim((string)($matchedProduct['margin_grade'] ?? ''));
                                             $competitorPrice = (int)($row['price'] ?? 0);
-                                            $adjustedSalePrice = $competitorPrice;
+                                            $competitorFinalPrice = (int)$finalPrice;
+                                            $ourFinalPrice = $ourSalePrice > 30000
+                                                ? $ourSalePrice
+                                                : $ourSalePrice + 2500;
+                                            $adjustedSalePrice = $competitorFinalPrice > 30000
+                                                ? $competitorFinalPrice
+                                                : max(0, $competitorFinalPrice - 2500);
 
                                             $deliveryType = trim((string)($matchedProduct['delivery_type'] ?? 'small'));
                                             if ($deliveryType === 'tiny_80') {
@@ -348,7 +380,7 @@
                                             $currentMarginInfo = $calculateMarginInfo($ourSalePrice, $ourCostPrice, $deliveryFee, $baseUseShippingDeduction);
                                             $adjustedMarginInfo = $calculateMarginInfo($adjustedSalePrice, $ourCostPrice, $deliveryFee, $baseUseShippingDeduction);
 
-                                            $priceDiff = $ourSalePrice - $competitorPrice;
+                                            $priceDiff = $ourFinalPrice - $competitorFinalPrice;
                                             $priceDiffColor = '#111827';
                                             $priceDiffText = '동일';
                                             if ($priceDiff > 0) {
@@ -375,17 +407,24 @@
                                             </div>
                                             <div style="width:178px; min-width:178px; max-width:178px;">
                                                 <div style="display:flex; align-items:center; justify-content:space-between; gap:6px;">
-                                                    <span style="color:#6b7280;">브랜드: <?= htmlspecialchars((string)($matchedProduct['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span>
+                                                    <span style="color:#6b7280;">브랜드 : <?= htmlspecialchars((string)($matchedProduct['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></span>
                                                     <?php if ($rowMatchedCount > 1 && $isPrimary) { ?><b style="color:#2563eb; font-size:11px;">대표</b><?php } ?>
                                                 </div>
                                                 <div class="m-t-3" style="font-size:12px; white-space:normal;">
-                                                    <?= htmlspecialchars((string)($matchedProduct['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                                    <b><?= htmlspecialchars((string)($matchedProduct['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b>
                                                 </div>
-                                                <div class="m-t-3" style="font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:10px;">
+                                                <div class="m-t-3" style="font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
                                                     <span style="display:inline-flex; align-items:center; gap:10px; white-space:nowrap;">
-                                                        <span>판매가: <b><?= number_format((int)($matchedProduct['cd_sale_price'] ?? 0)) ?></b></span>
-                                                        <span style="color:#6b7280;">재고: <b><?= number_format((int)($matchedProduct['stock_qty'] ?? 0)) ?></b></span>
+                                                        <span>판매가 : <b><?= number_format((int)($matchedProduct['cd_sale_price'] ?? 0)) ?></b></span>
+                                                        <?php if ((int)($matchedProduct['cd_sale_price'] ?? 0) > 30000) { ?>
+                                                            <span style="display:inline-block; padding:1px 4px; border-radius:3px; background:#16a34a; color:#fff; font-size:11px;">무배</span>
+                                                        <?php } else { ?>
+                                                            <span style="color:#6b7280;">최종가 : <b><?= number_format((int)($matchedProduct['cd_sale_price'] ?? 0) + 2500) ?></b></span>
+                                                        <?php } ?>
                                                     </span>
+                                                </div>
+                                                <div class="m-t-3">
+                                                    <span style="color:<?= (int)($matchedProduct['stock_qty'] ?? 0) !== 0 ? '#2563eb' : '#6b7280' ?>;">재고 : <b><?= number_format((int)($matchedProduct['stock_qty'] ?? 0)) ?></b></span>
                                                 </div>
                                                 <div class="m-t-3" style="display:flex; align-items:center; gap:4px; flex-wrap:wrap;">
                                                     <button type="button" class="btnstyle1 btnstyle1-xs"
@@ -414,8 +453,8 @@
                                                 원가 : <?php if ($ourCostPrice > 0) { ?><b><?= number_format($ourCostPrice) ?></b><?php } else { ?>원가정보가 없습니다<?php } ?><br>
                                                 <?php if ($ourCostPrice > 0) { ?>
                                                     마진그룹 : 마진율 <b><?= number_format((float)($currentMarginInfo['margin_rate'] ?? 0), 2) ?>%</b> / 그룹 <b><?= htmlspecialchars(($ourMarginGrade !== '' ? $ourMarginGrade : '-'), ENT_QUOTES, 'UTF-8') ?></b><br>
-                                                    <?php if ($competitorPrice > 0) { ?>
-                                                        가격차이 :
+                                                    <?php if ($competitorFinalPrice > 0) { ?>
+                                                        최종가격차이 :
                                                         <span style="color:<?= $priceDiffColor ?>;">
                                                             <b>
                                                                 <?php if ($priceDiff > 0) { ?>+<?php } ?>
@@ -442,6 +481,7 @@
                                                                         data-competitor-prd-pk="<?= (int)($row['prd_pk'] ?? 0) ?>"
                                                                         data-competitor-name="<?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
                                                                         data-competitor-price="<?= (int)$competitorPrice ?>"
+                                                                        data-competitor-final-price="<?= (int)$competitorFinalPrice ?>"
                                                                         data-competitor-detail-url="<?= htmlspecialchars((string)($row['detail_url'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                                                                         이가격으로 조정
                                                                     </button>
@@ -566,6 +606,10 @@
     .match-result-table th {
         background: #f8fafc;
     }
+    .match-result-table .match-result-row:not(.is-selected):hover {
+        background: #f1f5f9;
+        cursor: pointer;
+    }
     .match-result-table tr.is-selected {
         background: #ecfdf3;
     }
@@ -607,7 +651,7 @@
             <div class="match-layer-target">
                 <img id="match_layer_competitor_image" class="match-layer-target-thumb" src="" alt="매칭 대상 상품 이미지" style="display:none;">
                 <div>
-                    <b>상품 매칭</b>
+                    <b id="match_layer_competitor_brand"></b>
                     <div id="match_layer_competitor_name" style="margin-top:3px; color:#4b5563; font-size:12px;"></div>
                 </div>
             </div>
@@ -626,7 +670,7 @@
                         <?php } ?>
                     </select>
                 </div>
-                <input type="text" id="match_keyword" placeholder="상품명(CD_NAME) 검색">
+                <input type="text" id="match_keyword" placeholder="상품명, 바코드 검색">
                 <button type="button" class="btnstyle1 btnstyle1-sm" id="matchKeywordClearBtn">지우기</button>
                 <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="matchSearchBtn">검색</button>
             </div>
@@ -777,6 +821,11 @@ $(function(){
         for (var i = 0; i < items.length; i++) {
             var item = items[i] || {};
             var cdName = decodeHtmlEntities(item.cd_name);
+            var cdCode = decodeHtmlEntities(item.cd_code || "");
+            var cdCode2 = decodeHtmlEntities(item.cd_code2 || "");
+            var productCodes = [cdCode, cdCode2].filter(function(code) {
+                return code !== "";
+            }).join(" / ");
             var brandName = decodeHtmlEntities(item.brand_name || "-");
             var thumb = item.thumbnail_url
                 ? '<img src="' + escapeHtml(item.thumbnail_url) + '" class="match-thumbnail">'
@@ -785,7 +834,9 @@ $(function(){
                 + '<tr class="match-result-row" data-cd-idx="' + escapeHtml(item.cd_idx) + '" data-cd-name="' + escapeHtml(cdName) + '" data-brand-name="' + escapeHtml(brandName) + '">'
                 + '  <td class="text-center">' + thumb + '</td>'
                 + '  <td class="text-center"><b>#' + escapeHtml(item.cd_idx) + '</b></td>'
-                + '  <td><p  onclick="onlyAD.prdView(' + escapeHtml(item.cd_idx) + ',\'info\');" style="cursor:pointer;">' + escapeHtml(cdName) + '</p></td>'
+                + '  <td><p onclick="onlyAD.prdView(' + escapeHtml(item.cd_idx) + ',\'info\');" style="cursor:pointer;">'
+                + (productCodes ? '<span style="display:block; margin-bottom:2px; font-size:12px; color:#555;">' + escapeHtml(productCodes) + '</span>' : '')
+                + '<b>' + escapeHtml(cdName) + '</b></p></td>'
                 + '  <td>' + escapeHtml(brandName) + '</td>'
                 + '  <td class="text-center"><button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs match-select-btn">선택</button></td>'
                 + '</tr>';
@@ -1077,10 +1128,12 @@ $(function(){
         var competitorSite = String($btn.data("competitor-site") || "").trim();
         var competitorPrdPk = Number($btn.data("competitor-prd-pk") || 0);
         var competitorImage = String($btn.data("competitor-image") || "").trim();
+        var competitorBrandName = String($btn.data("competitor-brand-name") || "").trim();
         var existingMatchIdxList = parseMatchIdxList($btn.data("existing-match-idx-list") || "");
         var primaryMatchIdx = Number($btn.data("primary-match-idx") || 0);
 
         $("#match_competitor_idx").val(competitorIdx);
+        $("#match_layer_competitor_brand").text(competitorBrandName || "-");
         $("#match_layer_competitor_name").text(competitorName);
         if (competitorImage) {
             $("#match_layer_competitor_image").attr("src", competitorImage).show();
@@ -1088,7 +1141,22 @@ $(function(){
             $("#match_layer_competitor_image").attr("src", "").hide();
         }
         $("#match_keyword").val(competitorName);
-        $("#match_brand").val("").trigger("change");
+        // 브랜드 자동 선택은 매칭 정확도 문제로 임시 비활성화합니다.
+        /*
+        var $matchBrand = $("#match_brand");
+        var matchedBrandValue = "";
+        if (competitorBrandName && competitorBrandName !== "-") {
+            $matchBrand.find("option").each(function() {
+                if ($.trim($(this).text()) === competitorBrandName) {
+                    matchedBrandValue = String($(this).val() || "");
+                    return false;
+                }
+            });
+        }
+        if (matchedBrandValue) {
+            $matchBrand.val(matchedBrandValue).trigger("change");
+        }
+        */
         setSelectedMatchProduct(null);
         currentMatchTarget = {
             site: competitorSite,
@@ -1185,9 +1253,10 @@ $(function(){
         var competitorPrdPk = Number($btn.data("competitor-prd-pk") || 0);
         var competitorName = String($btn.data("competitor-name") || "").trim();
         var competitorPrice = Number($btn.data("competitor-price") || 0);
+            var competitorFinalPrice = Number($btn.data("competitor-final-price") || 0);
         var competitorDetailUrl = String($btn.data("competitor-detail-url") || "").trim();
 
-        if (prdIdx <= 0 || adjustedSalePrice <= 0 || costPrice <= 0 || !godoCode || !competitorSite || competitorPrdPk <= 0) {
+            if (prdIdx <= 0 || adjustedSalePrice <= 0 || costPrice <= 0 || !godoCode || !competitorSite || competitorPrdPk <= 0 || competitorFinalPrice <= 0) {
             alert("가격 조정에 필요한 상품, 경쟁사 기준가, 원가 또는 고도몰 상품코드 정보가 없습니다.");
             return;
         }
@@ -1215,6 +1284,7 @@ $(function(){
                 competitor_prd_pk: competitorPrdPk,
                 competitor_name: competitorName,
                 competitor_price: competitorPrice,
+                    competitor_final_price: competitorFinalPrice,
                 competitor_detail_url: competitorDetailUrl
             }
         }).done(function(res) {

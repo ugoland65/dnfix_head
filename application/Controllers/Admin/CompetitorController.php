@@ -295,11 +295,15 @@ class CompetitorController extends BaseClass
             }
 
             $query = ProductModel::query()
-                ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'CD_IMG')
+                ->select('CD_IDX', 'CD_NAME', 'CD_CODE', 'CD_CODE2', 'CD_BRAND_IDX', 'CD_IMG')
                 ->orderBy('CD_IDX', 'DESC');
 
             if ($keyword !== '') {
-                $query->where('CD_NAME', 'LIKE', '%' . $keyword . '%');
+                $query->where(function ($query) use ($keyword) {
+                    $query->where('CD_NAME', 'LIKE', '%' . $keyword . '%')
+                        ->orWhere('CD_CODE', 'LIKE', '%' . $keyword . '%')
+                        ->orWhere('CD_CODE2', 'LIKE', '%' . $keyword . '%');
+                });
             }
             if ($brandIdx > 0) {
                 $query->where('CD_BRAND_IDX', $brandIdx);
@@ -340,6 +344,8 @@ class CompetitorController extends BaseClass
                 $items[] = [
                     'cd_idx' => $cdIdx,
                     'cd_name' => (string)($row['CD_NAME'] ?? ''),
+                    'cd_code' => (string)($row['CD_CODE'] ?? ''),
+                    'cd_code2' => (string)($row['CD_CODE2'] ?? ''),
                     'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
                     'thumbnail_url' => $img !== '' ? ('/data/comparion/' . $img) : '',
                 ];

@@ -66,6 +66,20 @@ class GodoInspectionService
         ['hbti' => 'HFJE', 'cateNm' => 'HFJE-예술 전사', 'cateCd' => '026010016'],
     ];
 
+    private const ONAHOLE_TYPE_CATEGORIES = [
+        ['sourceCategoryCode' => '01010000', 'cateNm' => '컴팩트', 'cateCd' => '026005012'],
+        ['sourceCategoryCode' => '01020000', 'cateNm' => '핸디형 S', 'cateCd' => '026005013'],
+        ['sourceCategoryCode' => '01030000', 'cateNm' => '핸디형 M', 'cateCd' => '026005014'],
+        ['sourceCategoryCode' => '01040000', 'cateNm' => '핸디형 L', 'cateCd' => '026005015'],
+        ['sourceCategoryCode' => '01050000', 'cateNm' => '중 / 대형', 'cateCd' => '026005010'],
+        ['sourceCategoryCode' => '01060000', 'cateNm' => '전동 / 자동형', 'cateCd' => '026005005'],
+        ['sourceCategoryCode' => '01070000', 'cateNm' => '페라형', 'cateCd' => '026005007'],
+        ['sourceCategoryCode' => '01080000', 'cateNm' => '컵홀형', 'cateCd' => '026005009'],
+        ['sourceCategoryCode' => '01090000', 'cateNm' => '바닥오나', 'cateCd' => '026005004'],
+        ['sourceCategoryCode' => '01100000', 'cateNm' => '신체 / 페타시', 'cateCd' => '026005011'],
+        ['sourceCategoryCode' => '01110000', 'cateNm' => '면타입', 'cateCd' => '026005002'],
+    ];
+
     private const ONAHOLE_INNER_LENGTH_CATEGORIES = [
         ['cateNm' => '10cm 미만', 'cateCd' => '026006007', 'min' => 0, 'max' => 9.99],
         ['cateNm' => '10cm ~ 11.9cm', 'cateCd' => '026006002', 'min' => 10, 'max' => 11.9],
@@ -114,6 +128,7 @@ class GodoInspectionService
         $marginGrade = strtoupper(trim((string)($item['margin_grade'] ?? '')));
         $cdHbti = strtoupper(trim((string)($item['cd_hbti'] ?? '')));
         $cdKindCode = strtoupper(trim((string)($item['cd_kind_code'] ?? '')));
+        $cdCategoryCode = trim((string)($item['cd_category_code'] ?? ''));
         $godoStockFl = strtolower(trim((string)($item['godo_stock_fl'] ?? '')));
         $godoSoldOutFl = strtolower(trim((string)($item['godo_sold_out_fl'] ?? '')));
         $currentStockQty = (int)($item['stock_qty'] ?? 0);
@@ -141,6 +156,7 @@ class GodoInspectionService
 
         $onaholeWeightCategoryMap = $this->buildCategoryMap(self::ONAHOLE_WEIGHT_CATEGORIES);
         $onaholePriceCategoryMap = $this->buildCategoryMap(self::ONAHOLE_PRICE_CATEGORIES);
+        $onaholeTypeCategoryMap = $this->buildCategoryMap(self::ONAHOLE_TYPE_CATEGORIES);
         $onaholeInnerLengthCategoryMap = $this->buildCategoryMap(self::ONAHOLE_INNER_LENGTH_CATEGORIES);
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
@@ -281,6 +297,10 @@ class GodoInspectionService
         }
 
         $targetOnaholeWeightCategory = $this->findTargetCategoryByValue(self::ONAHOLE_WEIGHT_CATEGORIES, $goodsWeightNormalized);
+        $targetOnaholeTypeCategory = $this->findTargetCategoryBySourceCategoryCode(
+            self::ONAHOLE_TYPE_CATEGORIES,
+            $cdCategoryCode
+        );
         $targetOnaholeInnerLengthCategory = $this->findTargetCategoryByValue(self::ONAHOLE_INNER_LENGTH_CATEGORIES, $innerLengthNormalized);
         $targetMarginGradeCategory = $marginGradeCategoryMap[$marginGrade] ?? null;
         $targetOnaholePriceCategory = null;
@@ -325,12 +345,29 @@ class GodoInspectionService
             if ($innerLengthNormalized === '' || !is_numeric($innerLengthNormalized) || (float)$innerLengthNormalized <= 0) {
                 $inspectionIssues[] = ['required' => '필수', 'issue' => '내부길이 미입력', 'solution' => '<span>인트라넷에 내부길이 정보가 없습니다.</span>'];
             }
-            if (empty($currentOnaholeTypeCategories)) {
+            if ($targetOnaholeTypeCategory === null && empty($currentOnaholeTypeCategories)) {
                 $inspectionIssues[] = ['required' => '참고', 'issue' => '유형별 카테고리 미지정', 'solution' => '<span>오나홀 유형별 카테고리(026005???)가 지정되어 있지 않습니다.</span>'];
             }
             if (empty($currentOnaholeHbtiCategories)) {
                 $inspectionIssues[] = ['required' => '참고', 'issue' => 'HBTI 카테고리 미지정', 'solution' => '<span>오나홀 HBTI 카테고리(026010???)가 지정되어 있지 않습니다.</span>'];
             }
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'ONAHOLE' && $targetOnaholeTypeCategory !== null) {
+            $this->appendCategoryMismatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentOnaholeTypeCategories,
+                (string)($targetOnaholeTypeCategory['cateCd'] ?? ''),
+                (string)($targetOnaholeTypeCategory['cateNm'] ?? ''),
+                '유형별 카테고리 미지정',
+                '유형별 카테고리 오류',
+                "<span>오나홀 > 유형별 카테고리가 미지정되어 있습니다.</span>",
+                "<span>오나홀 > 유형별 카테고리 오분류</span>",
+                $onaholeTypeCategoryMap
+            );
         }
 
         if ($isMatchedByGoodsNo && $cdKindCode === 'ONAHOLE' && $targetOnaholeInnerLengthCategory !== null) {
@@ -741,6 +778,7 @@ class GodoInspectionService
                 $actionReason = '타겟 카테고리 정보 부족';
                 break;
             case '유형별 카테고리 미지정':
+            case '유형별 카테고리 오류':
             case 'HBTI 카테고리 오류':
             case 'HBTI 카테고리 미지정':
             case '내부길이 카테고리 미지정':
@@ -865,6 +903,35 @@ class GodoInspectionService
     }
 
     /**
+     * 인트라넷 2차 카테고리 코드에 대응하는 고도몰 유형별 카테고리를 찾는다.
+     */
+    private function findTargetCategoryBySourceCategoryCode(array $rows, string $sourceCategoryCode): ?array
+    {
+        $sourceCategoryCode = trim($sourceCategoryCode);
+        if ($sourceCategoryCode === '') {
+            return null;
+        }
+
+        foreach ($rows as $row) {
+            if (!is_array($row) || trim((string)($row['sourceCategoryCode'] ?? '')) !== $sourceCategoryCode) {
+                continue;
+            }
+
+            $targetCateCd = trim((string)($row['cateCd'] ?? ''));
+            if ($targetCateCd === '') {
+                return null;
+            }
+
+            return [
+                'cateNm' => trim((string)($row['cateNm'] ?? '')),
+                'cateCd' => $targetCateCd,
+            ];
+        }
+
+        return null;
+    }
+
+    /**
      * 카테고리 미지정/오분류를 공통 로직으로 판정하고
      * 이슈 목록 및 추가/삭제 큐를 함께 갱신한다.
      */
@@ -939,6 +1006,7 @@ class GodoInspectionService
         $maps = [
             self::ONAHOLE_WEIGHT_CATEGORIES,
             self::ONAHOLE_PRICE_CATEGORIES,
+            self::ONAHOLE_TYPE_CATEGORIES,
             self::ONAHOLE_HBTI_CATEGORIES,
             self::ONAHOLE_INNER_LENGTH_CATEGORIES,
             self::MARGIN_GRADE_CATEGORIES,

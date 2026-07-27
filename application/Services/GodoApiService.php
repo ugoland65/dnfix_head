@@ -1525,9 +1525,16 @@ class GodoApiService extends BaseClass {
      * @param string $goodsNos 상품코드 - 구분자 쉼표 또는 쉼표없이 단일상품으로 가능
      * @return array
      */
-    public function getGodoGoodsInfoByGoodsNo($goodsNos) 
+    public function getGodoGoodsInfoByGoodsNo($goodsNos, $withCategory = null)
     {
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos='.$goodsNos;
+
+        if($withCategory == "Y"){
+            $withCategoryParam = "&withCategory=Y";
+        }else{
+            $withCategoryParam = "";
+        }
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos='.$goodsNos.$withCategoryParam;
         $response = HttpClient::getData($apiUrl);
         $responseData = json_decode($response, true);
         if(!is_array($responseData)){
