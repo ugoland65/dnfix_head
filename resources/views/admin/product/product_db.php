@@ -387,6 +387,7 @@
 
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
+                                <th>플라스틱<br>함유량</th>
                                 <th>관리</th>
 
                             </tr>
@@ -614,6 +615,14 @@
                                                 echo '-';
                                             }
                                         ?>
+                                    </td>
+                                    <td class="text-center">
+                                        <?php $importPlastic = trim((string)($product['cd_size_fn']['import']['plastic'] ?? '')); ?>
+                                        <?php if ($importPlastic !== '') { ?>
+                                            <b><?= htmlspecialchars($importPlastic, ENT_QUOTES, 'UTF-8') ?></b>%
+                                        <?php } else { ?>
+                                            -
+                                        <?php } ?>
                                     </td>
                                     <td class="text-center">
                                         <button

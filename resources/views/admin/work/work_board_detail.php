@@ -343,6 +343,63 @@
                                                 <?php } ?>
                                             </tbody>
                                         </table>
+                                    <?php } elseif ($withdb === 'product_db') { ?>
+                                        <h3 style="font-size:16px; font-weight:600; margin-bottom:5px;">상품DB 참조</h3>
+                                        <table class="table-style">
+                                            <thead>
+                                                <tr>
+                                                    <th>고유번호</th>
+                                                    <th>이미지</th>
+                                                    <th>상품명</th>
+                                                    <th>브랜드</th>
+                                                    <th>바코드</th>
+                                                    <th>고도몰 상품코드</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                <?php foreach ($withdbdata as $item) { ?>
+                                                    <?php
+                                                        $itemImage = trim((string)($item['CD_IMG'] ?? ''));
+                                                        if ($itemImage !== '' && ($item['img_mode'] ?? '') !== 'out') {
+                                                            $itemImage = '/data/comparion/' . $itemImage;
+                                                        }
+                                                    ?>
+                                                    <tr>
+                                                        <td class="text-center"><?= (int)($item['CD_IDX'] ?? 0) ?></td>
+                                                        <td class="text-center">
+                                                            <?php if ($itemImage !== '') { ?>
+                                                                <img
+                                                                    src="<?= htmlspecialchars($itemImage, ENT_QUOTES, 'UTF-8') ?>"
+                                                                    style="height:70px; border:1px solid #eee !important; cursor:pointer;"
+                                                                    onclick="onlyAD.prdView(<?= (int)($item['CD_IDX'] ?? 0) ?>, 'info');">
+                                                            <?php } else { ?>
+                                                                -
+                                                            <?php } ?>
+                                                        </td>
+                                                        <td
+                                                            style="cursor:pointer;"
+                                                            onclick="onlyAD.prdView(<?= (int)($item['CD_IDX'] ?? 0) ?>, 'info');">
+                                                            <?= htmlspecialchars((string)($item['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
+                                                        </td>
+                                                        <td class="text-center"><?= htmlspecialchars((string)($item['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td class="text-center"><?= htmlspecialchars((string)($item['barcode'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                                        <td class="text-center">
+                                                            <?php if (!empty($item['cd_godo_code'])) { ?>
+                                                                <div style="font-size:12px;">#<?= (int)$item['cd_godo_code'] ?></div>
+                                                                <div class="m-t-3">
+                                                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall(<?= (int)$item['cd_godo_code'] ?>);">쑈당몰 상품보기</button>
+                                                                </div>
+                                                                <div class="m-t-5">
+                                                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin(<?= (int)$item['cd_godo_code'] ?>);">관리자 상품보기</button>
+                                                                </div>
+                                                            <?php } else { ?>
+                                                                -
+                                                            <?php } ?>
+                                                        </td>
+                                                    </tr>
+                                                <?php } ?>
+                                            </tbody>
+                                        </table>
                                     <?php } ?>
 
                                 </td>

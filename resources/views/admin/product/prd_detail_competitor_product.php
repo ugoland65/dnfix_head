@@ -233,7 +233,22 @@
                                 <a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><img src="<?= htmlspecialchars((string)$row['image_url'], ENT_QUOTES, 'UTF-8') ?>" style="width:56px; height:56px; object-fit:cover; border:1px solid #eee;"></a>
                             <?php } ?>
                         </td>
-                        <td style="white-space:normal;"><b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?= htmlspecialchars((string)($row['name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></a></b></td>
+                        <td style="white-space:normal;">
+                            <?php foreach (($row['event_tags_json'] ?? []) as $eventTag) { ?>
+                                <?php
+                                    $eventTag = trim((string)$eventTag);
+                                    $eventTagColor = '#6b7280';
+                                    if ($eventTag === '일일특가') {
+                                        $eventTagColor = '#7c3aed';
+                                    } elseif ($eventTag === '품절') {
+                                        $eventTagColor = '#dc2626';
+                                    }
+                                ?>
+                                <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:<?= $eventTagColor ?>; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
+                            <?php } ?>
+                            <?php $displayName = str_replace(['&middot;', '&#183;', '&#xB7;', '·'], '', (string)($row['name'] ?? '')); ?>
+                            <b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></a></b>
+                        </td>
                         <td class="text-right">
                             <?php
                                 $rowPrice = (int)($row['price'] ?? 0);

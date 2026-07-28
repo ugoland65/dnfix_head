@@ -14,6 +14,7 @@ use App\Services\CommentService;
 use App\Services\AdminServices;
 use App\Services\WorkLogHistoryService;
 use App\Services\WorkViewCheckService;
+use App\Services\ProductService;
 use App\Services\ProductPartnerService;
 use App\Services\ProductPartnerApiService;
 
@@ -141,6 +142,10 @@ class WorkController extends BaseClass
                 $productPartnerApiService = new ProductPartnerApiService();
                 $supplierProductMap = $productPartnerApiService->getSupplierProductIdxMap($supplier_prd_idxs);
 
+            }
+            if ($withdb === 'product_db' && !empty($idxs)) {
+                $productService = new ProductService();
+                $withdbdata = $productService->getProductWhereInIdx($idxs);
             }
 
             $config_product = config('admin.product');
@@ -273,6 +278,10 @@ class WorkController extends BaseClass
                 $productPartnerApiService = new ProductPartnerApiService();
                 $supplierProductMap = $productPartnerApiService->getSupplierProductIdxMap($supplier_prd_idxs);
 
+            }
+            if ($withdb === 'product_db' && !empty($pks)) {
+                $productService = new ProductService();
+                $withdbdata = $productService->getProductWhereInIdx($pks);
             }
 
             $data = [

@@ -308,6 +308,47 @@
                                         <?php } ?>
                                     </tbody>
                                 </table>
+                            <?php } elseif ($withdb === 'product_db') { ?>
+                                <h3 style="font-size:16px; font-weight:600; margin-bottom:5px;">상품DB 참조</h3>
+                                <table class="table-style">
+                                    <thead>
+                                        <tr>
+                                            <th>고유번호</th>
+                                            <th>이미지</th>
+                                            <th>상품명</th>
+                                            <th>브랜드</th>
+                                            <th>바코드</th>
+                                            <th>고도몰 상품코드</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        <?php foreach ($withdbdata as $item) { ?>
+                                            <?php
+                                                $itemImage = trim((string)($item['CD_IMG'] ?? ''));
+                                                if ($itemImage !== '' && ($item['img_mode'] ?? '') !== 'out') {
+                                                    $itemImage = '/data/comparion/' . $itemImage;
+                                                }
+                                            ?>
+                                            <tr>
+                                                <td class="text-center">
+                                                    <?= (int)($item['CD_IDX'] ?? 0) ?>
+                                                    <input type="hidden" name="pks[]" value="<?= (int)($item['CD_IDX'] ?? 0) ?>">
+                                                </td>
+                                                <td class="text-center">
+                                                    <?php if ($itemImage !== '') { ?>
+                                                        <img src="<?= htmlspecialchars($itemImage, ENT_QUOTES, 'UTF-8') ?>" style="height:70px; border:1px solid #eee !important;">
+                                                    <?php } else { ?>
+                                                        -
+                                                    <?php } ?>
+                                                </td>
+                                                <td><?= htmlspecialchars((string)($item['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td class="text-center"><?= htmlspecialchars((string)($item['brand_name'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td class="text-center"><?= htmlspecialchars((string)($item['barcode'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                                <td class="text-center"><?= htmlspecialchars((string)($item['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                            </tr>
+                                        <?php } ?>
+                                    </tbody>
+                                </table>
                             <?php } ?>
 
                         </td>

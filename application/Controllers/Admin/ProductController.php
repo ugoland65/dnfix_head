@@ -638,6 +638,23 @@ class ProductController extends BaseClass
                 });
             }
 
+            foreach ($rows as &$row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $eventTags = $row['event_tags_json'] ?? [];
+                if (is_string($eventTags)) {
+                    $eventTags = json_decode($eventTags, true);
+                }
+                if (!is_array($eventTags)) {
+                    $eventTags = [];
+                }
+                $row['event_tags_json'] = array_values(array_filter($eventTags, static function ($eventTag) {
+                    return is_string($eventTag) && trim($eventTag) !== '';
+                }));
+            }
+            unset($row);
+
             $configCompetitor = config('admin.competitor');
             $competitor_data = $configCompetitor['competitor_data'] ?? [];
 

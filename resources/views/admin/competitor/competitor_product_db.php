@@ -161,9 +161,19 @@
                             </td>
                             <td class="text-left" style="min-width:150px; white-space: normal !important;">
                                 <?php foreach (($row['event_tags_json'] ?? []) as $eventTag) { ?>
-                                    <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:#dc2626; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php
+                                        $eventTag = trim((string)$eventTag);
+                                        $eventTagColor = '#6b7280';
+                                        if ($eventTag === '일일특가') {
+                                            $eventTagColor = '#7c3aed';
+                                        } elseif ($eventTag === '품절') {
+                                            $eventTagColor = '#dc2626';
+                                        }
+                                    ?>
+                                    <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:<?= $eventTagColor ?>; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
                                 <?php } ?>
-                                <p><b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?=$row['name']?></a></b></p>
+                                <?php $displayName = str_replace(['&middot;', '&#183;', '&#xB7;', '·'], '', (string)($row['name'] ?? '')); ?>
+                                <p><b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></a></b></p>
 
                                 <?php if ($row['memo']): ?>
                                     <p><span style="font-size:12px; color:#ff0000;"><?= htmlspecialchars($row['memo'], ENT_QUOTES, 'UTF-8') ?></span></p>
@@ -226,7 +236,27 @@
                                 <?php if( $row['last_price_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_price_changed_at']))?>
                                 <?php endif; ?>
+
+                                <div class="m-t-5"  >
+                                    <?php
+                                        $beforePrice = (int)($row['before_price'] ?? 0);
+                                        $beforePriceDiff = $beforePrice - $salePrice;
+                                        $beforePriceDiffPercent = $beforePrice > 0
+                                            ? round((abs($beforePriceDiff) / $beforePrice) * 100, 1)
+                                            : 0;
+                                    ?>
+                                    <?php if ($beforePrice > 1) { ?>
+                                        <p style="font-size:14px;"><?= number_format($beforePrice) ?></p>
+                                        <?php if ($beforePriceDiff > 0) { ?>
+                                            <span style="font-size:12px; color:#dc2626;">▼ <?= number_format($beforePriceDiff) ?> (<?= number_format($beforePriceDiffPercent, 1) ?>%)</span>
+                                        <?php } elseif ($beforePriceDiff < 0) { ?>
+                                            <span style="font-size:12px; color:#2563eb;">▲ <?= number_format(abs($beforePriceDiff)) ?> (<?= number_format($beforePriceDiffPercent, 1) ?>%)</span>
+                                        <?php } ?>
+                                    <?php } ?>
+                                </div>
+
                             </td>
+
                             <td class="text-center">
                                 <?php if( ($row['sale_status'] ?? '') === '품절' ): ?>
                                     <span style="color:#dc2626; font-weight:700;">품절</span><br>
@@ -234,7 +264,11 @@
                                 <?php if( $row['last_status_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_status_changed_at']))?>
                                 <?php endif; ?>
+
+
+
                             </td>
+
                             <td class="text-center">
                                 <?php if( $row['last_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_changed_at']))?>
@@ -411,7 +445,7 @@
                                                     <?php if ($rowMatchedCount > 1 && $isPrimary) { ?><b style="color:#2563eb; font-size:11px;">대표</b><?php } ?>
                                                 </div>
                                                 <div class="m-t-3" style="font-size:12px; white-space:normal;">
-                                                    <b><?= htmlspecialchars((string)($matchedProduct['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b>
+                                                    <b><?= htmlspecialchars(str_replace(['&middot;', '&#183;', '&#xB7;', '·'], '', (string)($matchedProduct['CD_NAME'] ?? '')), ENT_QUOTES, 'UTF-8') ?></b>
                                                 </div>
                                                 <div class="m-t-3" style="font-size:12px; display:flex; align-items:center; justify-content:space-between; gap:6px;">
                                                     <span style="display:inline-flex; align-items:center; gap:10px; white-space:nowrap;">
