@@ -102,7 +102,7 @@ class BaseModel {
         // QueryBuilder 메서드들을 직접 처리
         $queryBuilderMethods = [
             'select', 'where', 'orWhere', 'whereIn', 'whereNotIn', 'whereBetween', 
-            'whereNotBetween', 'whereNull', 'whereNotNull', 'whereDate', 'whereRaw', 'orWhereRaw', 'when', 'orderBy', 'orderByRaw',
+            'whereNotBetween', 'whereNull', 'orWhereNull', 'whereNotNull', 'whereDate', 'whereRaw', 'orWhereRaw', 'when', 'orderBy', 'orderByRaw',
             'groupBy', 'limit', 'join', 'leftJoin', 'rightJoin', 'innerJoin', 'joinRaw',
             'get', 'first', 'paginate', 'count', 'exists', 'value', 'keyBy', 'toArray',
             'pluck', 'filter', 'values', 'all'

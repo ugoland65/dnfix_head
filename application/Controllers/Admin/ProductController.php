@@ -844,6 +844,14 @@ class ProductController extends BaseClass
                     $result = $this->productService->bulkUpdateProductFields($requestData);
                     break;
 
+                case 'soft_delete_product_stock':
+                    $result = $this->productService->softDeleteProductStock($requestData);
+                    break;
+
+                case 'soft_delete_product_db':
+                    $result = $this->productService->softDeleteProductDb($requestData);
+                    break;
+
                 // 월간할인 해제 - 고도몰 반영까지 처리
                 case 'prd_release_monthly_discount':
 

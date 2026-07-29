@@ -385,6 +385,7 @@
                                 <th>최근입고일</th>
                                 <th>최근품절일</th>
                                 <th>최근할인일</th>
+                                <th>관리</th>
                             </tr>
                         </thead>
                         <tbody>
@@ -693,6 +694,18 @@
                                                 echo '-';
                                             }
                                         ?>
+                                    </td>
+
+                                    <td class="text-center">
+                                        <?php if ((int)($product['ps_stock'] ?? 0) !== 0) { ?>
+                                            <span style="color:#999; font-size:12px;">재고 있음</span>
+                                        <?php } else { ?>
+                                            <button
+                                                type="button"
+                                                class="btnstyle1 btnstyle1-xs product-soft-delete-btn"
+                                                data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                            >삭제</button>
+                                        <?php } ?>
                                     </td>
                                 </tr>
                             <? } ?>
@@ -1607,6 +1620,41 @@
                     alert('랙코드 변경 중 오류가 발생했습니다.');
                 }
             });
+        });
+
+        $(document).on('click', '.product-soft-delete-btn', function() {
+            var $button = $(this);
+            var prdIdx = Number($button.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                alert('상품 정보를 확인할 수 없습니다.');
+                return;
+            }
+            if (!confirm('상품과 연결된 재고 정보를 삭제 처리할까요?\n삭제된 상품은 목록에서 노출되지 않습니다.')) {
+                return;
+            }
+
+            $button.prop('disabled', true);
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'soft_delete_product_stock',
+                prd_idx: prdIdx
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '삭제 처리에 실패했습니다.');
+                        return;
+                    }
+                    alert(res.message || '상품이 삭제 처리되었습니다.');
+                    location.reload();
+                })
+                .fail(function(xhr) {
+                    var message = xhr && xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : '삭제 처리 중 서버 오류가 발생했습니다.';
+                    alert(message);
+                })
+                .always(function() {
+                    $button.prop('disabled', false);
+                });
         });
 
 		// 선택상품 업무요청

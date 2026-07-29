@@ -6,11 +6,13 @@ use App\Core\BaseClass;
 use App\Models\ProductModel;
 use App\Models\BrandModel;
 use App\Models\ProductStockModel;
+use App\Models\ProductStockUnitModel;
 use App\Models\ProductWorkCheckItemModel;
 use App\Models\ProductWorkCheckStatusModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
 use App\Auth\AdminAuth;
+use App\Core\AuthAdmin;
 use App\Classes\ImageStorage;
 use App\Services\AdminActionLogService;
 use Exception;
@@ -38,6 +40,7 @@ class ProductService extends BaseClass
         $brand_idx = $criteria['brand_idx'] ?? null;
 
         $query = ProductModel::query()
+            ->where('CD_DELETED_YN', '=', 'N')
             ->when($kind_code, function($query) use ($kind_code) {
                 $query->where('CD_KIND_CODE', $kind_code);
             })
@@ -156,7 +159,8 @@ class ProductService extends BaseClass
 
         // 기본 쿼리
         $query = ProductModel::query()
-            ->from('COMPARISON_DB as A');
+            ->from('COMPARISON_DB as A')
+            ->where('A.CD_DELETED_YN', '=', 'N');
 
         // 특정 상품 idx 집합만 조회
         if (!empty($idxs)) {
@@ -312,6 +316,12 @@ class ProductService extends BaseClass
         $isProductStockMode = ($show_mode === 'product_stock');
         $query->leftJoin('prd_stock as D', 'D.ps_prd_idx', '=', 'A.CD_IDX')
             ->select('A.*', 'D.*');
+
+        // 삭제된 재고 row는 일반 상품 목록에서도 재고 정보로 사용하지 않는다.
+        $query->where(function ($query) {
+            $query->where('D.ps_deleted_yn', '=', 'N')
+                ->orWhereNull('D.ps_idx');
+        });
 
         if ($isProductStockMode) {
             $query->whereNotNull('D.ps_prd_idx');
@@ -2388,6 +2398,173 @@ class ProductService extends BaseClass
             'message' => '선택한 상품 ' . number_format(count($pks)) . '건이 일괄수정되었습니다.',
             'updated_count' => count($pks),
             'updated_fields' => array_keys($updateData),
+        ];
+    }
+
+    /**
+     * 재고 상품과 연결된 상품 DB를 함께 소프트 삭제한다.
+     *
+     * 재고가 남아 있거나 입출고 이력이 존재하는 상품은 삭제할 수 없다.
+     *
+     * @param array $postData
+     * @return array
+     * @throws Exception
+     */
+    public function softDeleteProductStock(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        if ($adminIdx <= 0 || $adminName === '') {
+            throw new Exception('삭제 처리자 정보를 확인할 수 없습니다.');
+        }
+
+        $connection = app('db');
+        $ownsTransaction = $connection instanceof \PDO && !$connection->inTransaction();
+
+        try {
+            if ($ownsTransaction) {
+                $connection->beginTransaction();
+            }
+
+            $product = ProductModel::query()
+                ->select('CD_IDX')
+                ->where('CD_IDX', '=', $prdIdx)
+                ->where('CD_DELETED_YN', '=', 'N')
+                ->first();
+            if (empty($product)) {
+                throw new Exception('이미 삭제되었거나 존재하지 않는 상품입니다.');
+            }
+
+            $stock = ProductStockModel::query()
+                ->select(['ps_idx', 'ps_stock'])
+                ->where('ps_prd_idx', '=', $prdIdx)
+                ->where('ps_deleted_yn', '=', 'N')
+                ->first();
+            if (empty($stock)) {
+                throw new Exception('삭제할 재고 정보를 찾을 수 없습니다.');
+            }
+
+            $stockData = is_array($stock) ? $stock : $stock->toArray();
+            $psIdx = (int)($stockData['ps_idx'] ?? 0);
+            if ($psIdx <= 0) {
+                throw new Exception('재고 정보가 올바르지 않습니다.');
+            }
+            if ((int)($stockData['ps_stock'] ?? 0) !== 0) {
+                throw new Exception('현재 재고가 남아 있어 삭제할 수 없습니다.');
+            }
+
+            $hasStockHistory = ProductStockUnitModel::query()
+                ->where('psu_stock_idx', '=', $psIdx)
+                ->exists();
+            if ($hasStockHistory) {
+                throw new Exception('판매/입출고 이력이 있어 삭제할 수 없습니다.');
+            }
+
+            $deletedAt = date('Y-m-d H:i:s');
+            $stockUpdated = ProductStockModel::query()
+                ->where('ps_idx', '=', $psIdx)
+                ->where('ps_deleted_yn', '=', 'N')
+                ->where('ps_stock', '=', 0)
+                ->update([
+                    'ps_deleted_yn' => 'Y',
+                    'ps_deleted_at' => $deletedAt,
+                    'ps_deleted_admin_idx' => $adminIdx,
+                    'ps_deleted_admin_name' => $adminName,
+                ]);
+            if (!$stockUpdated) {
+                throw new Exception('재고 상태가 변경되어 삭제할 수 없습니다. 목록을 새로고침 후 다시 시도해주세요.');
+            }
+
+            $productUpdated = ProductModel::query()
+                ->where('CD_IDX', '=', $prdIdx)
+                ->where('CD_DELETED_YN', '=', 'N')
+                ->update([
+                    'CD_DELETED_YN' => 'Y',
+                    'CD_DELETED_AT' => $deletedAt,
+                    'CD_DELETED_ADMIN_IDX' => $adminIdx,
+                    'CD_DELETED_ADMIN_NAME' => $adminName,
+                ]);
+            if (!$productUpdated) {
+                throw new Exception('상품 상태가 변경되어 삭제할 수 없습니다. 목록을 새로고침 후 다시 시도해주세요.');
+            }
+
+            if ($ownsTransaction && $connection->inTransaction()) {
+                $connection->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            throw $e;
+        }
+
+        return [
+            'success' => true,
+            'message' => '상품이 삭제 처리되었습니다.',
+            'prd_idx' => $prdIdx,
+            'ps_idx' => $psIdx,
+        ];
+    }
+
+    /**
+     * 재고 정보가 없는 상품 DB를 소프트 삭제한다.
+     *
+     * @param array $postData
+     * @return array
+     * @throws Exception
+     */
+    public function softDeleteProductDb(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        if ($adminIdx <= 0 || $adminName === '') {
+            throw new Exception('삭제 처리자 정보를 확인할 수 없습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX')
+            ->where('CD_IDX', '=', $prdIdx)
+            ->where('CD_DELETED_YN', '=', 'N')
+            ->first();
+        if (empty($product)) {
+            throw new Exception('이미 삭제되었거나 존재하지 않는 상품입니다.');
+        }
+
+        $hasStock = ProductStockModel::query()
+            ->where('ps_prd_idx', '=', $prdIdx)
+            ->exists();
+        if ($hasStock) {
+            throw new Exception('재고 정보가 있는 상품입니다. 재고 목록에서 삭제해주세요.');
+        }
+
+        $deletedAt = date('Y-m-d H:i:s');
+        $updated = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->where('CD_DELETED_YN', '=', 'N')
+            ->update([
+                'CD_DELETED_YN' => 'Y',
+                'CD_DELETED_AT' => $deletedAt,
+                'CD_DELETED_ADMIN_IDX' => $adminIdx,
+                'CD_DELETED_ADMIN_NAME' => $adminName,
+            ]);
+        if (!$updated) {
+            throw new Exception('상품 상태가 변경되어 삭제할 수 없습니다. 목록을 새로고침 후 다시 시도해주세요.');
+        }
+
+        return [
+            'success' => true,
+            'message' => '상품이 삭제 처리되었습니다.',
+            'prd_idx' => $prdIdx,
         ];
     }
 

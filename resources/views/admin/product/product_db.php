@@ -389,6 +389,7 @@
                                 <th>패키지 사이즈</th>
                                 <th>플라스틱<br>함유량</th>
                                 <th>관리</th>
+                                <th>삭제</th>
 
                             </tr>
                         </thead>
@@ -537,7 +538,7 @@
 
                                         <p><b><?=$product['CD_NAME']?></b></p>
                                         <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
-                                            <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <span class="prd-memo">- <?=$product['cd_memo2']?></span>
                                         </div>
                                     </td>
                                     
@@ -632,6 +633,13 @@
                                         >
                                             복사
                                         </button>
+                                    </td>
+                                    <td class="text-center">
+                                        <button
+                                            type="button"
+                                            class="btnstyle1 btnstyle1-xs product-db-soft-delete-btn"
+                                            data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                        >삭제</button>
                                     </td>
 
                                 </tr>
@@ -1573,6 +1581,41 @@ function select_all() {
                 })
                 .fail(function(res) {
                     alert(res && res.message ? res.message : '서버 통신에 실패했습니다.');
+                });
+        });
+
+        $(document).on('click', '.product-db-soft-delete-btn', function() {
+            var $button = $(this);
+            var prdIdx = Number($button.data('prd-idx') || 0);
+            if (prdIdx <= 0) {
+                alert('상품 정보를 확인할 수 없습니다.');
+                return;
+            }
+            if (!confirm('상품을 삭제 처리할까요?\n재고 정보가 있는 상품은 재고 목록에서만 삭제할 수 있습니다.')) {
+                return;
+            }
+
+            $button.prop('disabled', true);
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'soft_delete_product_db',
+                prd_idx: prdIdx
+            })
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '삭제 처리에 실패했습니다.');
+                        return;
+                    }
+                    alert(res.message || '상품이 삭제 처리되었습니다.');
+                    location.reload();
+                })
+                .fail(function(xhr) {
+                    var message = xhr && xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : '삭제 처리 중 서버 오류가 발생했습니다.';
+                    alert(message);
+                })
+                .always(function() {
+                    $button.prop('disabled', false);
                 });
         });
 

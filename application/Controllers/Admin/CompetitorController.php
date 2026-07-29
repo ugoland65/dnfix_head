@@ -113,12 +113,14 @@ class CompetitorController extends BaseClass
                     $matchedProducts = ProductModel::query()
                         ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code', 'delivery_type', 'CD_IMG')
                         ->whereIn('CD_IDX', $matchIdxs)
+                        ->where('CD_DELETED_YN', '=', 'N')
                         ->get();
                     $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
                     $stockQtyByCdIdx = [];
                     $stockRows = ProductStockModel::query()
                         ->select('ps_prd_idx', 'ps_stock')
                         ->whereIn('ps_prd_idx', $matchIdxs)
+                        ->where('ps_deleted_yn', '=', 'N')
                         ->get();
                     $stockRows = is_array($stockRows) ? $stockRows : $stockRows->toArray();
                     foreach ($stockRows as $stockRow) {
@@ -296,6 +298,7 @@ class CompetitorController extends BaseClass
 
             $query = ProductModel::query()
                 ->select('CD_IDX', 'CD_NAME', 'CD_CODE', 'CD_CODE2', 'CD_BRAND_IDX', 'CD_IMG')
+                ->where('CD_DELETED_YN', '=', 'N')
                 ->orderBy('CD_IDX', 'DESC');
 
             if ($keyword !== '') {

@@ -904,6 +904,21 @@ class QueryBuilder
 	}
 
 	/**
+	 * OR WHERE NULL 조건 추가
+	 * @param string $column 컬럼
+	 * @return $this
+	 */
+	public function orWhereNull($column)
+	{
+		$this->wheres[] = [
+			'type' => 'null_or',
+			'column' => $column,
+			'not' => false
+		];
+		return $this;
+	}
+
+	/**
 	 * WHERE NOT NULL 조건 추가
 	 * @param string $column 컬럼
 	 * @return $this
@@ -1127,6 +1142,15 @@ class QueryBuilder
 				case 'null':
 					$escapedCol = $this->escapeColumnName($where['column']);
 					$clauses[] = "$escapedCol IS " . ($where['not'] ? "NOT NULL" : "NULL");
+					break;
+
+				case 'null_or':
+					$escapedCol = $this->escapeColumnName($where['column']);
+					$nullClause = "$escapedCol IS " . ($where['not'] ? "NOT NULL" : "NULL");
+					$lastClause = array_pop($clauses);
+					$clauses[] = $lastClause
+						? "($lastClause OR $nullClause)"
+						: $nullClause;
 					break;
 
 				case 'raw':
