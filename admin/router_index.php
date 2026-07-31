@@ -81,6 +81,7 @@ try {
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
     $router->get('/product/detail_competitor_product', ProductController::class, 'prdDetailCompetitorProductPage'); //상품 디테일 (경쟁사 판매현황)
+    $router->get('/product/detail_relation_group', ProductController::class, 'prdDetailRelationGroupPage'); //상품 디테일 (시리즈/연관그룹)
     $router->post('/product/detail_sale_log/save', ProductController::class, 'saveProductSaleLog'); //상품 디테일 (할인 로그 저장)
     $router->post('/product/detail_godo_inspection', ProductController::class, 'prdDetailGodoInspection'); //상품 디테일 (고도몰 검수 처리)
     $router->get('/sales/picking_list/{idx}', SalesController::class, 'pickingList'); //피킹리스트

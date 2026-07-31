@@ -200,6 +200,10 @@
                 <th>상품명</th>
                 <th style="width:110px;">판매가</th>
                 <th style="width:110px;">최종가</th>
+                <th>
+                    판매가<br>
+                    변경일
+                </th>
                 <th style="width:110px;">조정가</th>
                 <th style="width:130px;">수정일</th>
                 
@@ -295,6 +299,7 @@
                             <?php } ?>
 
                         </td>
+
                         <td class="text-right">
                             <?php
                                 $shippingMethod = is_array($rowSiteInfo) ? (string)($rowSiteInfo['shipping_method'] ?? '') : '';
@@ -318,6 +323,34 @@
                                 <b style="font-size:14px;"><?= number_format($rowFinalPrice) ?></b>원
                             </div>
                         </td>
+
+                        <!-- 판매가 변경일 및 변경이력 -->
+                        <td class="text-center">
+                            <?php if (!empty($row['last_price_changed_at'])) { ?>
+                                <?= date('Y-m-d', strtotime($row['last_price_changed_at'])) ?>
+                            <?php } else { ?>
+                                -
+                            <?php } ?>
+
+                            <?php
+                                $beforePrice = (int)($row['before_price'] ?? 0);
+                                $beforePriceDiff = $beforePrice - $rowPrice;
+                                $beforePriceDiffPercent = $beforePrice > 0
+                                    ? round((abs($beforePriceDiff) / $beforePrice) * 100, 1)
+                                    : 0;
+                            ?>
+                            <?php if ($beforePrice > 1) { ?>
+                                <div class="m-t-5">
+                                    <p style="font-size:14px;"><?= number_format($beforePrice) ?></p>
+                                    <?php if ($beforePriceDiff > 0) { ?>
+                                        <span style="font-size:12px; color:#dc2626;">▼ <?= number_format($beforePriceDiff) ?> (<?= number_format($beforePriceDiffPercent, 1) ?>%)</span>
+                                    <?php } elseif ($beforePriceDiff < 0) { ?>
+                                        <span style="font-size:12px; color:#2563eb;">▲ <?= number_format(abs($beforePriceDiff)) ?> (<?= number_format($beforePriceDiffPercent, 1) ?>%)</span>
+                                    <?php } ?>
+                                </div>
+                            <?php } ?>
+                        </td>
+
                         <td class="text-right">
                             <?php
                                 $rowPriceDiff = $ourFinalPrice - $rowFinalPrice;

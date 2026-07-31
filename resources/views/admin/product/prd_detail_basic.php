@@ -504,6 +504,34 @@
             </tr>
 
             <tr>
+                <th>시리즈/연관그룹</th>
+                <td>
+                    <?php
+                        $relationGroups = (isset($productData['relation_groups']) && is_array($productData['relation_groups']))
+                            ? $productData['relation_groups']
+                            : [];
+                        $relationGroupModeLabels = [
+                            'series' => '시리즈',
+                            'custom_group' => '특정 그룹',
+                        ];
+                    ?>
+                    <?php if (empty($relationGroups)) { ?>
+                        <span style="color:#6b7280;">포함된 시리즈/연관그룹이 없습니다.</span>
+                    <?php } else { ?>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            <?php foreach ($relationGroups as $relationGroup) { ?>
+                                <?php $relationGroupMode = (string)($relationGroup['prg_mode'] ?? ''); ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc;">
+                                    <span style="font-size:11px; color:#475569;"><?= htmlspecialchars($relationGroupModeLabels[$relationGroupMode] ?? $relationGroupMode, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <b><?= htmlspecialchars((string)($relationGroup['prg_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b>
+                                </span>
+                            <?php } ?>
+                        </div>
+                    <?php } ?>
+                </td>
+            </tr>
+
+            <tr>
                 <td colspan="2" class="none-bg" style="height:15px;"></td>
             </tr>
 

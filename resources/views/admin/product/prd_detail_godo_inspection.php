@@ -8,6 +8,8 @@ $godoCategoryLines = (isset($inspectionContext['godo_category_lines']) && is_arr
 $isMatchedByGoodsNo = !empty($inspectionContext['is_matched_by_goods_no']);
 $intranetBarcode = (string)($inspectionContext['intranet_barcode'] ?? ($item['barcode'] ?? ''));
 $goodsNo = trim((string)($item['godo_goods_no'] ?? ''));
+$godoGoodsName = trim((string)($item['godo_goods_name'] ?? ''));
+$godoPurchaseGoodsName = trim((string)($item['godo_purchase_goods_name'] ?? ''));
 $prdIdx = (int)($item['pidx'] ?? ($prd_idx ?? 0));
 $psIdx = (int)($item['ps_idx'] ?? 0);
 $inspectionHistoryRows = (isset($inspectionHistoryRows) && is_array($inspectionHistoryRows)) ? $inspectionHistoryRows : [];
@@ -15,6 +17,7 @@ $inspectionHistoryRows = (isset($inspectionHistoryRows) && is_array($inspectionH
 $godoInspectionService = new \App\Services\GodoInspectionService();
 $inspectionVersion = trim((string)($inspectionVersion ?? $godoInspectionService->getInspectionVersion()));
 $godoCategoryLineByCode = [];
+$godoCategoryNames = [];
 foreach ($godoCategoryLines as $godoCategoryRow) {
     if (!is_array($godoCategoryRow)) {
         continue;
@@ -23,8 +26,10 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
     $mapLine = trim((string)($godoCategoryRow['line'] ?? ''));
     if ($mapCateCd !== '' && $mapLine !== '') {
         $godoCategoryLineByCode[$mapCateCd] = $mapLine;
+        $godoCategoryNames[] = $mapLine;
     }
 }
+$godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames)));
 ?>
 
 <style>
@@ -77,9 +82,16 @@ foreach ($godoCategoryLines as $godoCategoryRow) {
 <div class="inspection-wrap">
     <div class="inspection-summary">
         <div style="font-weight:700; margin-bottom:4px;">고도몰 단일상품 검수</div>
-        <div>검수버전: <b><?= htmlspecialchars($inspectionVersion !== '' ? $inspectionVersion : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
-        <div>상품번호: <b><?= (int)($item['pidx'] ?? 0) ?></b> / 재고코드: <b><?= (int)($item['ps_idx'] ?? 0) ?></b></div>
-        <div>고도몰 상품번호: <b><?= htmlspecialchars($goodsNo !== '' ? $goodsNo : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
+        <div>검수버전 : <b><?= htmlspecialchars($inspectionVersion !== '' ? $inspectionVersion : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
+        <div>상품번호 : <b><?= (int)($item['pidx'] ?? 0) ?></b> / 재고코드: <b><?= (int)($item['ps_idx'] ?? 0) ?></b></div>
+        <div>고도몰 상품번호 : <b><?= htmlspecialchars($goodsNo !== '' ? $goodsNo : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
+
+        <?php /*
+        <div>카테고리 : <b><?= htmlspecialchars($godoCategoryName !== '' ? $godoCategoryName : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
+        */ ?>
+
+        <div>고도몰 상품명 : <b><?= htmlspecialchars($godoGoodsName !== '' ? $godoGoodsName : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
+        <div>고도몰 원상품명 : <b><?= htmlspecialchars($godoPurchaseGoodsName !== '' ? $godoPurchaseGoodsName : '-', ENT_QUOTES, 'UTF-8') ?></b></div>
         <?php if (!empty($godoInfoLoadedAt)) { ?>
             <div>고도몰 정보 조회시간: <b><?= htmlspecialchars((string)$godoInfoLoadedAt, ENT_QUOTES, 'UTF-8') ?></b> (로딩시간: <b><?= number_format((int)($godoInfoLoadMs ?? 0)) ?>ms</b>)</div>
         <?php } ?>

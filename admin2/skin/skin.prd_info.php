@@ -381,6 +381,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 		<ul id="crm_menu_competitor_product" class="" onclick="prdInfo.mode('', 'competitor_product')">경쟁사 판매현황</ul>
 		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
+		<ul id="crm_menu_relation_group" class="" onclick="prdInfo.mode('', 'relation_group')">시리즈/연관그룹 관리</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
@@ -545,6 +546,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		var prd_idx = "<?= $prd_data['CD_IDX'] ?? '' ?>";
 		var ps_idx = "<?= $prd_data['ps_idx'] ?? '' ?>";
 		var stockModifyWindow;
+		var activeModeStorageKey = 'prd_info_active_mode:' + prd_idx + ':' + ps_idx;
+
+		function getSavedMode() {
+			try {
+				var savedMode = window.sessionStorage.getItem(activeModeStorageKey);
+				return savedMode && $("#crm_menu_" + savedMode).length ? savedMode : 'info';
+			} catch (e) {
+				return 'info';
+			}
+		}
 
 		/**
 		 * 메뉴 클릭
@@ -553,6 +564,11 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 			$(".crm-menu ul").removeClass('active');
 			$("#crm_menu_" + modeKey).addClass('active');
+			try {
+				window.sessionStorage.setItem(activeModeStorageKey, modeKey);
+			} catch (e) {
+				// sessionStorage를 사용할 수 없는 환경에서는 기본 탭으로 동작한다.
+			}
 
 			var searchDateStart = "";
 			var searchDateEnd = "";
@@ -646,6 +662,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 						}
 					};
 					break;
+				case "relation_group": // 시리즈/연관그룹 관리
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_relation_group",
+						data: { prd_idx: prd_idx }
+					};
+					break;
 				case "onadb_config": // 오나DB 설정
 					requestConfig = {
 						method: "POST",
@@ -708,6 +731,9 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		return {
 
 			mode,
+			restoreActiveMode: function() {
+				mode('', getSavedMode());
+			},
 			prdGroupingAdd,
 			makePsIdx: function() {
 
@@ -849,7 +875,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 	$(function() {
 
-		prdInfo.mode('', 'info');
+		prdInfo.restoreActiveMode();
 
 	});
 </script>

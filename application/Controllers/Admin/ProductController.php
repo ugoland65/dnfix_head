@@ -463,6 +463,28 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 디테일 (시리즈/연관그룹 관리)
+     */
+    public function prdDetailRelationGroupPage(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $relationGroupData = $this->productService->getProductRelationGroupData($prdIdx);
+
+            return view('admin.product.prd_detail_relation_group', [
+                'prd_idx' => $prdIdx,
+                'relation_group_data' => $relationGroupData,
+            ]);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
      * 상품 할인 로그 목록 화면
      */
     public function prdDetailSaleLogPage(Request $request)
@@ -850,6 +872,18 @@ class ProductController extends BaseClass
 
                 case 'soft_delete_product_db':
                     $result = $this->productService->softDeleteProductDb($requestData);
+                    break;
+
+                case 'create_product_relation_group':
+                    $result = $this->productService->createProductRelationGroup($requestData);
+                    break;
+
+                case 'add_product_to_relation_group':
+                    $result = $this->productService->addProductToExistingRelationGroup($requestData);
+                    break;
+
+                case 'remove_product_from_relation_group':
+                    $result = $this->productService->removeProductFromRelationGroup($requestData);
                     break;
 
                 // 월간할인 해제 - 고도몰 반영까지 처리

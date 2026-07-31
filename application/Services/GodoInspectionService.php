@@ -4,7 +4,7 @@ namespace App\Services;
 
 class GodoInspectionService
 {
-    public const INSPECTION_VERSION = '20260609_v1';
+    public const INSPECTION_VERSION = '20260729_v2';
     public const CONTEXT_PRODUCT_SINGLE = 'product_single';
     public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
 
@@ -110,6 +110,7 @@ class GodoInspectionService
      */
     public function buildInspectionContext(array $item, string $contextType = self::CONTEXT_PRODUCT_SINGLE): array
     {
+
         $psIdx = (int)($item['ps_idx'] ?? 0);
         $goodsNo = trim((string)($item['godo_goods_no'] ?? ''));
         $cdGodoCode = trim((string)($item['cd_godo_code'] ?? ''));
@@ -124,6 +125,10 @@ class GodoInspectionService
         $goodsWeightRaw = (string)($item['goods_weight'] ?? '');
         $innerLengthRaw = (string)($item['inner_length'] ?? '');
         $intranetBarcode = trim((string)($item['barcode'] ?? ''));
+        $intranetGoodsName = trim((string)($item['name'] ?? ''));
+        $intranetPurchaseGoodsName = trim((string)($item['name_og'] ?? ''));
+        $godoGoodsName = trim((string)($item['godo_goods_name'] ?? ''));
+        $godoPurchaseGoodsName = trim((string)($item['godo_purchase_goods_name'] ?? ''));
         $godoCategoryLines = (isset($item['godo_category_lines']) && is_array($item['godo_category_lines'])) ? $item['godo_category_lines'] : [];
         $marginGrade = strtoupper(trim((string)($item['margin_grade'] ?? '')));
         $cdHbti = strtoupper(trim((string)($item['cd_hbti'] ?? '')));
@@ -308,6 +313,28 @@ class GodoInspectionService
         // 화면에 노출될 검수 이슈 목록.
         $inspectionIssues = [];
 
+        if ($isMatchedByGoodsNo && $godoGoodsName !== $intranetGoodsName) {
+            $inspectionIssues[] = [
+                'required' => '참고',
+                'issue' => '상품명 불일치',
+                'solution' => "<span>인트라넷 상품명과 고도몰 상품명이 일치하지 않습니다.</span>\n인트라넷 : <b>{$intranetGoodsName}</b>\n고도몰 : <b>{$godoGoodsName}</b>",
+            ];
+        }
+        if ($isMatchedByGoodsNo && $godoPurchaseGoodsName === '') {
+            $inspectionIssues[] = [
+                'required' => '참고',
+                'issue' => '원상품명이 비어있습니다',
+                'solution' => '<span>고도몰 원상품명을 입력해주세요.</span>'
+                    . ($intranetPurchaseGoodsName !== '' ? "\n인트라넷 원상품명 : <b>{$intranetPurchaseGoodsName}</b>" : ''),
+            ];
+        }
+        if ($isMatchedByGoodsNo && $godoPurchaseGoodsName !== '' && $godoPurchaseGoodsName !== $intranetPurchaseGoodsName) {
+            $inspectionIssues[] = [
+                'required' => '필수',
+                'issue' => '원상품명 불일치',
+                'solution' => "<span>인트라넷 원상품명과 고도몰 원상품명이 일치하지 않습니다.</span>\n인트라넷 : <b>{$intranetPurchaseGoodsName}</b>\n고도몰 : <b>{$godoPurchaseGoodsName}</b>",
+            ];
+        }
         if (!$isMatchedByGoodsNo && $psIdx <= 0) {
             $inspectionIssues[] = ['required' => '필수', 'issue' => '재고코드 미생성', 'solution' => '<span>재고코드를 입력해주세요.</span>'];
         }

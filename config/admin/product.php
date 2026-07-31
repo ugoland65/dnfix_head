@@ -87,7 +87,7 @@ $categories = [
             [
                 'code' => '01100000',
                 'key' => 'ONAHOLE_BODY_FETISH',
-                'name' => '신체 / 페타시',
+                'name' => '신체 / 페티쉬',
                 'children' => []
             ],
             [
@@ -143,6 +143,12 @@ $categories = [
                 'code' => '02070000',
                 'key' => 'HEAD',
                 'name' => '헤드',
+                'children' => []
+            ],
+            [
+                'code' => '02080000',
+                'key' => 'FURRY',
+                'name' => '퍼리/피규어',
                 'children' => []
             ],
         ]

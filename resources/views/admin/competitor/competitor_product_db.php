@@ -232,6 +232,8 @@
                                 <?=date('Y.m.d H:i', strtotime($row['updated_at']))?><br>
                                 <?=date('Y.m.d H:i', strtotime($row['created_at']))?>
                             </td>
+
+                            <!-- 판매가 변경일 및 변경이력 -->
                             <td class="text-center">
                                 <?php if( $row['last_price_changed_at'] ): ?>
                                     <?=date('Y-m-d', strtotime($row['last_price_changed_at']))?>
