@@ -1600,7 +1600,8 @@ class ProductService extends BaseClass
         $cdCategoryCode = $this->resolveCategoryCodeForSave(
             $cdKindCode,
             (string)($postData['cd_category_code'] ?? ''),
-            (string)($postData['cd_kind_code_second'] ?? '')
+            (string)($postData['cd_kind_code_second'] ?? ''),
+            (string)($postData['cd_kind_code_third'] ?? '')
         );
         $saleStatus = trim((string)($postData['sale_status'] ?? ''));
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
@@ -1972,7 +1973,8 @@ class ProductService extends BaseClass
         $cdCategoryCode = $this->resolveCategoryCodeForSave(
             $cdKindCode,
             (string)($postData['cd_category_code'] ?? ''),
-            (string)($postData['cd_kind_code_second'] ?? '')
+            (string)($postData['cd_kind_code_second'] ?? ''),
+            (string)($postData['cd_kind_code_third'] ?? '')
         );
         $saleStatus = trim((string)($postData['sale_status'] ?? '가등록'));
         if ($saleStatus === '') {
@@ -3955,20 +3957,24 @@ class ProductService extends BaseClass
 
     /**
      * 상품 저장 시 카테고리 코드를 결정한다.
-     * - 2차 카테고리가 선택되면 해당 코드 우선
-     * - 2차가 없거나 미선택이면 1차(상품구분) 코드 사용
+     * - 3차 카테고리가 선택되면 해당 코드 우선
+     * - 3차가 없으면 2차, 그 외에는 1차(상품구분) 코드 사용
      *
      * @param string $kindCode
      * @param string $postedCategoryCode
      * @return string
      */
-    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = ''): string
+    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = '', string $thirdKindCode = ''): string
     {
         $kindCode = trim($kindCode);
         $postedCategoryCode = trim($postedCategoryCode);
         $secondKindCode = trim($secondKindCode);
+        $thirdKindCode = trim($thirdKindCode);
 
         $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+        if ($thirdKindCode !== '' && isset($categoryCodeMap[$thirdKindCode])) {
+            return (string)$categoryCodeMap[$thirdKindCode];
+        }
         if ($secondKindCode !== '' && isset($categoryCodeMap[$secondKindCode])) {
             return (string)$categoryCodeMap[$secondKindCode];
         }
@@ -4020,6 +4026,18 @@ class ProductService extends BaseClass
                     continue;
                 }
                 $map[$childKey] = $childCode;
+
+                $grandchildren = (isset($childRow['children']) && is_array($childRow['children'])) ? $childRow['children'] : [];
+                foreach ($grandchildren as $grandchildRow) {
+                    if (!is_array($grandchildRow)) {
+                        continue;
+                    }
+                    $grandchildKey = trim((string)($grandchildRow['key'] ?? ''));
+                    $grandchildCode = trim((string)($grandchildRow['code'] ?? ''));
+                    if ($grandchildKey !== '' && $grandchildCode !== '') {
+                        $map[$grandchildKey] = $grandchildCode;
+                    }
+                }
             }
         }
 
@@ -4062,6 +4080,18 @@ class ProductService extends BaseClass
                     continue;
                 }
                 $map[$childCode] = $childName;
+
+                $grandchildren = (isset($childRow['children']) && is_array($childRow['children'])) ? $childRow['children'] : [];
+                foreach ($grandchildren as $grandchildRow) {
+                    if (!is_array($grandchildRow)) {
+                        continue;
+                    }
+                    $grandchildCode = trim((string)($grandchildRow['code'] ?? ''));
+                    $grandchildName = trim((string)($grandchildRow['name'] ?? ''));
+                    if ($grandchildCode !== '' && $grandchildName !== '') {
+                        $map[$grandchildCode] = $grandchildName;
+                    }
+                }
             }
         }
 

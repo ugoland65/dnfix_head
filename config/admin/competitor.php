@@ -35,6 +35,13 @@ $competitor_data = [
         'free_shipping_threshold' => 30000,
         'shipping_fee' => 2500,
     ],
+    'domaedoll' => [
+        'name' => '도매돌',
+        'code' => 'domaedoll',
+        'shipping_method' => '금액별무료배송',
+        'free_shipping_threshold' => 30000,
+        'shipping_fee' => 3000,
+    ],
     'vavoomshop' => [
         'name' => '바붐샵',
         'code' => 'vavoomshop',

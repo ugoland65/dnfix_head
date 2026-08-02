@@ -239,10 +239,30 @@
                                     continue;
                                 }
                                 $categoryCodeByKind[$childKey] = $childCode;
+                                $grandchildOptions = [];
+                                $grandchildren = (isset($childRow['children']) && is_array($childRow['children'])) ? $childRow['children'] : [];
+                                foreach ($grandchildren as $grandchildRow) {
+                                    if (!is_array($grandchildRow)) {
+                                        continue;
+                                    }
+                                    $grandchildKey = trim((string)($grandchildRow['key'] ?? ''));
+                                    $grandchildCode = trim((string)($grandchildRow['code'] ?? ''));
+                                    $grandchildName = trim((string)($grandchildRow['name'] ?? ''));
+                                    if ($grandchildKey === '' || $grandchildCode === '') {
+                                        continue;
+                                    }
+                                    $categoryCodeByKind[$grandchildKey] = $grandchildCode;
+                                    $grandchildOptions[] = [
+                                        'key' => $grandchildKey,
+                                        'code' => $grandchildCode,
+                                        'name' => $grandchildName !== '' ? $grandchildName : $grandchildKey,
+                                    ];
+                                }
                                 $childOptions[] = [
                                     'key' => $childKey,
                                     'code' => $childCode,
                                     'name' => $childName !== '' ? $childName : $childKey,
+                                    'children' => $grandchildOptions,
                                 ];
                             }
                             if ($parentKey !== '' && !empty($childOptions)) {
@@ -263,12 +283,20 @@
                         $isRealdollFullBodyCategory = ($selectedCategoryCode === '02050000');
 
                         $selectedSecondKindKey = '';
+                        $selectedThirdKindKey = '';
                         $selectedKindChildren = $categoryChildrenByKind[$selectedKindCode] ?? [];
                         if (!empty($selectedKindChildren)) {
                             foreach ($selectedKindChildren as $childOption) {
                                 if ((string)($childOption['code'] ?? '') === $selectedCategoryCode) {
                                     $selectedSecondKindKey = (string)($childOption['key'] ?? '');
                                     break;
+                                }
+                                foreach (($childOption['children'] ?? []) as $grandchildOption) {
+                                    if ((string)($grandchildOption['code'] ?? '') === $selectedCategoryCode) {
+                                        $selectedSecondKindKey = (string)($childOption['key'] ?? '');
+                                        $selectedThirdKindKey = (string)($grandchildOption['key'] ?? '');
+                                        break 2;
+                                    }
                                 }
                             }
                         }
@@ -284,6 +312,11 @@
                         <div id="cd_kind_code_second_wrap" style="display:none;">
                             <select name="cd_kind_code_second" id="cd_kind_code_second">
                                 <option value="">2차 카테고리 선택</option>
+                            </select>
+                        </div>
+                        <div id="cd_kind_code_third_wrap" style="display:none;">
+                            <select name="cd_kind_code_third" id="cd_kind_code_third">
+                                <option value="">3차 카테고리 선택</option>
                             </select>
                         </div>
                     </div>
@@ -1628,9 +1661,11 @@
         const categoryCodeByKind = <?= json_encode($categoryCodeByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const categoryChildrenByKind = <?= json_encode($categoryChildrenByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const initialThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const $cdSpec02010000Wrap = $('#cd-spec-02010000-wrap');
         const $cdSpec02050000Wrap = $('#cd-spec-02050000-wrap');
         let hasAppliedInitialSecondCategory = false;
+        let hasAppliedInitialThirdCategory = false;
 
         function resolveCategoryCodeByKind(kindKey) {
             const key = String(kindKey || '').trim();
@@ -1644,9 +1679,13 @@
             const primaryKind = String($('select[name="cd_kind_code"]').val() || '').trim();
             const $secondSelect = $('#cd_kind_code_second');
             const secondKind = String($secondSelect.val() || '').trim();
+            const thirdKind = String($('#cd_kind_code_third').val() || '').trim();
             let categoryCode = '';
 
-            if (secondKind !== '') {
+            if (thirdKind !== '') {
+                categoryCode = resolveCategoryCodeByKind(thirdKind);
+            }
+            if (categoryCode === '' && secondKind !== '') {
                 categoryCode = resolveCategoryCodeByKind(secondKind);
             }
 
@@ -1694,6 +1733,8 @@
 
             if (childCategories.length === 0) {
                 $secondWrap.hide();
+                $('#cd_kind_code_third_wrap').hide();
+                $('#cd_kind_code_third').val('');
                 updateCategoryCodeInput();
                 return;
             }
@@ -1721,6 +1762,50 @@
             }
 
             $secondWrap.show();
+            renderThirdCategorySelect(false);
+        }
+
+        function renderThirdCategorySelect(resetSelection) {
+            const primaryKind = String($('select[name="cd_kind_code"]').val() || '').trim();
+            const secondKind = String($('#cd_kind_code_second').val() || '').trim();
+            const childCategories = Array.isArray(categoryChildrenByKind[primaryKind]) ? categoryChildrenByKind[primaryKind] : [];
+            const selectedSecondCategory = childCategories.find(function (child) {
+                return String((child || {}).key || '').trim() === secondKind;
+            }) || {};
+            const grandchildCategories = Array.isArray(selectedSecondCategory.children) ? selectedSecondCategory.children : [];
+            const $thirdWrap = $('#cd_kind_code_third_wrap');
+            const $thirdSelect = $('#cd_kind_code_third');
+
+            $thirdSelect.empty();
+            $thirdSelect.append('<option value="">3차 카테고리 선택</option>');
+
+            if (grandchildCategories.length === 0) {
+                $thirdSelect.val('');
+                $thirdWrap.hide();
+                updateCategoryCodeInput();
+                return;
+            }
+
+            grandchildCategories.forEach(function (grandchild) {
+                const grandchildKey = String((grandchild || {}).key || '').trim();
+                const grandchildName = String((grandchild || {}).name || grandchildKey).trim();
+                if (!grandchildKey) {
+                    return;
+                }
+                $thirdSelect.append($('<option>', {
+                    value: grandchildKey,
+                    text: grandchildName
+                }));
+            });
+
+            if (!resetSelection && !hasAppliedInitialThirdCategory && initialThirdKindKey) {
+                $thirdSelect.val(initialThirdKindKey);
+                hasAppliedInitialThirdCategory = true;
+            } else {
+                $thirdSelect.val('');
+            }
+
+            $thirdWrap.show();
             updateCategoryCodeInput();
         }
 
@@ -1728,6 +1813,9 @@
             renderSecondCategorySelect(true);
         });
         $('#cd_kind_code_second').on('change', function() {
+            renderThirdCategorySelect(true);
+        });
+        $('#cd_kind_code_third').on('change', function() {
             updateCategoryCodeInput();
         });
         renderSecondCategorySelect(false);
