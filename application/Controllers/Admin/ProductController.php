@@ -61,6 +61,7 @@ class ProductController extends BaseClass
             $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null;
             $s_label_idx = $requestData['s_label_idx'] ?? null;
+            $s_relation_group_idx = (int)($requestData['s_relation_group_idx'] ?? 0);
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
@@ -82,6 +83,7 @@ class ProductController extends BaseClass
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_label_idx' => $s_label_idx,
+                's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
             ];
@@ -120,6 +122,7 @@ class ProductController extends BaseClass
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_label_idx' => $s_label_idx,
+                's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
@@ -132,6 +135,7 @@ class ProductController extends BaseClass
                 'categories' => $categories,
                 'sale_status_options' => $saleStatusOptions,
                 'product_label_for_select' => $productLabelForSelect,
+                'series_for_select' => $this->productService->getProductRelationGroupSeriesForFilter(),
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -180,6 +184,7 @@ class ProductController extends BaseClass
             $s_sale_status = $requestData['s_sale_status'] ?? null;
             $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종여부
             $s_label_idx = $requestData['s_label_idx'] ?? null;
+            $s_relation_group_idx = (int)($requestData['s_relation_group_idx'] ?? 0);
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
 
@@ -202,6 +207,7 @@ class ProductController extends BaseClass
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_label_idx' => $s_label_idx,
+                's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
             ];
@@ -240,6 +246,7 @@ class ProductController extends BaseClass
                 's_sale_status' => $s_sale_status,
                 's_discontinued' => $s_discontinued,
                 's_label_idx' => $s_label_idx,
+                's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
                 'rack_code' => $rack_code,
@@ -252,6 +259,7 @@ class ProductController extends BaseClass
                 'categories' => $categories,
                 'sale_status_options' => $saleStatusOptions,
                 'product_label_for_select' => $productLabelForSelect,
+                'series_for_select' => $this->productService->getProductRelationGroupSeriesForFilter(),
                 'workTaskItemOptions' => $workTaskItemOptions,
                 'sort_mode' => $sort_mode,
                 'paginationHtml' => $paginationHtml,
@@ -475,6 +483,54 @@ class ProductController extends BaseClass
             return view('admin.product.prd_detail_relation_group', [
                 'prd_idx' => $prdIdx,
                 'relation_group_data' => $relationGroupData,
+            ]);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+    /**
+     * 시리즈/연관그룹 관리 목록.
+     */
+    public function relationGroupManagementList(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $mode = trim((string)($requestData['s_mode'] ?? ''));
+            $useYn = trim((string)($requestData['s_use_yn'] ?? ''));
+            $brandIdx = (int)($requestData['s_brand_idx'] ?? 0);
+            $searchValue = trim((string)($requestData['search_value'] ?? ''));
+            $page = max(1, (int)($requestData['page'] ?? 1));
+
+            $listData = $this->productService->getProductRelationGroupManagementList([
+                'mode' => $mode,
+                'use_yn' => $useYn,
+                'brand_idx' => $brandIdx,
+                'search_value' => $searchValue,
+                'page' => $page,
+                'per_page' => 100,
+            ]);
+            $pagination = new Pagination(
+                (int)($listData['total'] ?? 0),
+                (int)($listData['per_page'] ?? 100),
+                (int)($listData['current_page'] ?? $page),
+                10
+            );
+
+            return view('admin.product.relation_group_management', [
+                's_mode' => $mode,
+                's_use_yn' => $useYn,
+                's_brand_idx' => $brandIdx,
+                'search_value' => $searchValue,
+                'relationGroupList' => $listData['data'] ?? [],
+                'brandOptions' => $this->productService->getProductRelationGroupBrandOptions(),
+                'pagination' => $pagination->toArray(),
+                'paginationHtml' => $pagination->renderLinks(),
+            ])->extends('admin.layout.layout', [
+                'pageGroup2' => 'prd',
+                'pageNameCode' => 'product_relation_group_list',
             ]);
         } catch (Throwable $e) {
             return view('admin.errors.404', [
@@ -884,6 +940,14 @@ class ProductController extends BaseClass
 
                 case 'remove_product_from_relation_group':
                     $result = $this->productService->removeProductFromRelationGroup($requestData);
+                    break;
+
+                case 'save_product_relation_group':
+                    $result = $this->productService->saveProductRelationGroup($requestData);
+                    break;
+
+                case 'delete_product_relation_group':
+                    $result = $this->productService->deleteProductRelationGroup($requestData);
                     break;
 
                 // 월간할인 해제 - 고도몰 반영까지 처리

@@ -237,6 +237,11 @@
 				</select>
 			</ul>
             <ul>
+                <select name="s_relation_group_idx" id="s_relation_group_idx" disabled>
+                    <option value="">시리즈</option>
+                </select>
+            </ul>
+            <ul>
                 <select name="s_prd_kind" id="s_prd_kind" >
                     <option value="">상품분류</option>
                     <?
@@ -835,6 +840,7 @@
         var fields = {
             's_site': $("#s_site").val(),
             's_brand': $("#s_brand").val(),
+            's_relation_group_idx': $("#s_relation_group_idx").val(),
             's_sale_status': $("#s_sale_status").val(),
             's_prd_kind': $("#s_prd_kind").val(),
             's_prd_kind_second': $("#s_prd_kind_second").val(),
@@ -863,6 +869,37 @@
         }
 
         return params;
+    }
+
+    var relationGroupSeriesOptions = <?= json_encode($series_for_select ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+    var selectedRelationGroupIdx = <?= (int)($s_relation_group_idx ?? 0) ?>;
+
+    function refreshRelationGroupSeriesSelect() {
+        var brandIdx = String($('#s_brand').val() || '');
+        var $seriesSelect = $('#s_relation_group_idx');
+        $seriesSelect.empty().append($('<option>', {
+            value: '',
+            text: brandIdx ? '시리즈' : '브랜드를 먼저 선택하세요'
+        }));
+
+        if (!brandIdx) {
+            $seriesSelect.prop('disabled', true);
+            return;
+        }
+
+        $.each(relationGroupSeriesOptions, function (_, series) {
+            if (String(series.prg_brand_idx || '') !== brandIdx) {
+                return;
+            }
+            $seriesSelect.append($('<option>', {
+                value: series.prg_idx,
+                text: series.prg_name
+            }));
+        });
+        $seriesSelect.prop('disabled', false).val(String(selectedRelationGroupIdx || ''));
+        if ($seriesSelect.val() === null) {
+            $seriesSelect.val('');
+        }
     }
 
     // 검색 파라미터로 페이지 이동
@@ -1224,6 +1261,11 @@
         fillSearchSecondarySelect(false);
         $('#s_prd_kind').on('change', function() {
             fillSearchSecondarySelect(true);
+        });
+        refreshRelationGroupSeriesSelect();
+        $('#s_brand').on('change', function() {
+            selectedRelationGroupIdx = 0;
+            refreshRelationGroupSeriesSelect();
         });
         
         // 개별 체크박스 선택 시 행 배경색 변경

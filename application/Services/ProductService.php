@@ -125,6 +125,7 @@ class ProductService extends BaseClass
         $s_sale_status = trim((string)($criteria['s_sale_status'] ?? ''));
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
         $s_label_idx = (int)($criteria['s_label_idx'] ?? 0);
+        $s_relation_group_idx = (int)($criteria['s_relation_group_idx'] ?? 0);
 
         $since = $criteria['since'] ?? null;
         $idxs = $criteria['idxs'] ?? [];
@@ -180,6 +181,21 @@ class ProductService extends BaseClass
                 $query->where('A.CD_BRAND_IDX', $s_brand)
                     ->orWhere('A.CD_BRAND2_IDX', $s_brand);
             });
+        }
+
+        // 시리즈 검색
+        if ($s_relation_group_idx > 0) {
+            $query->whereRaw("
+                EXISTS (
+                    SELECT 1
+                    FROM prd_relation_group_product RGP
+                    INNER JOIN prd_relation_group RG ON RG.prg_idx = RGP.prgp_group_idx
+                    WHERE RGP.prgp_prd_idx = A.CD_IDX
+                      AND RGP.prgp_group_idx = :relation_group_idx
+                      AND RG.prg_mode = 'series'
+                      AND RG.prg_use_yn = 'Y'
+                )
+            ", ['relation_group_idx' => $s_relation_group_idx]);
         }
 
         if ( $since ) {
@@ -2877,6 +2893,197 @@ class ProductService extends BaseClass
         return array_values(array_unique(array_filter($brandIdxs, function (int $brandIdx): bool {
             return $brandIdx > 0;
         })));
+    }
+
+    /**
+     * 시리즈/연관그룹 관리 목록 데이터.
+     */
+    public function getProductRelationGroupManagementList(array $criteria): array
+    {
+        $mode = trim((string)($criteria['mode'] ?? ''));
+        $useYn = trim((string)($criteria['use_yn'] ?? ''));
+        $brandIdx = (int)($criteria['brand_idx'] ?? 0);
+        $searchValue = trim((string)($criteria['search_value'] ?? ''));
+        $perPage = max(1, (int)($criteria['per_page'] ?? 100));
+        $page = max(1, (int)($criteria['page'] ?? 1));
+
+        $query = ProductRelationGroupModel::query()
+            ->from('prd_relation_group as G')
+            ->leftJoin('BRAND_DB as B', 'B.BD_IDX', '=', 'G.prg_brand_idx')
+            ->select([
+                'G.prg_idx',
+                'G.prg_mode',
+                'G.prg_brand_idx',
+                'G.prg_name',
+                'G.prg_memo',
+                'G.prg_use_yn',
+                'G.prg_reg_admin_name',
+                'G.prg_reg_at',
+                'G.prg_updated_at',
+                'B.BD_NAME as brand_name',
+            ])
+            ->when(in_array($mode, ['series', 'custom_group'], true), function ($query) use ($mode) {
+                $query->where('G.prg_mode', '=', $mode);
+            })
+            ->when(in_array($useYn, ['Y', 'N'], true), function ($query) use ($useYn) {
+                $query->where('G.prg_use_yn', '=', $useYn);
+            })
+            ->when($brandIdx > 0, function ($query) use ($brandIdx) {
+                $query->where('G.prg_brand_idx', '=', $brandIdx);
+            });
+
+        if ($searchValue !== '') {
+            $query->whereRaw("G.prg_name LIKE '%" . addslashes($searchValue) . "%'");
+        }
+
+        $result = $query
+            ->orderBy('G.prg_idx', 'DESC')
+            ->paginate($perPage, $page);
+        $groups = $result['data'] ?? [];
+        $groupIdxs = array_values(array_filter(array_map(function ($group): int {
+            return (int)($group['prg_idx'] ?? 0);
+        }, $groups)));
+
+        $memberCountByGroupIdx = [];
+        if (!empty($groupIdxs)) {
+            $memberRows = ProductRelationGroupProductModel::query()
+                ->select(['prgp_group_idx'])
+                ->whereIn('prgp_group_idx', $groupIdxs)
+                ->get()
+                ->toArray();
+            foreach ($memberRows as $memberRow) {
+                $groupIdx = (int)($memberRow['prgp_group_idx'] ?? 0);
+                $memberCountByGroupIdx[$groupIdx] = ($memberCountByGroupIdx[$groupIdx] ?? 0) + 1;
+            }
+        }
+
+        foreach ($groups as &$group) {
+            $group['member_count'] = $memberCountByGroupIdx[(int)($group['prg_idx'] ?? 0)] ?? 0;
+        }
+        unset($group);
+        $result['data'] = $groups;
+
+        return $result;
+    }
+
+    /**
+     * 시리즈/연관그룹 관리 화면의 브랜드 선택값.
+     */
+    public function getProductRelationGroupBrandOptions(): array
+    {
+        return BrandModel::query()
+            ->select(['BD_IDX', 'BD_NAME'])
+            ->orderBy('BD_NAME', 'ASC')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * 상품 DB 검색 필터에서 사용하는 활성 시리즈 목록.
+     */
+    public function getProductRelationGroupSeriesForFilter(): array
+    {
+        return ProductRelationGroupModel::query()
+            ->select(['prg_idx', 'prg_brand_idx', 'prg_name'])
+            ->where('prg_mode', '=', 'series')
+            ->where('prg_use_yn', '=', 'Y')
+            ->orderBy('prg_name', 'ASC')
+            ->get()
+            ->toArray();
+    }
+
+    /**
+     * 시리즈/연관그룹 정보를 저장한다.
+     */
+    public function saveProductRelationGroup(array $postData): array
+    {
+        $groupIdx = (int)($postData['prg_idx'] ?? 0);
+        $mode = trim((string)($postData['prg_mode'] ?? 'series'));
+        $brandIdx = (int)($postData['prg_brand_idx'] ?? 0);
+        $groupName = trim((string)($postData['prg_name'] ?? ''));
+        $memo = trim((string)($postData['prg_memo'] ?? ''));
+        $useYn = trim((string)($postData['prg_use_yn'] ?? 'Y'));
+
+        if (!in_array($mode, ['series', 'custom_group'], true)) {
+            throw new Exception('그룹 구분값이 올바르지 않습니다.');
+        }
+        if ($brandIdx <= 0) {
+            throw new Exception('브랜드 정보를 확인해주세요.');
+        }
+        if ($groupName === '') {
+            throw new Exception('시리즈/그룹 이름을 입력해주세요.');
+        }
+        if (!in_array($useYn, ['Y', 'N'], true)) {
+            throw new Exception('사용 여부 값이 올바르지 않습니다.');
+        }
+
+        $now = date('Y-m-d H:i:s');
+        $payload = [
+            'prg_mode' => $mode,
+            'prg_brand_idx' => $brandIdx,
+            'prg_name' => $groupName,
+            'prg_memo' => $memo,
+            'prg_use_yn' => $useYn,
+            'prg_updated_at' => $now,
+        ];
+        if ($groupIdx > 0) {
+            $existingGroup = ProductRelationGroupModel::find($groupIdx);
+            if (empty($existingGroup)) {
+                throw new Exception('시리즈/연관그룹을 찾을 수 없습니다.');
+            }
+            $existingGroupData = is_array($existingGroup) ? $existingGroup : $existingGroup->toArray();
+            if ((int)($existingGroupData['prg_brand_idx'] ?? 0) !== $brandIdx
+                && empty(BrandModel::query()->where('BD_IDX', '=', $brandIdx)->first())) {
+                throw new Exception('브랜드 정보를 확인해주세요.');
+            }
+            ProductRelationGroupModel::update(['prg_idx' => $groupIdx], $payload);
+            $message = '시리즈/연관그룹 정보를 저장했습니다.';
+        } else {
+            if (empty(BrandModel::query()->where('BD_IDX', '=', $brandIdx)->first())) {
+                throw new Exception('브랜드 정보를 확인해주세요.');
+            }
+            $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+            $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+            $group = ProductRelationGroupModel::create(array_merge($payload, [
+                'prg_reg_admin_idx' => $adminIdx > 0 ? $adminIdx : null,
+                'prg_reg_admin_name' => $adminName !== '' ? $adminName : null,
+                'prg_reg_at' => $now,
+            ]));
+            $groupData = is_array($group) ? $group : $group->toArray();
+            $groupIdx = (int)($groupData['prg_idx'] ?? 0);
+            $message = '시리즈/연관그룹을 생성했습니다.';
+        }
+
+        return [
+            'success' => true,
+            'message' => $message,
+            'group_idx' => $groupIdx,
+        ];
+    }
+
+    /**
+     * 포함된 상품이 없는 시리즈/연관그룹을 삭제한다.
+     */
+    public function deleteProductRelationGroup(array $postData): array
+    {
+        $groupIdx = (int)($postData['prg_idx'] ?? 0);
+        if ($groupIdx <= 0 || empty(ProductRelationGroupModel::find($groupIdx))) {
+            throw new Exception('시리즈/연관그룹을 찾을 수 없습니다.');
+        }
+        if (ProductRelationGroupProductModel::query()
+            ->where('prgp_group_idx', '=', $groupIdx)
+            ->exists()) {
+            throw new Exception('포함 상품이 있는 그룹은 삭제할 수 없습니다. 먼저 모든 상품을 그룹에서 제외해주세요.');
+        }
+
+        ProductRelationGroupModel::query()
+            ->where('prg_idx', '=', $groupIdx)
+            ->delete();
+
+        return [
+            'success' => true,
+            'message' => '시리즈/연관그룹을 삭제했습니다.',
+        ];
     }
 
     /**
