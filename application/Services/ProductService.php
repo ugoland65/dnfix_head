@@ -4307,7 +4307,7 @@ class ProductService extends BaseClass
 
     /**
      * 상세스펙 저장 데이터(JSON)를 생성한다.
-     * 현재는 토르소형(02010000), 리얼돌/전신형(02050000)만 지원한다.
+     * 토르소형(02010000), 가슴장난감(02020000), 리얼돌/전신형(02050000)을 지원한다.
      *
      * @param string $cdCategoryCode
      * @param array $postData
@@ -4316,7 +4316,7 @@ class ProductService extends BaseClass
     private function buildCdSpecForSave(string $cdCategoryCode, array $postData): array
     {
         $cdCategoryCode = trim($cdCategoryCode);
-        if (!in_array($cdCategoryCode, ['02010000', '02050000'], true)) {
+        if (!in_array($cdCategoryCode, ['02010000', '02020000', '02050000'], true)) {
             return [];
         }
 
@@ -4325,12 +4325,14 @@ class ProductService extends BaseClass
 
         $vendor = $this->normalizeCdSpecSizeSet($postData['cd_spec_vendor'] ?? [], $cdCategoryCode);
         $measured = $this->normalizeCdSpecSizeSet($postData['cd_spec_measured'] ?? [], $cdCategoryCode);
+        $options = $this->normalizeCdSpecOptions($postData['cd_spec_option'] ?? [], $cdCategoryCode);
 
         return [
             'category_code' => $cdCategoryCode,
             'category_name' => $categoryName,
             'vendor_size' => $vendor,
             'measured_size' => $measured,
+            'options' => $options,
         ];
     }
 
@@ -4362,6 +4364,18 @@ class ProductService extends BaseClass
                 'inner_length_anal',
                 'material',
             ],
+            '02020000' => [
+                'length',
+                'width',
+                'height',
+                'shoulder_width',
+                'chest_circumference',
+                'underbust_circumference',
+                'weight',
+                'material',
+                'inner_length_1',
+                'inner_length_2',
+            ],
             '02050000' => [
                 'height',
                 'weight',
@@ -4386,6 +4400,28 @@ class ProductService extends BaseClass
         }
 
         return $normalized;
+    }
+
+    /**
+     * 상세스펙의 단일 선택 옵션을 정규화한다.
+     *
+     * @param mixed $raw
+     * @param string $cdCategoryCode
+     * @return array<string,string>
+     */
+    private function normalizeCdSpecOptions($raw, string $cdCategoryCode): array
+    {
+        $source = is_array($raw) ? $raw : [];
+        if ($cdCategoryCode !== '02020000') {
+            return [];
+        }
+
+        $insertionFunctionYn = strtoupper(trim((string)($source['insertion_function_yn'] ?? 'N')));
+        return [
+            'insertion_function_yn' => in_array($insertionFunctionYn, ['Y', 'N'], true)
+                ? $insertionFunctionYn
+                : 'N',
+        ];
     }
 
 

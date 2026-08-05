@@ -279,7 +279,9 @@
                         $cdSpecData = (isset($productData['cd_spec']) && is_array($productData['cd_spec'])) ? $productData['cd_spec'] : [];
                         $cdSpecVendorData = (isset($cdSpecData['vendor_size']) && is_array($cdSpecData['vendor_size'])) ? $cdSpecData['vendor_size'] : [];
                         $cdSpecMeasuredData = (isset($cdSpecData['measured_size']) && is_array($cdSpecData['measured_size'])) ? $cdSpecData['measured_size'] : [];
+                        $cdSpecOptionData = (isset($cdSpecData['options']) && is_array($cdSpecData['options'])) ? $cdSpecData['options'] : [];
                         $isTorsoCategory = ($selectedCategoryCode === '02010000');
+                        $isBreastCategory = ($selectedCategoryCode === '02020000');
                         $isRealdollFullBodyCategory = ($selectedCategoryCode === '02050000');
 
                         $selectedSecondKindKey = '';
@@ -1134,6 +1136,82 @@
                             - 2차 카테고리가 토르소형(02010000)일 때만 저장됩니다.
                         </div>
                     </div>
+                    <div id="cd-spec-02020000-wrap" style="<?php if (!$isBreastCategory) echo 'display:none;'; ?>">
+                        <table class="table-style border01">
+                            <colgroup>
+                                <col width="180px" />
+                                <col />
+                                <col />
+                            </colgroup>
+                            <tr>
+                                <th>항목</th>
+                                <th>업체제공 수치</th>
+                                <th>실측 수치</th>
+                            </tr>
+                            <tr>
+                                <th>삽입기능 여부</th>
+                                <td colspan="2">
+                                    <select name="cd_spec_option[insertion_function_yn]">
+                                        <option value="N" <?= ($cdSpecOptionData['insertion_function_yn'] ?? 'N') === 'N' ? 'selected' : '' ?>>없음</option>
+                                        <option value="Y" <?= ($cdSpecOptionData['insertion_function_yn'] ?? '') === 'Y' ? 'selected' : '' ?>>있음</option>
+                                    </select>
+                                </td>
+                            </tr>
+                            <tr>
+                                <th>길이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>너비 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>높이 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>어깨너비 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>가슴둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>밑가슴둘레 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>무게 (kg)</th>
+                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>소재</th>
+                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 1 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_1]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_1'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_1]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_1'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>내부길이 2 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[inner_length_2]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[inner_length_2]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                        </table>
+                        <div class="admin-guide-text">
+                            - 2차 카테고리가 가슴장난감(02020000)일 때만 저장됩니다.
+                        </div>
+                    </div>
                     <div id="cd-spec-02050000-wrap" style="<?php if (!$isRealdollFullBodyCategory) echo 'display:none;'; ?>">
                         <table class="table-style border01">
                             <colgroup>
@@ -1663,6 +1741,7 @@
         const initialSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const $cdSpec02010000Wrap = $('#cd-spec-02010000-wrap');
+        const $cdSpec02020000Wrap = $('#cd-spec-02020000-wrap');
         const $cdSpec02050000Wrap = $('#cd-spec-02050000-wrap');
         let hasAppliedInitialSecondCategory = false;
         let hasAppliedInitialThirdCategory = false;
@@ -1701,8 +1780,10 @@
         function toggleCdSpecFieldsByCategoryCode() {
             const categoryCode = String($('#cd_category_code').val() || '').trim();
             const isTorsoCategory = categoryCode === '02010000';
+            const isBreastCategory = categoryCode === '02020000';
             const isRealdollCategory = categoryCode === '02050000';
             const $torsoInputs = $cdSpec02010000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["]');
+            const $breastInputs = $cdSpec02020000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["], select[name^="cd_spec_option["]');
             const $realdollInputs = $cdSpec02050000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["]');
 
             if (isTorsoCategory) {
@@ -1711,6 +1792,14 @@
             } else {
                 $cdSpec02010000Wrap.hide();
                 $torsoInputs.prop('disabled', true);
+            }
+
+            if (isBreastCategory) {
+                $cdSpec02020000Wrap.show();
+                $breastInputs.prop('disabled', false);
+            } else {
+                $cdSpec02020000Wrap.hide();
+                $breastInputs.prop('disabled', true);
             }
 
             if (isRealdollCategory) {
