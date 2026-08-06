@@ -392,7 +392,7 @@ $gnb_lang = "ko";
 							<a href="/ad/order/stock_excel">일일 재고관리</a>
 						</li>
 						<li>
-							<a href="/admin/order/sheet/list">주문서 리스트</a>
+							<a href="/admin/order/sheet/list">주문(발주) 리스트</a>
 						</li>
 						<li>
 							<a href="/admin/order/godo_order_list">고도몰 주문가져오기</a>

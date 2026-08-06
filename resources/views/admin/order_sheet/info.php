@@ -43,6 +43,28 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
         font-weight: 700;
         vertical-align: middle;
     }
+
+    .order-prd-unit-loading {
+        position: fixed;
+        z-index: 10000;
+        inset: 0;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        background: rgba(16, 24, 40, .58);
+    }
+
+    .order-prd-unit-loading__message {
+        min-width: 280px;
+        padding: 28px 32px;
+        border-radius: 10px;
+        background: #fff;
+        color: #172033;
+        font-size: 16px;
+        font-weight: 700;
+        text-align: center;
+        box-shadow: 0 16px 40px rgba(0, 0, 0, .25);
+    }
 </style>
 
 <form id="orderSheetForm">
@@ -125,7 +147,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                 </select>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 적용환율 :
-                                <input type="text" name='oo_prd_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_exchange_rate'] ?? '' ?>">
+                                <input type="text" name='oo_prd_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_exchange_rate'] ?? '' ?>" style="width:100px;">
                             </td>
                         </tr>
                         <tr>
@@ -140,7 +162,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                 </select>
                                 &nbsp;&nbsp;&nbsp;&nbsp;&nbsp;
                                 적용환율 :
-                                <input type="text" name='oo_sum_exchange_rate' class="" value="<?= $orderSheetInfo['oo_sum_exchange_rate'] ?? '' ?>">
+                                <input type="text" name='oo_sum_exchange_rate' class="" value="<?= $orderSheetInfo['oo_sum_exchange_rate'] ?? '' ?>" style="width:100px;">
                             </td>
                         </tr>
 
@@ -245,7 +267,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                     $_prd_sum_price_view = (float)($orderSheetInfo['oo_price_data']['prd_sum_price'] ?? 0);
                                     $_prd_sum_price_view_text = number_format($_prd_sum_price_view, ($_prd_sum_price_view == floor($_prd_sum_price_view)) ? 0 : 2);
                                 ?>
-                                <input type='text' name='prd_sum_price' class="price price-decimal" value="<?= $_prd_sum_price_view_text ?>">
+                                <input type='text' name='prd_sum_price' class="price price-decimal" value="<?= $_prd_sum_price_view_text ?>" style="width:200px;">
                                 <?= $orderSheetInfo['oo_prd_currency'] ?? '' ?>
                                 <div class="admin-guide-text">
                                     - 결제 통화와 다를 경우 입력해주세요.<br>
@@ -261,7 +283,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                     $_oo_sum_price_view = (float)($orderSheetInfo['oo_sum_price'] ?? 0);
                                     $_oo_sum_price_view_text = number_format($_oo_sum_price_view, ($_oo_sum_price_view == floor($_oo_sum_price_view)) ? 0 : 2);
                                 ?>
-                                <input type='text' name='oo_sum_price' class="price price-decimal" value="<?= $_oo_sum_price_view_text ?>">
+                                <input type='text' name='oo_sum_price' class="price price-decimal" value="<?= $_oo_sum_price_view_text ?>" style="width:200px;">
                                 <?= $orderSheetInfo['oo_sum_currency'] ?? '' ?>
                             </td>
                         </tr>
@@ -639,6 +661,13 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                             </td>
                         </tr>
 
+
+                        <tr>
+                            <th>Packing List</th>
+                            <td>
+                            </td>
+                        </tr>
+
                     </table>
 
                 </td>
@@ -786,10 +815,30 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
     </form>
 <?php } ?>
 
+<div id="order-prd-unit-loading" class="order-prd-unit-loading" role="alert" aria-live="assertive" aria-busy="true">
+    <div class="order-prd-unit-loading__message">주문상품 데이터가 생성중입니다.</div>
+</div>
+
 <script>
     var orderSheetReg = (function() {
 
         const osPayModeList = <?= json_encode($_os_pay_mode_list ?? [], JSON_UNESCAPED_UNICODE); ?>;
+        var stateChangeInFlight = false;
+        var orderPrdUnitCreationInFlight = false;
+
+        function setOrderPrdUnitCreationLock(isLocked) {
+            orderPrdUnitCreationInFlight = isLocked;
+            $('#order-prd-unit-loading').css('display', isLocked ? 'flex' : 'none');
+            $('.os-state-btn-wrap button').prop('disabled', isLocked);
+        }
+
+        window.addEventListener('beforeunload', function(event) {
+            if (!orderPrdUnitCreationInFlight) {
+                return;
+            }
+            event.preventDefault();
+            event.returnValue = '';
+        });
 
         /**
          * 주문 변동금액 라인 추가
@@ -964,6 +1013,16 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 return false;
             }
 
+            if (stateChangeInFlight) {
+                return false;
+            }
+
+            var isPaidState = String(state) === '4';
+            stateChangeInFlight = true;
+            if (isPaidState) {
+                setOrderPrdUnitCreationLock(true);
+            }
+
             ajaxRequest('/admin/order/sheet/action', payload)
                 .done(function(res) {
                     if (res && res.success) {
@@ -983,6 +1042,12 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 })
                 .fail(function(res) {
                     alert(res && res.message ? res.message : '에러');
+                })
+                .always(function() {
+                    stateChangeInFlight = false;
+                    if (isPaidState) {
+                        setOrderPrdUnitCreationLock(false);
+                    }
                 });
         }
 

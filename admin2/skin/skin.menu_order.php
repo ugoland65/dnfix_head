@@ -13,7 +13,7 @@ if( isset($_POST['quickmode']) && $_POST['quickmode'] == "on" ){
 <div class="left-menu-wrap">
 
 	<ul <? if( $pageNameCode == "order_sheet_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/sheet/list'">
-		<li>주문서 리스트</li>
+		<li>주문(발주) 리스트</li>
 	</ul>
 	<ul <? if( $pageNameCode == "purchase_list") echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/order/purchase/list'">
 		<li>개별 발주서 리스트</li>

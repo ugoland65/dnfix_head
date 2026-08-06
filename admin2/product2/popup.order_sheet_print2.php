@@ -56,6 +56,75 @@ if( $_oo_idx ){
 	}
 }
 
+$ooFalseRows = json_decode((string)($oo_data['oo_false'] ?? '[]'), true);
+if (!is_array($ooFalseRows)) {
+	$ooFalseRows = json_decode('[' . trim((string)($oo_data['oo_false'] ?? '')) . ']', true);
+}
+if (!is_array($ooFalseRows)) {
+	$ooFalseRows = [];
+}
+$ooFalsePidxMap = [];
+foreach ($ooFalseRows as $ooFalseRow) {
+	if (!is_array($ooFalseRow)) {
+		continue;
+	}
+	$ooFalsePidx = (int)($ooFalseRow['pidx'] ?? 0);
+	if ($ooFalsePidx > 0) {
+		$ooFalsePidxMap[$ooFalsePidx] = true;
+	}
+}
+
+// 주문 JSON의 bidx(ona_order_prd.oop_idx)로 실제 상품그룹 가격코드를 복원한다.
+$oopCodeByIdx = [];
+$oopIdxList = [];
+foreach ($_order_sec_json as $orderGroup) {
+	if (!is_array($orderGroup)) {
+		continue;
+	}
+	$oopIdx = (int)($orderGroup['bidx'] ?? 0);
+	if ($oopIdx > 0) {
+		$oopIdxList[$oopIdx] = $oopIdx;
+	}
+}
+if (!empty($oopIdxList)) {
+	$oopIdxSql = implode(',', array_map('intval', array_values($oopIdxList)));
+	$oopResult = wepix_query_error("select oop_idx, oop_code from ona_order_prd where oop_idx in (".$oopIdxSql.")");
+	while ($oopRow = wepix_fetch_array($oopResult)) {
+		$oopIdx = (int)($oopRow['oop_idx'] ?? 0);
+		if ($oopIdx > 0) {
+			$oopCodeByIdx[$oopIdx] = (string)($oopRow['oop_code'] ?? '');
+		}
+	}
+}
+
+// 주문수량/실패수량 요약
+$orderProductCount = 0;
+$orderQuantity = 0;
+$failedProductCount = 0;
+$failedQuantity = 0;
+foreach ($_order_sec_json as $orderGroup) {
+	$selectedProducts = is_array($orderGroup) ? ($orderGroup['selpd'] ?? []) : [];
+	if (!is_array($selectedProducts)) {
+		continue;
+	}
+
+	foreach ($selectedProducts as $selectedProduct) {
+		if (!is_array($selectedProduct)) {
+			continue;
+		}
+
+		$quantity = (int)($selectedProduct['qty'] ?? 0);
+		$orderProductCount++;
+		$orderQuantity += $quantity;
+		if (!empty($selectedProduct['false']) || isset($ooFalsePidxMap[(int)($selectedProduct['pidx'] ?? 0)])) {
+			$failedProductCount++;
+			$failedQuantity += $quantity;
+		}
+	}
+}
+$stockInProductCount = $orderProductCount - $failedProductCount;
+$stockInQuantity = $orderQuantity - $failedQuantity;
+
 // 엑셀 다운로드 처리
 if( $_excel == "ok" ){
 
@@ -66,7 +135,7 @@ if( $_excel == "ok" ){
 	if( $_mode == "stock" ){
 		$headers = ['재고코드', '이미지', '상품명', 'JAN코드', 'P코드', '코드3', '수량'];
 	} else {
-		$headers = ['재고코드', '이미지', '상품명', '인보이스명1', '인보이스명2', '재질', 'JAN코드', 'P코드', '코드3', '원산지', '수량'];
+		$headers = ['재고코드', '이미지', '한글 상품명', '원어명', '품번', '인보이스명', '주문수량', '주문단가', '합가격', '소재', '바코드', '', '원산지'];
 	}
 
 	// 헤더 스타일 설정
@@ -93,12 +162,15 @@ if( $_excel == "ok" ){
 
 	// 데이터 작성
 	$row = 2;
+	$excelTotalQty = 0;
+	$excelTotalPrice = 0;
 	for ($i=0; $i<count($_order_sec_json); $i++){
 		if (!isset($_order_sec_json[$i]) || !is_array($_order_sec_json[$i])) {
 			continue;
 		}
 		
 		$_select_json = $_order_sec_json[$i]['selpd'] ?? [];
+		$_oop_code = $oopCodeByIdx[(int)($_order_sec_json[$i]['bidx'] ?? 0)] ?? '';
 		if (!is_array($_select_json)) {
 			$_select_json = [];
 		}
@@ -110,6 +182,9 @@ if( $_excel == "ok" ){
 
 			$_idx = $_select_json[$z]['pidx'] ?? '';
 			$_qty = $_select_json[$z]['qty'] ?? 0;
+			if (!empty($_select_json[$z]['false']) || isset($ooFalsePidxMap[(int)($_select_json[$z]['pidx'] ?? 0)])) {
+				continue;
+			}
 
 			$comparison_data = wepix_fetch_array(wepix_query_error("select * from "._DB_COMPARISON." where CD_IDX = '".$_idx."' "));
 			$stock_data = wepix_fetch_array(wepix_query_error("select ps_idx,ps_stock from prd_stock where ps_prd_idx = '".$_idx."' "));
@@ -125,6 +200,20 @@ if( $_excel == "ok" ){
 			if (!is_array($stock_data) || empty($stock_data)) {
 				$stock_data = ['ps_idx' => '', 'ps_stock' => 0];
 			}
+
+			$_price_fn = $comparison_data['CD_PRICE_FN'] ?? $comparison_data['cd_price_fn'] ?? [];
+			if (is_string($_price_fn)) {
+				$_price_fn = json_decode($_price_fn, true);
+			}
+			if (!is_array($_price_fn)) {
+				$_price_fn = [];
+			}
+			$_unit_price = (float)($_price_fn[$_oop_code] ?? 0);
+			$_qty_number = (float)preg_replace('/[,\s]/', '', (string)$_qty);
+			$_total_price = $_unit_price * $_qty_number;
+			$_qty_text = number_format($_qty_number, ($_qty_number == floor($_qty_number)) ? 0 : 2);
+			$_unit_price_text = number_format($_unit_price, ($_unit_price == floor($_unit_price)) ? 0 : 2);
+			$_total_price_text = number_format($_total_price, ($_total_price == floor($_total_price)) ? 0 : 2);
 
 			// 인보이스명1 처리
 			if( !empty($comparison_data['CD_INV_NAME1']) ){
@@ -155,13 +244,17 @@ if( $_excel == "ok" ){
 				$sheet->setCellValueExplicit('A'.$row, $stock_data['ps_idx'] ?? '', DataType::TYPE_STRING);
 				$sheet->setCellValue('C'.$row, $comparison_data['CD_NAME'] ?? '');
 				$sheet->setCellValue('D'.$row, $_name_og);
-				$sheet->setCellValue('E'.$row, $comparison_data['CD_INV_NAME2'] ?? '');
-				$sheet->setCellValue('F'.$row, $comparison_data['CD_INV_MATERIAL'] ?? '');
-				$sheet->setCellValueExplicit('G'.$row, $comparison_data['CD_CODE'] ?? '', DataType::TYPE_STRING);
-				$sheet->setCellValueExplicit('H'.$row, $comparison_data['CD_CODE2'] ?? '', DataType::TYPE_STRING);
-				$sheet->setCellValueExplicit('I'.$row, $comparison_data['CD_CODE3'] ?? '', DataType::TYPE_STRING);
-				$sheet->setCellValue('J'.$row, $comparison_data['CD_COO'] ?? '');
-				$sheet->setCellValue('K'.$row, $_qty);
+				$sheet->setCellValueExplicit('E'.$row, $comparison_data['CD_CODE2'] ?? '', DataType::TYPE_STRING);
+				$sheet->setCellValue('F'.$row, $comparison_data['CD_INV_NAME2'] ?? '');
+				$sheet->setCellValueExplicit('G'.$row, $_qty_text, DataType::TYPE_STRING);
+				$sheet->setCellValueExplicit('H'.$row, $_unit_price_text, DataType::TYPE_STRING);
+				$sheet->setCellValueExplicit('I'.$row, $_total_price_text, DataType::TYPE_STRING);
+				$sheet->setCellValue('J'.$row, $comparison_data['CD_INV_MATERIAL'] ?? '');
+				$sheet->setCellValueExplicit('K'.$row, $comparison_data['CD_CODE'] ?? '', DataType::TYPE_STRING);
+				$sheet->setCellValueExplicit('L'.$row, $comparison_data['CD_CODE3'] ?? '', DataType::TYPE_STRING);
+				$sheet->setCellValue('M'.$row, $comparison_data['CD_COO'] ?? '');
+				$excelTotalQty += $_qty_number;
+				$excelTotalPrice += $_total_price;
 			}
 
 			// 이미지 삽입
@@ -187,11 +280,23 @@ if( $_excel == "ok" ){
 				'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
 				'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
 			];
-			$lastCol = $_mode == "stock" ? 'G' : 'K';
+			$lastCol = $_mode == "stock" ? 'G' : 'M';
 			$sheet->getStyle('A'.$row.':'.$lastCol.$row)->applyFromArray($cellStyle);
 
 			$row++;
 		}
+	}
+
+	if ($_mode != "stock") {
+		$sheet->mergeCells('A'.$row.':F'.$row);
+		$sheet->setCellValue('A'.$row, '합계');
+		$sheet->setCellValueExplicit('G'.$row, number_format($excelTotalQty, ($excelTotalQty == floor($excelTotalQty)) ? 0 : 2), DataType::TYPE_STRING);
+		$sheet->setCellValueExplicit('I'.$row, number_format($excelTotalPrice, ($excelTotalPrice == floor($excelTotalPrice)) ? 0 : 2), DataType::TYPE_STRING);
+		$sheet->getStyle('A'.$row.':M'.$row)->applyFromArray([
+			'font' => ['bold' => true],
+			'alignment' => ['horizontal' => Alignment::HORIZONTAL_CENTER, 'vertical' => Alignment::VERTICAL_CENTER],
+			'borders' => ['allBorders' => ['borderStyle' => Border::BORDER_THIN]]
+		]);
 	}
 
 	// 다운로드 헤더 설정
@@ -232,6 +337,10 @@ include "../layout/header_popup.php";
 	<button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm " onclick="stockWrite()">재고등록</button>
 <?php } ?>
 
+		발주수량 : <b>상품 <?=number_format($orderProductCount)?>개(<?=number_format($orderQuantity)?>개)</b>
+		/ 실패수량 : <b>상품 <?=number_format($failedProductCount)?>개(<?=number_format($failedQuantity)?>개)</b>
+		/ 입고수량 : <b>상품 <?=number_format($stockInProductCount)?>개(<?=number_format($stockInQuantity)?>개)</b>
+
 </div>
 <div class="top_menu_back">
 </div>
@@ -243,12 +352,34 @@ include "../layout/header_popup.php";
 <input type="hidden" name="modify_idx" value="<?=$_oo_idx?>">
 
 <table class="exel-table">
+	<thead>
+		<tr>
+			<th>재고코드</th>
+			<th>이미지</th>
+			<th>한글 상품명</th>
+			<th>원어명</th>
+			<th>품번</th>
+			<th>인보이스명</th>
+			<th>주문수량</th>
+			<th>주문단가<br>Unit Price</th>
+			<th>합가격<br>Total Amount</th>
+			<th>소재</th>
+			<th>바코드</th>
+			
+			<th></th>
+			<th>원산지</th>
+			
+		</tr>
+	</thead>
+	<tbody>
 <?php
 
 	// 배열 검증
 	if (!is_array($_order_sec_json)) {
 		$_order_sec_json = [];
 	}
+	$printTotalQty = 0;
+	$printTotalPrice = 0;
 
 	for ($i=0; $i<count($_order_sec_json); $i++){
 
@@ -258,6 +389,7 @@ include "../layout/header_popup.php";
 		}
 		
 		$_os_data_idx = $_order_sec_json[$i]['bidx'] ?? '';
+		$_oop_code = $oopCodeByIdx[(int)$_os_data_idx] ?? '';
 		$_order_sec_data[$_os_data_idx]['item'] = $_order_sec_json[$i]['item'] ?? '';
 		$_order_sec_data[$_os_data_idx]['qty'] = $_order_sec_json[$i]['qty'] ?? 0;
 		$_order_sec_data[$_os_data_idx]['price'] = $_order_sec_json[$i]['price'] ?? 0;
@@ -278,6 +410,9 @@ include "../layout/header_popup.php";
 
 			$_idx = $_select_json[$z]['pidx'] ?? '';
 			$_qty = $_select_json[$z]['qty'] ?? 0;
+			if (!empty($_select_json[$z]['false']) || isset($ooFalsePidxMap[(int)($_select_json[$z]['pidx'] ?? 0)])) {
+				continue;
+			}
 
 			$comparison_data = wepix_fetch_array(wepix_query_error("select * from "._DB_COMPARISON." where CD_IDX = '".$_idx."' "));
 			$stock_data = wepix_fetch_array(wepix_query_error("select ps_idx,ps_stock from prd_stock where ps_prd_idx = '".$_idx."' "));
@@ -323,6 +458,23 @@ include "../layout/header_popup.php";
 				$_name_og = "";
 			}
 
+			$_price_fn = $comparison_data['CD_PRICE_FN'] ?? $comparison_data['cd_price_fn'] ?? [];
+			if (is_string($_price_fn)) {
+				$_price_fn = json_decode($_price_fn, true);
+			}
+			if (!is_array($_price_fn)) {
+				$_price_fn = [];
+			}
+			$_unit_price = (float)($_price_fn[$_oop_code] ?? 0);
+			$_unit_price_text = number_format($_unit_price, ($_unit_price == floor($_unit_price)) ? 0 : 2);
+			$_qty_number = (float)preg_replace('/[,\s]/', '', (string)$_qty);
+			$_total_price = $_unit_price * $_qty_number;
+			$_total_price_text = number_format($_total_price, ($_total_price == floor($_total_price)) ? 0 : 2);
+			if ($_mode !== "stock") {
+				$printTotalQty += $_qty_number;
+				$printTotalPrice += $_total_price;
+			}
+
 ?>
 	<tr bgcolor="<?=$trcolor ?? ''?>">
 		<td class="xl65"><?=$stock_data['ps_idx'] ?? ''?></td>
@@ -355,19 +507,35 @@ if( $_mode == "stock" ){
 		</td>
 <?php }else{ ?>
 		<td class="xl65"><?=$_name_og?></td>
+		<td class="xl65"><?=$comparison_data['CD_CODE2'] ?? ''?></td>
 		<td class="xl65"><?=$comparison_data['CD_INV_NAME2'] ?? ''?></td>
+		<td class="xl65"><?=$_qty?></td>
+		<td class="xl65"><?=$_unit_price_text?></td>
+		<td class="xl65"><?=$_total_price_text?></td>
 		<td class="xl65"><?=$comparison_data['CD_INV_MATERIAL'] ?? ''?></td>
 		<td class="xl65"><?=$comparison_data['CD_CODE'] ?? ''?></td>
-		<td class="xl65"><?=$comparison_data['CD_CODE2'] ?? ''?></td>
+		
 		<td class="xl65"><?=$comparison_data['CD_CODE3'] ?? ''?></td>
 		<td class="xl65"><?=$comparison_data['CD_COO'] ?? ''?></td>
-		<td class="xl65"><?=$_qty?></td>
+		
 <?php } ?>
 
 	</tr>
 <?php
 	} }
 ?>
+</tbody>
+<tfoot>
+<?php if ($_mode !== "stock") { ?>
+	<tr>
+		<td class="xl65 text-right" colspan="6"><b>합계</b></td>
+		<td class="xl65"><b><?=number_format($printTotalQty, ($printTotalQty == floor($printTotalQty)) ? 0 : 2)?></b></td>
+		<td class="xl65"></td>
+		<td class="xl65"><b><?=number_format($printTotalPrice, ($printTotalPrice == floor($printTotalPrice)) ? 0 : 2)?></b></td>
+		<td class="xl65" colspan="4"></td>
+	</tr>
+<?php } ?>
+</tfoot>
 </table>
 </form>
 

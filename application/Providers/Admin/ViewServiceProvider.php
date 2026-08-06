@@ -18,8 +18,8 @@ class ViewServiceProvider
      */
     public static function boot(): void
     {
-        // Admin 전용 Composer
-        View::composer('admin.*', function($view) {
+        // Admin/모바일 관리자 공용 Composer
+        View::composer(['admin.*', 'admobile.*'], function($view) {
             self::bindSessionData($view);
             self::bindAdminData($view);
         });

@@ -11,6 +11,20 @@
     $defaultStockDay = isset($defaultStockDay) ? (string)$defaultStockDay : date('Y-m-d');
     $defaultStockMemo = isset($defaultStockMemo) ? (string)$defaultStockMemo : '';
     $inspectionVersion = (new \App\Services\GodoInspectionService())->getInspectionVersion();
+    $orderQuantity = 0;
+    $failedQuantity = 0;
+    $orderProductCount = count($stockItems);
+    $failedProductCount = 0;
+    foreach ($stockItems as $stockItem) {
+        $quantity = (int)($stockItem['qty'] ?? 0);
+        $orderQuantity += $quantity;
+        if (!empty($stockItem['is_false'])) {
+            $failedQuantity += $quantity;
+            $failedProductCount++;
+        }
+    }
+    $stockInQuantity = $orderQuantity - $failedQuantity;
+    $stockInProductCount = $orderProductCount - $failedProductCount;
 
 ?>
 <style>
@@ -77,6 +91,13 @@
             <div style="color:#6b7280;">* 각 항목은 필수/참고로 구분되며, 오분류 시 삭제/추가 대상 카테고리가 함께 표시됩니다.</div>
         </div>
 
+
+        <div>
+            발주수량 : <b>상품 <?= number_format($orderProductCount) ?>개(<?= number_format($orderQuantity) ?>개)</b>
+            / 실패수량 : <b>상품 <?= number_format($failedProductCount) ?>개(<?= number_format($failedQuantity) ?>개)</b>
+            / 입고수량 : <b>상품 <?= number_format($stockInProductCount) ?>개(<?= number_format($stockInQuantity) ?>개)</b>
+        </div>
+
         <table class="table-list m-t-10">
             <thead>
                 <tr>
@@ -98,7 +119,11 @@
 
             <tbody>
             <?php $godoInspectionService = new \App\Services\GodoInspectionService(); ?>
-            <?php foreach ($stockItems as $rowIndex => $item) { ?>
+            <?php foreach ($stockItems as $rowIndex => $item) {
+                if (!empty($item['is_false'])) {
+                    continue;
+                }
+            ?>
                 <?php
                 $stockProcessed = (isset($item['stock_processed']) && is_array($item['stock_processed'])) ? $item['stock_processed'] : [];
                 $rowBg = !empty($stockProcessed) ? '#fff9db' : (!empty($item['is_false']) ? '#eee' : '#fff');

@@ -1,6 +1,6 @@
 <div id="contents_head">
 	<h1>주문서 v.5</h1>
-	<h3>상품발주 주문서 리스트</h3>
+	<h3>주문(발주) 리스트</h3>
 	<div id="head_write_btn">
 		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="orderSheet.osReg()" > 
 			<i class="fas fa-plus-circle"></i>

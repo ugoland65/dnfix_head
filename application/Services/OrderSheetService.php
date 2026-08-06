@@ -16,6 +16,7 @@ use App\Models\ProductStockUnitModel;
 use App\Models\InspectionProcessLogModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
+use App\Classes\DB;
 
 class OrderSheetService
 {
@@ -512,7 +513,7 @@ class OrderSheetService
         }
 
         $orderSheet = OrderSheetModel::query()
-            ->select(['oo_idx', 'oo_name', 'oo_json', 'oo_stock'])
+            ->select(['oo_idx', 'oo_name', 'oo_json', 'oo_false', 'oo_stock'])
             ->where('oo_idx', '=', $idx)
             ->first();
         if (!$orderSheet) {
@@ -527,6 +528,24 @@ class OrderSheetService
         $stockState = json_decode((string)($orderSheet['oo_stock'] ?? '{}'), true);
         if (!is_array($stockState)) {
             $stockState = [];
+        }
+
+        $falseRows = json_decode((string)($orderSheet['oo_false'] ?? '[]'), true);
+        if (!is_array($falseRows)) {
+            $falseRows = json_decode('[' . trim((string)($orderSheet['oo_false'] ?? '')) . ']', true);
+        }
+        if (!is_array($falseRows)) {
+            $falseRows = [];
+        }
+        $falsePidxMap = [];
+        foreach ($falseRows as $falseRow) {
+            if (!is_array($falseRow)) {
+                continue;
+            }
+            $falsePidx = (int)($falseRow['pidx'] ?? 0);
+            if ($falsePidx > 0) {
+                $falsePidxMap[$falsePidx] = true;
+            }
         }
 
         $selpdRows = [];
@@ -550,7 +569,7 @@ class OrderSheetService
                 $selpdRows[] = [
                     'pidx' => $pidx,
                     'qty' => (int)($row['qty'] ?? 0),
-                    'is_false' => !empty($row['false']),
+                    'is_false' => !empty($row['false']) || isset($falsePidxMap[$pidx]),
                 ];
             }
         }
@@ -1711,7 +1730,20 @@ class OrderSheetService
         ];
 
         $beforeData = $this->getOrderSheetForLog($idx);
-        OrderSheetModel::update(['oo_idx' => $idx], $update_data);
+        $unitSyncResult = DB::transaction(function () use ($idx, $state, $oo_state, $update_data) {
+            $unitSyncResult = [
+                'created' => false,
+                'count' => 0,
+            ];
+
+            if ((int)$state === 4 && (int)$oo_state !== 4) {
+                $unitSyncResult = (new OrderPrdUnitService())->createUnitsForPaidOrder((int)$idx);
+            }
+
+            OrderSheetModel::update(['oo_idx' => $idx], $update_data);
+
+            return $unitSyncResult;
+        });
         $afterData = $this->getOrderSheetForLog($idx);
         $this->writeOrderSheetActionLog(
             $idx,
@@ -1724,6 +1756,8 @@ class OrderSheetService
         return [
             'success' => true,
             'msg' => '완료',
+            'order_prd_unit_created' => $unitSyncResult['created'] ?? false,
+            'order_prd_unit_count' => $unitSyncResult['count'] ?? 0,
         ];
     }
 
