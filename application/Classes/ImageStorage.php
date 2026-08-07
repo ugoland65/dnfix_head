@@ -17,7 +17,7 @@ class ImageStorage
      * @return string 저장된 파일명
      * @throws Exception
      */
-    public function storeUploaded(array $file, string $directory, string $baseName, ?int $width = null, ?int $height = null): string
+    public function storeUploaded(array $file, string $directory, string $baseName, ?int $width = null, ?int $height = null, ?int $maxWidth = null): string
     {
         $tmpFile = (string)($file['tmp_name'] ?? '');
         $originName = (string)($file['name'] ?? '');
@@ -33,7 +33,15 @@ class ImageStorage
             throw new Exception('이미지 저장에 실패했습니다.');
         }
 
-        $this->resizeIfNeeded($destination, $width, $height);
+        try {
+            $this->resizeIfNeeded($destination, $width, $height);
+            if ($maxWidth !== null && $maxWidth > 0) {
+                $this->resizeToMaxWidth($destination, $maxWidth);
+            }
+        } catch (\Throwable $e) {
+            @unlink($destination);
+            throw $e;
+        }
         return $saveFileName;
     }
 
@@ -201,6 +209,52 @@ class ImageStorage
         imagecopyresampled($dst, $src, $dstX, $dstY, 0, 0, $dstW, $dstH, $srcW, $srcH);
         $this->saveImageResource($dst, $filePath, $type);
 
+        imagedestroy($src);
+        imagedestroy($dst);
+    }
+
+    /**
+     * 원본 비율을 유지하며 지정한 최대 가로 폭으로 축소한다.
+     */
+    public function resizeToMaxWidth(string $filePath, int $maxWidth): void
+    {
+        $info = @getimagesize($filePath);
+        if (!is_array($info)) {
+            throw new Exception('업로드한 이미지 정보를 확인할 수 없습니다.');
+        }
+        $srcW = (int)($info[0] ?? 0);
+        $srcH = (int)($info[1] ?? 0);
+        if ($srcW <= 0 || $srcH <= 0) {
+            throw new Exception('업로드한 이미지 정보를 확인할 수 없습니다.');
+        }
+        if ($srcW <= $maxWidth) {
+            return;
+        }
+        if (!extension_loaded('gd')) {
+            throw new Exception('가로 1000px 초과 이미지는 서버의 GD 확장 기능이 필요합니다.');
+        }
+
+        $type = (int)($info[2] ?? 0);
+        $src = $this->createImageResource($filePath, $type);
+        if (!$src) {
+            throw new Exception('이미지 크기를 조정할 수 없는 형식입니다.');
+        }
+
+        $dstW = $maxWidth;
+        $dstH = max(1, (int)round($srcH * ($dstW / $srcW)));
+        $dst = imagecreatetruecolor($dstW, $dstH);
+        if (in_array($type, [IMAGETYPE_PNG, IMAGETYPE_GIF, IMAGETYPE_WEBP], true)) {
+            imagealphablending($dst, false);
+            imagesavealpha($dst, true);
+            $transparent = imagecolorallocatealpha($dst, 0, 0, 0, 127);
+            imagefilledrectangle($dst, 0, 0, $dstW, $dstH, $transparent);
+        } else {
+            $white = imagecolorallocate($dst, 255, 255, 255);
+            imagefilledrectangle($dst, 0, 0, $dstW, $dstH, $white);
+        }
+
+        imagecopyresampled($dst, $src, 0, 0, 0, 0, $dstW, $dstH, $srcW, $srcH);
+        $this->saveImageResource($dst, $filePath, $type);
         imagedestroy($src);
         imagedestroy($dst);
     }

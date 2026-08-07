@@ -24,8 +24,8 @@ $adminName = trim((string)($auth['ad_name'] ?? ($_ad_name ?? '관리자')));
         .admobile-menu-toggle summary::-webkit-details-marker { display: none; }
         .admobile-menu-toggle summary::before { content: "☰"; }
         .admobile-menu-toggle[open] summary::before { content: "×"; font-size: 24px; }
-        .admobile-menu-toggle[open]::after { position: fixed; z-index: 20; inset: 0; background: rgba(16, 24, 40, .45); content: ""; }
-        .admobile-navigation { position: fixed; z-index: 21; top: 0; bottom: 0; left: 0; width: min(280px, calc(100vw - 48px)); overflow: auto; background: #fff; box-shadow: 8px 0 24px rgba(16, 24, 40, .2); }
+        .admobile-menu-toggle[open]::after { position: fixed; z-index: 1300; inset: 0; background: rgba(16, 24, 40, .45); content: ""; }
+        .admobile-navigation { position: fixed; z-index: 1301; top: 0; bottom: 0; left: 0; width: min(280px, calc(100vw - 48px)); overflow: auto; background: #fff; box-shadow: 8px 0 24px rgba(16, 24, 40, .2); }
         .admobile-navigation-close { float: right; margin: 12px; padding: 6px 9px; border: 0; border-radius: 5px; background: #eef1f5; color: #344054; font: inherit; font-size: 12px; }
         .admobile-navigation-group { padding: 22px 16px 12px; color: #667085; font-size: 12px; font-weight: 700; }
         .admobile-navigation a { display: block; padding: 13px 16px 15px 28px; border-top: 1px solid #eef1f5; color: #172033; font-size: 14px; font-weight: 600; text-decoration: none; }
@@ -46,6 +46,8 @@ $adminName = trim((string)($auth['ad_name'] ?? ($_ad_name ?? '관리자')));
             <summary aria-label="메뉴 열기"></summary>
             <nav class="admobile-navigation" aria-label="모바일 관리자 메뉴">
                 <button type="button" class="admobile-navigation-close" onclick="this.closest('details').removeAttribute('open')">닫기</button>
+                <div class="admobile-navigation-group">상품관리</div>
+                <a href="/admobile/product/list">상품 목록</a>
                 <div class="admobile-navigation-group">재고/발주</div>
                 <a href="/admobile/order/sheet/list">주문(발주)</a>
                 <div class="admobile-navigation-group">계정관리</div>

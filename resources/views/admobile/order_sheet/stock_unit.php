@@ -422,7 +422,7 @@ $remainingQty = (int)($remainingQty ?? 0);
                 message.style.color = '#067647';
                 message.textContent = result.message;
                 window.setTimeout(function() {
-                    window.location.reload();
+                    window.location.href = '/admobile/order/sheet/stock?idx=' + encodeURIComponent(form.idx.value);
                 }, 400);
             })
             .catch(function(error) {

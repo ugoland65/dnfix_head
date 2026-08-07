@@ -51,21 +51,27 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
 
         <?php foreach ($stockUnits as $unit) { ?>
             <article class="admobile-stock-card" data-inspection-status="<?= !empty($unit['is_check_complete']) ? 'complete' : 'pending' ?>">
-                <?php if (!empty($unit['product_image'])) { ?>
-                    <button
-                        type="button"
-                        class="admobile-stock-image admobile-stock-image-button"
-                        data-image="<?= htmlspecialchars((string)$unit['product_image'], ENT_QUOTES, 'UTF-8') ?>"
-                        data-name="<?= htmlspecialchars((string)($unit['product_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
-                        aria-label="상품 이미지 크게 보기"
-                    >
-                        <img src="<?= htmlspecialchars((string)$unit['product_image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
-                    </button>
-                <?php } else { ?>
-                    <div class="admobile-stock-image">
-                        <span>이미지 없음</span>
-                    </div>
-                <?php } ?>
+                <div class="admobile-stock-image-wrap">
+                    <?php if (!empty($unit['sale_status'])) { ?>
+                        <span class="admobile-stock-sale-status<?= ($unit['sale_status'] ?? '') === '신상주문' ? ' is-new-order' : (($unit['sale_status'] ?? '') === '구매대행' ? ' is-purchase-agent' : '') ?>"><?= htmlspecialchars((string)$unit['sale_status'], ENT_QUOTES, 'UTF-8') ?></span>
+                    <?php } ?>
+                    <?php if (!empty($unit['product_image'])) { ?>
+                        <button
+                            type="button"
+                            class="admobile-stock-image admobile-stock-image-button"
+                            data-image="<?= htmlspecialchars((string)$unit['product_image'], ENT_QUOTES, 'UTF-8') ?>"
+                            data-name="<?= htmlspecialchars((string)($unit['product_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                            aria-label="상품 이미지 크게 보기"
+                        >
+                            <img src="<?= htmlspecialchars((string)$unit['product_image'], ENT_QUOTES, 'UTF-8') ?>" alt="">
+                        </button>
+                    <?php } else { ?>
+                        <div class="admobile-stock-image">
+                            <span>이미지 없음</span>
+                        </div>
+                    <?php } ?>
+                    <a class="admobile-stock-product-edit" href="/admobile/product/detail?prd_idx=<?= (int)($unit['pidx'] ?? 0) ?>&amp;return_to=<?= rawurlencode('/admobile/order/sheet/stock?idx=' . (int)($orderIdx ?? 0)) ?>">상품수정</a>
+                </div>
                 <div class="admobile-stock-content">
                     <?php if (!empty($unit['brand_name'])) { ?>
                         <p class="admobile-stock-brand"><?= htmlspecialchars((string)$unit['brand_name'], ENT_QUOTES, 'UTF-8') ?></p>
@@ -208,9 +214,14 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-stock-list { display: grid; gap: 9px; }
     .admobile-stock-card { display: flex; gap: 12px; padding: 12px; border: 1px solid #e3e7ee; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
     .admobile-stock-card[hidden] { display: none; }
+    .admobile-stock-image-wrap { flex: 0 0 72px; width: 72px; }
     .admobile-stock-image { display: flex; flex: 0 0 72px; align-items: center; justify-content: center; width: 72px; height: 72px; overflow: hidden; border: 1px solid #edf0f4; border-radius: 8px; background: #f8fafc; color: #98a2b3; font-size: 10px; text-align: center; }
     .admobile-stock-image img { display: block; width: 100%; height: 100%; object-fit: cover; }
     .admobile-stock-image-button { padding: 0; cursor: zoom-in; }
+    .admobile-stock-product-edit { display: block; margin-top: 5px; padding: 5px 2px; border: 1px solid #aab9d6; border-radius: 5px; background: #f7f9ff; color: #2c4d92; font-size: 10px; font-weight: 700; line-height: 1; text-align: center; text-decoration: none; }
+    .admobile-stock-sale-status { display: block; overflow: hidden; margin-bottom: 4px; padding: 3px 5px; border-radius: 4px; background: #2c4d92; color: #fff; font-size: 9px; font-weight: 700; line-height: 1; text-align: center; text-overflow: ellipsis; white-space: nowrap; }
+    .admobile-stock-sale-status.is-new-order { background: #dc2626; }
+    .admobile-stock-sale-status.is-purchase-agent { background: #555; }
     .admobile-stock-content { min-width: 0; flex: 1; }
     .admobile-stock-brand { overflow: hidden; margin: 0 0 3px; color: #667085; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
     .admobile-stock-content h3 { display: -webkit-box; overflow: hidden; margin: 0; color: #172033; font-size: 14px; line-height: 1.4; line-clamp: 2; -webkit-box-orient: vertical; -webkit-line-clamp: 2; }
@@ -244,6 +255,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-barcode-modal__heading button { width: 32px; height: 32px; border: 0; border-radius: 50%; background: #f2f4f7; color: #344054; font-size: 22px; }
     .admobile-barcode-result-list { display: grid; gap: 10px; }
     .admobile-barcode-result { display: flex; gap: 13px; padding: 13px; border: 2px solid #3e68bf; border-radius: 10px; background: #f7f9ff; }
+    .admobile-barcode-result__image-wrap { flex: 0 0 96px; width: 96px; }
     .admobile-barcode-result__image { display: flex; flex: 0 0 96px; align-items: center; justify-content: center; width: 96px; height: 96px; overflow: hidden; border-radius: 8px; background: #fff; color: #98a2b3; font-size: 10px; text-align: center; }
     .admobile-barcode-result__image img { width: 100%; height: 100%; object-fit: cover; }
     .admobile-barcode-result__content { min-width: 0; flex: 1; }
@@ -309,16 +321,30 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             var image = product.product_image
                 ? '<img src="' + escapeHtml(product.product_image) + '" alt="">'
                 : '<span>이미지 없음</span>';
+            var saleStatusClass = product.sale_status === '신상주문'
+                ? ' is-new-order'
+                : (product.sale_status === '구매대행' ? ' is-purchase-agent' : '');
+            var saleStatus = product.sale_status
+                ? '<span class="admobile-stock-sale-status' + saleStatusClass + '">' + escapeHtml(product.sale_status) + '</span>'
+                : '';
 
             return '<article class="admobile-barcode-result">' +
-                '<div class="admobile-barcode-result__image">' + image + '</div>' +
+                '<div class="admobile-barcode-result__image-wrap">' +
+                    saleStatus +
+                    '<div class="admobile-barcode-result__image">' + image + '</div>' +
+                    '<a class="admobile-stock-product-edit" href="/admobile/product/detail?prd_idx=' + Number(product.pidx || 0) + '&return_to=' + encodeURIComponent('/admobile/order/sheet/stock?idx=' + orderIdx) + '">상품수정</a>' +
+                '</div>' +
                 '<div class="admobile-barcode-result__content">' +
                     (product.brand_name ? '<p class="admobile-barcode-result__brand">' + escapeHtml(product.brand_name) + '</p>' : '') +
                     '<h3>' + escapeHtml(product.product_name || '상품명 없음') + '</h3>' +
                     '<p class="admobile-barcode-result__barcode">바코드: ' + escapeHtml(product.barcode || '-') + '</p>' +
                     '<p class="admobile-barcode-result__rack">랙: ' + escapeHtml(product.ps_rack_code || '-') + '</p>' +
                     '<p class="admobile-barcode-result__qty">주문수량 ' + Number(product.order_qty || 0).toLocaleString() + '개</p>' +
-                    '<a class="admobile-unit-check-button" href="/admobile/order/sheet/stock/unit?idx=' + orderIdx + '&bidx=' + Number(product.bidx || 0) + '&pidx=' + Number(product.pidx || 0) + '">수량체크하기</a>' +
+                    '<nav class="admobile-unit-action-menu" aria-label="상품 작업 메뉴">' +
+                        '<button type="button" class="admobile-unit-action-menu__item" data-complete-check data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '"' + (product.is_check_complete ? ' disabled' : '') + '>' + (product.is_check_complete ? '체크완료' : '바로 완료체크') + '</button>' +
+                        '<a class="admobile-unit-action-menu__item admobile-unit-action-menu__item--primary" href="/admobile/order/sheet/stock/unit?idx=' + orderIdx + '&bidx=' + Number(product.bidx || 0) + '&pidx=' + Number(product.pidx || 0) + '">수량체크하기</a>' +
+                        '<button type="button" class="admobile-unit-action-menu__item" data-memo-open data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '" data-product-name="' + escapeHtml(product.product_name || '') + '" data-memo="' + escapeHtml(product.stock_inspection_memo || '') + '">' + (product.stock_inspection_memo ? '메모 수정' : '메모 작성') + '</button>' +
+                    '</nav>' +
                 '</div>' +
             '</article>';
         }
@@ -450,19 +476,22 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             count.textContent = textarea.value.length;
         }
 
-        document.querySelectorAll('[data-memo-open]').forEach(function(button) {
-            button.addEventListener('click', function() {
-                activeButton = button;
-                form.idx.value = button.dataset.orderIdx;
-                form.bidx.value = button.dataset.bidx;
-                form.pidx.value = button.dataset.pidx;
-                textarea.value = button.dataset.memo || '';
-                productName.textContent = button.dataset.productName || '상품 메모';
-                message.textContent = '';
-                updateCount();
-                modal.hidden = false;
-                window.setTimeout(function() { textarea.focus(); }, 100);
-            });
+        document.addEventListener('click', function(event) {
+            var button = event.target.closest('[data-memo-open]');
+            if (!button) {
+                return;
+            }
+
+            activeButton = button;
+            form.idx.value = button.dataset.orderIdx;
+            form.bidx.value = button.dataset.bidx;
+            form.pidx.value = button.dataset.pidx;
+            textarea.value = button.dataset.memo || '';
+            productName.textContent = button.dataset.productName || '상품 메모';
+            message.textContent = '';
+            updateCount();
+            modal.hidden = false;
+            window.setTimeout(function() { textarea.focus(); }, 100);
         });
 
         textarea.addEventListener('input', updateCount);
@@ -494,6 +523,10 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                     activeButton.dataset.memo = memo;
                     activeButton.textContent = memo ? '메모 수정' : '메모 작성';
                     var card = activeButton.closest('.admobile-stock-card');
+                    if (!card) {
+                        closeModal();
+                        return;
+                    }
                     var preview = card.querySelector('[data-memo-preview]');
 
                     if (memo && !preview) {
@@ -545,34 +578,36 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
 </script>
 
 <script>
-    document.querySelectorAll('[data-complete-check]').forEach(function(button) {
-        button.addEventListener('click', function() {
-            if (!window.confirm('남은 수량을 주문수량 기준으로 바로 체크완료 처리하시겠습니까?')) {
-                return;
-            }
+    document.addEventListener('click', function(event) {
+        var button = event.target.closest('[data-complete-check]');
+        if (!button || button.disabled) {
+            return;
+        }
+        if (!window.confirm('남은 수량을 주문수량 기준으로 바로 체크완료 처리하시겠습니까?')) {
+            return;
+        }
 
-            button.disabled = true;
-            fetch('/admobile/order/sheet/action', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                body: new URLSearchParams({
-                    action_mode: 'inspection_complete',
-                    idx: button.dataset.orderIdx,
-                    bidx: button.dataset.bidx,
-                    pidx: button.dataset.pidx
-                })
+        button.disabled = true;
+        fetch('/admobile/order/sheet/action', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams({
+                action_mode: 'inspection_complete',
+                idx: button.dataset.orderIdx,
+                bidx: button.dataset.bidx,
+                pidx: button.dataset.pidx
             })
-                .then(function(response) { return response.json(); })
-                .then(function(result) {
-                    if (!result.success) {
-                        throw new Error(result.message || '완료 처리에 실패했습니다.');
-                    }
-                    window.location.reload();
-                })
-                .catch(function(error) {
-                    window.alert(error.message);
-                    button.disabled = false;
-                });
-        });
+        })
+            .then(function(response) { return response.json(); })
+            .then(function(result) {
+                if (!result.success) {
+                    throw new Error(result.message || '완료 처리에 실패했습니다.');
+                }
+                window.location.reload();
+            })
+            .catch(function(error) {
+                window.alert(error.message);
+                button.disabled = false;
+            });
     });
 </script>

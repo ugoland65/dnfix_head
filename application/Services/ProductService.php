@@ -371,13 +371,15 @@ class ProductService extends BaseClass
                 $query->orWhere('D.ps_idx', $search_value);
             }
 
-            if( $in_stock == 'have' ){
-                $query->where('D.ps_stock', '>', 0);
-            }elseif( $in_stock == 'no' ){
-                $query->where('D.ps_stock', 0);
-            }elseif( $in_stock == 'have_with_no' ){
-                
-            }
+        }
+
+        if ($in_stock === 'have') {
+            $query->where('D.ps_stock', '>', 0);
+        } elseif ($in_stock === 'no') {
+            $query->where(function ($query) {
+                $query->where('D.ps_stock', '<=', 0)
+                    ->orWhereNull('D.ps_stock');
+            });
         }
 
         $sort_mode = $criteria['sort_mode'] ?? ($isProductStockMode ? 'stock' : 'idx');
@@ -1285,7 +1287,7 @@ class ProductService extends BaseClass
         $query = ProductModel::query()
             ->select([
                 'COMPARISON_DB.*',
-                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
+                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
                 'BRAND_DB.BD_NAME'
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
@@ -1309,6 +1311,16 @@ class ProductService extends BaseClass
             $productData['ps_discount_target_yn'] = $productData['ps_discount_target_yn'] ?? 'Y';
             $productData['is_sale_month'] = $productData['is_sale_month'] ?? 0;
             $productData['is_sale_special'] = $productData['is_sale_special'] ?? 0;
+
+            // 상품 코드 정보 디코딩
+            if (!empty($productData['cd_code_fn'])) {
+                $productData['cd_code_fn'] = json_decode($productData['cd_code_fn'], true);
+                if (!is_array($productData['cd_code_fn'])) {
+                    $productData['cd_code_fn'] = [];
+                }
+            } else {
+                $productData['cd_code_fn'] = [];
+            }
 
             // CD_SIZE 디코딩
             if (!empty($productData['CD_SIZE'])) {
@@ -1428,6 +1440,252 @@ class ProductService extends BaseClass
 
 
         return $productData;
+    }
+
+    /**
+     * 모바일 상품정보 화면의 검수/출고 이미지를 교체한다.
+     */
+    public function updateProductInspectionImage(int $prdIdx, string $imageType, array $file, array $actor): string
+    {
+        if ($prdIdx <= 0) {
+            throw new Exception('상품번호가 필요합니다.');
+        }
+        if (!in_array($imageType, ['add1', 'add3'], true)) {
+            throw new Exception('변경할 이미지 종류가 올바르지 않습니다.');
+        }
+        if ((int)($actor['idx'] ?? 0) <= 0) {
+            throw new Exception('관리자 정보가 없습니다.');
+        }
+        if ((int)($file['error'] ?? UPLOAD_ERR_NO_FILE) !== UPLOAD_ERR_OK) {
+            throw new Exception('이미지를 선택하거나 촬영해주세요.');
+        }
+        if ((int)($file['size'] ?? 0) > 10 * 1024 * 1024) {
+            throw new Exception('이미지는 10MB 이하만 업로드할 수 있습니다.');
+        }
+
+        $tmpFile = (string)($file['tmp_name'] ?? '');
+        $imageInfo = $tmpFile !== '' ? @getimagesize($tmpFile) : false;
+        if (!is_array($imageInfo)) {
+            throw new Exception('JPG, PNG, GIF, WEBP 형식의 이미지만 등록할 수 있습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        $product = $product ? $product->toArray() : [];
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $addImages = json_decode((string)($product['cd_add_img'] ?? '{}'), true);
+        if (!is_array($addImages)) {
+            $addImages = [];
+        }
+        foreach (['add1', 'add2', 'add3'] as $key) {
+            if (!isset($addImages[$key]) || !is_array($addImages[$key])) {
+                $addImages[$key] = ['filename' => ''];
+            }
+        }
+
+        $uploadsDir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\') . '/data/comparion';
+        $prefix = $imageType === 'add1' ? 'prd_invoice_' : 'prd_ship_';
+        $fileName = (new ImageStorage())->storeUploaded(
+            $file,
+            $uploadsDir,
+            $prefix . (int)$actor['idx'] . '_' . time() . '_' . bin2hex(random_bytes(4)),
+            null,
+            null,
+            1000
+        );
+
+        $oldFileName = (string)($addImages[$imageType]['filename'] ?? '');
+        $addImages[$imageType] = [
+            'name' => $imageType === 'add1' ? '인보이스이미지' : '출고이미지',
+            'filename' => $fileName,
+        ];
+        $now = date('Y-m-d H:i:s');
+        $registrationLog = json_decode((string)($product['cd_reg'] ?? '{}'), true);
+        if (!is_array($registrationLog)) {
+            $registrationLog = [];
+        }
+        $registrationLog['modify'] = is_array($registrationLog['modify'] ?? null)
+            ? $registrationLog['modify']
+            : [];
+        array_unshift($registrationLog['modify'], [
+            'date' => $now,
+            'idx' => (int)$actor['idx'],
+            'id' => (string)($actor['id'] ?? ''),
+            'name' => (string)($actor['name'] ?? ''),
+            'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
+            'domain' => (string)($_SERVER['HTTP_HOST'] ?? ''),
+            'action' => $imageType === 'add1' ? '중량 실사 이미지 변경' : '출고 이미지 변경',
+        ]);
+        $beforeData = ['cd_add_img.' . $imageType => $oldFileName];
+        $afterData = ['cd_add_img.' . $imageType => $fileName];
+
+        $updated = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update([
+            'cd_add_img' => json_encode($addImages, JSON_UNESCAPED_UNICODE),
+            'cd_reg' => json_encode($registrationLog, JSON_UNESCAPED_UNICODE),
+            ]);
+        if (!$updated) {
+            $this->deleteUploadedFile($uploadsDir, $fileName);
+            throw new Exception('상품 이미지 정보를 저장하지 못했습니다.');
+        }
+        $this->deleteUploadedFile($uploadsDir, $oldFileName);
+
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'inspection_image_upload',
+                'action_summary' => $imageType === 'add1' ? '중량 실사 이미지 변경' : '출고 이미지 변경',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admobile',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'operator_pk' => (int)$actor['idx'],
+                'operator_id' => (string)($actor['id'] ?? ''),
+                'operator_name' => (string)($actor['name'] ?? ''),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 실패가 이미지 업로드 성공에 영향을 주지 않도록 분리한다.
+        }
+
+        return '/data/comparion/' . $fileName;
+    }
+
+    /**
+     * 모바일 상품정보 화면에서 랙 코드를 변경한다.
+     */
+    public function updateProductRackCode(int $prdIdx, string $rackCode, array $actor): string
+    {
+        if ($prdIdx <= 0 || (int)($actor['idx'] ?? 0) <= 0) {
+            throw new Exception('상품 또는 관리자 정보가 올바르지 않습니다.');
+        }
+
+        $rackCode = trim($rackCode);
+        if (function_exists('mb_strlen') && mb_strlen($rackCode, 'UTF-8') > 100) {
+            throw new Exception('랙 코드는 100자 이하로 입력해주세요.');
+        }
+
+        $stock = ProductStockModel::query()
+            ->where('ps_prd_idx', '=', $prdIdx)
+            ->first();
+        $stock = $stock ? $stock->toArray() : [];
+        if (empty($stock)) {
+            throw new Exception('상품 재고 정보를 찾을 수 없습니다.');
+        }
+
+        $beforeData = ['ps_rack_code' => (string)($stock['ps_rack_code'] ?? '')];
+        ProductStockModel::query()
+            ->where('ps_idx', '=', (int)$stock['ps_idx'])
+            ->update(['ps_rack_code' => $rackCode]);
+        $afterData = ['ps_rack_code' => $rackCode];
+
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => 'product',
+                'target_table' => 'prd_stock',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'rack_code_update',
+                'action_summary' => '랙 코드 변경',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admobile',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'operator_pk' => (int)$actor['idx'],
+                'operator_id' => (string)($actor['id'] ?? ''),
+                'operator_name' => (string)($actor['name'] ?? ''),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 실패가 랙 코드 변경 성공에 영향을 주지 않도록 분리한다.
+        }
+
+        return $rackCode;
+    }
+
+    /**
+     * 모바일 상품정보 화면에서 실측 중량을 변경한다.
+     */
+    public function updateProductMeasuredWeights(int $prdIdx, $productWeight, $totalWeight, array $actor): array
+    {
+        if ($prdIdx <= 0 || (int)($actor['idx'] ?? 0) <= 0) {
+            throw new Exception('상품 또는 관리자 정보가 올바르지 않습니다.');
+        }
+
+        $productWeight = trim((string)$productWeight);
+        $totalWeight = trim((string)$totalWeight);
+        foreach (['실측 상품중량' => $productWeight, '실측 전체중량' => $totalWeight] as $label => $weight) {
+            if ($weight !== '' && (!is_numeric($weight) || (float)$weight < 0 || (float)$weight > 1000000)) {
+                throw new Exception($label . '은 0 이상 1,000,000g 이하의 숫자로 입력해주세요.');
+            }
+        }
+
+        $product = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        $product = $product ? $product->toArray() : [];
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $weightData = json_decode((string)($product['cd_weight_fn'] ?? '{}'), true);
+        if (!is_array($weightData)) {
+            $weightData = [];
+        }
+        $beforeData = [
+            'cd_weight_fn.4' => (string)($weightData['4'] ?? ''),
+            'cd_weight_fn.3' => (string)($weightData['3'] ?? ''),
+        ];
+        $weightData['4'] = $productWeight;
+        $weightData['3'] = $totalWeight;
+        $afterData = [
+            'cd_weight_fn.4' => $productWeight,
+            'cd_weight_fn.3' => $totalWeight,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update(['cd_weight_fn' => json_encode($weightData, JSON_UNESCAPED_UNICODE)]);
+
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'measured_weight_update',
+                'action_summary' => '실측 상품/전체중량 변경',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admobile',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'operator_pk' => (int)$actor['idx'],
+                'operator_id' => (string)($actor['id'] ?? ''),
+                'operator_name' => (string)($actor['name'] ?? ''),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 실패가 중량 변경 성공에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'product_weight' => $productWeight,
+            'total_weight' => $totalWeight,
+        ];
     }
 
 

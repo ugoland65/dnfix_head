@@ -6,6 +6,7 @@ use App\Core\Router;
 use App\Controllers\Admobile\AuthController;
 use App\Controllers\Admobile\MobileController;
 use App\Controllers\Admobile\OrderSheetController;
+use App\Controllers\Admobile\ProductController;
 use App\Controllers\Admobile\ProfileController;
 
 try {
@@ -18,6 +19,9 @@ try {
     $router->get('/main', MobileController::class, 'main');
     $router->get('/profile', ProfileController::class, 'profile');
     $router->post('/profile', ProfileController::class, 'update');
+    $router->get('/product/list', ProductController::class, 'list');
+    $router->get('/product/detail', ProductController::class, 'detail');
+    $router->post('/product/action', ProductController::class, 'action');
     $router->get('/order/sheet/list', OrderSheetController::class, 'list');
     $router->get('/order/sheet/stock', OrderSheetController::class, 'stock');
     $router->get('/order/sheet/stock/unit', OrderSheetController::class, 'stockUnit');

@@ -1,4 +1,12 @@
 <section class="admobile-menu">
+    <h2>상품관리</h2>
+    <a class="admobile-menu-item" href="/admobile/product/list">
+        <span>상품 목록</span>
+        <span aria-hidden="true">›</span>
+    </a>
+</section>
+
+<section class="admobile-menu">
     <h2>재고/발주</h2>
     <a class="admobile-menu-item" href="/admobile/order/sheet/list">
         <span>주문(발주) 리스트</span>
