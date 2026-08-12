@@ -152,6 +152,9 @@
 
 		if( showstate == "show"){
 			showstate = $("#wrap_left").attr('showstate','closed');
+			try {
+				window.localStorage.setItem('admin2_left_menu_state', 'closed');
+			} catch (e) {}
 
 			var showLeftWidth = $(window).width() - 56;
 			$("#wrap_left_body").hide();
@@ -168,6 +171,9 @@
 			//alert($("#wrap_left").width()+"/"+showLeftWidth);
 		}else{
 			showstate = $("#wrap_left").attr('showstate','show');
+			try {
+				window.localStorage.setItem('admin2_left_menu_state', 'show');
+			} catch (e) {}
 			var showLeftWidth = $(window).width() - 230;
 			$("#wrap_left_body").show();
 			$("#wrap_left").css('background-color','#303742'); 
@@ -180,6 +186,30 @@
 		}
 
 	};
+
+	$(function(){
+		try {
+			if (window.localStorage.getItem('admin2_left_menu_state') !== 'closed') {
+				return;
+			}
+		} catch (e) {
+			return;
+		}
+
+		if (!$("#wrap_left").length || $("#wrap_left").hasClass('display-none')) {
+			return;
+		}
+
+		$("#wrap_left")
+			.attr('showstate', 'closed')
+			.css({
+				'width': '6px',
+				'background-color': '#1f2630'
+			});
+		$("#wrap_left_body").hide();
+		$("#left_closed_btn").html('<i class="fa fa-arrow-circle-right" aria-hidden="true"></i>');
+		$("#contents").css('width', ($(window).width() - 56) + 'px');
+	});
 
 
 	// 언어변경

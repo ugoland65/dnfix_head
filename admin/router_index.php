@@ -27,6 +27,7 @@ use App\Controllers\Admin\Coupang\CoupangController;
 use App\Controllers\Admin\CalendarController;
 use App\Controllers\Admin\SaleHistoryController;
 use App\Controllers\Admin\CompetitorController;
+use App\Controllers\Admin\CompetitorCrawlingLogController;
 use App\Controllers\Admin\ShowdangController;
 
 try {
@@ -78,6 +79,14 @@ try {
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
     $router->get('/product/prd_db_create', ProductController::class, 'prdDbCreate'); //상품 DB 생성
     $router->get('/product/detail_basic', ProductController::class, 'prdDetailBasicPage'); //상품 디테일 (베이직)
+    $router->get('/product/info_collect', ProductController::class, 'productInfoCollectionPage'); //상품 정보수집
+    $router->get('/product/info_collect/image', ProductController::class, 'collectedProductImageProxy'); //수집 이미지 프록시
+    $router->get('/product/info_collect/images/download', ProductController::class, 'downloadCollectedProductImages'); //수집 이미지 일괄 다운로드
+    $router->post('/product/info_collect/image_storage_path/save', ProductController::class, 'saveProductImageStoragePath'); //상품 이미지 저장소 경로 저장
+    $router->post('/product/info_collect/images/upload_hosting', ProductController::class, 'uploadCollectedImagesToHosting'); //수집 이미지 호스팅 업로드
+    $router->post('/product/info_collect/images/hosting_order/save', ProductController::class, 'saveHostedImageOrder'); //호스팅 이미지 순서 저장
+    $router->post('/product/info_collect/translation/save', ProductController::class, 'saveCollectionTranslation'); //수집 데이터 번역 저장
+    $router->post('/product/info_collect/request', ProductController::class, 'requestProductInfoCollection'); //상품 정보수집 요청
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
     $router->get('/product/detail_competitor_product', ProductController::class, 'prdDetailCompetitorProductPage'); //상품 디테일 (경쟁사 판매현황)
@@ -131,6 +140,7 @@ try {
 
     //경쟁사 DB
     $router->get('/competitor/competitor_product_db', CompetitorController::class, 'getCompetitorProductDb'); //경쟁사 사이트 상품DB
+    $router->get('/competitor/crawling_log', CompetitorCrawlingLogController::class, 'index'); //경쟁사 크롤링 수집로그
     $router->post('/competitor/search_product', CompetitorController::class, 'searchComparisonProducts'); //경쟁사 상품 매칭용 상품DB 검색
     $router->post('/competitor/match', CompetitorController::class, 'matchCompetitorProduct'); //경쟁사 상품 매칭 저장
     $router->post('/competitor/unmatch', CompetitorController::class, 'unmatchCompetitorProduct'); //경쟁사 상품 매칭 해지

@@ -24,4 +24,5 @@
 </div>
 <div class="left-menu-wrap">
 	<ul <?php if( $pageNameCode == "competitor_product_db" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/competitor/competitor_product_db'"><li>경쟁사 사이트 상품DB</li></ul>
+	<ul <?php if( $pageNameCode == "competitor_crawling_log" ) echo "class='leftMenuNow' "; ?> onclick="location.href='/admin/competitor/crawling_log'"><li>크롤링 수집로그</li></ul>
 </div>

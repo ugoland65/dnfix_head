@@ -11,6 +11,7 @@ class ProductPartnerApiService
 
     private $domain = "https://dnetc01.mycafe24.com";
     private $apiKey = "DNP_2024_SUPPLIER_API_KEY_v1_8f9e2c7b4a1d6e3f";
+    private $adminApiKey = "DNP_2024_ADMIN_API_KEY_v1_5a8b3c9d2e7f1a4b";
 
     /**
      * 공급사 DB를 공급사 상품 등록대기로 등록
@@ -314,6 +315,98 @@ class ProductPartnerApiService
         $statusCode = (int)($responseData['status_code'] ?? $responseData['status'] ?? 0);
         if ($statusCode === 401) {
             throw new \Exception('모브 구매내역 API 인증에 실패했습니다.');
+        }
+
+        return $responseData;
+    }
+
+    /**
+     * 경쟁사 상품 변경 이력(크롤링 수집로그)을 조회한다.
+     *
+     * @param array $criteria API query parameters
+     * @return array
+     */
+    public function getCompetitorProductHistory(array $criteria = []): array
+    {
+        $url = $this->domain . '/api/CompetitorProductHistory';
+        $headers = [
+            'Accept: application/json',
+            'X-API-KEY: ' . $this->apiKey,
+        ];
+
+        $response = HttpClient::getData($url, $criteria, $headers);
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \Exception('경쟁사 상품 변경 이력 API 응답을 읽을 수 없습니다.');
+        }
+
+        //dd($responseData);
+        if (isset($responseData['success']) && !$responseData['success']) {
+            throw new \Exception((string)($responseData['message'] ?? '경쟁사 상품 변경 이력 조회에 실패했습니다.'));
+        }
+
+        return $responseData;
+    }
+
+    /**
+     * 크롤러 실행 결과 로그를 조회한다.
+     *
+     * @param array $criteria API query parameters
+     * @return array
+     */
+    public function getCrawlRunLogs(array $criteria = []): array
+    {
+        $url = $this->domain . '/api/CrawlRunLog';
+        $headers = [
+            'Accept: application/json',
+            'X-API-KEY: ' . $this->apiKey,
+        ];
+
+        $response = HttpClient::getData($url, $criteria, $headers);
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \Exception('크롤 실행 로그 API 응답을 읽을 수 없습니다.');
+        }
+        if (isset($responseData['success']) && !$responseData['success']) {
+            throw new \Exception((string)($responseData['message'] ?? '크롤 실행 로그 조회에 실패했습니다.'));
+        }
+
+        return $responseData;
+    }
+
+
+    /**
+     * 상품 수집정보 조회
+     */
+    public function getMakerProductDetails(array $params = []): array
+    {
+        $page = max(1, (int)($params['page'] ?? 1));
+        $limit = max(1, (int)($params['limit'] ?? 100));
+        $payload = [
+            'page' => $page,
+            'limit' => $limit,
+        ];
+
+        if (array_key_exists('matched_product_pk', $params) && $params['matched_product_pk'] !== '' && $params['matched_product_pk'] !== null) {
+            $matchedProductPk = (int)$params['matched_product_pk'];
+            if ($matchedProductPk < 1) {
+                throw new \InvalidArgumentException('matched_product_pk는 1 이상의 숫자여야 합니다.');
+            }
+            $payload['matched_product_pk'] = $matchedProductPk;
+        }
+
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-API-KEY: ' . $this->adminApiKey,
+        ];
+        $response = HttpClient::postData($this->domain . '/api/MakerProductDetail', $payload, $headers);
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \RuntimeException('상품 수집정보 API 응답을 읽을 수 없습니다.');
+        }
+        if (isset($responseData['success']) && !$responseData['success']) {
+            throw new \RuntimeException((string)($responseData['message'] ?? '상품 수집정보 조회에 실패했습니다.'));
         }
 
         return $responseData;

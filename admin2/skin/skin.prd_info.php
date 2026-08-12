@@ -376,12 +376,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 		<?php if (!empty($prd_data['ps_idx'])) { ?>
 		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
-		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고/판매 리스트</ul>
+		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고 변경 이력</ul>
 		<?php } ?>
 
 		<ul id="crm_menu_competitor_product" class="" onclick="prdInfo.mode('', 'competitor_product')">경쟁사 판매현황</ul>
 		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
 		<ul id="crm_menu_relation_group" class="" onclick="prdInfo.mode('', 'relation_group')">시리즈/연관그룹 관리</ul>
+		<ul id="crm_menu_info_collection" class="" onclick="prdInfo.mode('', 'info_collection')">상품 정보수집</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
@@ -666,6 +667,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 					requestConfig = {
 						method: "GET",
 						url: "/admin/product/detail_relation_group",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "info_collection": // 상품 정보수집
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/info_collect",
 						data: { prd_idx: prd_idx }
 					};
 					break;

@@ -30,7 +30,7 @@ class CompetitorController extends BaseClass
 
             $requestData = $request->all();
 
-            $s_match_status = $requestData['s_match_status'] ?? 'unmatched';
+            $s_match_status = $requestData['s_match_status'] ?? 'all_match';
             $site = $requestData['s_site'] ?? null;
             $s_keyword_mode = $requestData['s_keyword_mode'] ?? 'name';
             $s_keyword = $requestData['s_keyword'] ?? '';

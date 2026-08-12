@@ -1288,7 +1288,7 @@ class ProductService extends BaseClass
             ->select([
                 'COMPARISON_DB.*',
                 'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
-                'BRAND_DB.BD_NAME'
+                'BRAND_DB.BD_NAME', 'BRAND_DB.BD_NAME_EN'
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
             ->leftJoin('BRAND_DB', 'BRAND_DB.BD_IDX', '=', 'COMPARISON_DB.CD_BRAND_IDX')
@@ -3023,6 +3023,17 @@ class ProductService extends BaseClass
         }
 
         $this->addProductToRelationGroup($prdIdx, $groupIdx, $adminIdx, $adminName);
+        $this->logRelationGroupAction(
+            'create_and_attach',
+            '시리즈/연관그룹 생성 및 상품 포함',
+            'product',
+            $prdIdx,
+            [],
+            [
+                'group' => $groupData,
+                'attached_product_idx' => $prdIdx,
+            ]
+        );
 
         return [
             'success' => true,
@@ -3042,6 +3053,14 @@ class ProductService extends BaseClass
         $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
 
         $this->addProductToRelationGroup($prdIdx, $groupIdx, $adminIdx, $adminName);
+        $this->logRelationGroupAction(
+            'product_attach',
+            '상품을 시리즈/연관그룹에 포함',
+            'product',
+            $prdIdx,
+            [],
+            ['group_idx' => $groupIdx]
+        );
 
         return [
             'success' => true,
@@ -3061,6 +3080,11 @@ class ProductService extends BaseClass
             throw new Exception('상품 또는 그룹 정보가 올바르지 않습니다.');
         }
 
+        $groupRow = ProductRelationGroupModel::query()
+            ->select(['prg_idx', 'prg_mode', 'prg_name'])
+            ->where('prg_idx', '=', $groupIdx)
+            ->first();
+        $groupData = $groupRow ? $groupRow->toArray() : [];
         $deleted = ProductRelationGroupProductModel::query()
             ->where('prgp_prd_idx', '=', $prdIdx)
             ->where('prgp_group_idx', '=', $groupIdx)
@@ -3068,6 +3092,14 @@ class ProductService extends BaseClass
         if (!$deleted) {
             throw new Exception('포함 상품 정보를 찾을 수 없습니다.');
         }
+        $this->logRelationGroupAction(
+            'product_detach',
+            '상품을 시리즈/연관그룹에서 제외',
+            'product',
+            $prdIdx,
+            ['group_idx' => $groupIdx, 'group' => $groupData],
+            []
+        );
 
         return [
             'success' => true,
@@ -3083,7 +3115,7 @@ class ProductService extends BaseClass
         }
 
         $groupRow = ProductRelationGroupModel::query()
-            ->select(['prg_idx', 'prg_brand_idx', 'prg_use_yn'])
+            ->select(['prg_idx', 'prg_brand_idx', 'prg_mode', 'prg_name', 'prg_use_yn'])
             ->where('prg_idx', '=', $groupIdx)
             ->first();
         if (empty($groupRow)) {
@@ -3295,6 +3327,14 @@ class ProductService extends BaseClass
                 throw new Exception('브랜드 정보를 확인해주세요.');
             }
             ProductRelationGroupModel::update(['prg_idx' => $groupIdx], $payload);
+            $this->logRelationGroupAction(
+                'update',
+                '시리즈/연관그룹 정보 변경',
+                'product_relation_group',
+                $groupIdx,
+                $existingGroupData,
+                array_merge($existingGroupData, $payload)
+            );
             $message = '시리즈/연관그룹 정보를 저장했습니다.';
         } else {
             if (empty(BrandModel::query()->where('BD_IDX', '=', $brandIdx)->first())) {
@@ -3309,6 +3349,14 @@ class ProductService extends BaseClass
             ]));
             $groupData = is_array($group) ? $group : $group->toArray();
             $groupIdx = (int)($groupData['prg_idx'] ?? 0);
+            $this->logRelationGroupAction(
+                'create',
+                '시리즈/연관그룹 생성',
+                'product_relation_group',
+                $groupIdx,
+                [],
+                $groupData
+            );
             $message = '시리즈/연관그룹을 생성했습니다.';
         }
 
@@ -3325,9 +3373,11 @@ class ProductService extends BaseClass
     public function deleteProductRelationGroup(array $postData): array
     {
         $groupIdx = (int)($postData['prg_idx'] ?? 0);
-        if ($groupIdx <= 0 || empty(ProductRelationGroupModel::find($groupIdx))) {
+        $group = $groupIdx > 0 ? ProductRelationGroupModel::find($groupIdx) : null;
+        if (empty($group)) {
             throw new Exception('시리즈/연관그룹을 찾을 수 없습니다.');
         }
+        $groupData = is_array($group) ? $group : $group->toArray();
         if (ProductRelationGroupProductModel::query()
             ->where('prgp_group_idx', '=', $groupIdx)
             ->exists()) {
@@ -3337,11 +3387,54 @@ class ProductService extends BaseClass
         ProductRelationGroupModel::query()
             ->where('prg_idx', '=', $groupIdx)
             ->delete();
+        $this->logRelationGroupAction(
+            'delete',
+            '시리즈/연관그룹 삭제',
+            'product_relation_group',
+            $groupIdx,
+            $groupData,
+            []
+        );
 
         return [
             'success' => true,
             'message' => '시리즈/연관그룹을 삭제했습니다.',
         ];
+    }
+
+    /**
+     * 시리즈/연관그룹 관리 작업의 공용 로그를 남긴다.
+     */
+    private function logRelationGroupAction(
+        string $actionMode,
+        string $summary,
+        string $targetType,
+        int $targetPk,
+        array $before,
+        array $after
+    ): void {
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => $targetType,
+                'target_table' => $targetType === 'product' ? 'COMPARISON_DB' : 'prd_relation_group',
+                'target_pk' => (string)$targetPk,
+                'action_mode' => 'relation_group_' . $actionMode,
+                'action_summary' => $summary,
+                'before_json' => $before,
+                'after_json' => $after,
+                'diff_json' => $actionLog->buildDiff($before, $after),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admin',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'operator_pk' => (int)(AuthAdmin::getSession('sess_idx') ?? 0),
+                'operator_id' => (string)(AuthAdmin::getSession('sess_id') ?? ''),
+                'operator_name' => (string)(AuthAdmin::getSession('sess_name') ?? ''),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패가 시리즈/연관그룹 관리 성공에 영향을 주지 않도록 분리한다.
+        }
     }
 
     /**

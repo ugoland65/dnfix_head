@@ -5,17 +5,24 @@ namespace App\Controllers\Admin;
 use Exception;
 use Throwable;
 use App\Core\BaseClass;
+use App\Core\AuthAdmin;
 use App\Classes\Request;
 
 use App\Services\ProductService;
 use App\Services\ProductActionService;
 use App\Services\BrandService;
 use App\Services\ProductPartnerService;
+use App\Services\ProductPartnerApiService;
 use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
 use App\Services\GodoInspectionService;
 use App\Services\InspectionProcessLogService;
 use App\Services\CompetitorApiService;
+use App\Services\ProductSupplierPyApiService;
+use App\Services\ProductImageHostingService;
+use App\Services\AdminActionLogService;
+use App\Models\ProductModel;
+use App\Models\ProductCollectionItemModel;
 use App\Utils\Pagination;
 class ProductController extends BaseClass 
 {
@@ -397,6 +404,595 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 디테일 (상품 정보수집 페이지
+     */
+    public function productInfoCollectionPage(Request $request)
+    {
+        $requestData = $request->all();
+        $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+        $collectionData = [];
+        $collectionError = '';
+        $productData = [];
+        $hostingImageUrls = [];
+        $hostingCollectionItemIdx = 0;
+        $collectionItemData = [];
+        $collectionActionLogs = [];
+
+        if ($prdIdx > 0) {
+            try {
+                $productData = $this->productService->getProductDataForAdmin($prdIdx);
+            } catch (Throwable $e) {
+                $productData = [];
+            }
+
+            try {
+                $collectionData = (new ProductPartnerApiService())->getMakerProductDetails([
+                    'matched_product_pk' => $prdIdx,
+                    'page' => 1,
+                    'limit' => 100,
+                ]);
+                $sourceItem = $collectionData['data']['items'][0] ?? [];
+                $sourceProductIdentifier = is_array($sourceItem) ? (string)($sourceItem['product_pk'] ?? '') : '';
+                if ($sourceProductIdentifier === '' && is_array($sourceItem) && !empty($sourceItem['product_code'])) {
+                    $sourceProductIdentifier = (string)$sourceItem['product_code'];
+                }
+                if (is_array($sourceItem) && !empty($sourceItem['site_code']) && $sourceProductIdentifier !== '') {
+                    $collectionItemData = ProductCollectionItemModel::query()
+                        ->where('matched_product_pk', '=', $prdIdx)
+                        ->where('source_type', '=', 'maker')
+                        ->where('source_site_code', '=', (string)$sourceItem['site_code'])
+                        ->where('source_product_pk', '=', $sourceProductIdentifier)
+                        ->orderBy('idx', 'DESC')
+                        ->first();
+                    $collectionItemData = is_array($collectionItemData)
+                        ? $collectionItemData
+                        : ($collectionItemData ? $collectionItemData->toArray() : []);
+
+                    if (empty($collectionItemData)) {
+                        $sourceImageUrls = [];
+                        foreach ((array)($sourceItem['image_sources'] ?? []) as $imageSource) {
+                            $sourceUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
+                            if ($sourceUrl !== '') {
+                                $sourceImageUrls[] = $sourceUrl;
+                            }
+                        }
+                        $sourceCollectedAt = is_array($sourceItem['collected_at'] ?? null)
+                            ? (string)($sourceItem['collected_at']['date'] ?? '')
+                            : (string)($sourceItem['collected_at'] ?? '');
+                        $collectionItemData = ProductCollectionItemModel::create([
+                            'matched_product_pk' => $prdIdx,
+                            'source_type' => 'maker',
+                            'source_site_code' => (string)$sourceItem['site_code'],
+                            'source_product_pk' => $sourceProductIdentifier,
+                            'source_collected_at' => $sourceCollectedAt,
+                            'image_storage_path' => (string)($productData['CD_IMAGE_STORAGE_PATH'] ?? ''),
+                            'image_upload_status' => 'pending',
+                            'source_image_urls_json' => json_encode($sourceImageUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                            'image_total_count' => count($sourceImageUrls),
+                            'image_success_count' => 0,
+                            'image_failed_count' => 0,
+                        ]);
+                        $collectionItemData = is_array($collectionItemData) ? $collectionItemData : $collectionItemData->toArray();
+                    }
+
+                    if (in_array(($collectionItemData['image_upload_status'] ?? ''), ['success', 'partial'], true)) {
+                        $hostingImageUrls = json_decode((string)($collectionItemData['hosting_image_urls_json'] ?? '[]'), true);
+                        $hostingImageUrls = is_array($hostingImageUrls) ? array_values(array_filter($hostingImageUrls, 'is_string')) : [];
+                        $hostingCollectionItemIdx = (int)($collectionItemData['idx'] ?? 0);
+                    }
+                    if (!empty($collectionItemData['idx'])) {
+                        $collectionActionLogs = (new AdminActionLogService())->getAdminActionLogList([
+                            'target_type' => 'product_collection_item',
+                            'target_pk' => (string)$collectionItemData['idx'],
+                        ]);
+                    }
+                }
+            } catch (Throwable $e) {
+                $collectionError = $e->getMessage();
+            }
+        }
+
+        return view('admin.product.product_info_collection', [
+            'prd_idx' => $prdIdx,
+            'productData' => $productData,
+            'collectionData' => $collectionData,
+            'collectionError' => $collectionError,
+            'hostingImageUrls' => $hostingImageUrls,
+            'hostingCollectionItemIdx' => $hostingCollectionItemIdx,
+            'collectionItemData' => $collectionItemData,
+            'collectionActionLogs' => $collectionActionLogs,
+        ]);
+    }
+    
+
+    /**
+     * 도메인별 상품 정보수집 요청을 크롤러 API로 전달한다.
+     */
+    public function requestProductInfoCollection(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $result = (new ProductSupplierPyApiService())->requestProductInfoCollection([
+                'collection_url' => $requestData['collection_url'] ?? '',
+                'matched_product_pk' => $requestData['prd_idx'] ?? 0,
+                'requester_user_pk' => AuthAdmin::getSession('sess_idx'),
+                'requester_user_name' => AuthAdmin::getSession('sess_name'),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '정보수집을 요청했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 수집 이미지 프록시.
+     * 외부 사이트의 hotlink/mixed-content 차단을 피하기 위해 허용된 도메인의 이미지만 중계한다.
+     */
+    public function collectedProductImageProxy(Request $request)
+    {
+        $requestData = $request->all();
+        $imageUrl = trim((string)($requestData['url'] ?? ''));
+        $urlParts = parse_url($imageUrl);
+        $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
+        $host = strtolower((string)($urlParts['host'] ?? ''));
+        $normalizedHost = preg_replace('/^www\./', '', $host);
+
+        $imageSourceSites = [
+            'nipporigift.net' => 'http://www.nipporigift.net/',
+            'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
+            'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
+        ];
+        if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$normalizedHost])) {
+            http_response_code(400);
+            return 'Invalid image source.';
+        }
+
+        $curl = curl_init($imageUrl);
+        curl_setopt_array($curl, [
+            CURLOPT_RETURNTRANSFER => true,
+            CURLOPT_FOLLOWLOCATION => false,
+            CURLOPT_CONNECTTIMEOUT => 5,
+            CURLOPT_TIMEOUT => 15,
+            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
+            CURLOPT_REFERER => $imageSourceSites[$normalizedHost],
+        ]);
+        $imageBody = curl_exec($curl);
+        $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+        $contentType = (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
+        curl_close($curl);
+
+        $mimeType = strtolower(trim(explode(';', $contentType)[0]));
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+        if (!is_string($imageBody) || $httpCode < 200 || $httpCode >= 300 || !in_array($mimeType, $allowedMimeTypes, true)) {
+            http_response_code(404);
+            return 'Image unavailable.';
+        }
+
+        header('Content-Type: ' . $mimeType);
+        header('Cache-Control: private, max-age=3600');
+        if (!empty($requestData['download'])) {
+            $filename = basename((string)(parse_url($imageUrl, PHP_URL_PATH) ?? ''));
+            $filename = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) ?: 'collected_image';
+            header('Content-Disposition: attachment; filename="' . $filename . '"');
+        }
+        return $imageBody;
+    }
+
+    /**
+     * 수집된 원본 이미지를 ZIP으로 일괄 다운로드한다.
+     */
+    public function downloadCollectedProductImages(Request $request)
+    {
+        $prdIdx = (int)($request->all()['prd_idx'] ?? 0);
+        if ($prdIdx < 1) {
+            http_response_code(400);
+            return 'Invalid product.';
+        }
+        if (!class_exists(\ZipArchive::class)) {
+            http_response_code(500);
+            return 'ZIP extension is unavailable.';
+        }
+
+        $apiData = (new ProductPartnerApiService())->getMakerProductDetails([
+            'matched_product_pk' => $prdIdx,
+            'page' => 1,
+            'limit' => 100,
+        ]);
+        $item = $apiData['data']['items'][0] ?? [];
+        $imageSources = is_array($item['image_sources'] ?? null) ? $item['image_sources'] : [];
+        if (empty($imageSources)) {
+            http_response_code(404);
+            return 'No collected images.';
+        }
+
+        $zipPath = tempnam(sys_get_temp_dir(), 'a1_collected_images_');
+        $zip = new \ZipArchive();
+        if ($zipPath === false || $zip->open($zipPath, \ZipArchive::OVERWRITE) !== true) {
+            throw new \RuntimeException('이미지 ZIP 파일을 만들 수 없습니다.');
+        }
+
+        $mimeExtensions = [
+            'image/jpeg' => 'jpg',
+            'image/png' => 'png',
+            'image/gif' => 'gif',
+            'image/webp' => 'webp',
+        ];
+        $imageCount = 0;
+        foreach (array_slice($imageSources, 0, 50) as $imageSource) {
+            $imageUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
+            $urlParts = parse_url($imageUrl);
+            $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
+            $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
+            if (!in_array($scheme, ['http', 'https'], true) || $host !== 'nipporigift.net') {
+                continue;
+            }
+
+            $curl = curl_init($imageUrl);
+            curl_setopt_array($curl, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_CONNECTTIMEOUT => 5,
+                CURLOPT_TIMEOUT => 20,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
+                CURLOPT_REFERER => 'http://www.nipporigift.net/',
+            ]);
+            $imageBody = curl_exec($curl);
+            $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $contentType = strtolower(trim(explode(';', (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE))[0]));
+            curl_close($curl);
+
+            if (!is_string($imageBody) || $httpCode < 200 || $httpCode >= 300 || !isset($mimeExtensions[$contentType]) || strlen($imageBody) > 10 * 1024 * 1024) {
+                continue;
+            }
+            $imageCount++;
+            $zip->addFromString(sprintf('collected_image_%02d.%s', $imageCount, $mimeExtensions[$contentType]), $imageBody);
+        }
+        $zip->close();
+
+        if ($imageCount === 0) {
+            @unlink($zipPath);
+            http_response_code(404);
+            return 'No downloadable images.';
+        }
+
+        header('Content-Type: application/zip');
+        header('Content-Disposition: attachment; filename="collected_images_' . $prdIdx . '.zip"');
+        header('Content-Length: ' . filesize($zipPath));
+        readfile($zipPath);
+        @unlink($zipPath);
+        return null;
+    }
+
+    /**
+     * 상품별 외부 이미지 저장소 경로를 저장한다.
+     */
+    public function saveProductImageStoragePath(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $storagePath = trim((string)($requestData['image_storage_path'] ?? ''));
+            if ($prdIdx < 1) {
+                throw new \InvalidArgumentException('상품 번호가 올바르지 않습니다.');
+            }
+
+            $storagePath = preg_replace('#/+#', '/', $storagePath);
+            if ($storagePath === '' || $storagePath[0] !== '/') {
+                throw new \InvalidArgumentException('이미지 저장소 경로는 / 로 시작해야 합니다.');
+            }
+            if (substr($storagePath, -1) !== '/') {
+                $storagePath .= '/';
+            }
+            if (strpos($storagePath, '..') !== false || !preg_match('#^/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*/$#', $storagePath)) {
+                throw new \InvalidArgumentException('이미지 저장소 경로 형식이 올바르지 않습니다.');
+            }
+
+            $samePathProducts = ProductModel::query()
+                ->select('CD_IDX')
+                ->where('CD_IMAGE_STORAGE_PATH', '=', $storagePath)
+                ->get();
+            $samePathProducts = is_array($samePathProducts) ? $samePathProducts : $samePathProducts->toArray();
+            foreach ($samePathProducts as $samePathProduct) {
+                if ((int)($samePathProduct['CD_IDX'] ?? 0) !== $prdIdx) {
+                    throw new \InvalidArgumentException('이미 다른 상품에 사용 중인 이미지 저장소 경로입니다.');
+                }
+            }
+
+            ProductModel::update(['CD_IDX' => $prdIdx], [
+                'CD_IMAGE_STORAGE_PATH' => $storagePath,
+            ]);
+            $savedProduct = ProductModel::query()
+                ->select('CD_IMAGE_STORAGE_PATH')
+                ->where('CD_IDX', '=', $prdIdx)
+                ->first();
+            if (empty($savedProduct)) {
+                throw new \RuntimeException('저장한 상품 정보를 찾을 수 없습니다.');
+            }
+            $savedProduct = is_array($savedProduct) ? $savedProduct : $savedProduct->toArray();
+            if ((string)($savedProduct['CD_IMAGE_STORAGE_PATH'] ?? '') !== $storagePath) {
+                throw new \RuntimeException('이미지 저장소 경로 저장을 확인하지 못했습니다.');
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => '이미지 저장소 경로를 저장했습니다.',
+                'image_storage_path' => $storagePath,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 수집 이미지를 상품별 이미지 호스팅 경로로 일괄 업로드한다.
+     */
+    public function uploadCollectedImagesToHosting(Request $request)
+    {
+        $collectionItem = null;
+        try {
+            $prdIdx = (int)($request->all()['prd_idx'] ?? 0);
+            if ($prdIdx < 1) {
+                throw new \InvalidArgumentException('상품 번호가 올바르지 않습니다.');
+            }
+
+            $productData = $this->productService->getProductDataForAdmin($prdIdx);
+            $storagePath = trim((string)($productData['CD_IMAGE_STORAGE_PATH'] ?? ''));
+            if ($storagePath === '') {
+                throw new \InvalidArgumentException('이미지 저장소 설정을 먼저 완료해 주세요.');
+            }
+
+            $apiData = (new ProductPartnerApiService())->getMakerProductDetails([
+                'matched_product_pk' => $prdIdx,
+                'page' => 1,
+                'limit' => 100,
+            ]);
+            $sourceItem = $apiData['data']['items'][0] ?? [];
+            if (!is_array($sourceItem)) {
+                throw new \RuntimeException('업로드할 수집 상품 정보를 찾을 수 없습니다.');
+            }
+
+            $sourceImageUrls = [];
+            foreach ((array)($sourceItem['image_sources'] ?? []) as $imageSource) {
+                $sourceUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
+                if ($sourceUrl !== '') {
+                    $sourceImageUrls[] = $sourceUrl;
+                }
+            }
+            if (empty($sourceImageUrls)) {
+                throw new \RuntimeException('업로드할 수집 이미지가 없습니다.');
+            }
+
+            $sourceType = 'maker';
+            $siteCode = (string)($sourceItem['site_code'] ?? '');
+            $sourceProductPk = (string)($sourceItem['product_pk'] ?? '');
+            if ($sourceProductPk === '' && !empty($sourceItem['product_code'])) {
+                $sourceProductPk = (string)$sourceItem['product_code'];
+            }
+            $sourceCollectedAt = is_array($sourceItem['collected_at'] ?? null)
+                ? (string)($sourceItem['collected_at']['date'] ?? '')
+                : (string)($sourceItem['collected_at'] ?? '');
+            if ($siteCode === '' || $sourceProductPk === '') {
+                throw new \RuntimeException('수집 상품 식별값이 부족합니다.');
+            }
+
+            $collectionItem = ProductCollectionItemModel::query()
+                ->where('matched_product_pk', '=', $prdIdx)
+                ->where('source_type', '=', $sourceType)
+                ->where('source_site_code', '=', $siteCode)
+                ->where('source_product_pk', '=', $sourceProductPk)
+                ->where('source_collected_at', '=', $sourceCollectedAt)
+                ->first();
+            $collectionItem = is_array($collectionItem) ? $collectionItem : ($collectionItem ? $collectionItem->toArray() : null);
+
+            if (!empty($collectionItem) && ($collectionItem['image_upload_status'] ?? '') === 'success') {
+                return response()->json([
+                    'success' => true,
+                    'already_uploaded' => true,
+                    'message' => '이미 이미지 호스팅에 등록된 수집 데이터입니다.',
+                    'hosting_image_urls' => json_decode((string)($collectionItem['hosting_image_urls_json'] ?? '[]'), true) ?: [],
+                ]);
+            }
+
+            $recordData = [
+                'matched_product_pk' => $prdIdx,
+                'source_type' => $sourceType,
+                'source_site_code' => $siteCode,
+                'source_product_pk' => $sourceProductPk,
+                'source_collected_at' => $sourceCollectedAt,
+                'image_storage_path' => $storagePath,
+                'image_upload_status' => 'uploading',
+                'source_image_urls_json' => json_encode($sourceImageUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'image_total_count' => count($sourceImageUrls),
+                'image_success_count' => 0,
+                'image_failed_count' => 0,
+                'error_message' => null,
+            ];
+            if (!empty($collectionItem)) {
+                ProductCollectionItemModel::update(['idx' => $collectionItem['idx']], $recordData);
+            } else {
+                $collectionItem = ProductCollectionItemModel::create($recordData);
+                $collectionItem = is_array($collectionItem) ? $collectionItem : $collectionItem->toArray();
+            }
+
+            $result = (new ProductImageHostingService())->uploadCollectionImages([
+                'image_storage_path' => $storagePath,
+                'site_code' => $siteCode,
+                'source_image_urls' => $sourceImageUrls,
+            ]);
+            $updateData = [
+                'image_upload_status' => $result['status'],
+                'hosting_image_urls_json' => json_encode($result['hosting_urls'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'image_success_count' => $result['success_count'],
+                'image_failed_count' => $result['failed_count'],
+                'error_message' => $result['failed_count'] > 0
+                    ? implode("\n", array_filter(array_map(static function (array $upload) {
+                        return $upload['error_message'] ?? null;
+                    }, $result['uploads'])))
+                    : null,
+            ];
+            ProductCollectionItemModel::update(['idx' => $collectionItem['idx']], $updateData);
+            (new AdminActionLogService())->log([
+                'target_type' => 'product_collection_item',
+                'target_table' => 'product_collection_item',
+                'target_pk' => (string)$collectionItem['idx'],
+                'action_mode' => 'image_hosting_upload',
+                'action_summary' => '수집 이미지 이미지호스팅 업로드 (' . $result['success_count'] . '건 성공, ' . $result['failed_count'] . '건 실패)',
+                'before_json' => [
+                    'image_upload_status' => $collectionItem['image_upload_status'] ?? null,
+                    'hosting_image_urls_json' => $collectionItem['hosting_image_urls_json'] ?? null,
+                ],
+                'after_json' => $updateData,
+                'diff_json' => [
+                    'image_upload_status' => [
+                        'before' => $collectionItem['image_upload_status'] ?? null,
+                        'after' => $result['status'],
+                    ],
+                ],
+            ]);
+
+            return response()->json([
+                'success' => $result['status'] !== 'failed',
+                'message' => $result['status'] === 'success'
+                    ? '수집 이미지를 이미지 호스팅에 업로드했습니다.'
+                    : '일부 이미지 업로드에 실패했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            if (!empty($collectionItem['idx'])) {
+                ProductCollectionItemModel::update(['idx' => $collectionItem['idx']], [
+                    'image_upload_status' => 'failed',
+                    'error_message' => $e->getMessage(),
+                ]);
+            }
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 이미지 호스팅 URL 배열의 표시 순서를 저장한다.
+     */
+    public function saveHostedImageOrder(Request $request)
+    {
+        try {
+            // URL 배열 JSON의 큰따옴표가 HTML 엔티티로 변환되지 않도록 원문을 사용한다.
+            $requestData = $request->all(FILTER_UNSAFE_RAW);
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $collectionItemIdx = (int)($requestData['collection_item_idx'] ?? 0);
+            $orderedUrls = json_decode((string)($requestData['hosting_image_urls_json'] ?? ''), true);
+            if ($prdIdx < 1 || $collectionItemIdx < 1 || !is_array($orderedUrls) || empty($orderedUrls)) {
+                throw new \InvalidArgumentException('이미지 순서 저장 요청이 올바르지 않습니다.');
+            }
+            $orderedUrls = array_values(array_filter($orderedUrls, 'is_string'));
+
+            $collectionItem = ProductCollectionItemModel::query()
+                ->where('idx', '=', $collectionItemIdx)
+                ->where('matched_product_pk', '=', $prdIdx)
+                ->first();
+            if (empty($collectionItem)) {
+                throw new \RuntimeException('이미지 호스팅 수집 정보를 찾을 수 없습니다.');
+            }
+            $collectionItem = is_array($collectionItem) ? $collectionItem : $collectionItem->toArray();
+            $savedUrls = json_decode((string)($collectionItem['hosting_image_urls_json'] ?? '[]'), true);
+            $savedUrls = is_array($savedUrls) ? array_values(array_filter($savedUrls, 'is_string')) : [];
+            sort($savedUrls);
+            $verificationUrls = $orderedUrls;
+            sort($verificationUrls);
+            if ($savedUrls !== $verificationUrls) {
+                throw new \InvalidArgumentException('등록된 이미지 URL만 순서를 변경할 수 있습니다.');
+            }
+
+            ProductCollectionItemModel::update(['idx' => $collectionItemIdx], [
+                'hosting_image_urls_json' => json_encode($orderedUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '이미지 순서를 저장했습니다.',
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 수집 데이터의 번역본을 저장한다.
+     */
+    public function saveCollectionTranslation(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $collectionItemIdx = (int)($requestData['collection_item_idx'] ?? 0);
+            $field = (string)($requestData['field'] ?? '');
+            $translation = trim((string)($requestData['translation'] ?? ''));
+            $fieldMap = [
+                'accessories' => 'translated_accessories',
+                'maker_comment' => 'translated_maker_comment',
+            ];
+            if ($prdIdx < 1 || $collectionItemIdx < 1 || !isset($fieldMap[$field])) {
+                throw new \InvalidArgumentException('번역 저장 요청이 올바르지 않습니다.');
+            }
+            if ($translation === '') {
+                throw new \InvalidArgumentException('번역 내용을 입력해 주세요.');
+            }
+
+            $collectionItem = ProductCollectionItemModel::query()
+                ->where('idx', '=', $collectionItemIdx)
+                ->where('matched_product_pk', '=', $prdIdx)
+                ->first();
+            if (empty($collectionItem)) {
+                throw new \RuntimeException('매칭된 수집 데이터를 찾을 수 없습니다.');
+            }
+            $collectionItem = is_array($collectionItem) ? $collectionItem : $collectionItem->toArray();
+            ProductCollectionItemModel::update(['idx' => $collectionItemIdx], [
+                $fieldMap[$field] => $translation,
+                'translation_updated_at' => date('Y-m-d H:i:s'),
+            ]);
+            (new AdminActionLogService())->log([
+                'target_type' => 'product_collection_item',
+                'target_table' => 'product_collection_item',
+                'target_pk' => (string)$collectionItemIdx,
+                'action_mode' => 'translation_' . $field,
+                'action_summary' => ($field === 'accessories' ? '부속품' : '메이커 코멘트') . ' 번역 저장',
+                'before_json' => [$fieldMap[$field] => $collectionItem[$fieldMap[$field]] ?? null],
+                'after_json' => [$fieldMap[$field] => $translation],
+                'diff_json' => [$fieldMap[$field] => [
+                    'before' => $collectionItem[$fieldMap[$field]] ?? null,
+                    'after' => $translation,
+                ]],
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => '번역 데이터를 저장했습니다.',
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
      * 상품 디테일 (가격정보)
      */
     public function prdDetailPricePage(Request $request)
@@ -408,6 +1004,8 @@ class ProductController extends BaseClass
 
             $productService = new ProductService();
             $productData = $productService->getProductDataForAdmin($prdIdx);
+            $configProduct = config('admin.product');
+            $purchaseTypeOptions = $configProduct['purchase_type_options'] ?? [];
 
             //dump($productData);
 

@@ -150,6 +150,13 @@
 
         <tbody>
 
+            <?php if (!empty($productData['CD_IDX'])) { ?>
+                <tr>
+                    <th>상품 고유번호</th>
+                    <td><b><?= $productData['CD_IDX'] ?? '' ?></b></td>
+                </tr>
+            <?php } ?>
+            
             <tr>
                 <th>상품상태</th>
                 <td>
@@ -1158,19 +1165,19 @@
                                 </td>
                             </tr>
                             <tr>
-                                <th>길이 (cm)</th>
+                                <th>가로 (cm)</th>
                                 <td><input type="text" name="cd_spec_vendor[length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                                 <td><input type="text" name="cd_spec_measured[length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
-                                <th>너비 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>높이 (cm)</th>
+                                <th>세로 (cm)</th>
                                 <td><input type="text" name="cd_spec_vendor[height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                                 <td><input type="text" name="cd_spec_measured[height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                            </tr>
+                            <tr>
+                                <th>두께 (cm)</th>
+                                <td><input type="text" name="cd_spec_vendor[width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
+                                <td><input type="text" name="cd_spec_measured[width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
                                 <th>어깨너비 (cm)</th>
@@ -1300,9 +1307,8 @@
             <tr>
                 <th>패키지 사이즈</th>
                 <td>
-
-                    세로(H) : <input type='text' name='cd_size_h' value="<?= $productData['CD_SIZE']['H'] ?? '' ?>" style="width:60px">
                     가로(W) : <input type='text' name='cd_size_w' value="<?= $productData['CD_SIZE']['W'] ?? '' ?>" style="width:60px">
+                    세로(H) : <input type='text' name='cd_size_h' value="<?= $productData['CD_SIZE']['H'] ?? '' ?>" style="width:60px">
                     깊이(D) : <input type='text' name='cd_size_d' value="<?= $productData['CD_SIZE']['D'] ?? '' ?>" style="width:60px">
                     <div class="admin-guide-text">
                         - 단위 mm (숫자만 등록할것)

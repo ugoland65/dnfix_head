@@ -270,4 +270,113 @@ class ProductSupplierPyApiService
 
         return $responseData;
     }
+
+    /**
+     * 도메인별 상품 정보수집을 요청한다.
+     *
+     * 새 도메인은 $collectorEndpoints에 엔드포인트와 URL 검증 규칙을 추가해 확장한다.
+     *
+     * @param array $data collection_url, matched_product_pk, requester_user_pk, requester_user_name
+     * @return array
+     */
+    public function requestProductInfoCollection(array $data): array
+    {
+        $collectionUrl = trim((string)($data['collection_url'] ?? ''));
+        $urlParts = parse_url($collectionUrl);
+        $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
+        $host = strtolower((string)($urlParts['host'] ?? ''));
+        $host = preg_replace('/^www\./', '', $host);
+
+        if (!in_array($scheme, ['http', 'https'], true) || $host === '') {
+            throw new \InvalidArgumentException('수집 URL 형식이 올바르지 않습니다.');
+        }
+
+        $collectorEndpoints = [
+            'nipporigift.net' => [
+                'endpoint' => '/maker-products/npg/crawl',
+                'identifier_type' => 'query',
+                'identifier_key' => 'product_id',
+                'payload_key' => 'product_pk',
+            ],
+            'tamatoys.tma.co.jp' => [
+                'endpoint' => '/maker-products/tamatoys/crawl',
+                'identifier_type' => 'path_code',
+                'required_path_prefix' => '/item/detail/',
+                'payload_key' => 'product_pk',
+            ],
+        ];
+        $collector = $collectorEndpoints[$host] ?? null;
+        if ($collector === null) {
+            throw new \InvalidArgumentException('현재 정보수집이 지원되지 않는 도메인입니다: ' . $host);
+        }
+
+        $path = (string)($urlParts['path'] ?? '');
+        $identifier = '';
+        if ($collector['identifier_type'] === 'query') {
+            $pageName = basename($path);
+            parse_str((string)($urlParts['query'] ?? ''), $queryParams);
+            $identifier = trim((string)($queryParams[$collector['identifier_key']] ?? ''));
+            if ($pageName !== 'detail.php' || !ctype_digit($identifier) || (int)$identifier < 1) {
+                throw new \InvalidArgumentException('닛포리기프트 URL에는 detail.php 페이지와 유효한 product_id 값이 필요합니다.');
+            }
+        } elseif ($collector['identifier_type'] === 'path_code') {
+            $pathPrefix = (string)$collector['required_path_prefix'];
+            if (strpos($path, $pathPrefix) !== 0) {
+                throw new \InvalidArgumentException('타마토이즈 URL은 /item/detail/상품코드 형식이어야 합니다.');
+            }
+            $identifier = trim((string)basename($path));
+            if ($identifier === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
+                throw new \InvalidArgumentException('타마토이즈 상품 코드가 올바르지 않습니다.');
+            }
+        }
+
+        $matchedProductPk = (int)($data['matched_product_pk'] ?? 0);
+        $requesterUserPk = (int)($data['requester_user_pk'] ?? 0);
+        $requesterUserName = trim((string)($data['requester_user_name'] ?? ''));
+        if ($matchedProductPk < 1) {
+            throw new \InvalidArgumentException('연결할 내부 상품 번호가 올바르지 않습니다.');
+        }
+        if ($requesterUserPk < 1 || $requesterUserName === '') {
+            throw new \RuntimeException('로그인 사용자 정보를 확인할 수 없습니다.');
+        }
+
+        $payload = [
+            'matched_product_pk' => $matchedProductPk,
+            'requester_user_pk' => $requesterUserPk,
+            'requester_user_name' => $requesterUserName,
+            'requested_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Seoul')))->format(DATE_ATOM),
+        ];
+        if ($host === 'tamatoys.tma.co.jp') {
+            $payload['product_pk'] = $identifier;
+        } else {
+            $payload[$collector['payload_key']] = (int)$identifier;
+        }
+        $headers = [
+            'Content-Type: application/json',
+            'Accept: application/json',
+            'X-API-KEY: ' . $this->apiKey,
+        ];
+        $httpResult = HttpClient::postDataWithMeta($this->domain . $collector['endpoint'], $payload, $headers);
+        $response = (string)($httpResult['response'] ?? '');
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            $httpCode = (int)($httpResult['http_code'] ?? 0);
+            $curlError = trim((string)($httpResult['curl_error'] ?? ''));
+            $rawResponse = trim($response);
+            $detail = $rawResponse !== '' ? $rawResponse : $curlError;
+            if (function_exists('mb_substr')) {
+                $detail = mb_substr($detail, 0, 3000, 'UTF-8');
+            } else {
+                $detail = substr($detail, 0, 3000);
+            }
+            throw new \RuntimeException('정보수집 API 응답을 읽을 수 없습니다. HTTP ' . $httpCode . ($detail !== '' ? ' | 원문: ' . $detail : ''));
+        }
+        if (isset($responseData['success']) && !$responseData['success']) {
+            $rawResponse = json_encode($responseData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            throw new \RuntimeException((string)($responseData['message'] ?? '정보수집 요청에 실패했습니다.') . ($rawResponse ? ' | 원문: ' . $rawResponse : ''));
+        }
+
+        return $responseData;
+    }
+
 }

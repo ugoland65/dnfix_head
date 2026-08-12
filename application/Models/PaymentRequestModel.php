@@ -25,8 +25,10 @@ class PaymentRequestModel extends BaseModel
         'bank',            // 은행
         'bank_account',    // 계좌번호
         'depositor',       // 예금주
+        'foreign_account', // 해외계좌
     
         'memo',            // 요청 메모
+        'invoice_file_path', // 청구서/연관 파일 경로
 
     
         'comment_count',   // 추가

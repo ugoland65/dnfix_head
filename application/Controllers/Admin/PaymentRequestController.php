@@ -177,7 +177,7 @@ class PaymentRequestController extends BaseClass
             $bank = $paymentRequest['bank'] ?? '';
             $bank_account = $paymentRequest['bank_account'] ?? '';
             $depositor = $paymentRequest['depositor'] ?? '';
-            $importAccount = $paymentRequest['importAccount'] ?? '';
+            $importAccount = $paymentRequest['foreign_account'] ?? '';
 
             $data = [
                 'mode' => 'modify',
@@ -188,6 +188,7 @@ class PaymentRequestController extends BaseClass
                 'kind_idx' => $kind_idx,
                 'currency' => $currency,
                 'amount' => $amount,
+                'is_vat' => $is_vat,
                 'bank' => $bank ?? '',
                 'bank_account' => $bank_account ?? '',
                 'depositor' => $depositor ?? '',

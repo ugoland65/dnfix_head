@@ -1,4 +1,4 @@
-<form id="payment_request_detail_form">
+<form id="payment_request_detail_form" enctype="multipart/form-data">
 
     <input type="hidden" name="mode" value="<?= $mode ?>">
     <input type="hidden" name="apiMode" value="<?= $apiMode ?>">
@@ -38,6 +38,7 @@
                             <option value="환불" <?= $category == "환불" ? "selected" : "" ?>>환불</option>
                             <option value="주문발주" <?= $category == "주문발주" ? "selected" : "" ?>>주문발주</option>
                             <option value="예치금충전" <?= $category == "예치금충전" ? "selected" : "" ?>>예치금충전</option>
+                            <option value="개인선결제" <?= $category == "개인선결제" ? "selected" : "" ?>>개인 선결제 정산</option>
                         </select>
 
                         <div class="admin-guide-text">
@@ -72,7 +73,7 @@
                             <option value="CNY" <?= ($currency == "CNY" || $currency == "위안") ? "selected" : "" ?>>CNY 위안</option>
                             <option value="USD" <?= ($currency == "USD" || $currency == "달러") ? "selected" : "" ?>>USD 달러</option>
                         </select>
-                        <input type="text" name="amount" id="amount" value="<?= number_format((float)($amount ?? 0), ((float)($amount ?? 0) == floor((float)($amount ?? 0))) ? 0 : 2) ?>" class="price">
+                        <input type="text" name="amount" id="amount" value="<?= number_format((float)($amount ?? 0), ((float)($amount ?? 0) == floor((float)($amount ?? 0))) ? 0 : 2) ?>" class="price" style="width:100px;">
 
                         <div class="admin-guide-text">
                             - 요청금액 잘 확인해주세요.
@@ -139,10 +140,10 @@
                                 <option value="<?= $bankName ?>" <?= $selected ? "selected" : "" ?>><?= $bankName ?></option>
                             <?php } ?>
                         </select>
-                        <input type="text" name="bank_account" id="bank_account" value="<?= $bank_account ?? '' ?>">
+                        <input type="text" name="bank_account" id="bank_account" value="<?= $bank_account ?? '' ?>" style="width:200px;">
 
                         예금주 :
-                        <input type="text" name="depositor" id="depositor" value="<?= $depositor ?? '' ?>">
+                        <input type="text" name="depositor" id="depositor" value="<?= $depositor ?? '' ?>" style="width:100px;">
                         <div class="admin-guide-text">
                             - 결제계좌 잘 확인해주세요.
                         </div>
@@ -190,6 +191,30 @@
                 </tr>
             <?php } ?>
 
+            <tr>
+                <th>연관파일 첨부</th>
+                <td>
+                    <input type="file" name="invoice_file" id="invoice_file" accept=".pdf,.xls,.xlsx,.jpg,.jpeg,.png,.gif,.webp,application/pdf,application/vnd.ms-excel,application/vnd.openxmlformats-officedocument.spreadsheetml.sheet,image/jpeg,image/png,image/gif,image/webp">
+                    <div class="admin-guide-text">- 청구서 PDF, Excel(XLS/XLSX), 이미지(JPG/PNG/GIF/WEBP) 파일을 첨부할 수 있으며 최대 20MB입니다.</div>
+                    <?php if (!empty($paymentRequest['invoice_file_path'])) { ?>
+                        <?php $attachedFilePath = (string)$paymentRequest['invoice_file_path']; ?>
+                        <?php $attachedExtension = strtolower(pathinfo($attachedFilePath, PATHINFO_EXTENSION)); ?>
+                        <div style="margin-top:8px;">
+                            <a href="<?= htmlspecialchars($attachedFilePath, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">
+                                현재 첨부파일 보기
+                            </a>
+                            <span class="admin-guide-text">새 파일을 첨부하면 기존 파일은 교체됩니다.</span>
+                            <?php if (in_array($attachedExtension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) { ?>
+                                <div style="margin-top:8px;">
+                                    <a href="<?= htmlspecialchars($attachedFilePath, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer">
+                                        <img src="<?= htmlspecialchars($attachedFilePath, ENT_QUOTES, 'UTF-8') ?>" alt="현재 첨부 이미지" style="max-width:180px; max-height:120px; border:1px solid #ddd; object-fit:contain;">
+                                    </a>
+                                </div>
+                            <?php } ?>
+                        </div>
+                    <?php } ?>
+                </td>
+            </tr>
         </tbody>
 
     </table>
@@ -271,13 +296,16 @@
                 return;
             }
 
-            var formData = $('#payment_request_detail_form').serializeArray();
+            var formData = new FormData($form[0]);
 
             isSubmitting = true;
             $form.find('input, select, textarea, button').prop('disabled', true);
             $saveBtn.prop('disabled', true);
             $processingText.show();
-            ajaxRequest('/admin/payment/payment_request_save', formData)
+            ajaxRequest('/admin/payment/payment_request_save', formData, {
+                processData: false,
+                contentType: false
+            })
                 .then(res => {
                     if (res.success) {
                         if (window.opener && !window.opener.closed) {

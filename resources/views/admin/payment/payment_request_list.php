@@ -101,7 +101,7 @@
 					</select>
 				</ul>
 				<ul>
-					<input type="text" name="s_keyword" id="s_keyword" placeholder="회원 ID, 주문번호" value="<?= $s_keyword ?? '' ?>">
+					<input type="text" name="s_keyword" id="s_keyword" placeholder="결제은행, 요청내용, 주문번호" value="<?= $s_keyword ?? '' ?>">
 				</ul>
 				<ul>
 					<button type="button" id="searchBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm">
@@ -132,6 +132,7 @@
 								<th class="">요청일</th>
                                 <th class="">참조위치</th>
                                 <th class="">참조번호</th>
+                                <th class="">첨부파일</th>
 
                                 <th class="">상태변경</th>
                                 <th class="">결제완료일</th>
@@ -207,6 +208,20 @@
                                         <button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $row['kind_idx'] ?>','main')">#<?= $row['kind_idx'] ?></button>
                                     <?php }elseif( $row['kind'] == 'godo_refund' ){ ?>
                                         <a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['meta_json']['godo_order_no'] ?>" target="_blank"><?= $row['meta_json']['godo_order_no'] ?></a>
+                                    <?php } ?>
+                                </td>
+                                <td class="text-center">
+                                    <?php $invoiceFilePath = trim((string)($row['invoice_file_path'] ?? '')); ?>
+                                    <?php if ($invoiceFilePath !== '' && strpos($invoiceFilePath, '/data/payment_request/') === 0) { ?>
+                                        <a
+                                            href="<?= htmlspecialchars($invoiceFilePath, ENT_QUOTES, 'UTF-8') ?>"
+                                            target="_blank"
+                                            rel="noopener noreferrer"
+                                            class="btnstyle1 btnstyle1-info btnstyle1-xs"
+                                            title="<?= htmlspecialchars(basename($invoiceFilePath), ENT_QUOTES, 'UTF-8') ?>"
+                                        ><i class="fas fa-file-download"></i> 첨부파일 보기</a>
+                                    <?php } else { ?>
+                                        <span class="text-gray">-</span>
                                     <?php } ?>
                                 </td>
                                 <td>

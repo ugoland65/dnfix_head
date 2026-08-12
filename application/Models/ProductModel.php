@@ -8,6 +8,9 @@ class ProductModel extends BaseModel
 
 	protected $table = 'COMPARISON_DB';
 	protected $primaryKey = 'CD_IDX';  //기본값 idx
+	protected $fillable = [
+		'CD_IMAGE_STORAGE_PATH',
+	];
 
 	/**
 	 * 상품 재고 목록
