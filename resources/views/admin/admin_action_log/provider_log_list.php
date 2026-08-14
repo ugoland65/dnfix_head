@@ -2,11 +2,9 @@
     <table class="table-st1">
         <thead>
             <tr>
-                <th class="list-idx">고유번호</th>
+                <th class="list-idx">UID</th>
                 <th>수정일</th>
-                <th>모드</th>
-                <th>요약</th>
-                <th>수정자</th>
+                <th>모드/요약</th>
                 <th>수정내용</th>
             </tr>
         </thead>
@@ -45,10 +43,16 @@
             ?>
                 <tr>
                     <td><?= $item['idx'] ?></td>
-                    <td><?= $item['processed_at'] ?></td>
-                    <td><?= $item['action_mode'] ?></td>
-                    <td><?= $item['action_summary'] ?></td>
-                    <td><?= $item['operator_name'] ?></td>
+                    <td>
+                        <?= date('Y.m.d', strtotime($item['processed_at'])) ?><br>
+                        <?= date('H:i:s', strtotime($item['processed_at'])) ?><br>
+                        <?= $item['operator_name'] ?>
+                    </td>
+                    <td>
+                        <?= $item['action_mode'] ?><br>
+                        <?= $item['action_summary'] ?>
+                    </td>
+
                     <td>
 
                         <table>

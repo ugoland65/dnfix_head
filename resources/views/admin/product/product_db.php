@@ -828,7 +828,7 @@ function select_all() {
         var $seriesSelect = $('#s_relation_group_idx');
         $seriesSelect.empty().append($('<option>', {
             value: '',
-            text: brandIdx ? '시리즈' : '브랜드를 먼저 선택하세요'
+            text: brandIdx ? '시리즈' : '시리즈'
         }));
 
         if (!brandIdx) {

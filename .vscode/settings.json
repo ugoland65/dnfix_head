@@ -9,7 +9,13 @@
       // 하단 바
       "statusBar.background": "#0A3468",
       "statusBar.noFolderBackground": "#2F6FD9",
-      "statusBar.debuggingBackground": "#2F6FD9"
+      "statusBar.debuggingBackground": "#2F6FD9",
+
+      // 스크롤바
+      "scrollbarSlider.background": "#2F6FD980",
+      "scrollbarSlider.hoverBackground": "#4B8CFFCC",
+      "scrollbarSlider.activeBackground": "#4B8CFFFF"
+
     }
   }
   

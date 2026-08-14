@@ -63,7 +63,10 @@ $remainingQty = (int)($remainingQty ?? 0);
         <input type="hidden" name="idx" value="<?= (int)($orderIdx ?? 0) ?>">
         <input type="hidden" name="bidx" value="<?= (int)($unit['bidx'] ?? 0) ?>">
         <input type="hidden" name="pidx" value="<?= (int)($unit['pidx'] ?? 0) ?>">
-        <label for="checked_qty">이번에 센 수량</label>
+        <div class="admobile-unit-form__label-row">
+            <label for="checked_qty">이번에 센 수량</label>
+            <button type="button" class="admobile-numpad-open" data-numpad-open aria-label="화면 숫자패드 열기">⌨ 숫자패드</button>
+        </div>
         <input id="checked_qty" name="checked_qty" type="number" min="1" inputmode="numeric" placeholder="이번에 센 수량 입력">
         <button type="submit">검수수량 추가 등록</button>
         <p id="unit-inspection-message" aria-live="polite"></p>
@@ -101,6 +104,26 @@ $remainingQty = (int)($remainingQty ?? 0);
         <?php } ?>
     </section>
 </section>
+
+<div id="inspection-quantity-numpad" class="admobile-numpad-modal" hidden>
+    <div class="admobile-numpad-modal__backdrop" data-numpad-close></div>
+    <section class="admobile-numpad-modal__content" role="dialog" aria-modal="true" aria-labelledby="inspection-quantity-numpad-title">
+        <div class="admobile-numpad-modal__heading">
+            <h2 id="inspection-quantity-numpad-title">수량 입력</h2>
+            <button type="button" data-numpad-close aria-label="숫자패드 닫기">×</button>
+        </div>
+        <output id="inspection-numpad-display" class="admobile-numpad-modal__display">0</output>
+        <div class="admobile-numpad-modal__keys">
+            <?php foreach (['1', '2', '3', '4', '5', '6', '7', '8', '9'] as $number) { ?>
+                <button type="button" data-numpad-value="<?= $number ?>"><?= $number ?></button>
+            <?php } ?>
+            <button type="button" class="admobile-numpad-modal__clear" data-numpad-action="clear">C</button>
+            <button type="button" data-numpad-value="0">0</button>
+            <button type="button" class="admobile-numpad-modal__delete" data-numpad-action="delete" aria-label="마지막 숫자 삭제">⌫</button>
+        </div>
+        <button type="button" class="admobile-numpad-modal__done" data-numpad-close>입력 완료</button>
+    </section>
+</div>
 
 <div id="inspection-memo-modal" class="admobile-unit-memo-modal" hidden>
     <div class="admobile-unit-memo-modal__backdrop" data-action="close"></div>
@@ -186,10 +209,25 @@ $remainingQty = (int)($remainingQty ?? 0);
     .admobile-unit-memo__content { margin: 12px 0 0; padding: 10px; border-left: 3px solid #3056a8; border-radius: 0 6px 6px 0; background: #f7f9fc; color: #344054; font-size: 13px; line-height: 1.5; white-space: pre-line; }
     .admobile-unit-memo__content.is-empty { border-left-color: #cfd6e1; color: #98a2b3; }
     .admobile-unit-form { display: grid; gap: 8px; margin-top: 14px; padding: 15px; border: 1px solid #cbd6ee; border-radius: 10px; background: #f7f9ff; }
+    .admobile-unit-form__label-row { display: flex; align-items: center; justify-content: space-between; gap: 10px; }
     .admobile-unit-form label { color: #2c4d92; font-size: 13px; font-weight: 700; }
     .admobile-unit-form input { padding: 12px; border: 1px solid #aab9d6; border-radius: 7px; background: #fff; color: #172033; font-size: 20px; font-weight: 800; }
     .admobile-unit-form button { padding: 12px; border: 0; border-radius: 7px; background: #3056a8; color: #fff; font: inherit; font-size: 14px; font-weight: 700; }
+    .admobile-unit-form .admobile-numpad-open { padding: 6px 9px; border: 1px solid #aab9d6; background: #fff; color: #2c4d92; font-size: 12px; }
     .admobile-unit-form p { min-height: 16px; margin: 0; color: #067647; font-size: 12px; text-align: center; }
+    .admobile-numpad-modal[hidden] { display: none; }
+    .admobile-numpad-modal { position: fixed; z-index: 1220; inset: 0; display: flex; align-items: flex-end; }
+    .admobile-numpad-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .58); }
+    .admobile-numpad-modal__content { position: relative; width: 100%; padding: 18px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: #fff; box-shadow: 0 -8px 24px rgba(16, 24, 40, .16); }
+    .admobile-numpad-modal__heading { display: flex; align-items: center; justify-content: space-between; }
+    .admobile-numpad-modal__heading h2 { margin: 0; color: #172033; font-size: 18px; }
+    .admobile-numpad-modal__heading button { width: 34px; height: 34px; padding: 0; border: 0; border-radius: 50%; background: #f2f4f7; color: #344054; font-size: 23px; line-height: 1; }
+    .admobile-numpad-modal__display { display: block; min-height: 58px; margin: 12px 0; padding: 12px; overflow: hidden; border: 1px solid #aab9d6; border-radius: 9px; background: #f7f9ff; color: #172033; font-size: 28px; font-weight: 800; line-height: 34px; text-align: right; text-overflow: ellipsis; white-space: nowrap; }
+    .admobile-numpad-modal__keys { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; }
+    .admobile-numpad-modal__keys button { min-height: 52px; border: 1px solid #d0d5dd; border-radius: 9px; background: #fff; color: #172033; font: inherit; font-size: 21px; font-weight: 700; }
+    .admobile-numpad-modal__keys .admobile-numpad-modal__clear { color: #b42318; }
+    .admobile-numpad-modal__keys .admobile-numpad-modal__delete { color: #2c4d92; font-size: 24px; }
+    .admobile-numpad-modal__done { width: 100%; min-height: 48px; margin-top: 10px; border: 0; border-radius: 9px; background: #3056a8; color: #fff; font: inherit; font-size: 15px; font-weight: 700; }
     .admobile-inspection-history { margin-top: 14px; padding: 15px; border: 1px solid #e3e7ee; border-radius: 10px; background: #fff; }
     .admobile-inspection-history h3 { margin: 0 0 10px; font-size: 15px; }
     .admobile-inspection-history > p { margin: 0; color: #667085; font-size: 13px; }
@@ -401,10 +439,68 @@ $remainingQty = (int)($remainingQty ?? 0);
 </script>
 
 <script>
+    (function() {
+        var modal = document.getElementById('inspection-quantity-numpad');
+        var input = document.getElementById('checked_qty');
+        var display = document.getElementById('inspection-numpad-display');
+        var openButton = document.querySelector('[data-numpad-open]');
+
+        function normalizeQuantity(value) {
+            return String(value || '').replace(/\D/g, '').replace(/^0+(?=\d)/, '');
+        }
+
+        function updateDisplay() {
+            display.textContent = normalizeQuantity(input.value) || '0';
+        }
+
+        function closeNumpad() {
+            modal.hidden = true;
+        }
+
+        openButton.addEventListener('click', function() {
+            updateDisplay();
+            modal.hidden = false;
+        });
+
+        modal.addEventListener('click', function(event) {
+            if (event.target.closest('[data-numpad-close]')) {
+                closeNumpad();
+                return;
+            }
+
+            var valueButton = event.target.closest('[data-numpad-value]');
+            if (valueButton) {
+                input.value = normalizeQuantity(input.value + valueButton.dataset.numpadValue);
+                input.dispatchEvent(new Event('input', { bubbles: true }));
+                updateDisplay();
+                return;
+            }
+
+            var actionButton = event.target.closest('[data-numpad-action]');
+            if (!actionButton) {
+                return;
+            }
+            if (actionButton.dataset.numpadAction === 'clear') {
+                input.value = '';
+            } else if (actionButton.dataset.numpadAction === 'delete') {
+                input.value = normalizeQuantity(input.value).slice(0, -1);
+            }
+            input.dispatchEvent(new Event('input', { bubbles: true }));
+            updateDisplay();
+        });
+
+        input.addEventListener('input', function() {
+            input.value = normalizeQuantity(input.value);
+            updateDisplay();
+        });
+    })();
+</script>
+
+<script>
     document.getElementById('unit-inspection-form').addEventListener('submit', function(event) {
         event.preventDefault();
         var form = event.currentTarget;
-        var button = form.querySelector('button');
+        var button = form.querySelector('button[type="submit"]');
         var message = document.getElementById('unit-inspection-message');
         button.disabled = true;
         message.textContent = '';

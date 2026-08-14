@@ -107,7 +107,6 @@ if ($shippingImage !== '') {
         <dl class="admobile-product-detail__info">
             <div><dt>상품번호</dt><dd><?= number_format((int)($product['CD_IDX'] ?? 0)) ?></dd></div>
             <div><dt>상품 구분</dt><dd><?= htmlspecialchars($productKind, ENT_QUOTES, 'UTF-8') ?></dd></div>
-            <div><dt>바코드</dt><dd><?= htmlspecialchars((string)($product['cd_code_fn']['jan'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></dd></div>
             <div><dt>고도몰 상품코드</dt><dd><?= htmlspecialchars((string)($product['cd_godo_code'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></dd></div>
             <div><dt>출시일</dt><dd><?= htmlspecialchars((string)($product['CD_RELEASE_DATE'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></dd></div>
             <div><dt>원산지</dt><dd><?= htmlspecialchars((string)($product['cd_origin'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></dd></div>
@@ -117,6 +116,13 @@ if ($shippingImage !== '') {
     <section class="admobile-product-detail__section">
         <h2>재고 · 주문</h2>
         <dl class="admobile-product-detail__info">
+            <div class="admobile-product-detail__barcode">
+                <dt>바코드</dt>
+                <dd>
+                    <strong id="admobile-product-barcode"><?= htmlspecialchars((string)($product['cd_code_fn']['jan'] ?? '-') ?: '-', ENT_QUOTES, 'UTF-8') ?></strong>
+                    <button type="button" id="admobile-product-barcode-edit" data-barcode="<?= htmlspecialchars((string)($product['cd_code_fn']['jan'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">변경</button>
+                </dd>
+            </div>
             <div><dt>현재고</dt><dd class="is-stock"><?= number_format((int)($product['ps_stock'] ?? 0)) ?>개</dd></div>
             <div class="admobile-product-detail__rack">
                 <dt>랙 코드</dt>
@@ -172,6 +178,28 @@ if ($shippingImage !== '') {
         <button type="button" class="admobile-product-detail-modal__close" data-action="close" aria-label="이미지 닫기">닫기</button>
         <img id="admobile-product-image-modal-image" src="" alt="">
         <p id="admobile-product-image-modal-title"></p>
+    </section>
+</div>
+
+<div id="admobile-product-barcode-modal" class="admobile-product-rack-modal" hidden>
+    <div class="admobile-product-rack-modal__backdrop" data-action="close"></div>
+    <section class="admobile-product-rack-modal__content" role="dialog" aria-modal="true" aria-labelledby="admobile-product-barcode-title">
+        <form id="admobile-product-barcode-form">
+            <div class="admobile-product-rack-modal__heading">
+                <div>
+                    <p>재고 · 주문</p>
+                    <h2 id="admobile-product-barcode-title">바코드 변경</h2>
+                </div>
+                <button type="button" data-action="close" aria-label="바코드 변경 닫기">×</button>
+            </div>
+            <label for="admobile-product-barcode-input">새 바코드</label>
+            <input id="admobile-product-barcode-input" type="text" maxlength="100" inputmode="numeric" autocomplete="off" placeholder="바코드를 스캔하거나 입력하세요">
+            <p id="admobile-product-barcode-message" class="admobile-product-rack-modal__message" aria-live="polite"></p>
+            <div class="admobile-product-rack-modal__actions">
+                <button type="button" data-action="close">취소</button>
+                <button type="submit">저장</button>
+            </div>
+        </form>
     </section>
 </div>
 
@@ -264,6 +292,11 @@ if ($shippingImage !== '') {
     .admobile-product-detail__rack dd { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
     .admobile-product-detail__rack strong { overflow-wrap: anywhere; color: #173d8f; font-family: monospace; font-size: 19px; font-weight: 800; letter-spacing: .5px; }
     .admobile-product-detail__rack button { flex: 0 0 auto; padding: 5px 7px; border: 1px solid #8fa5d3; border-radius: 5px; background: #fff; color: #2c4d92; font: inherit; font-size: 11px; font-weight: 700; }
+    .admobile-product-detail__barcode { grid-column: 1 / -1; display: flex; align-items: center; justify-content: space-between; gap: 10px; background: #f1f5ff; }
+    .admobile-product-detail__barcode dt { flex: 0 0 auto; margin: 0; color: #2c4d92; font-weight: 700; }
+    .admobile-product-detail__barcode dd { display: flex; align-items: center; justify-content: flex-end; min-width: 0; gap: 7px; text-align: right; }
+    .admobile-product-detail__barcode strong { overflow: hidden; color: #173d8f; font-family: monospace; font-size: 18px; font-weight: 800; letter-spacing: .5px; text-overflow: ellipsis; white-space: nowrap; }
+    .admobile-product-detail__barcode button { flex: 0 0 auto; padding: 5px 7px; border: 1px solid #8fa5d3; border-radius: 5px; background: #fff; color: #2c4d92; font: inherit; font-size: 11px; font-weight: 700; }
     .admobile-product-detail__weight { background: #fbfcff; }
     .admobile-product-detail__weight dt { color: #667085; font-weight: 700; }
     .admobile-product-detail__weight dd { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
@@ -399,6 +432,69 @@ if ($shippingImage !== '') {
                     editButton.dataset.totalWeight = totalValue;
                     productWeight.textContent = toDisplayWeight(productValue);
                     totalWeight.textContent = toDisplayWeight(totalValue);
+                    closeModal();
+                })
+                .catch(function(error) {
+                    message.textContent = error.message;
+                })
+                .finally(function() {
+                    saveButton.disabled = false;
+                });
+        });
+    })();
+</script>
+
+<script>
+    (function() {
+        var modal = document.getElementById('admobile-product-barcode-modal');
+        var form = document.getElementById('admobile-product-barcode-form');
+        var editButton = document.getElementById('admobile-product-barcode-edit');
+        var input = document.getElementById('admobile-product-barcode-input');
+        var message = document.getElementById('admobile-product-barcode-message');
+        var barcode = document.getElementById('admobile-product-barcode');
+        var prdIdx = <?= (int)($product['CD_IDX'] ?? 0) ?>;
+
+        function closeModal() {
+            modal.hidden = true;
+        }
+
+        editButton.addEventListener('click', function() {
+            input.value = editButton.dataset.barcode || '';
+            message.textContent = '';
+            modal.hidden = false;
+            window.setTimeout(function() { input.focus(); }, 100);
+        });
+
+        modal.addEventListener('click', function(event) {
+            if (event.target.closest('[data-action="close"]')) {
+                closeModal();
+            }
+        });
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            var saveButton = form.querySelector('[type="submit"]');
+            saveButton.disabled = true;
+            message.textContent = '';
+
+            fetch('/admobile/product/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({
+                    action_mode: 'barcode_update',
+                    prd_idx: prdIdx,
+                    barcode: input.value
+                })
+            })
+                .then(function(response) { return response.json(); })
+                .then(function(result) {
+                    if (!result.success) {
+                        throw new Error(result.message || '바코드 변경에 실패했습니다.');
+                    }
+
+                    var value = result.barcode || '';
+                    editButton.dataset.barcode = value;
+                    barcode.textContent = value || '-';
                     closeModal();
                 })
                 .catch(function(error) {

@@ -138,6 +138,19 @@ class ProductController extends BaseClass
                     'rack_code' => $rackCode,
                 ]);
             }
+            if ($actionMode === 'barcode_update') {
+                $barcode = $service->updateProductBarcode(
+                    (int)($requestData['prd_idx'] ?? 0),
+                    (string)($requestData['barcode'] ?? ''),
+                    $actor
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => '바코드를 변경했습니다.',
+                    'barcode' => $barcode,
+                ]);
+            }
             if ($actionMode === 'measured_weight_update') {
                 $weights = $service->updateProductMeasuredWeights(
                     (int)($requestData['prd_idx'] ?? 0),

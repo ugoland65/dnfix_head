@@ -90,6 +90,12 @@ class GodoInspectionService
         ['cateNm' => '16cm 이상', 'cateCd' => '026006004', 'min' => 16, 'max' => null],
     ];
 
+    private const TORSO_CATEGORIES = [
+        ['sourceCategoryCode' => '02010100', 'cateNm' => '미니 토르소', 'cateCd' => '022007003'],
+        ['sourceCategoryCode' => '02010200', 'cateNm' => '스탠다드 토르소', 'cateCd' => '022007002'],
+        ['sourceCategoryCode' => '02010300', 'cateNm' => '대형 토르소', 'cateCd' => '022007001'],
+    ];
+
     private const MARGIN_GRADE_CATEGORIES = [
         ['cateNm' => 'A', 'cateCd' => '046001001'],
         ['cateNm' => 'B', 'cateCd' => '046001002'],
@@ -165,6 +171,7 @@ class GodoInspectionService
         $onaholeInnerLengthCategoryMap = $this->buildCategoryMap(self::ONAHOLE_INNER_LENGTH_CATEGORIES);
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
+        $torsoCategoryMap = $this->buildCategoryMap(self::TORSO_CATEGORIES);
 
         // 카테고리 코드 트리에서 브랜드 1차/2차 정합성을 점검하기 위한 전처리.
         $brand1Codes = array_keys(self::BRAND1_CATEGORY_LIST);
@@ -275,6 +282,7 @@ class GodoInspectionService
         $currentOnaholeHbtiCategories = [];
         $currentOnaholeInnerLengthCategories = [];
         $currentMarginGradeCategories = [];
+        $currentTorsoCategories = [];
         foreach ($godoCategoryLines as $categoryRow) {
             if (!is_array($categoryRow)) {
                 continue;
@@ -299,6 +307,9 @@ class GodoInspectionService
             if (strlen($cateCd) === 9 && strpos($cateCd, '046001') === 0) {
                 $currentMarginGradeCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
+            if (isset($torsoCategoryMap[$cateCd])) {
+                $currentTorsoCategories[] = ['cateCd' => $cateCd, 'line' => $line];
+            }
         }
 
         $targetOnaholeWeightCategory = $this->findTargetCategoryByValue(self::ONAHOLE_WEIGHT_CATEGORIES, $goodsWeightNormalized);
@@ -308,6 +319,10 @@ class GodoInspectionService
         );
         $targetOnaholeInnerLengthCategory = $this->findTargetCategoryByValue(self::ONAHOLE_INNER_LENGTH_CATEGORIES, $innerLengthNormalized);
         $targetMarginGradeCategory = $marginGradeCategoryMap[$marginGrade] ?? null;
+        $targetTorsoCategory = $this->findTargetCategoryBySourceCategoryCode(
+            self::TORSO_CATEGORIES,
+            $cdCategoryCode
+        );
         $targetOnaholePriceCategory = null;
 
         // 화면에 노출될 검수 이슈 목록.
@@ -394,6 +409,23 @@ class GodoInspectionService
                 "<span>오나홀 > 유형별 카테고리가 미지정되어 있습니다.</span>",
                 "<span>오나홀 > 유형별 카테고리 오분류</span>",
                 $onaholeTypeCategoryMap
+            );
+        }
+
+        if ($isMatchedByGoodsNo && $targetTorsoCategory !== null) {
+            $this->appendCategoryMismatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentTorsoCategories,
+                (string)($targetTorsoCategory['cateCd'] ?? ''),
+                (string)($targetTorsoCategory['cateNm'] ?? ''),
+                '토르소 카테고리 미지정',
+                '토르소 카테고리 오류',
+                '<span>토르소 유형 카테고리가 지정되어 있지 않습니다.</span>',
+                '<span>토르소 유형 카테고리가 인트라넷 상품 카테고리와 일치하지 않습니다.</span>',
+                $torsoCategoryMap
             );
         }
 
@@ -808,6 +840,8 @@ class GodoInspectionService
             case '유형별 카테고리 오류':
             case 'HBTI 카테고리 오류':
             case 'HBTI 카테고리 미지정':
+            case '토르소 카테고리 미지정':
+            case '토르소 카테고리 오류':
             case '내부길이 카테고리 미지정':
             case '내부길이 카테고리 오류':
             case '가격별 카테고리 미지정':
@@ -1036,6 +1070,7 @@ class GodoInspectionService
             self::ONAHOLE_TYPE_CATEGORIES,
             self::ONAHOLE_HBTI_CATEGORIES,
             self::ONAHOLE_INNER_LENGTH_CATEGORIES,
+            self::TORSO_CATEGORIES,
             self::MARGIN_GRADE_CATEGORIES,
         ];
 

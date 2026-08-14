@@ -107,7 +107,11 @@ $categories = [
                 'code' => '02010000',
                 'key' => 'TORSO',
                 'name' => '토르소형 ',
-                'children' => []
+                'children' => [
+                    ['code' => '02010100', 'key' => 'TORSO_MINI', 'name' => '미니 토르소', 'children' => []],
+                    ['code' => '02010200', 'key' => 'TORSO_STANDARD', 'name' => '스탠다드 토르소', 'children' => []],
+                    ['code' => '02010300', 'key' => 'TORSO_LARGE', 'name' => '대형 토르소', 'children' => []],
+                ],
             ],
             [
                 'code' => '02020000',

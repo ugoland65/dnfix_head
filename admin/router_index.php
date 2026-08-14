@@ -75,6 +75,7 @@ try {
     $router->post('/brand/save', BrandController::class, 'saveBrand'); //브랜드 수정
 
     //상품 관리
+    $router->get('/product/overview', ProductController::class, 'productOverview'); //상품관리 종합현황
     $router->get('/product/product_db', ProductController::class, 'prdDbList'); //상품 DB 목록
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
     $router->get('/product/prd_db_create', ProductController::class, 'prdDbCreate'); //상품 DB 생성

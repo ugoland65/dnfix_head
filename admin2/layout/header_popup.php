@@ -145,7 +145,8 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .crm-body{ padding:20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
 .crm-body.has-top-menu{ padding:90px 20px 20px; }
 .crm-top-menu-wrap{ width:calc(100% - 205px); background-color:#fff; height:70px; position:fixed; 
-	top:0; left:205px; right:0; z-index:100; border-bottom:1px solid #9c9fae; 
+	top:0; left:205px; right:0; 
+	z-index:101; border-bottom:1px solid #9c9fae; 
 	display:flex; 
 	align-items:center; 
 	gap:15px;

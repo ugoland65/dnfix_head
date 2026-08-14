@@ -91,6 +91,68 @@
         background: #2563eb;
         color: #fff;
     }
+    .torso-third-category-guide {
+        max-width: 680px;
+        margin-top: 12px;
+        padding: 14px;
+        border: 1px solid #dbe5f5;
+        border-radius: 8px;
+        background: #f8fbff;
+    }
+    .torso-third-category-guide h3 {
+        margin: 0 0 10px;
+        color: #1e3a5f;
+        font-size: 14px;
+    }
+    .torso-third-category-guide__list {
+        display: grid;
+        gap: 8px;
+    }
+    .torso-third-category-guide__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 8px;
+        border: 1px solid #e3eaf5;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .torso-third-category-guide__item img {
+        flex: 0 0 86px;
+        width: 86px;
+        height: 86px;
+        object-fit: cover;
+        border-radius: 4px;
+    }
+    .torso-third-category-guide__item strong {
+        display: block;
+        margin-bottom: 4px;
+        color: #1f2937;
+        font-size: 13px;
+    }
+    .torso-third-category-guide__item p {
+        margin: 0;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.45;
+    }
+    .torso-size-compare { max-width: 900px; margin-top: 18px; padding: 16px; border: 1px solid #dbe3ee; border-radius: 10px; background: #f8fafc; }
+    .torso-size-compare h3 { margin: 0 0 4px; color: #1f2937; font-size: 15px; }
+    .torso-size-compare__desc { margin: 0 0 12px; color: #64748b; font-size: 12px; }
+    .torso-size-compare__stage { display: grid; grid-template-columns: 1fr 1fr; gap: 14px; }
+    .torso-size-compare__figure { min-width: 0; margin: 0; padding: 10px; border: 1px solid #e1e7ef; border-radius: 8px; background: #fff; }
+    .torso-size-compare__figure figcaption { margin-bottom: 8px; color: #475569; font-size: 12px; font-weight: 700; text-align: center; }
+    .torso-size-compare__figure img, .torso-size-compare__figure svg { display: block; width: 100%; height: auto; aspect-ratio: 43 / 70; border-radius: 4px; background: #f8fafc; }
+    .torso-size-compare__figure img { object-fit: contain; }
+    .torso-size-compare__svg .torso-shape { fill: rgba(73, 129, 190, .62); stroke: #346da9; stroke-width: 3; transition: d .2s ease; }
+    .torso-size-compare__svg .torso-guide { stroke: #cbd5e1; stroke-width: 2; stroke-dasharray: 8 8; }
+    .torso-size-compare__svg .torso-measure { stroke: #64748b; stroke-width: 2; }
+    .torso-size-compare__svg text { font-family: Arial, sans-serif; }
+    .torso-size-compare__svg .torso-measure-text { fill: #346da9; font-size: 20px; font-weight: 700; }
+    .torso-size-compare__results { display: grid; grid-template-columns: repeat(3, 1fr); gap: 8px; margin-top: 12px; }
+    .torso-size-compare__results div { padding: 8px; border-radius: 6px; background: #fff; color: #64748b; font-size: 12px; }
+    .torso-size-compare__results strong { display: block; margin-top: 3px; color: #346da9; font-size: 14px; }
+    @media (max-width: 720px) { .torso-size-compare__stage { grid-template-columns: 1fr; } .torso-size-compare__results { grid-template-columns: 1fr; } }
 
 </style>
 <?php
@@ -287,7 +349,7 @@
                         $cdSpecVendorData = (isset($cdSpecData['vendor_size']) && is_array($cdSpecData['vendor_size'])) ? $cdSpecData['vendor_size'] : [];
                         $cdSpecMeasuredData = (isset($cdSpecData['measured_size']) && is_array($cdSpecData['measured_size'])) ? $cdSpecData['measured_size'] : [];
                         $cdSpecOptionData = (isset($cdSpecData['options']) && is_array($cdSpecData['options'])) ? $cdSpecData['options'] : [];
-                        $isTorsoCategory = ($selectedCategoryCode === '02010000');
+                        $isTorsoCategory = (bool)preg_match('/^0201\d{4}$/', $selectedCategoryCode);
                         $isBreastCategory = ($selectedCategoryCode === '02020000');
                         $isRealdollFullBodyCategory = ($selectedCategoryCode === '02050000');
 
@@ -346,9 +408,36 @@
                             면타입<br>
                         </ul>
                     </div>
+                    <div id="torso-third-category-guide" class="torso-third-category-guide" style="<?= ($selectedKindCode === 'TORSO' && $selectedSecondKindKey === 'TORSO' && $selectedThirdKindKey === '') ? '' : 'display:none;' ?>">
+                        <h3>토르소형 3차 카테고리 - 분류기준</h3>
+                        <div class="torso-third-category-guide__list">
+                            <div class="torso-third-category-guide__item">
+                                <img src="https://cdn-saas-web-203-195.cdn-nhncommerce.com/dnfix202439_godomall_com/data/category/022007003_cateOverImg_goods.jpg" alt="미니 토르소" loading="lazy">
+                                <div>
+                                    <strong>미니 토르소</strong>
+                                    <p>기준 작성중</p>
+                                </div>
+                            </div>
+                            <div class="torso-third-category-guide__item">
+                                <img src="https://cdn-saas-web-203-195.cdn-nhncommerce.com/dnfix202439_godomall_com/data/category/022007002_cateOverImg_goods.jpg" alt="스탠다드 토르소" loading="lazy">
+                                <div>
+                                    <strong>스탠다드 토르소</strong>
+                                    <p>기준 작성중</p>
+                                </div>
+                            </div>
+                            <div class="torso-third-category-guide__item">
+                                <img src="https://cdn-saas-web-203-195.cdn-nhncommerce.com/dnfix202439_godomall_com/data/category/022007001_cateOverImg_goods.jpg" alt="대형 토르소" loading="lazy">
+                                <div>
+                                    <strong>대형 토르소</strong>
+                                    <p>신체비율과 1:1 비율이거나 커야함, 무게 13kg이상</p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
 
                 </td>
             </tr>
+            
             <tr>
                 <th>브랜드</th>
                 <td>
@@ -1021,7 +1110,10 @@
             <tr>
                 <th>상품 상세스펙</th>
                 <td>
+
+                    <!-- 토르소형 상세스펙 -->
                     <div id="cd-spec-02010000-wrap" style="<?php if (!$isTorsoCategory) echo 'display:none;'; ?>">
+                        
                         <table class="table-style border01">
                             <colgroup>
                                 <col width="180px" />
@@ -1068,7 +1160,7 @@
                                 <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
-                                <th>가슴둘레 (cm)</th>
+                                <th><b>가슴둘레</b> (cm)</th>
                                 <td>
                                     <input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
                                     Upper bust
@@ -1084,7 +1176,7 @@
                                 <td><input type="text" name="cd_spec_measured[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
-                                <th>허리둘레 (cm)</th>
+                                <th><b>허리둘레</b> (cm)</th>
                                 <td>
                                     <input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
                                     Waistline
@@ -1092,7 +1184,7 @@
                                 <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
                             </tr>
                             <tr>
-                                <th>엉덩이 둘레 (cm)</th>
+                                <th><b>엉덩이 둘레</b> (cm)</th>
                                 <td>
                                     <input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
                                     Hipline
@@ -1142,7 +1234,36 @@
                         <div class="admin-guide-text">
                             - 2차 카테고리가 토르소형(02010000)일 때만 저장됩니다.
                         </div>
+
+                        <div id="torso-size-compare" class="torso-size-compare">
+                            <h3>한국 여성 평균과 토르소 크기 비교</h3>
+                            <p class="torso-size-compare__desc">왼쪽은 키 160cm 기준 여성, 오른쪽은 입력한 토르소 치수를 같은 180cm 기준 비율로 표시합니다.</p>
+                            <div class="torso-size-compare__stage">
+                                <figure class="torso-size-compare__figure">
+                                    <figcaption>한국 여성 평균 · 160cm</figcaption>
+                                    <img src="/img/size_silhouette_m.jpg" alt="키 160cm 기준 여성 실루엣">
+                                </figure>
+                                <figure class="torso-size-compare__figure">
+                                    <figcaption id="torso-size-compare-summary">입력 토르소</figcaption>
+                                    <svg id="torso-size-compare-svg" class="torso-size-compare__svg" viewBox="0 0 430 700" role="img" aria-label="입력한 토르소 크기 비교 도식">
+                                        <line x1="24" y1="661" x2="406" y2="661" class="torso-guide"/>
+                                        <path id="torso-size-compare-path" class="torso-shape" d=""/>
+                                        <line id="torso-size-compare-height-line" class="torso-measure"/>
+                                        <line id="torso-size-compare-height-top" class="torso-measure"/>
+                                        <line id="torso-size-compare-height-bottom" class="torso-measure"/>
+                                        <text id="torso-size-compare-height-text" class="torso-measure-text"></text>
+                                    </svg>
+                                </figure>
+                            </div>
+                            <div class="torso-size-compare__results">
+                                <div>가슴 차이<strong id="torso-size-compare-bust-diff">-</strong></div>
+                                <div>허리 차이<strong id="torso-size-compare-waist-diff">-</strong></div>
+                                <div>엉덩이 차이<strong id="torso-size-compare-hip-diff">-</strong></div>
+                            </div>
+                        </div>
+
                     </div>
+
                     <div id="cd-spec-02020000-wrap" style="<?php if (!$isBreastCategory) echo 'display:none;'; ?>">
                         <table class="table-style border01">
                             <colgroup>
@@ -1219,6 +1340,7 @@
                             - 2차 카테고리가 가슴장난감(02020000)일 때만 저장됩니다.
                         </div>
                     </div>
+
                     <div id="cd-spec-02050000-wrap" style="<?php if (!$isRealdollFullBodyCategory) echo 'display:none;'; ?>">
                         <table class="table-style border01">
                             <colgroup>
@@ -1301,6 +1423,7 @@
                             - 2차 카테고리가 리얼돌/전신형(02050000)일 때만 저장됩니다.
                         </div>
                     </div>
+
                 </td>
             </tr>
 
@@ -1760,6 +1883,90 @@
             return String(categoryCodeByKind[key] || '').trim();
         }
 
+        function renderTorsoSizeComparison() {
+            const $compare = $('#torso-size-compare');
+            if (!$compare.length) {
+                return;
+            }
+            const PX_PER_CM = 700 / 180;
+            const BASE = { bust: 85, waist: 72, hip: 92 };
+            const readMeasurement = function(key, fallback) {
+                const measured = parseFloat(String($('input[name="cd_spec_measured[' + key + ']"]').val() || '').replace(/,/g, ''));
+                const vendor = parseFloat(String($('input[name="cd_spec_vendor[' + key + ']"]').val() || '').replace(/,/g, ''));
+                if (Number.isFinite(measured) && measured > 0) return measured;
+                if (Number.isFinite(vendor) && vendor > 0) return vendor;
+                return fallback;
+            };
+            const hasMeasurement = function(key) {
+                const measured = parseFloat(String($('input[name="cd_spec_measured[' + key + ']"]').val() || '').replace(/,/g, ''));
+                const vendor = parseFloat(String($('input[name="cd_spec_vendor[' + key + ']"]').val() || '').replace(/,/g, ''));
+                return (Number.isFinite(measured) && measured > 0)
+                    || (Number.isFinite(vendor) && vendor > 0);
+            };
+            const clamp = function(value, min, max) {
+                return Math.min(max, Math.max(min, value));
+            };
+            const circumferenceToFrontWidth = function(circumference) {
+                return circumference * 0.38;
+            };
+            const bust = clamp(readMeasurement('chest_circumference', 90), 20, 200);
+            const shoulderMax = (!hasMeasurement('shoulder_width') && hasMeasurement('chest_circumference'))
+                ? bust
+                : 100;
+            const values = {
+                height: clamp(readMeasurement('body_height', 61), 20, 160),
+                shoulder: clamp(readMeasurement('shoulder_width', 30), 10, shoulderMax),
+                bust: bust,
+                waist: clamp(readMeasurement('waist_circumference', 68), 20, 200),
+                hip: clamp(readMeasurement('hip_circumference', 92), 20, 220)
+            };
+            const cx = 215;
+            const bottomY = 661;
+            const heightPx = values.height * PX_PER_CM;
+            const topY = bottomY - heightPx;
+            const shoulderHalf = values.shoulder * PX_PER_CM / 2;
+            const bustHalf = circumferenceToFrontWidth(values.bust) * PX_PER_CM / 2;
+            const waistHalf = circumferenceToFrontWidth(values.waist) * PX_PER_CM / 2;
+            const hipHalf = circumferenceToFrontWidth(values.hip) * PX_PER_CM / 2;
+            const neckHalf = Math.min(22, shoulderHalf * 0.28);
+            const shoulderY = topY + heightPx * 0.12;
+            const bustY = topY + heightPx * 0.30;
+            const waistY = topY + heightPx * 0.56;
+            const hipY = topY + heightPx * 0.76;
+            const crotchY = topY + heightPx * 0.84;
+            const thighGap = Math.max(9, hipHalf * 0.12);
+            const d = `M ${cx - neckHalf} ${topY}
+                L ${cx - neckHalf} ${topY + 12}
+                C ${cx - neckHalf - 4} ${shoulderY - 8}, ${cx - shoulderHalf + 16} ${shoulderY - 12}, ${cx - shoulderHalf} ${shoulderY}
+                C ${cx - shoulderHalf + 4} ${bustY - 20}, ${cx - bustHalf} ${bustY - 12}, ${cx - bustHalf} ${bustY}
+                C ${cx - bustHalf} ${bustY + 24}, ${cx - waistHalf} ${waistY - 24}, ${cx - waistHalf} ${waistY}
+                C ${cx - waistHalf} ${waistY + 28}, ${cx - hipHalf} ${hipY - 30}, ${cx - hipHalf} ${hipY}
+                C ${cx - hipHalf} ${crotchY + 12}, ${cx - hipHalf * 0.82} ${bottomY - 12}, ${cx - hipHalf * 0.72} ${bottomY}
+                L ${cx - thighGap} ${bottomY} L ${cx - thighGap} ${crotchY}
+                L ${cx + thighGap} ${crotchY} L ${cx + thighGap} ${bottomY}
+                L ${cx + hipHalf * 0.72} ${bottomY}
+                C ${cx + hipHalf * 0.82} ${bottomY - 12}, ${cx + hipHalf} ${crotchY + 12}, ${cx + hipHalf} ${hipY}
+                C ${cx + hipHalf} ${hipY - 30}, ${cx + waistHalf} ${waistY + 28}, ${cx + waistHalf} ${waistY}
+                C ${cx + waistHalf} ${waistY - 24}, ${cx + bustHalf} ${bustY + 24}, ${cx + bustHalf} ${bustY}
+                C ${cx + bustHalf} ${bustY - 12}, ${cx + shoulderHalf - 4} ${bustY - 20}, ${cx + shoulderHalf} ${shoulderY}
+                C ${cx + shoulderHalf - 16} ${shoulderY - 12}, ${cx + neckHalf + 4} ${shoulderY - 8}, ${cx + neckHalf} ${topY + 12}
+                L ${cx + neckHalf} ${topY} Z`;
+
+            $('#torso-size-compare-path').attr('d', d);
+            const lineX = 375;
+            $('#torso-size-compare-height-line').attr({ x1: lineX, x2: lineX, y1: topY, y2: bottomY });
+            $('#torso-size-compare-height-top').attr({ x1: lineX - 9, x2: lineX + 9, y1: topY, y2: topY });
+            $('#torso-size-compare-height-bottom').attr({ x1: lineX - 9, x2: lineX + 9, y1: bottomY, y2: bottomY });
+            $('#torso-size-compare-height-text').attr({ x: lineX + 12, y: (topY + bottomY) / 2 }).text(values.height.toFixed(1).replace(/\.0$/, '') + 'cm');
+            $('#torso-size-compare-summary').text('입력 토르소 · ' + values.height + 'cm · ' + values.bust + ' / ' + values.waist + ' / ' + values.hip);
+            const signed = function(value) {
+                return (value >= 0 ? '+' : '') + value.toFixed(1).replace(/\.0$/, '') + 'cm';
+            };
+            $('#torso-size-compare-bust-diff').text(signed(values.bust - BASE.bust));
+            $('#torso-size-compare-waist-diff').text(signed(values.waist - BASE.waist));
+            $('#torso-size-compare-hip-diff').text(signed(values.hip - BASE.hip));
+        }
+
         function updateCategoryCodeInput() {
             const primaryKind = String($('select[name="cd_kind_code"]').val() || '').trim();
             const $secondSelect = $('#cd_kind_code_second');
@@ -1781,11 +1988,12 @@
             $('#cd_category_code').val(categoryCode);
             toggleCdSpecFieldsByCategoryCode();
             $('#onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
+            $('#torso-third-category-guide').toggle(primaryKind === 'TORSO' && secondKind === 'TORSO' && thirdKind === '');
         }
 
         function toggleCdSpecFieldsByCategoryCode() {
             const categoryCode = String($('#cd_category_code').val() || '').trim();
-            const isTorsoCategory = categoryCode === '02010000';
+            const isTorsoCategory = /^0201\d{4}$/.test(categoryCode);
             const isBreastCategory = categoryCode === '02020000';
             const isRealdollCategory = categoryCode === '02050000';
             const $torsoInputs = $cdSpec02010000Wrap.find('input[name^="cd_spec_vendor["], input[name^="cd_spec_measured["]');
@@ -1913,7 +2121,9 @@
         $('#cd_kind_code_third').on('change', function() {
             updateCategoryCodeInput();
         });
+        $(document).on('input', '#cd-spec-02010000-wrap input[name^="cd_spec_vendor["], #cd-spec-02010000-wrap input[name^="cd_spec_measured["]', renderTorsoSizeComparison);
         renderSecondCategorySelect(false);
+        renderTorsoSizeComparison();
 
         $(document).on('change', 'input[type="checkbox"][name^="work_task_done["]', function() {
             var $chip = $(this).closest('.work-check-chip');

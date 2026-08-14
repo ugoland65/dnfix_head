@@ -572,7 +572,7 @@
                     ?>
                     <td style="width:80px;">
                         <div class="qty-control-wrap">
-                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" onkeyUP="orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
+                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" data-saved-qty="<?= $item['selpd']['qty'] ?? 0 ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" onkeyUP="orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
                             <div class="qty-step-wrap">
                                 <button type="button" class="qty-step-btn" data-step="1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▲</button>
                                 <button type="button" class="qty-step-btn" data-step="-1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▼</button>
@@ -1370,6 +1370,10 @@
                         if (window.orderSheetDetail && typeof window.orderSheetDetail.groupState === 'function') {
                             window.orderSheetDetail.groupState("end");
                         }
+                        $(".qty-input").each(function() {
+                            var savedQty = String($(this).val() || '0').replace(/,/g, '');
+                            $(this).data('saved-qty', savedQty);
+                        });
                         $("#group_side_sum_qty_" + oop_idx).data('value', total_qty);
 
                         $("#oprice_allsum").html(GC.comma(res.oo_sum_price ?? 0));
@@ -1558,6 +1562,27 @@
             }
             var trId = String($contextTargetRow.attr('id') || '');
             return trId.replace(/^tr_/, '').trim();
+        }
+
+        function hasCurrentRowOrderQty() {
+            if (!$contextTargetRow.length) {
+                return false;
+            }
+            var qtyText = String($contextTargetRow.find('.qty-input').first().val() || '0').replace(/,/g, '');
+            var qty = parseFloat(qtyText);
+            return isFinite(qty) && qty > 0;
+        }
+
+        function hasCurrentRowUnsavedQtyChange() {
+            if (!$contextTargetRow.length) {
+                return false;
+            }
+            var $qtyInput = $contextTargetRow.find('.qty-input').first();
+            var currentQty = parseFloat(String($qtyInput.val() || '0').replace(/,/g, ''));
+            var savedQty = parseFloat(String($qtyInput.data('saved-qty') || '0').replace(/,/g, ''));
+            currentQty = isFinite(currentQty) ? currentQty : 0;
+            savedQty = isFinite(savedQty) ? savedQty : 0;
+            return currentQty !== savedQty;
         }
 
         function getMovableGroupTargets() {
@@ -1755,6 +1780,16 @@
                     movePrdWrapScroll('bottom');
                     saveChangedRowOrder();
                 } else if (action === 'group-move') {
+                    if (hasCurrentRowOrderQty()) {
+                        showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
+                        hideRowContextMenu();
+                        return;
+                    }
+                    if (hasCurrentRowUnsavedQtyChange()) {
+                        showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
+                        hideRowContextMenu();
+                        return;
+                    }
                     var $groupMoveBtn = $(this);
                     if ($rowMoveGroupList.children().length > 0) {
                         $rowMoveGroupList.empty();
@@ -1783,6 +1818,16 @@
             .off('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]')
             .on('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]', function(e) {
                 e.preventDefault();
+                if (hasCurrentRowOrderQty()) {
+                    showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
+                    hideRowContextMenu();
+                    return;
+                }
+                if (hasCurrentRowUnsavedQtyChange()) {
+                    showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
+                    hideRowContextMenu();
+                    return;
+                }
                 var targetOopIdx = String($(this).data('target-oopidx') || '').trim();
                 var pidx = getCurrentRowPidx();
                 hideRowContextMenu();

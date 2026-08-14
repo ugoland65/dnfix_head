@@ -21,7 +21,7 @@ if (!$_prd_idx) {
 if ($_prd_idx) {
 
 	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
-		A.cd_reg_time, A.cd_reg, A.supplier_prd_idx, A.is_discontinued, A.cd_sale_price, A.cd_cost_price";
+		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.cd_sale_price, A.cd_cost_price";
 
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special  ";
 	$_colum .= ", C.BD_NAME";
@@ -60,35 +60,8 @@ if ($_prd_idx) {
 
 	$prd_data = sql_fetch_array($result);
 
-	$reg_data = json_decode((string)($prd_data['cd_reg'] ?? ''), true);
-	$latest_modify_date = '';
-	if (is_array($reg_data) && !empty($reg_data['modify']) && is_array($reg_data['modify'])) {
-		foreach ($reg_data['modify'] as $modifyUnit) {
-			if (!is_array($modifyUnit)) {
-				continue;
-			}
-			$modifyDate = (string)($modifyUnit['date'] ?? '');
-			if ($modifyDate !== '' && ($latest_modify_date === '' || $modifyDate > $latest_modify_date)) {
-				$latest_modify_date = $modifyDate;
-			}
-		}
-	}
-
-	//$reg_date = (string)($reg_data['reg']['info']['date'] ?? '');
 	$reg_date = $prd_data['cd_reg_time'] ?? '';
-
-	$latest_modify_date = '';
-	if (is_array($reg_data) && !empty($reg_data['modify']) && is_array($reg_data['modify'])) {
-		foreach ($reg_data['modify'] as $modifyUnit) {
-			if (!is_array($modifyUnit)) {
-				continue;
-			}
-			$modifyDate = (string)($modifyUnit['date'] ?? '');
-			if ($modifyDate !== '' && ($latest_modify_date === '' || $modifyDate > $latest_modify_date)) {
-				$latest_modify_date = $modifyDate;
-			}
-		}
-	}
+	$latest_modify_date = $prd_data['cd_update_time'] ?? '';
 
 
 	// 배열 검증
@@ -424,7 +397,12 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			</ul>
 			*/
 			?>
-
+			<ul>
+				<dl>
+					<dt>고유번호</dt>
+					<dd><b class="text-blue"><?= $prd_data['CD_IDX'] ?></b></dd>
+				</dl>
+			</ul>
 			<?php if (!empty($prd_data['ps_idx'])) { ?>
 				<?php if (!empty($prd_data['cd_national'])) { ?>
 					<ul>

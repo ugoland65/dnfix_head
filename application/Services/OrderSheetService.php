@@ -3388,6 +3388,35 @@ class OrderSheetService
         if ($movingRow === null) {
             throw new Exception('이동할 상품을 찾을 수 없습니다.');
         }
+
+        $orderRow = OrderSheetModel::query()
+            ->select(['oo_idx', 'oo_json'])
+            ->where('oo_idx', '=', $ooIdx)
+            ->first();
+        $orderRow = $orderRow ? $orderRow->toArray() : [];
+        $ooJson = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
+        if (!is_array($ooJson)) {
+            $ooJson = [];
+        }
+        foreach ($ooJson as $groupRow) {
+            if (
+                !is_array($groupRow)
+                || (string)($groupRow['bidx'] ?? '') !== $fromOopIdx
+                || !is_array($groupRow['selpd'] ?? null)
+            ) {
+                continue;
+            }
+            foreach ($groupRow['selpd'] as $selpdRow) {
+                if (
+                    is_array($selpdRow)
+                    && (string)($selpdRow['pidx'] ?? '') === $pidx
+                    && (float)($selpdRow['qty'] ?? 0) > 0
+                ) {
+                    throw new Exception('주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다');
+                }
+            }
+            break;
+        }
         $fromData = array_values($fromData);
 
         // 대상 그룹 중복 제거 후 최상단 삽입
@@ -3416,17 +3445,7 @@ class OrderSheetService
             ]);
 
         // 주문 selpd 데이터가 있으면 동일하게 그룹 이동
-        $orderRow = OrderSheetModel::query()
-            ->select(['oo_idx', 'oo_json'])
-            ->where('oo_idx', '=', $ooIdx)
-            ->first();
-        $orderRow = $orderRow ? $orderRow->toArray() : [];
         if (!empty($orderRow)) {
-            $ooJson = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
-            if (!is_array($ooJson)) {
-                $ooJson = [];
-            }
-
             $fromGroupKey = null;
             $toGroupKey = null;
             foreach ($ooJson as $key => $groupRow) {

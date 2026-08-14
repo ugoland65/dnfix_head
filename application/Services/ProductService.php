@@ -111,6 +111,7 @@ class ProductService extends BaseClass
         $page = $criteria['page'] ?? 1;
         $show_mode = $criteria['show_mode'] ?? '';
         $rack_code = $criteria['rack_code'] ?? null;
+        $sort_mode = $criteria['sort_mode'] ?? 'idx';
 
         $in_stock = $criteria['in_stock'] ?? 'all';
         $s_brand = $criteria['s_brand'] ?? null;
@@ -128,6 +129,9 @@ class ProductService extends BaseClass
         $s_relation_group_idx = (int)($criteria['s_relation_group_idx'] ?? 0);
 
         $since = $criteria['since'] ?? null;
+        $salePriceChangedSince = $criteria['sale_price_changed_since'] ?? null;
+        $soldoutSince = $criteria['soldout_since'] ?? null;
+        $excludeStockManagementDisabled = (bool)($criteria['exclude_stock_management_disabled'] ?? false);
         $idxs = $criteria['idxs'] ?? [];
         $godo_codes = $criteria['godo_codes'] ?? [];
 
@@ -200,6 +204,21 @@ class ProductService extends BaseClass
 
         if ( $since ) {
             $query->where('D.updated_at', '>=', $since);
+        }
+        if ($salePriceChangedSince) {
+            $query->where('A.cd_sale_price_changed_at', '>=', $salePriceChangedSince);
+        }
+        if ($soldoutSince) {
+            $query->where('D.ps_soldout_date', '>=', $soldoutSince);
+        }
+        if (
+            $excludeStockManagementDisabled
+            || in_array($sort_mode, ['soldout', 'soldout_asc'], true)
+        ) {
+            $query->where(function ($query) {
+                $query->where('D.ps_stock_object', '!=', 'N')
+                    ->orWhereNull('D.ps_stock_object');
+            });
         }
 
         // 검색어 처리
@@ -393,8 +412,10 @@ class ProductService extends BaseClass
         // 정렬 적용
         $this->applySortMode($query, $sort_mode);
 
+        //dd($query->toSql());
         $result = $paging ? $query->paginate($perPage, $page)
             : $query->get()->toArray();
+
 
         // 브랜드명 추가
         $result = $this->attachBrandNames($result, $paging);
@@ -427,6 +448,28 @@ class ProductService extends BaseClass
 
         return $result;
 
+    }
+
+    /**
+     * 최근 삭제 처리된 상품 목록을 조회한다.
+     *
+     * @param string $deletedSince 삭제 처리일시 시작값
+     * @param int $page
+     * @param int $perPage
+     * @return array
+     */
+    public function getRecentDeletedProducts(string $deletedSince, int $page = 1, int $perPage = 30): array
+    {
+        $result = ProductModel::query()
+            ->from('COMPARISON_DB as A')
+            ->where('A.CD_DELETED_YN', '=', 'Y')
+            ->whereNotNull('A.CD_DELETED_AT')
+            ->where('A.CD_DELETED_AT', '>=', $deletedSince)
+            ->select('A.*')
+            ->orderBy('A.CD_DELETED_AT', 'DESC')
+            ->paginate($perPage, $page);
+
+        return $this->attachBrandNames($result);
     }
 
 
@@ -759,6 +802,12 @@ class ProductService extends BaseClass
                  */
                 $query->orderByRaw('A.cd_sale_price = 0 ASC')   // 0 → true(1) 이라서 마지막으로
                     ->orderBy('A.cd_sale_price', 'ASC')
+                    ->orderBy('A.CD_IDX', 'DESC');
+                break;
+
+            case 'sale_price_changed_at':
+                // 판매가 변경일 최근순 (idx_comparison_db_sale_price_changed_at)
+                $query->orderBy('A.cd_sale_price_changed_at', 'DESC')
                     ->orderBy('A.CD_IDX', 'DESC');
                 break;
 
@@ -1503,23 +1552,6 @@ class ProductService extends BaseClass
             'name' => $imageType === 'add1' ? '인보이스이미지' : '출고이미지',
             'filename' => $fileName,
         ];
-        $now = date('Y-m-d H:i:s');
-        $registrationLog = json_decode((string)($product['cd_reg'] ?? '{}'), true);
-        if (!is_array($registrationLog)) {
-            $registrationLog = [];
-        }
-        $registrationLog['modify'] = is_array($registrationLog['modify'] ?? null)
-            ? $registrationLog['modify']
-            : [];
-        array_unshift($registrationLog['modify'], [
-            'date' => $now,
-            'idx' => (int)$actor['idx'],
-            'id' => (string)($actor['id'] ?? ''),
-            'name' => (string)($actor['name'] ?? ''),
-            'ip' => (string)($_SERVER['REMOTE_ADDR'] ?? ''),
-            'domain' => (string)($_SERVER['HTTP_HOST'] ?? ''),
-            'action' => $imageType === 'add1' ? '중량 실사 이미지 변경' : '출고 이미지 변경',
-        ]);
         $beforeData = ['cd_add_img.' . $imageType => $oldFileName];
         $afterData = ['cd_add_img.' . $imageType => $fileName];
 
@@ -1527,7 +1559,6 @@ class ProductService extends BaseClass
             ->where('CD_IDX', '=', $prdIdx)
             ->update([
             'cd_add_img' => json_encode($addImages, JSON_UNESCAPED_UNICODE),
-            'cd_reg' => json_encode($registrationLog, JSON_UNESCAPED_UNICODE),
             ]);
         if (!$updated) {
             $this->deleteUploadedFile($uploadsDir, $fileName);
@@ -1613,6 +1644,65 @@ class ProductService extends BaseClass
         }
 
         return $rackCode;
+    }
+
+    /**
+     * 모바일 상품정보 화면에서 바코드를 변경한다.
+     */
+    public function updateProductBarcode(int $prdIdx, string $barcode, array $actor): string
+    {
+        if ($prdIdx <= 0 || (int)($actor['idx'] ?? 0) <= 0) {
+            throw new Exception('상품 또는 관리자 정보가 올바르지 않습니다.');
+        }
+
+        $barcode = trim($barcode);
+        if (function_exists('mb_strlen') && mb_strlen($barcode, 'UTF-8') > 100) {
+            throw new Exception('바코드는 100자 이하로 입력해주세요.');
+        }
+
+        $product = ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        $product = $product ? $product->toArray() : [];
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+
+        $codeData = json_decode((string)($product['cd_code_fn'] ?? '{}'), true);
+        if (!is_array($codeData)) {
+            $codeData = [];
+        }
+        $beforeData = ['barcode' => (string)($codeData['jan'] ?? '')];
+        $codeData['jan'] = $barcode;
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update(['cd_code_fn' => json_encode($codeData, JSON_UNESCAPED_UNICODE)]);
+        $afterData = ['barcode' => $barcode];
+
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'barcode_update',
+                'action_summary' => '바코드 변경',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admobile',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+                'operator_pk' => (int)$actor['idx'],
+                'operator_id' => (string)($actor['id'] ?? ''),
+                'operator_name' => (string)($actor['name'] ?? ''),
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 실패가 바코드 변경 성공에 영향을 주지 않도록 분리한다.
+        }
+
+        return $barcode;
     }
 
     /**
@@ -1757,14 +1847,6 @@ class ProductService extends BaseClass
 
         $auth = AdminAuth::user() ?? [];
         $adIdx = (string)($auth['sess_idx'] ?? '0');
-        $regData = [
-            'date' => date('Y-m-d H:i:s'),
-            'idx' => $auth['sess_idx'] ?? null,
-            'id' => $auth['sess_id'] ?? '',
-            'name' => $auth['sess_name'] ?? '',
-            'ip' => AdminAuth::getIp(),
-            'domain' => AdminAuth::getDomain(),
-        ];
 
         $uploadsDir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\') . '/data/comparion';
         $imageStorage = new ImageStorage();
@@ -1984,17 +2066,6 @@ class ProductService extends BaseClass
         $cdSpecData = $this->buildCdSpecForSave($cdCategoryCode, $postData);
         $cdSpec = empty($cdSpecData) ? null : json_encode($cdSpecData, JSON_UNESCAPED_UNICODE);
 
-        $cdRegData = json_decode($oldProduct['cd_reg'] ?? '{}', true);
-        if (!is_array($cdRegData) || empty($cdRegData)) {
-            $cdRegData = [];
-        }
-        if (!isset($cdRegData['modify']) || empty($cdRegData['modify']) || !is_array($cdRegData['modify'])) {
-            $cdRegData['modify'] = [$regData];
-        } else {
-            array_unshift($cdRegData['modify'], $regData);
-        }
-        $cdReg = json_encode($cdRegData, JSON_UNESCAPED_UNICODE);
-
         $hbtiData = [$hbti1, $hbti2, $hbti3, $hbti4];
         $cdHbtiData = json_encode($hbtiData, JSON_UNESCAPED_UNICODE);
         $cdHbt = '';
@@ -2034,7 +2105,6 @@ class ProductService extends BaseClass
             'cd_spec' => $cdSpec,
             'CD_CODE' => $cdCode,
             'CD_CODE2' => $cdCode2,
-            'cd_reg' => $cdReg,
             'cd_national' => $cdNational,
             'CD_INV_NAME1' => $cdInvName1,
             'CD_INV_NAME2' => $cdInvName2,
@@ -2159,14 +2229,6 @@ class ProductService extends BaseClass
     {
         $auth = AdminAuth::user() ?? [];
         $adIdx = (string)($auth['sess_idx'] ?? '0');
-        $regData = [
-            'date' => date('Y-m-d H:i:s'),
-            'idx' => $auth['sess_idx'] ?? null,
-            'id' => $auth['sess_id'] ?? '',
-            'name' => $auth['sess_name'] ?? '',
-            'ip' => AdminAuth::getIp(),
-            'domain' => AdminAuth::getDomain(),
-        ];
 
         $uploadsDir = rtrim($_SERVER['DOCUMENT_ROOT'] ?? '', '/\\') . '/data/comparion';
         $imageStorage = new ImageStorage();
@@ -2366,13 +2428,6 @@ class ProductService extends BaseClass
             $cdHbt = null;
         }
 
-        $regPayload = [
-            'reg' => [
-                'mode' => 'v3',
-                'info' => $regData,
-            ],
-        ];
-        $cdReg = json_encode($regPayload, JSON_UNESCAPED_UNICODE);
         $now = date('Y-m-d H:i:s');
 
         $insertData = [
@@ -2437,7 +2492,6 @@ class ProductService extends BaseClass
             'cd_hbti_data' => $cdHbtiData,
             'cd_hbti' => $cdHbt,
             'cd_reg_time' => $now,
-            'cd_reg' => $cdReg,
             'cd_site_show' => $cdSiteShow,
             'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
         ];
@@ -2858,6 +2912,78 @@ class ProductService extends BaseClass
             'success' => true,
             'message' => '상품이 삭제 처리되었습니다.',
             'prd_idx' => $prdIdx,
+        ];
+    }
+
+    /**
+     * 소프트 삭제된 상품과 연결된 재고를 복원한다.
+     *
+     * @param array $postData
+     * @return array
+     * @throws Exception
+     */
+    public function restoreDeletedProduct(array $postData): array
+    {
+        $prdIdx = (int)($postData['prd_idx'] ?? 0);
+        if ($prdIdx <= 0) {
+            throw new Exception('상품 idx가 올바르지 않습니다.');
+        }
+
+        $connection = app('db');
+        $ownsTransaction = $connection instanceof \PDO && !$connection->inTransaction();
+
+        try {
+            if ($ownsTransaction) {
+                $connection->beginTransaction();
+            }
+
+            $product = ProductModel::query()
+                ->select('CD_IDX')
+                ->where('CD_IDX', '=', $prdIdx)
+                ->where('CD_DELETED_YN', '=', 'Y')
+                ->first();
+            if (empty($product)) {
+                throw new Exception('삭제된 상품을 찾을 수 없습니다.');
+            }
+
+            $stockRestoredCount = ProductStockModel::query()
+                ->where('ps_prd_idx', '=', $prdIdx)
+                ->where('ps_deleted_yn', '=', 'Y')
+                ->update([
+                    'ps_deleted_yn' => 'N',
+                    'ps_deleted_at' => null,
+                    'ps_deleted_admin_idx' => null,
+                    'ps_deleted_admin_name' => null,
+                ]);
+
+            $productRestored = ProductModel::query()
+                ->where('CD_IDX', '=', $prdIdx)
+                ->where('CD_DELETED_YN', '=', 'Y')
+                ->update([
+                    'CD_DELETED_YN' => 'N',
+                    'CD_DELETED_AT' => null,
+                    'CD_DELETED_ADMIN_IDX' => null,
+                    'CD_DELETED_ADMIN_NAME' => null,
+                ]);
+            if (!$productRestored) {
+                throw new Exception('상품 상태가 변경되어 복원할 수 없습니다. 목록을 새로고침 후 다시 시도해주세요.');
+            }
+
+            if ($ownsTransaction && $connection->inTransaction()) {
+                $connection->commit();
+            }
+        } catch (\Throwable $e) {
+            if ($ownsTransaction && $connection instanceof \PDO && $connection->inTransaction()) {
+                $connection->rollBack();
+            }
+            throw $e;
+        }
+
+        return [
+            'success' => true,
+            'message' => '상품이 복원되었습니다.',
+            'prd_idx' => $prdIdx,
+            'restored_stock_count' => $stockRestoredCount,
         ];
     }
 
@@ -3466,29 +3592,41 @@ class ProductService extends BaseClass
 
         // Legacy prd_copy 동작 유지: 대표이미지(CD_IMG)는 복사 제외
         unset($sourceData['CD_IMG']);
+        unset($sourceData['cd_reg']);
 
         $actionTime = date('Y-m-d H:i:s');
         $sourceData['cd_reg_time'] = $actionTime;
 
-        $regData = [
-            'reg' => [
-                'mode' => 'v3',
-                'copy_idx' => $prdIdx,
-                'copy' => '(' . $prdIdx . ') 복사등록',
-                'info' => $actionTime,
-            ],
-        ];
-        $sourceData['cd_reg'] = json_encode($regData, JSON_UNESCAPED_UNICODE);
-
-        $inserted = ProductModel::query()->insert($sourceData);
-        if (!$inserted) {
+        $newIdx = (int)ProductModel::query()->insertGetId($sourceData);
+        if ($newIdx <= 0) {
             throw new Exception('복사 등록에 실패했습니다.');
+        }
+
+        try {
+            $actionLog = new AdminActionLogService();
+            $actionLog->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$newIdx,
+                'action_mode' => 'copy',
+                'action_summary' => '(' . $prdIdx . ') 상품 복사등록',
+                'before_json' => [],
+                'after_json' => $sourceData,
+                'diff_json' => $sourceData,
+                'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                'source' => 'admin',
+                'ip_address' => $_SERVER['REMOTE_ADDR'] ?? null,
+                'user_agent' => $_SERVER['HTTP_USER_AGENT'] ?? null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패가 상품 복사 등록 성공에 영향을 주지 않도록 분리한다.
         }
 
         return [
             'success' => true,
             'message' => '복사등록 되었습니다.',
             'copied_from' => $prdIdx,
+            'idx' => $newIdx,
         ];
     }
 
@@ -3650,6 +3788,7 @@ class ProductService extends BaseClass
         ]);
 
         $cdSalePrice = (int)str_replace(',', '', $cdSalePriceRaw);
+        $salePriceChangeData = $this->buildSalePriceChangeData($oldProduct, $cdSalePrice);
         $cdFixedPrice = (int)str_replace(',', '', $cdFixedPriceRaw);
         $cdCostPrice = (string)str_replace(',', '', $costP);
         $additionalCostList = [];
@@ -3739,6 +3878,7 @@ class ProductService extends BaseClass
             'supplier_prd_idx' => $supplierPrdIdx,
             'cd_cost_price_memo' => $cdCostPriceMemo,
         ];
+        $updateData = array_merge($updateData, $salePriceChangeData);
 
         ProductModel::query()
             ->where('CD_IDX', '=', $idx)
@@ -3889,7 +4029,13 @@ class ProductService extends BaseClass
         }
 
         $product = ProductModel::query()
-            ->select(['CD_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code'])
+            ->select([
+                'CD_IDX',
+                'cd_sale_price',
+                'cd_sale_price_change_meta',
+                'cd_cost_price',
+                'cd_godo_code',
+            ])
             ->where('CD_IDX', '=', $prdIdx)
             ->first();
         if (empty($product)) {
@@ -3991,11 +4137,12 @@ class ProductService extends BaseClass
             $marginGroup
         );
 
+        $salePriceChangeData = $this->buildSalePriceChangeData($product, $salePrice);
         ProductModel::query()
             ->where('CD_IDX', '=', $prdIdx)
-            ->update([
+            ->update(array_merge([
                 'cd_sale_price' => $salePrice,
-            ]);
+            ], $salePriceChangeData));
 
         try {
             $beforeData = [
@@ -4012,7 +4159,7 @@ class ProductService extends BaseClass
                 'margin_group' => $marginGroup,
                 'competitor_reference' => $competitorReference,
                 'godo_response' => $godoResponse,
-            ];
+            ] + $salePriceChangeData;
             $adminActionLogService = new AdminActionLogService();
             $adminActionLogService->log([
                 'target_type' => 'product',
@@ -4038,6 +4185,36 @@ class ProductService extends BaseClass
             'goods_no' => $goodsNo,
             'margin_group' => $marginGroup,
             'godo_response' => $godoResponse,
+        ];
+    }
+
+    
+    /**
+     * 판매가가 변경된 경우 최근 변경일과 변경 이력 JSON을 생성한다.
+     */
+    private function buildSalePriceChangeData(array $product, int $afterSalePrice): array
+    {
+        $beforeSalePrice = (int)($product['cd_sale_price'] ?? 0);
+        if ($beforeSalePrice === $afterSalePrice) {
+            return [];
+        }
+
+        $changeMeta = json_decode((string)($product['cd_sale_price_change_meta'] ?? '[]'), true);
+        if (!is_array($changeMeta)) {
+            $changeMeta = [];
+        }
+
+        $changeMeta[] = [
+            'before_sale_price' => $beforeSalePrice,
+            'after_sale_price' => $afterSalePrice,
+            'price_difference' => $afterSalePrice - $beforeSalePrice,
+            'changed_by_pk' => (int)(AuthAdmin::getSession('sess_idx') ?? 0),
+            'changed_by_name' => trim((string)(AuthAdmin::getSession('sess_name') ?? '')),
+        ];
+
+        return [
+            'cd_sale_price_changed_at' => date('Y-m-d H:i:s'),
+            'cd_sale_price_change_meta' => json_encode($changeMeta, JSON_UNESCAPED_UNICODE),
         ];
     }
 
@@ -4667,16 +4844,19 @@ class ProductService extends BaseClass
     private function buildCdSpecForSave(string $cdCategoryCode, array $postData): array
     {
         $cdCategoryCode = trim($cdCategoryCode);
-        if (!in_array($cdCategoryCode, ['02010000', '02020000', '02050000'], true)) {
+        $specCategoryCode = preg_match('/^0201\d{4}$/', $cdCategoryCode)
+            ? '02010000'
+            : $cdCategoryCode;
+        if (!in_array($specCategoryCode, ['02010000', '02020000', '02050000'], true)) {
             return [];
         }
 
         $categoryNameByCode = $this->buildCategoryNameMapByCode();
         $categoryName = trim((string)($categoryNameByCode[$cdCategoryCode] ?? ''));
 
-        $vendor = $this->normalizeCdSpecSizeSet($postData['cd_spec_vendor'] ?? [], $cdCategoryCode);
-        $measured = $this->normalizeCdSpecSizeSet($postData['cd_spec_measured'] ?? [], $cdCategoryCode);
-        $options = $this->normalizeCdSpecOptions($postData['cd_spec_option'] ?? [], $cdCategoryCode);
+        $vendor = $this->normalizeCdSpecSizeSet($postData['cd_spec_vendor'] ?? [], $specCategoryCode);
+        $measured = $this->normalizeCdSpecSizeSet($postData['cd_spec_measured'] ?? [], $specCategoryCode);
+        $options = $this->normalizeCdSpecOptions($postData['cd_spec_option'] ?? [], $specCategoryCode);
 
         return [
             'category_code' => $cdCategoryCode,

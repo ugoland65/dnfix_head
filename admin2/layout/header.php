@@ -365,6 +365,9 @@ $gnb_lang = "ko";
 				<div class="sub-menu">
 					<ul>
 						<li>
+							<a href="/admin/product/overview">상품 종합 현황</a>
+						</li>
+						<li>
 							<a href="/admin/product/product_db">상품 DB</a>
 						</li>
 						<li>

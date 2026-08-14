@@ -349,6 +349,7 @@
                     <option value="soldout_asc" <? if( $sort_mode == "soldout_asc" ) echo "selected";?> >품절일 오랜순</option>
                     <option value="price_desc" <? if( $sort_mode == "price_desc" ) echo "selected";?> >판매가 높은순</option>
                     <option value="price_asc" <? if( $sort_mode == "price_asc" ) echo "selected";?> >판매가 낮은순</option>
+                    <option value="sale_price_changed_at" <? if( $sort_mode == "sale_price_changed_at" ) echo "selected";?> >판매가 변경일 최근순</option>
                     <option value="margin" <? if( $sort_mode == "margin" ) echo "selected";?> >마진율 높은순</option>
                     <option value="release_date" <? if( $sort_mode == "release_date" ) echo "selected";?> >출시일 최근순</option>
                     <option value="old_release_date" <? if( $sort_mode == "old_release_date" ) echo "selected";?> >출시일 오랜순</option>
@@ -381,8 +382,11 @@
                                 <th>무게</th>
                                 <th>패키지 사이즈</th>
                                 <th>수입국</th>
+                            
                                 <th>할인모드</th>
+                                
                                 <th>판매가</th>
+                                <th>판매가<br>변경일</th>
                                 <th>책정원가</th>
                                 <th>마진율</th>
                                 <th>마진등급</th>
@@ -568,14 +572,23 @@
 
                                     <td><?=$product['barcode']?></td>
                                     <td class="text-center">
-                                        <?php if( $product['ps_stock'] == 0 ){ ?>
-                                            <span style="color:#ff0000;">재고없음</span>
-                                        <?php }else{ ?>
-                                            <b style="font-size:15px; color:#5e41ff;"><?=number_format($product['ps_stock'])?></b>
+
+                                        <?php if( $product['ps_stock_object'] == 'Y' ){ ?>
+                                            <?php if( $product['ps_stock'] == 0 ){ ?>
+                                                <span style="color:#ff0000;">재고없음</span>
+                                            <?php }else{ ?>
+                                                <b style="font-size:15px; color:#5e41ff;"><?=number_format($product['ps_stock'])?></b>
+                                            <?php } ?>
+                                            <?php if( $product['ps_stock_hold'] > 0 ){ ?>
+                                                <br><b style="font-size:14px; color:#999;"><?=number_format($product['ps_stock_hold'])?></b>
+                                            <?php } ?>
+                                            
+                                        <?php }else if( $product['ps_stock_object'] == 'N' ){ ?>
+                                            <span>재고관리<br>안함</span>
+                                        <?php } else { ?>
+                                            
                                         <?php } ?>
-                                        <?php if( $product['ps_stock_hold'] > 0 ){ ?>
-                                            <br><b style="font-size:14px; color:#999;"><?=number_format($product['ps_stock_hold'])?></b>
-                                        <?php } ?>
+
                                     </td>
                                     <td class="text-center product-rack-code"><?=$product['ps_rack_code']?></td>
                                     <td class="text-center">
@@ -610,10 +623,57 @@
                                         ?>
                                     </td>
                                     <td class="text-center"><?=$_national_text[$product['cd_national']]?></td>
+                                    
+                                    <!-- 할인모드 -->
                                     <td class="text-center">
-                                        <?=$product['is_sale_month'] ? '월간할인' : ($product['is_sale_special'] ? '특가할인' : '할인전체')?>
+                                        <?=$product['is_sale_month'] ? '월간할인' : ($product['is_sale_special'] ? '특가할인' : '-')?>
                                     </td>
-                                    <td class="text-right"><?=number_format($product['cd_sale_price'])?></td>
+
+                                    <!-- 판매가 -->
+                                    <td class="text-right">
+                                        <b><?=number_format($product['cd_sale_price'])?></b>
+                                    </td>
+
+                                    <!-- 판매가 변경일 -->
+                                    <td class="text-right">
+                                        <?php
+                                            $salePriceChangedAt = $product['cd_sale_price_changed_at'] ?? null;
+                                            if (
+                                                !empty($salePriceChangedAt) &&
+                                                $salePriceChangedAt !== '0000-00-00 00:00:00' &&
+                                                $salePriceChangedAt !== '0000-00-00' &&
+                                                ($ts = strtotime($salePriceChangedAt)) // strtotime 실패하면 false
+                                            ) {
+                                                echo date('y.m.d', $ts);
+                                            } else {
+                                                echo '-';
+                                            }
+                                        ?>
+
+                                        <?php
+                                            $salePriceChangeMeta = json_decode(
+                                                (string)($product['cd_sale_price_change_meta'] ?? '[]'),
+                                                true
+                                            );
+                                            $latestSalePriceChange = is_array($salePriceChangeMeta)
+                                                ? end($salePriceChangeMeta)
+                                                : null;
+                                            $beforeSalePrice = (int)($latestSalePriceChange['before_sale_price'] ?? 0);
+                                            $afterSalePrice = (int)($latestSalePriceChange['after_sale_price'] ?? 0);
+                                            $salePriceDifference = $afterSalePrice - $beforeSalePrice;
+                                        ?>
+                                        <?php if (is_array($latestSalePriceChange) && $beforeSalePrice > 0 && $salePriceDifference !== 0) { ?>
+                                            <div class="m-t-5">
+                                                <p style="font-size:14px;"><?= number_format($beforeSalePrice) ?></p>
+                                                <?php if ($salePriceDifference < 0) { ?>
+                                                    <span style="font-size:12px; color:#dc2626;">▼ <?= number_format(abs($salePriceDifference)) ?></span>
+                                                <?php } else { ?>
+                                                    <span style="font-size:12px; color:#2563eb;">▲ <?= number_format($salePriceDifference) ?></span>
+                                                <?php } ?>
+                                            </div>
+                                        <?php } ?>
+                                    </td>
+
                                     <td class="text-right"><?=number_format($product['cd_cost_price'])?></td>
                                     <td class="text-right"><b><?=$_margin_per?>%</b></td>
                                     <td class="text-center">
@@ -879,7 +939,7 @@
         var $seriesSelect = $('#s_relation_group_idx');
         $seriesSelect.empty().append($('<option>', {
             value: '',
-            text: brandIdx ? '시리즈' : '브랜드를 먼저 선택하세요'
+            text: brandIdx ? '시리즈' : '시리즈'
         }));
 
         if (!brandIdx) {

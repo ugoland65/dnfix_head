@@ -412,7 +412,11 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         });
 
         document.addEventListener('keydown', function(event) {
-            if (modal.hidden && document.activeElement !== input && /^[0-9]$/.test(event.key)) {
+            var target = event.target;
+            var isTextEntryTarget = target instanceof HTMLElement
+                && target.matches('input, textarea, select, [contenteditable="true"]');
+
+            if (modal.hidden && !isTextEntryTarget && /^[0-9]$/.test(event.key)) {
                 input.value += event.key;
                 focusInput();
                 event.preventDefault();

@@ -38,6 +38,46 @@ class ProductController extends BaseClass
         $this->partnersService = new PartnersService();
     }
 
+    /**
+     * 상품관리 종합현황
+     */
+    public function productOverview(Request $request)
+    {
+        $weekStart = date('Y-m-d 00:00:00', strtotime('-6 days'));
+        $monthStart = date('Y-m-d 00:00:00', strtotime('-1 month'));
+        $baseCriteria = [
+            'paging' => true,
+            'page' => 1,
+            'per_page' => 30,
+            'show_mode' => 'product_stock',
+            'in_stock' => 'all',
+        ];
+
+        $recentSalePriceChanges = $this->productService->getProductListForAdmin(
+            $baseCriteria + [
+                'sort_mode' => 'sale_price_changed_at',
+                'sale_price_changed_since' => $weekStart,
+            ]
+        );
+        $recentSoldoutProducts = $this->productService->getProductListForAdmin(
+            $baseCriteria + [
+                'sort_mode' => 'soldout',
+                'soldout_since' => $weekStart,
+                'exclude_stock_management_disabled' => true,
+            ]
+        );
+        $recentDeletedProducts = $this->productService->getRecentDeletedProducts($monthStart);
+
+        return view('admin.product.product_overview', [
+                'weekStart' => $weekStart,
+                'monthStart' => $monthStart,
+                'recentSalePriceChanges' => $recentSalePriceChanges,
+                'recentSoldoutProducts' => $recentSoldoutProducts,
+                'recentDeletedProducts' => $recentDeletedProducts,
+            ])
+            ->extends('admin.layout.layout', ['pageGroup2' => 'prd', 'pageNameCode' => 'product_overview']);
+    }
+
 
     /**
      * 상품 DB 목록 화면
@@ -1526,6 +1566,10 @@ class ProductController extends BaseClass
 
                 case 'soft_delete_product_db':
                     $result = $this->productService->softDeleteProductDb($requestData);
+                    break;
+
+                case 'restore_deleted_product':
+                    $result = $this->productService->restoreDeletedProduct($requestData);
                     break;
 
                 case 'create_product_relation_group':
