@@ -61,6 +61,8 @@ class ProductModel extends BaseModel
 		'cd_godo_code',
 		'cd_last_inspection_at',
 		'cd_last_inspection_version',
+		'cd_restock_alert_qty',
+		'cd_restock_alert_collected_at',
 		'CD_MACHING_CODE',
 		'cd_hbti_data',
 		'cd_hbti',

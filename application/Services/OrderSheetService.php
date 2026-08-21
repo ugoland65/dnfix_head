@@ -43,7 +43,7 @@ class OrderSheetService
                 ->from('ona_order as A')
                 ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
                 ->where('A.oo_idx', '=', $idx)
-                ->select(['A.*', 'B.oog_name'])
+                ->select(['A.*', 'B.oog_name', 'B.oog_import', 'B.bank as oog_bank', 'B.memo as form_memo'])
                 ->first();
             $orderSheet = $row ? $row->toArray() : [];
         }
@@ -51,6 +51,26 @@ class OrderSheetService
         if (!is_array($orderSheet)) {
             $orderSheet = [];
         }
+
+        $formBank = json_decode((string)($orderSheet['oog_bank'] ?? '{}'), true);
+        if (!is_array($formBank)) {
+            $formBank = [];
+        }
+        $isDomesticOrder = (string)($orderSheet['oo_import'] ?? '') === '국내';
+        if ($isDomesticOrder) {
+            $domesticBank = $formBank['domestic'] ?? [];
+            $accountParts = array_filter([
+                trim((string)($domesticBank['bank'] ?? '')),
+                trim((string)($domesticBank['account'] ?? '')),
+                trim((string)($domesticBank['depositor'] ?? '')),
+            ], static function ($value) {
+                return $value !== '';
+            });
+            $orderSheet['form_account'] = implode(' / ', $accountParts);
+        } else {
+            $orderSheet['form_account'] = trim((string)($formBank['import_account'] ?? ''));
+        }
+        $orderSheet['form_import'] = (string)($orderSheet['oog_import'] ?? ($orderSheet['oo_import'] ?? ''));
 
         $stockState = json_decode((string)($orderSheet['oo_stock'] ?? '{}'), true);
         if (!is_array($stockState)) {
@@ -2309,7 +2329,6 @@ class OrderSheetService
         $orderSheet = OrderSheetModel::query()
             ->select([
                 'oo_idx', 
-                'oo_name', 
                 'oo_state', 
                 'oo_import', 
                 'oo_json', 
@@ -2327,7 +2346,14 @@ class OrderSheetService
             throw new Exception('주문서를 찾을 수 없습니다.');
         }
         
-        $orderGroupProduct = OrderGroupProductModel::find($oop_idx);
+        $orderGroupProduct = OrderGroupProductModel::query()
+            ->select([
+                'oop_idx',
+                'oop_code',
+                'oop_data',
+            ])
+            ->where('oop_idx', '=', $oop_idx)
+            ->first();
         if (empty($orderGroupProduct)) {
             throw new Exception('주문서 상품을 찾을 수 없습니다.');
         }
@@ -2508,18 +2534,16 @@ class OrderSheetService
                     'A.CD_NAME',
                     'A.CD_IMG',
                     'A.img_mode',
-                    'A.CD_WEIGHT',
-                    'A.CD_WEIGHT2',
-                    'A.CD_WEIGHT3',
-                    'A.cd_code_fn',
                     'A.cd_weight_fn',
                     'A.cd_size_fn',
                     'A.cd_price_fn',
                     'A.cd_memo3',
                     'A.is_discontinued',
+                    'A.cd_godo_code',
+                    'A.cd_restock_alert_qty',
+                    'A.cd_restock_alert_collected_at',
                     'B.is_sale_month',
                     'B.is_sale_special',
-                    'B.ps_idx',
                     'B.ps_stock',
                     'B.ps_in_date',
                     'B.ps_last_date',

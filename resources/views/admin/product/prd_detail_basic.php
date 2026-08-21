@@ -1045,6 +1045,23 @@
             </tr>
             <?php } ?>
 
+
+            <?php if (!empty($productData['cd_godo_code'])) { ?>
+            <tr>
+                <th>재입고 알림요청</th>
+                <td>
+                    <button type="button" id="sync_godo_restock_alert_count_btn" class="btnstyle1 btnstyle1-primary btnstyle1-sm m-l-5" onclick="prdDetailBasicForm.syncGodoRestockAlertCount(this, <?= (int)($productData['CD_IDX'] ?? 0) ?>)">
+                        재입고 알림요청 수량 갱신
+                    </button>
+                    <span class="m-l-10">최근 수집: <b id="godo_restock_alert_qty"><?= number_format((int)($productData['cd_restock_alert_qty'] ?? 0)) ?></b>건</span>
+                    <span id="godo_restock_alert_collected_at" class="m-l-5" style="color:#777;"><?= $productData['cd_restock_alert_collected_at'] ?? '-' ?></span>
+                    <button type="button" class="btnstyle1 btnstyle1-sm m-l-5" onclick="window.open('http://gdadmin.dnfix202439.godomall.com/goods/goods_restock.php?scmFl=all&key=goodsNo&keyword=<?= $productData['cd_godo_code'] ?>&pageNum=100', '_blank')">
+                        요청리스트 보기
+                    </button>
+                </td>
+            </tr>
+            <?php } ?>
+
         </tbody>
 
         <tbody>
@@ -1781,6 +1798,44 @@
                 });
         }
 
+        function syncGodoRestockAlertCount(button, prdIdx) {
+            if (!prdIdx) {
+                alert('상품번호가 없습니다.');
+                return;
+            }
+
+            var $button = $(button);
+            if ($button.prop('disabled')) {
+                return;
+            }
+
+            var originalText = $button.text();
+            $button.prop('disabled', true).text('재입고 알림 수집중...');
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'sync_godo_restock_alert_count',
+                prd_idx: prdIdx,
+                action_url: window.location.pathname + window.location.search
+            })
+                .done(function(res) {
+                    if (!res || !res.success) {
+                        alert(res && res.message ? res.message : '재입고 알림 수집에 실패했습니다.');
+                        return;
+                    }
+
+                    var result = res.data || {};
+                    $('#godo_restock_alert_qty').text(Number(result.restock_alert_qty || 0).toLocaleString());
+                    $('#godo_restock_alert_collected_at').text(result.restock_alert_collected_at || '-');
+                    alert(res.message || '재입고 알림 요청 수량을 저장했습니다.');
+                })
+                .fail(function(res) {
+                    alert(res && res.message ? res.message : '재입고 알림 수집 중 오류가 발생했습니다.');
+                })
+                .always(function() {
+                    $button.prop('disabled', false).text(originalText);
+                });
+        }
+
         /**
          * 상품 베이직 저장
          */
@@ -1860,6 +1915,7 @@
             unsetProductSale,
             setProductDiscontinued,
             unsetProductDiscontinued,
+            syncGodoRestockAlertCount,
         }
 
     }();

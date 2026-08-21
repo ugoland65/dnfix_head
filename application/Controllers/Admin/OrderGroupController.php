@@ -65,4 +65,26 @@ class OrderGroupController extends BaseClass
         }
     }
 
+    /**
+     * 폼그룹 상품의 재입고 알림 요청 수를 일괄 수집한다.
+     */
+    public function syncOrderGroupRestockAlertCounts(Request $request)
+    {
+        try {
+            $orderGroupService = new OrderGroupService();
+            $result = $orderGroupService->syncOrderGroupRestockAlertCounts($request->all());
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '재입고 알림 수집이 완료되었습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 500);
+        }
+    }
+
 }

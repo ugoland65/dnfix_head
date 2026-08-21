@@ -1540,6 +1540,11 @@ class ProductController extends BaseClass
                     $result = $this->productService->processSingleProductGodoInspection($requestData);
                     break;
                 
+                case 'sync_godo_restock_alert_count':
+                    $productActionService = new ProductActionService();
+                    $result = $productActionService->syncGodoRestockAlertCount($requestData);
+                    break;
+
                 case 'update_product_category':
                     $result = $this->productService->updateProductCategory($requestData);
                     break;

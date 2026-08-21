@@ -11,6 +11,180 @@ class ProductActionService
 {
 
     /**
+     * 고도몰 재입고 알림 요청 수를 수집해 상품에 저장한다.
+     */
+    public function syncGodoRestockAlertCount(array $payload): array
+    {
+        $prdIdx = trim((string)($payload['prd_idx'] ?? ''));
+        $actionUrl = trim((string)($payload['action_url'] ?? ($_SERVER['HTTP_REFERER'] ?? $_SERVER['REQUEST_URI'] ?? '')));
+
+        if ($prdIdx === '' || !ctype_digit($prdIdx) || (int)$prdIdx <= 0) {
+            throw new \Exception('유효한 상품번호가 없습니다.');
+        }
+
+        $product = ProductModel::find((int)$prdIdx);
+        if (!$product) {
+            throw new \Exception('상품을 찾을 수 없습니다.');
+        }
+        $productData = $product->toArray();
+        $goodsNo = trim((string)($productData['cd_godo_code'] ?? ''));
+        if ($goodsNo === '') {
+            throw new \Exception('고도몰 상품코드가 없어 재입고 알림을 조회할 수 없습니다.');
+        }
+
+        $godoApiService = new GodoApiService();
+        $apiResult = $godoApiService->getGodoGoodsRestockByGoodsNos($goodsNo, 'count');
+        $restockQty = $this->resolveGodoRestockAlertCount($apiResult, $goodsNo);
+        $collectedAt = date('Y-m-d H:i:s');
+
+        $beforeData = [
+            'CD_IDX' => (string)$prdIdx,
+            'cd_godo_code' => $goodsNo,
+            'cd_restock_alert_qty' => (int)($productData['cd_restock_alert_qty'] ?? 0),
+            'cd_restock_alert_collected_at' => $productData['cd_restock_alert_collected_at'] ?? null,
+        ];
+        $afterData = $beforeData;
+        $afterData['cd_restock_alert_qty'] = $restockQty;
+        $afterData['cd_restock_alert_collected_at'] = $collectedAt;
+
+        $updated = ProductModel::query()->update(
+            [
+                'cd_restock_alert_qty' => $restockQty,
+                'cd_restock_alert_collected_at' => $collectedAt,
+            ],
+            ['CD_IDX' => (int)$prdIdx]
+        );
+        if (!$updated) {
+            throw new \Exception('재입고 알림 수량 저장에 실패했습니다.');
+        }
+
+        $adminActionLogService = new AdminActionLogService();
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'sync_godo_restock_alert_count',
+                'action_summary' => '고도몰 재입고 알림 요청 수량 수집',
+                'before_json' => $beforeData,
+                'after_json' => $afterData,
+                'diff_json' => $adminActionLogService->buildDiff($beforeData, $afterData),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 수집 결과 저장에 영향을 주지 않는다.
+        }
+
+        return [
+            'restock_alert_qty' => $restockQty,
+            'restock_alert_collected_at' => $collectedAt,
+            'message' => '재입고 알림 요청 수량 ' . number_format($restockQty) . '건을 저장했습니다.',
+        ];
+    }
+
+    /**
+     * 여러 상품의 고도몰 재입고 알림 요청 수를 일괄 수집해 저장한다.
+     */
+    public function syncGodoRestockAlertCounts(array $prdIdxs, string $actionUrl = ''): array
+    {
+        $prdIdxs = array_values(array_unique(array_filter(array_map('intval', $prdIdxs), static function ($prdIdx) {
+            return $prdIdx > 0;
+        })));
+        if (empty($prdIdxs)) {
+            throw new \Exception('수집할 상품이 없습니다.');
+        }
+
+        $products = ProductModel::query()
+            ->select([
+                'CD_IDX',
+                'cd_godo_code',
+                'cd_restock_alert_qty',
+                'cd_restock_alert_collected_at',
+            ])
+            ->whereIn('CD_IDX', $prdIdxs)
+            ->get()
+            ->toArray();
+
+        $productsByGoodsNo = [];
+        foreach ($products as $product) {
+            $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+            if ($goodsNo === '') {
+                continue;
+            }
+            $productsByGoodsNo[$goodsNo][] = $product;
+        }
+
+        $restockQtyByGoodsNo = [];
+        $godoApiService = new GodoApiService();
+        foreach (array_chunk(array_keys($productsByGoodsNo), 100) as $goodsNoChunk) {
+            $apiResult = $godoApiService->getGodoGoodsRestockByGoodsNos(implode(',', $goodsNoChunk), 'count');
+            foreach ($goodsNoChunk as $goodsNo) {
+                $restockQtyByGoodsNo[$goodsNo] = $this->resolveGodoRestockAlertCount($apiResult, $goodsNo);
+            }
+        }
+
+        $collectedAt = date('Y-m-d H:i:s');
+        $updatedCount = 0;
+        $adminActionLogService = new AdminActionLogService();
+
+        foreach ($productsByGoodsNo as $goodsNo => $matchedProducts) {
+            $restockQty = $restockQtyByGoodsNo[$goodsNo] ?? 0;
+            foreach ($matchedProducts as $product) {
+                $prdIdx = (int)($product['CD_IDX'] ?? 0);
+                if ($prdIdx <= 0) {
+                    continue;
+                }
+
+                $beforeData = [
+                    'CD_IDX' => (string)$prdIdx,
+                    'cd_godo_code' => $goodsNo,
+                    'cd_restock_alert_qty' => (int)($product['cd_restock_alert_qty'] ?? 0),
+                    'cd_restock_alert_collected_at' => $product['cd_restock_alert_collected_at'] ?? null,
+                ];
+                $afterData = $beforeData;
+                $afterData['cd_restock_alert_qty'] = $restockQty;
+                $afterData['cd_restock_alert_collected_at'] = $collectedAt;
+
+                $updated = ProductModel::query()->update(
+                    [
+                        'cd_restock_alert_qty' => $restockQty,
+                        'cd_restock_alert_collected_at' => $collectedAt,
+                    ],
+                    ['CD_IDX' => $prdIdx]
+                );
+                if (!$updated) {
+                    throw new \Exception('재입고 알림 수량 저장에 실패했습니다. (상품번호: ' . $prdIdx . ')');
+                }
+                $updatedCount++;
+
+                try {
+                    $adminActionLogService->log([
+                        'target_type' => 'product',
+                        'target_table' => 'COMPARISON_DB',
+                        'target_pk' => (string)$prdIdx,
+                        'action_mode' => 'sync_godo_restock_alert_count',
+                        'action_summary' => '폼그룹에서 고도몰 재입고 알림 요청 수량 일괄 수집',
+                        'before_json' => $beforeData,
+                        'after_json' => $afterData,
+                        'diff_json' => $adminActionLogService->buildDiff($beforeData, $afterData),
+                        'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                    ]);
+                } catch (\Throwable $e) {
+                    // 로그 저장 실패는 수집 결과 저장에 영향을 주지 않는다.
+                }
+            }
+        }
+
+        return [
+            'requested_count' => count($prdIdxs),
+            'updated_count' => $updatedCount,
+            'skipped_count' => count($prdIdxs) - $updatedCount,
+            'restock_alert_collected_at' => $collectedAt,
+            'message' => '재입고 알림 요청 수량을 ' . number_format($updatedCount) . '개 상품에 저장했습니다.',
+        ];
+    }
+
+    /**
      * 월간할인 해제
      */
     public function prdReleaseMonthlyDiscount($payload)
@@ -143,6 +317,47 @@ class ProductActionService
             return 0;
         }
         return (int)$normalized;
+    }
+
+    private function resolveGodoRestockAlertCount(array $apiResult, string $goodsNo): int
+    {
+        $status = strtolower(trim((string)($apiResult['status'] ?? '')));
+        if ($status !== '' && !in_array($status, ['success', 'ok'], true)) {
+            $message = trim((string)($apiResult['message'] ?? ''));
+            throw new \Exception($message !== '' ? $message : '고도몰 재입고 알림 조회에 실패했습니다.');
+        }
+
+        $countFields = ['count', 'cnt', 'total', 'totalCount', 'request_count', 'restock_count', 'reInquiryCnt', 'alarmCnt', 'member_count'];
+        $rows = $apiResult['goodsCounts'] ?? $apiResult;
+        if (!is_array($rows)) {
+            throw new \Exception('고도몰 재입고 알림 응답 형식이 올바르지 않습니다.');
+        }
+
+        foreach ($rows as $rowKey => $row) {
+            if (is_numeric($row) && (string)$rowKey === $goodsNo) {
+                return max(0, (int)$row);
+            }
+            if (!is_array($row)) {
+                continue;
+            }
+
+            $responseGoodsNo = trim((string)($row['goodsNo'] ?? ($row['goods_no'] ?? ($row['goodsno'] ?? ''))));
+            if ($responseGoodsNo !== $goodsNo) {
+                continue;
+            }
+            foreach ($countFields as $field) {
+                if (isset($row[$field]) && is_numeric($row[$field])) {
+                    return max(0, (int)$row[$field]);
+                }
+            }
+            return 0;
+        }
+
+        if (isset($apiResult['totalCount']) && is_numeric($apiResult['totalCount'])) {
+            return max(0, (int)$apiResult['totalCount']);
+        }
+
+        return 0;
     }
 
 }

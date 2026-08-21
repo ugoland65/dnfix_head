@@ -229,7 +229,46 @@
             font-size: 11px;
         }
     }
+
+    .stock-zero-filter.is-active {
+        background: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+    }
+
+    .ospl-prd-wrap .table-st1 tbody > tr.stock-zero-filter-hidden {
+        display: none !important;
+    }
+
+    .order-sheet-restock-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(20, 28, 45, 0.58);
+        color: #fff;
+    }
+
+    .order-sheet-restock-overlay[hidden] {
+        display: none;
+    }
+
+    .order-sheet-restock-overlay__message {
+        min-width: 280px;
+        padding: 28px 32px;
+        border-radius: 8px;
+        background: #1f2c47;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+    }
 </style>
+<div id="orderSheetRestockOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
+    <div class="order-sheet-restock-overlay__message">재입고 알림 요청 수량을 수집하고 있습니다.<br>잠시만 기다려주세요.</div>
+</div>
 <div class="ospl-wrap">
     <div class="ospl-top">
         <ul>
@@ -241,6 +280,14 @@
                 <?php } else { ?>
                     <button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-sm" onclick="orderSheetDetail.prdListShow('<?= $oo_idx ?? '' ?>','<?= $oop_idx ?? '' ?>','hidden');">주문 상품만보기</button>
                 <?php } ?>
+
+                <button type="button" class="btnstyle1 btnstyle1-inverse btnstyle1-sm m-l-5 stock-zero-filter" aria-pressed="false">
+                    품절상품만 보기
+                </button>
+
+                <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm m-l-5" onclick="orderSheetDetailPrd.syncOrderGroupRestockAlertCounts(this, '<?= $oop_idx ?? '' ?>', '<?= $oo_idx ?? '' ?>', '<?= $form_view ?? 'hidden' ?>')">
+                    재입고 알림수 갱신
+                </button>
 
                 <div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
                 <!-- 
@@ -381,6 +428,7 @@
                 <?php } ?>
 
                 <th>현재고</th>
+                <th>재입고<br>알림수</th>
                 <th>최근 입/출고</th>
                 <th>비고</th>
                 <th>무게</th>
@@ -441,7 +489,7 @@
                 }
 
             ?>
-                <tr id="tr_<?= $item['idx'] ?? '' ?>" class="<?= $_tr_class ?? '' ?>">
+                <tr id="tr_<?= $item['idx'] ?? '' ?>" class="<?= $_tr_class ?? '' ?>" data-stock-zero="<?= (($item['product']['ps_stock'] ?? 0) == 0) ? '1' : '0' ?>">
                     <td class="row-order-cell">
                         <span class="row-order-handle" data-sort-handle="vertical" title="행 순서 변경 (상하 이동)">
                             <!--<span class="row-order-icon">↕</span>-->
@@ -776,12 +824,30 @@
 					</td>
                     <?php } ?>
 
-                    <!-- 상품재고 -->
+                    <!-- 현재고 상품재고 -->
                     <td class="text-center" style="width:30px;">
                         <b onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','stock');" style="cursor:pointer; <?php if (($item['product']['ps_stock'] ?? 0) == 0) echo "color:#aaa;"; ?>"><?= $item['product']['ps_stock'] ?? 0 ?></b>
                     </td>
 
-                    <!--  -->
+                    <!-- 재입고 알림요청 수량 -->
+                    <td class="text-center" style="width:30px;">
+                        <?php
+                        $_restock_alert_qty = (int)($item['product']['cd_restock_alert_qty'] ?? 0);
+                        $_restock_godo_code = trim((string)($item['product']['cd_godo_code'] ?? ''));
+                        $_restock_collected_at = (string)($item['product']['cd_restock_alert_collected_at'] ?? '');
+                        ?>
+                        <b
+                            <?php if ($_restock_godo_code !== '') { ?>
+                                onclick="window.open('http://gdadmin.dnfix202439.godomall.com/goods/goods_restock.php?scmFl=all&key=goodsNo&keyword=<?= rawurlencode($_restock_godo_code) ?>&pageNum=100', '_blank')"
+                            <?php } ?>
+                            style="color:<?= $_restock_alert_qty === 0 ? '#aaa' : '#ff0000' ?>;<?= $_restock_godo_code !== '' ? ' cursor:pointer;' : '' ?>"
+                        ><?= $_restock_alert_qty ?></b>
+                        <?php if ($_restock_collected_at !== '' && $_restock_collected_at !== '0000-00-00 00:00:00') { ?>
+                            <div style="font-size:11px;"><?= date('y.m.d', strtotime($_restock_collected_at)) ?></div>
+                        <?php } ?>
+                    </td>
+
+                    <!-- 재입고 알림요청 수량 -->
                     <td>
                         <?php if ($item['product']['ps_in_date']  && $item['product']['ps_in_date']  !== '0000-00-00 00:00:00') { ?>
                             <div>입고 : <?= date("y.m.d", strtotime($item['product']['ps_in_date'])) ?></div>
@@ -862,7 +928,7 @@
         </tbody>
         <tfoot>
             <tr>
-                <th colspan="8">
+                <th colspan="9">
                 </th>
                 <th class="text-center">
                     <b id="order_sheet_total_qty"><?= number_format($total_qty) ?></b>
@@ -1394,6 +1460,54 @@
             });
         }
 
+        function syncOrderGroupRestockAlertCounts(button, oopIdx, ooIdx, formView) {
+            if (!oopIdx || !ooIdx) {
+                showAlert("Error", "폼그룹 정보가 없습니다.", "alert2");
+                return;
+            }
+
+            var $button = $(button);
+            if ($button.prop('disabled')) {
+                return;
+            }
+            var $overlay = $("#orderSheetRestockOverlay");
+            var originalText = $button.text();
+
+            $button.prop('disabled', true).text("재입고 알림 수집중...");
+            $overlay.removeAttr('hidden');
+            $("body").css("overflow", "hidden");
+
+            $.ajax({
+                url: "/admin/order/group/sync_restock_alert_counts",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    oop_idx: oopIdx,
+                    action_url: window.location.pathname + window.location.search
+                },
+                success: function(res) {
+                    if (!res || res.success !== true) {
+                        showAlert("Error", (res && res.message) ? res.message : "재입고 알림 수집에 실패했습니다.", "alert2");
+                        return;
+                    }
+
+                    showToast(res.message || "재입고 알림 수집이 완료되었습니다.", new Date().toLocaleTimeString());
+                    if (window.orderSheetDetail && typeof window.orderSheetDetail.prdListShow === "function") {
+                        window.orderSheetDetail.prdListShow(ooIdx, oopIdx, formView);
+                    }
+                },
+                error: function(request, status, error) {
+                    console.log("code:" + request.status + "\nmessage:" + request.responseText + "\nerror:" + error);
+                    showAlert("Error", "재입고 알림 수집 중 오류가 발생했습니다.", "alert2");
+                },
+                complete: function() {
+                    $overlay.attr('hidden', true);
+                    $("body").css("overflow", "");
+                    $button.prop('disabled', false).text(originalText);
+                }
+            });
+        }
+
         return {
             unitFalse,
             soldOut,
@@ -1401,6 +1515,7 @@
             newInvoicePrice,
             newPayPrice,
             groupSave,
+            syncOrderGroupRestockAlertCounts,
         };
 
     }();
@@ -2042,6 +2157,24 @@
                     bindEditableCdPayPrice($el);
                 }
                 $el.editable('show');
+            });
+
+        $(document)
+            .off('click.orderSheetStockZeroFilter', '.stock-zero-filter')
+            .on('click.orderSheetStockZeroFilter', '.stock-zero-filter', function() {
+                var $button = $(this);
+                var showOnlyStockZero = !$button.hasClass('is-active');
+                var $rows = $button.closest('.ospl-wrap').find('.ospl-prd-wrap .table-st1 tbody > tr');
+
+                $rows.each(function() {
+                    var isStockZero = String($(this).data('stock-zero')) === '1';
+                    $(this).toggleClass('stock-zero-filter-hidden', showOnlyStockZero && !isStockZero);
+                });
+
+                $button
+                    .toggleClass('is-active', showOnlyStockZero)
+                    .attr('aria-pressed', showOnlyStockZero ? 'true' : 'false')
+                    .text(showOnlyStockZero ? '전체 상품보기' : '품절상품만 보기');
             });
 
         // AJAX 재렌더링으로 스크립트가 다시 실행되어도 클릭 핸들러가 중복 등록되지 않도록 네임스페이스로 재바인딩

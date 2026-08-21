@@ -4,7 +4,7 @@
 .ost-wrap{ display:table; width:100%; height:calc(100% - 40px); background-color:#fff; border-spacing:0; border-collapse:collapse; }
 .ost-wrap > ul { display:table-cell; vertical-align:top; height:100%; box-sizing:border-box; border:1px solid #888; }
 .ost-wrap > ul.ul2{ position:relative; }
-.ost-wrap > ul.ul3{ width:310px; padding:10px; }
+.ost-wrap > ul.ul3{ width:260px; padding:10px; }
 
 #order_sheet_detail{ width:100%; height:100%; }
 
@@ -20,7 +20,7 @@
 
 .order_sheet_detail{ display:table; width:100%; height:100%; background-color:#fff; border-spacing:0; border-collapse:collapse; }
 .order_sheet_detail > ul { display:table-cell; vertical-align:top; height:100%; box-sizing:border-box;  }
-.order_sheet_detail > ul.left{ width:180px;  background-color:#dddddd; border-right:1px solid #888; }
+.order_sheet_detail > ul.left{ width:170px;  background-color:#dddddd; border-right:1px solid #888; }
 .order_sheet_detail > ul.right{ position:relative;  }
 
 .overflow-y { width:100%; height:100%; overflow-y:scroll;  box-sizing:border-box; padding:5px; }
@@ -64,3 +64,42 @@
 
 
 .group-side-allsum-price{ font-weight:bold !important; }
+
+.order-sheet-form-info{
+    margin-top:12px;
+    padding:10px;
+    border:1px solid #d9e0eb;
+    border-radius:6px;
+    background:#f7f9fc;
+}
+.order-sheet-form-info__title{
+    margin-bottom:8px;
+    font-size:12px;
+    font-weight:700;
+    color:#273650;
+}
+.order-sheet-form-info__grid{
+    display:grid;
+    grid-template-columns:minmax(0, 1fr);
+    gap:8px;
+}
+.order-sheet-form-info__item{
+    min-width:0;
+    font-size:12px;
+    line-height:1.4;
+}
+.order-sheet-form-info__item--memo{
+    grid-column:auto;
+}
+.order-sheet-form-info__label{
+    display:block;
+    margin-bottom:2px;
+    color:#71809a;
+    font-size:11px;
+}
+.order-sheet-form-info__value{
+    display:block;
+    color:#1f2c47;
+    font-weight:600;
+    word-break:break-word;
+}

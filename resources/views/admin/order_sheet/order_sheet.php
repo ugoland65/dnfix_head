@@ -44,6 +44,8 @@ $convertedKrw = $displayExchangeRate > 0
             <?php if (!empty($orderSheetMain['oo_idx'])) { ?>
                 <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $orderSheetMain['oo_idx'] ?>')">주문서 상세정보</button>
 
+                <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="window.open('/admin/order/sheet/stock?idx=<?= $orderSheetMain['oo_idx'] ?>', '_blank')">검수+입고처리</button>
+
                 <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="orderSheet.osPrint('<?= $orderSheetMain['oo_idx'] ?>', '<?= $orderSheetMain['oog_code'] ?? '' ?>');">출력</button>
                 <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="orderSheet.osWindowView('<?= $orderSheetMain['oo_idx'] ?>', '<?= $orderSheetMain['oog_code'] ?? '' ?>');">새창</button>
 
@@ -99,6 +101,32 @@ $convertedKrw = $displayExchangeRate > 0
                             <ul class="m-t-5">전체 CBM : <b><span id="oprice_sum_cbm"><?= number_format((float)($orderSheetMain['oo_sum_cbm'] ?? 0), 2) ?></span></b></ul>
                         </div>
                         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm btnstyle1-search-full m-t-5" onclick="orderSheet.osView(this, '<?= $orderSheetMain['oo_idx'] ?>')">주문서 상세정보</button>
+
+                        <div class="order-sheet-form-info">
+                            <div class="order-sheet-form-info__title">주문서 폼 정보</div>
+                            <div class="order-sheet-form-info__grid">
+                                <div class="order-sheet-form-info__item">
+                                    <span class="order-sheet-form-info__label">폼이름</span>
+                                    <span class="order-sheet-form-info__value"><?= htmlspecialchars((string)($orderSheetMain['oog_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                                <!--
+                                <div class="order-sheet-form-info__item">
+                                    <span class="order-sheet-form-info__label">계좌정보</span>
+                                    <span class="order-sheet-form-info__value"><?= htmlspecialchars((string)($orderSheetMain['form_account'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+
+                                <div class="order-sheet-form-info__item">
+                                    <span class="order-sheet-form-info__label">수입국가</span>
+                                    <span class="order-sheet-form-info__value"><?= htmlspecialchars((string)($orderSheetMain['form_import'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                            -->
+
+                                <div class="order-sheet-form-info__item order-sheet-form-info__item--memo">
+                                    <span class="order-sheet-form-info__label">메모</span>
+                                    <span class="order-sheet-form-info__value"><?= htmlspecialchars((string)($orderSheetMain['form_memo'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                </div>
+                            </div>
+                        </div>
                     </div>
                 <?php } else { ?>
                     주문서를 선택해주세요.

@@ -5,6 +5,7 @@ namespace App\Services;
 use Exception;
 use App\Models\OrderGroupModel;
 use App\Models\OrderGroupProductModel;
+use App\Services\ProductActionService;
 
 class OrderGroupService
 {
@@ -181,6 +182,46 @@ class OrderGroupService
             'updated' => $updated,
             'oog_brand' => $dataAry,
         ];
+    }
+
+    /**
+     * 폼그룹 상품의 고도몰 재입고 알림 요청 수를 일괄 수집한다.
+     */
+    public function syncOrderGroupRestockAlertCounts(array $requestData): array
+    {
+        $oopIdx = trim((string)($requestData['oop_idx'] ?? ''));
+        $actionUrl = trim((string)($requestData['action_url'] ?? ($_SERVER['HTTP_REFERER'] ?? $_SERVER['REQUEST_URI'] ?? '')));
+        if ($oopIdx === '' || !ctype_digit($oopIdx) || (int)$oopIdx <= 0) {
+            throw new Exception('유효한 폼그룹 번호가 없습니다.');
+        }
+
+        $orderGroupProduct = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->where('oop_idx', '=', (int)$oopIdx)
+            ->first();
+        if (!$orderGroupProduct) {
+            throw new Exception('폼그룹 상품을 찾을 수 없습니다.');
+        }
+
+        $orderGroupProductData = $orderGroupProduct->toArray();
+        $oopData = json_decode($orderGroupProductData['oop_data'] ?? '[]', true);
+        if (!is_array($oopData)) {
+            throw new Exception('폼그룹 상품 데이터 형식이 올바르지 않습니다.');
+        }
+
+        $prdIdxs = [];
+        foreach ($oopData as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $prdIdx = (int)($item['idx'] ?? 0);
+            if ($prdIdx > 0) {
+                $prdIdxs[] = $prdIdx;
+            }
+        }
+
+        $productActionService = new ProductActionService();
+        return $productActionService->syncGodoRestockAlertCounts($prdIdxs, $actionUrl);
     }
 
 }
