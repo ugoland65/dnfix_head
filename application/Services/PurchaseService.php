@@ -69,6 +69,7 @@ class PurchaseService
             'total' => ['count' => 0, 'amount' => 0],
             'status' => [
                 'created' => ['label' => '생성', 'count' => 0, 'amount' => 0],
+                'payment_requested' => ['label' => '결제요청 등록 완료', 'count' => 0, 'amount' => 0],
                 'downloaded' => ['label' => '다운로드', 'count' => 0, 'amount' => 0],
                 'closed' => ['label' => '종료', 'count' => 0, 'amount' => 0],
             ],
@@ -97,6 +98,7 @@ class PurchaseService
 
         $statusTextMap = [
             'created' => '생성',
+            'payment_requested' => '결제요청 등록 완료',
             'downloaded' => '다운로드',
             'closed' => '종료',
         ];
@@ -104,6 +106,33 @@ class PurchaseService
         foreach ($result['data'] as &$row) {
             $rowStatus = trim((string)($row['status'] ?? ''));
             $row['status_text'] = $statusTextMap[$rowStatus] ?? ($rowStatus !== '' ? $rowStatus : '-');
+        }
+        unset($row);
+
+        $purchaseOrderIdxs = array_values(array_filter(array_map(static function ($row) {
+            return (int)($row['idx'] ?? 0);
+        }, $result['data']), static function ($idx) {
+            return $idx > 0;
+        }));
+        $orderNosByPurchaseOrderIdx = [];
+        if (!empty($purchaseOrderIdxs)) {
+            $orderNoRows = PurchaseOrderItemModel::query()
+                ->select(['purchase_order_idx', 'order_no'])
+                ->whereIn('purchase_order_idx', $purchaseOrderIdxs)
+                ->get()
+                ->toArray();
+            foreach ($orderNoRows as $orderNoRow) {
+                $purchaseOrderIdx = (int)($orderNoRow['purchase_order_idx'] ?? 0);
+                $orderNo = trim((string)($orderNoRow['order_no'] ?? ''));
+                if ($purchaseOrderIdx <= 0 || $orderNo === '') {
+                    continue;
+                }
+                $orderNosByPurchaseOrderIdx[$purchaseOrderIdx][$orderNo] = $orderNo;
+            }
+        }
+        foreach ($result['data'] as &$row) {
+            $purchaseOrderIdx = (int)($row['idx'] ?? 0);
+            $row['godo_order_nos'] = array_values($orderNosByPurchaseOrderIdx[$purchaseOrderIdx] ?? []);
         }
         unset($row);
 

@@ -178,11 +178,15 @@ class ProductPartnerService extends BaseClass
         $result['supplier_detail_img'] = !empty($result['supplier_detail_img']) ? json_decode($result['supplier_detail_img'], true) : [];
         $result['cate_json'] = !empty($result['cate_json']) ? json_decode($result['cate_json'], true) : [];
         $result['godo_cate_json'] = !empty($result['godo_cate_json']) ? json_decode($result['godo_cate_json'], true) : [];
+        $result['spec_data'] = !empty($result['spec_data']) ? json_decode($result['spec_data'], true) : [];
         if (!is_array($result['cate_json'])) {
             $result['cate_json'] = [];
         }
         if (!is_array($result['godo_cate_json'])) {
             $result['godo_cate_json'] = [];
+        }
+        if (!is_array($result['spec_data'])) {
+            $result['spec_data'] = [];
         }
         
         return $result;
@@ -295,7 +299,13 @@ class ProductPartnerService extends BaseClass
             $kindCode = $this->normalizeKindCode($kindInput);
             $kind = $this->normalizeKindName($kindInput);
             $kindSecond = $postData['kind_second'] ?? '';
-            $categoryCode = $this->resolveCategoryCodeForSave((string)$kindCode, (string)($postData['category_code'] ?? ''), (string)$kindSecond);
+            $kindThird = $postData['kind_third'] ?? '';
+            $categoryCode = $this->resolveCategoryCodeForSave(
+                (string)$kindCode,
+                (string)($postData['category_code'] ?? ''),
+                (string)$kindSecond,
+                (string)$kindThird
+            );
             $supplier_prd_idx = $toIntOrNull($postData['supplier_prd_idx'] ?? null);
             if ($supplier_prd_idx === null) {
                 $supplier_prd_idx = 0;
@@ -367,6 +377,8 @@ class ProductPartnerService extends BaseClass
                 ];
             }
             $cateJson = json_encode($cateItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $specData = (new ProductSpecService())->build($categoryCode, $postData);
+            $specDataJson = empty($specData) ? null : json_encode($specData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
 
             $inputData = [
                 'name' => $name, // 판매 상품명
@@ -398,6 +410,7 @@ class ProductPartnerService extends BaseClass
                 'hbti_type' => $hbti_type, // HBTI 타입 정보
                 'godo_goodsNo' => $godo_goodsNo, // 고도몰 상품코드
                 'cate_json' => $cateJson, // 내부 상세분류(JSON)
+                'spec_data' => $specDataJson,
                 'matching_code' => $matching_code, // 공급사 매칭코드
                 'memo' => $memo, // 메모
                 'memo_work' => $memo_work, // 작업지시 메모
@@ -434,6 +447,7 @@ class ProductPartnerService extends BaseClass
                 'hbti_type' => $hbti_type,
                 'godo_goodsNo' => $godo_goodsNo,
                 'cate_json' => $cateJson,
+                'spec_data' => $specDataJson,
                 'matching_code' => $matching_code,
                 'memo' => $memo,
                 'memo_work' => $memo_work,
@@ -453,6 +467,9 @@ class ProductPartnerService extends BaseClass
                 array_key_exists('is_vat', $postData);
             if ($hasPriceRelatedInput) {
                 $updateData['price_data'] = $price_data;
+            }
+            if (array_key_exists('spec_vendor', $postData) || array_key_exists('spec_measured', $postData) || array_key_exists('spec_option', $postData)) {
+                $updateData['spec_data'] = $specDataJson;
             }
 
             // 공급사 판매상태가 '판매중'이 아니면 처리일을 강제로 갱신한다.
@@ -870,7 +887,7 @@ class ProductPartnerService extends BaseClass
     }
 
     /**
-     * 위탁상품 분류(1차/2차) 단건 수정
+     * 위탁상품 분류(1차/2차/3차) 단건 수정
      *
      * @param array $postData
      * @return array
@@ -889,8 +906,14 @@ class ProductPartnerService extends BaseClass
             }
 
             $kindSecondCode = trim((string)($postData['kind_second_code'] ?? ''));
+            $kindThirdCode = trim((string)($postData['kind_third_code'] ?? ''));
             $postedCategoryCode = trim((string)($postData['category_code'] ?? ''));
-            $resolvedCategoryCode = $this->resolveCategoryCodeForSave($kindCode, $postedCategoryCode, $kindSecondCode);
+            $resolvedCategoryCode = $this->resolveCategoryCodeForSave(
+                $kindCode,
+                $postedCategoryCode,
+                $kindSecondCode,
+                $kindThirdCode
+            );
             $kindName = $this->normalizeKindName($kindCode);
 
             ProductPartnerModel::query()
@@ -1246,21 +1269,25 @@ class ProductPartnerService extends BaseClass
 
     /**
      * 상품 저장 시 카테고리 코드를 결정한다.
-     * - 2차 카테고리가 선택되면 해당 코드 우선
-     * - 2차가 없거나 미선택이면 1차(상품구분) 코드 사용
+     * - 3차, 2차, 1차 카테고리 순으로 선택한 코드를 우선 적용한다.
      *
      * @param string $kindCode
      * @param string $postedCategoryCode
      * @param string $secondKindCode
+     * @param string $thirdKindCode
      * @return string
      */
-    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = ''): string
+    private function resolveCategoryCodeForSave(string $kindCode, string $postedCategoryCode, string $secondKindCode = '', string $thirdKindCode = ''): string
     {
         $kindCode = trim($kindCode);
         $postedCategoryCode = trim($postedCategoryCode);
         $secondKindCode = trim($secondKindCode);
+        $thirdKindCode = trim($thirdKindCode);
 
         $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+        if ($thirdKindCode !== '' && isset($categoryCodeMap[$thirdKindCode])) {
+            return (string)$categoryCodeMap[$thirdKindCode];
+        }
         if ($secondKindCode !== '' && isset($categoryCodeMap[$secondKindCode])) {
             return (string)$categoryCodeMap[$secondKindCode];
         }
@@ -1312,6 +1339,18 @@ class ProductPartnerService extends BaseClass
                     continue;
                 }
                 $map[$childKey] = $childCode;
+
+                $grandchildren = (isset($childRow['children']) && is_array($childRow['children'])) ? $childRow['children'] : [];
+                foreach ($grandchildren as $grandchildRow) {
+                    if (!is_array($grandchildRow)) {
+                        continue;
+                    }
+                    $grandchildKey = trim((string)($grandchildRow['key'] ?? ''));
+                    $grandchildCode = trim((string)($grandchildRow['code'] ?? ''));
+                    if ($grandchildKey !== '' && $grandchildCode !== '') {
+                        $map[$grandchildKey] = $grandchildCode;
+                    }
+                }
             }
         }
 

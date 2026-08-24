@@ -4843,6 +4843,12 @@ class ProductService extends BaseClass
      */
     private function buildCdSpecForSave(string $cdCategoryCode, array $postData): array
     {
+        return (new ProductSpecService())->build(
+            $cdCategoryCode,
+            $postData,
+            $this->buildCategoryNameMapByCode()
+        );
+
         $cdCategoryCode = trim($cdCategoryCode);
         $specCategoryCode = preg_match('/^0201\d{4}$/', $cdCategoryCode)
             ? '02010000'

@@ -567,6 +567,7 @@ class ProductPartnerController extends BaseClass
                     'prd_idx' => $requestData['prd_idx'] ?? null,
                     'kind_code' => $requestData['kind_code'] ?? '',
                     'kind_second_code' => $requestData['kind_second_code'] ?? '',
+                    'kind_third_code' => $requestData['kind_third_code'] ?? '',
                     'category_code' => $requestData['category_code'] ?? '',
                 ];
                 $resultData = $productPartnerService->updateProductPartnerCategory($payload);

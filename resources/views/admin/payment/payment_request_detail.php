@@ -1,3 +1,6 @@
+<?php
+$godoOrderNos = $godoOrderNos ?? [];
+?>
 <form id="payment_request_detail_form" enctype="multipart/form-data">
 
     <input type="hidden" name="mode" value="<?= $mode ?>">
@@ -18,6 +21,7 @@
             
                 <input type="hidden" name="kind" value="<?= $kind ?>">
                 <input type="hidden" name="kind_idx" value="<?= $kind_idx ?>">
+                <input type="hidden" name="godo_order_nos" value="<?= htmlspecialchars(json_encode($godoOrderNos ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>">
 
                 <?php if ($mode == 'modify') { ?>
                     <tr>
@@ -37,6 +41,7 @@
                             <option value="기타" <?= $category == "기타" ? "selected" : "" ?>>기타</option>
                             <option value="환불" <?= $category == "환불" ? "selected" : "" ?>>환불</option>
                             <option value="주문발주" <?= $category == "주문발주" ? "selected" : "" ?>>주문발주</option>
+                            <option value="위탁발주" <?= $category == "위탁발주" ? "selected" : "" ?>>위탁발주</option>
                             <option value="예치금충전" <?= $category == "예치금충전" ? "selected" : "" ?>>예치금충전</option>
                             <option value="개인선결제" <?= $category == "개인선결제" ? "selected" : "" ?>>개인 선결제 정산</option>
                         </select>
@@ -143,7 +148,7 @@
                         <input type="text" name="bank_account" id="bank_account" value="<?= $bank_account ?? '' ?>" style="width:200px;">
 
                         예금주 :
-                        <input type="text" name="depositor" id="depositor" value="<?= $depositor ?? '' ?>" style="width:100px;">
+                        <input type="text" name="depositor" id="depositor" value="<?= $depositor ?? '' ?>" style="width:200px;">
                         <div class="admin-guide-text">
                             - 결제계좌 잘 확인해주세요.
                         </div>
@@ -156,6 +161,19 @@
                     </td>
                 </tr>
                 
+                <?php if (!empty($godoOrderNos)) { ?>
+                <tr>
+                    <th>참조 주문번호</th>
+                    <td>
+                        <ul style="margin:0; padding-left:18px;">
+                            <?php foreach ($godoOrderNos as $godoOrderNo) { ?>
+                                <li><?= htmlspecialchars((string)$godoOrderNo, ENT_QUOTES, 'UTF-8') ?></li>
+                            <?php } ?>
+                        </ul>
+                    </td>
+                </tr>
+                <?php } ?>
+
                 <tr>
                     <th>요청내용</th>
                     <td>

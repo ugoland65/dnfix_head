@@ -219,6 +219,7 @@
                 </tr>
             <?php } ?>
             
+            <!-- 상품 상태 -->
             <tr>
                 <th>상품상태</th>
                 <td>
@@ -278,6 +279,7 @@
                 </td>
             </tr>
 
+            <!-- 상품 구분 -->
             <tr>
                 <th>상품 구분</th>
                 <td>
@@ -392,6 +394,11 @@
                         </div>
                     </div>
 
+                    <?php
+                    $categoryGuidePrefix = '';
+                    include __DIR__ . '/partials/category_guide.php';
+                    if (false) {
+                    ?>
                     <div id="onahole-second-category-guide" style="<?= ($selectedKindCode === 'ONAHOLE' && $selectedSecondKindKey === '') ? '' : 'display:none;' ?>">
                         <h3>오나홀 2차 카테고리</h3>
                         <ul>
@@ -434,6 +441,7 @@
                             </div>
                         </div>
                     </div>
+                    <?php } ?>
 
                 </td>
             </tr>
@@ -1127,7 +1135,16 @@
             <tr>
                 <th>상품 상세스펙</th>
                 <td>
+                    <?php
+                    $specCategoryCode = $selectedCategoryCode;
+                    $specData = $cdSpecData;
+                    $specInputPrefix = 'cd_spec';
+                    include __DIR__ . '/partials/spec_form.php';
+                    ?>
+                </td>
+            </tr>
 
+                    <?php if (false) { // Legacy form retained temporarily for torso comparison markup. ?>
                     <!-- 토르소형 상세스펙 -->
                     <div id="cd-spec-02010000-wrap" style="<?php if (!$isTorsoCategory) echo 'display:none;'; ?>">
                         
@@ -1443,6 +1460,7 @@
 
                 </td>
             </tr>
+                    <?php } ?>
 
             <tr>
                 <th>패키지 사이즈</th>
@@ -2049,6 +2067,9 @@
 
         function toggleCdSpecFieldsByCategoryCode() {
             const categoryCode = String($('#cd_category_code').val() || '').trim();
+            if (typeof window.toggleSharedProductSpec === 'function') {
+                window.toggleSharedProductSpec(categoryCode, 'cd_spec');
+            }
             const isTorsoCategory = /^0201\d{4}$/.test(categoryCode);
             const isBreastCategory = categoryCode === '02020000';
             const isRealdollCategory = categoryCode === '02050000';

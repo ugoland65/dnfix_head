@@ -73,7 +73,7 @@ const supplier = (function(){
      * @param {string} idx - 공급사 고유번호
      */
     function supplierView(idx){
-		openDialog("/ad/ajax/partners_info",{ idx },"공급사 상세","800px"); 
+		openDialog("/admin/partner/info",{ idx },"공급사 상세","800px"); 
     }
 
     return {

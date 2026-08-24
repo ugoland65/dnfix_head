@@ -48,6 +48,49 @@
         font-size:16px;
         font-weight:bold;
     }
+
+    .provider-section-nav {
+        position: fixed;
+        /*
+        top: 75px;
+        */
+        top: 10px;
+        left: calc(50% + 100px);
+        z-index: 1001;
+        max-width: calc(100vw - 32px);
+        transform: translateX(-50%);
+        padding: 5px;
+        border: 1px solid #d1d5db;
+        border-radius: 8px;
+        background: rgba(255, 255, 255, 0.96);
+        box-shadow: 0 3px 10px rgba(0, 0, 0, 0.12);
+    }
+
+    .provider-section-nav-list {
+        display: flex;
+        gap: 4px;
+        overflow-x: auto;
+        scrollbar-width: thin;
+    }
+
+    .provider-section-nav-button {
+        flex: 0 0 auto;
+        padding: 6px 10px;
+        border: 0;
+        border-radius: 5px;
+        background: transparent;
+        color: #4b5563;
+        font-size: 12px;
+        font-weight: 600;
+        white-space: nowrap;
+        cursor: pointer;
+    }
+
+    .provider-section-nav-button:hover,
+    .provider-section-nav-button.is-active {
+        background: #2563eb;
+        color: #fff;
+    }
 </style>
 
 <?php if( empty($prd_data['godo_goodsNo']) ){ ?>
@@ -62,6 +105,20 @@
     <div class="loading-text">데이터 수집중입니다. 잠시만 기다려주세요...</div>
 </div>
 
+<nav id="provider_section_nav" class="provider-section-nav" aria-label="공급사 상품 상세 섹션 바로가기">
+    <div class="provider-section-nav-list">
+        <button type="button" class="provider-section-nav-button is-active" data-section-target="provider-basic-section">기본정보</button>
+
+        <!--
+        <button type="button" class="provider-section-nav-button" data-section-target="provider-hbti-section">HBTI</button>
+        -->
+
+        <button type="button" class="provider-section-nav-button" data-section-target="provider-godo-section">고도몰</button>
+        <button type="button" class="provider-section-nav-button" data-section-target="provider-spec-section">상품 상세스펙</button>
+        <button type="button" class="provider-section-nav-button" data-section-target="provider-supplier-section">공급사</button>
+    </div>
+</nav>
+
 <form id="prd_provider_info_form">
     <input type="hidden" name="prd_idx" value="<?= $prd_data['idx'] ?>">
     <table class="table-style ">
@@ -71,7 +128,7 @@
         </colgroup>
         <tr>
             <td colspan="2" class="none-bg title">
-                <h1>상품 기본정보</h1>
+                <h1 id="provider-basic-section">상품 기본정보</h1>
             </td>
         </tr>
         <tbody>
@@ -81,6 +138,8 @@
                     <b style="font-size:16px;"><?= $prd_data['idx'] ?></b>
                 </td>
             </tr>
+
+            <!-- 상품 구분 -->
             <tr>
                 <th>상품 구분</th>
                 <td>
@@ -114,10 +173,30 @@
                                     continue;
                                 }
                                 $categoryCodeByKind[$childKey] = $childCode;
+                                $grandchildOptions = [];
+                                $grandchildren = (isset($childRow['children']) && is_array($childRow['children'])) ? $childRow['children'] : [];
+                                foreach ($grandchildren as $grandchildRow) {
+                                    if (!is_array($grandchildRow)) {
+                                        continue;
+                                    }
+                                    $grandchildKey = trim((string)($grandchildRow['key'] ?? ''));
+                                    $grandchildCode = trim((string)($grandchildRow['code'] ?? ''));
+                                    $grandchildName = trim((string)($grandchildRow['name'] ?? ''));
+                                    if ($grandchildKey === '' || $grandchildCode === '') {
+                                        continue;
+                                    }
+                                    $categoryCodeByKind[$grandchildKey] = $grandchildCode;
+                                    $grandchildOptions[] = [
+                                        'key' => $grandchildKey,
+                                        'code' => $grandchildCode,
+                                        'name' => $grandchildName !== '' ? $grandchildName : $grandchildKey,
+                                    ];
+                                }
                                 $childOptions[] = [
                                     'key' => $childKey,
                                     'code' => $childCode,
                                     'name' => $childName !== '' ? $childName : $childKey,
+                                    'children' => $grandchildOptions,
                                 ];
                             }
                             if ($parentKey !== '' && !empty($childOptions)) {
@@ -135,12 +214,20 @@
                             $selectedCategoryCode = (string)$categoryCodeByKind[$selectedKindCode];
                         }
                         $selectedSecondKindKey = '';
+                        $selectedThirdKindKey = '';
                         $selectedKindChildren = $categoryChildrenByKind[$selectedKindCode] ?? [];
                         if (!empty($selectedKindChildren)) {
                             foreach ($selectedKindChildren as $childOption) {
                                 if ((string)($childOption['code'] ?? '') === $selectedCategoryCode) {
                                     $selectedSecondKindKey = (string)($childOption['key'] ?? '');
                                     break;
+                                }
+                                foreach (($childOption['children'] ?? []) as $grandchildOption) {
+                                    if ((string)($grandchildOption['code'] ?? '') === $selectedCategoryCode) {
+                                        $selectedSecondKindKey = (string)($childOption['key'] ?? '');
+                                        $selectedThirdKindKey = (string)($grandchildOption['key'] ?? '');
+                                        break 2;
+                                    }
                                 }
                             }
                         }
@@ -158,6 +245,11 @@
                                 <option value="">2차 카테고리 선택</option>
                             </select>
                         </div>
+                        <div id="provider_kind_third_wrap" style="display:none;">
+                            <select name="kind_third" id="provider_kind_third">
+                                <option value="">3차 카테고리 선택</option>
+                            </select>
+                        </div>
                     </div>
 
                     <?php if ($selectedKindCode === '') { ?>
@@ -166,8 +258,14 @@
                         </p>
                     <?php } ?>
 
+                    <?php
+                    $categoryGuidePrefix = 'provider-';
+                    include dirname(__DIR__) . '/product/partials/category_guide.php';
+                    ?>
+
                 </td>
             </tr>
+
             <tr>
                 <th>브랜드</th>
                 <td>
@@ -387,7 +485,7 @@
             </tr>
             <tr>
                 <td colspan="2" class="none-bg title">
-                    <h1>HBTI</h1>
+                    <h1 id="provider-hbti-section">HBTI</h1>
                 </td>
             </tr>
         </tbody>
@@ -418,7 +516,7 @@
             <td colspan="2" class="none-bg title">
                 <div>
                     <ul>
-                        <h1>고도몰</h1>
+                        <h1 id="provider-godo-section">고도몰</h1>
                     </ul>
 
                     <?php if (!empty($prd_data['godo_goodsNo'])) { ?>
@@ -444,6 +542,7 @@
             </td>
         </tr>
     </tbody>
+
 
     <tbody>
         <tr>
@@ -695,6 +794,38 @@
         </tr>
     </tbody>
 
+
+    <tbody>
+        <tr>
+            <td colspan="2" class="none-bg" style="height:30px;"></td>
+        </tr>
+        <tr>
+            <td colspan="2" class="none-bg title">
+                <div>
+                    <ul>
+                        <h1 id="provider-supplier-section">상품 상세정보</h1>
+                    </ul>
+                </div>
+            </td>
+        </tr>
+    </tbody>
+
+    <tbody>
+        <tr>
+            <th id="provider-spec-section">상품 상세스펙</th>
+            <td>
+                <?php
+                $specCategoryCode = (string)($selectedCategoryCode ?? ($prd_data['category_code'] ?? ''));
+                $specData = (isset($prd_data['spec_data']) && is_array($prd_data['spec_data'])) ? $prd_data['spec_data'] : [];
+                $specInputPrefix = 'spec';
+                include dirname(__DIR__) . '/product/partials/spec_form.php';
+                ?>
+            </td>
+        </tr>
+    </tbody>
+
+
+
     <tbody>
         <tr>
             <td colspan="2" class="none-bg" style="height:30px;"></td>
@@ -704,7 +835,7 @@
 
                 <div>
                     <ul>
-                        <h1>공급사</h1>
+                        <h1 id="provider-supplier-section">공급사</h1>
                     </ul>
 
                     <?php if (!empty($prd_data['supplier_prd_pk']) && 
@@ -920,13 +1051,53 @@
         $('.dn-select2').select2();
         initProviderCategorySelector();
         initGodoCategorySelector();
+
+        var $providerSectionNav = $('#provider_section_nav');
+        var $providerSectionNavButtons = $providerSectionNav.find('.provider-section-nav-button');
+        var updateProviderSectionNav = function() {
+            var scrollPosition = $(window).scrollTop() + $providerSectionNav.outerHeight() + 24;
+            var $activeButton = null;
+
+            $providerSectionNavButtons.each(function() {
+                var $button = $(this);
+                var $section = $('#' + $button.data('section-target'));
+                var isVisible = $section.length && $section.is(':visible');
+                $button.toggle(isVisible);
+
+                if (isVisible && $section.offset().top <= scrollPosition) {
+                    $activeButton = $button;
+                }
+            });
+
+            if ($activeButton) {
+                $providerSectionNavButtons.removeClass('is-active').removeAttr('aria-current');
+                $activeButton.addClass('is-active').attr('aria-current', 'page');
+            }
+        };
+
+        $providerSectionNavButtons.on('click', function() {
+            var $section = $('#' + $(this).data('section-target'));
+            if (!$section.length || !$section.is(':visible')) {
+                return;
+            }
+
+            $('html, body').stop(true).animate({
+                scrollTop: Math.max(0, $section.offset().top - $providerSectionNav.outerHeight() - 40)
+            }, 250);
+        });
+
+        $(window).off('scroll.providerSectionNav resize.providerSectionNav')
+            .on('scroll.providerSectionNav resize.providerSectionNav', updateProviderSectionNav);
+        updateProviderSectionNav();
     });
 
     const providerCategoryCodeByKind = <?= json_encode($categoryCodeByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const providerCategoryChildrenByKind = <?= json_encode($categoryChildrenByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const providerKindNameByCode = <?= json_encode($prd_kind_name ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialProviderSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialProviderThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let hasAppliedInitialProviderSecondCategory = false;
+    let hasAppliedInitialProviderThirdCategory = false;
     const godoCateTree = <?= json_encode($godo_cate ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const selectedGodoCate = <?= json_encode([
         'depth1' => $selectedDepth1,
@@ -948,14 +1119,23 @@
     function updateProviderCategoryCodeInput() {
         const primaryKind = String($('select[name="kind"]').val() || '').trim();
         const secondKind = String($('#provider_kind_second').val() || '').trim();
+        const thirdKind = String($('#provider_kind_third').val() || '').trim();
         let categoryCode = '';
-        if (secondKind !== '') {
+        if (thirdKind !== '') {
+            categoryCode = resolveProviderCategoryCodeByKind(thirdKind);
+        }
+        if (categoryCode === '' && secondKind !== '') {
             categoryCode = resolveProviderCategoryCodeByKind(secondKind);
         }
         if (categoryCode === '' && primaryKind !== '') {
             categoryCode = resolveProviderCategoryCodeByKind(primaryKind);
         }
         $('#provider_category_code').val(categoryCode);
+        if (typeof window.toggleSharedProductSpec === 'function') {
+            window.toggleSharedProductSpec(categoryCode, 'spec');
+        }
+        $('#provider-onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
+        $('#provider-torso-third-category-guide').toggle(primaryKind === 'TORSO' && secondKind === 'TORSO' && thirdKind === '');
     }
 
     function renderProviderSecondCategorySelect(resetSelection) {
@@ -969,6 +1149,7 @@
 
         if (childCategories.length === 0) {
             $secondWrap.hide();
+            $('#provider_kind_third_wrap').hide();
             updateProviderCategoryCodeInput();
             return;
         }
@@ -996,6 +1177,44 @@
         }
 
         $secondWrap.show();
+        renderProviderThirdCategorySelect(resetSelection);
+    }
+
+    function renderProviderThirdCategorySelect(resetSelection) {
+        const secondKind = String($('#provider_kind_second').val() || '').trim();
+        const primaryKind = String($('select[name="kind"]').val() || '').trim();
+        const childCategories = Array.isArray(providerCategoryChildrenByKind[primaryKind]) ? providerCategoryChildrenByKind[primaryKind] : [];
+        const selectedChild = childCategories.find(function(child) {
+            return String((child || {}).key || '').trim() === secondKind;
+        }) || {};
+        const grandchildCategories = Array.isArray(selectedChild.children) ? selectedChild.children : [];
+        const $thirdWrap = $('#provider_kind_third_wrap');
+        const $thirdSelect = $('#provider_kind_third');
+
+        $thirdSelect.empty().append('<option value="">3차 카테고리 선택</option>');
+        if (grandchildCategories.length === 0) {
+            $thirdWrap.hide();
+            updateProviderCategoryCodeInput();
+            return;
+        }
+
+        grandchildCategories.forEach(function(grandchild) {
+            const grandchildKey = String((grandchild || {}).key || '').trim();
+            if (grandchildKey !== '') {
+                $thirdSelect.append($('<option>', {
+                    value: grandchildKey,
+                    text: String(grandchild.name || grandchildKey)
+                }));
+            }
+        });
+
+        if (!resetSelection && !hasAppliedInitialProviderThirdCategory && initialProviderThirdKindKey) {
+            $thirdSelect.val(initialProviderThirdKindKey);
+            hasAppliedInitialProviderThirdCategory = true;
+        } else {
+            $thirdSelect.val('');
+        }
+        $thirdWrap.show();
         updateProviderCategoryCodeInput();
     }
 
@@ -1004,6 +1223,9 @@
             renderProviderSecondCategorySelect(true);
         });
         $('#provider_kind_second').on('change', function() {
+            renderProviderThirdCategorySelect(true);
+        });
+        $('#provider_kind_third').on('change', function() {
             updateProviderCategoryCodeInput();
         });
         renderProviderSecondCategorySelect(false);

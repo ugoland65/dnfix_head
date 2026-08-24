@@ -3,6 +3,8 @@ namespace App\Services;
 
 use Exception;
 use App\Models\PaymentRequestModel;
+use App\Models\PurchaseOrderItemModel;
+use App\Models\PurchaseOrderModel;
 use App\Core\AuthAdmin;
 use App\Utils\TelegramUtils;
 
@@ -115,6 +117,20 @@ class PaymentRequestService
             $kind_idx = null;
             $meta_json['godo_order_no'] = $godo_order_no;
         }
+        if ($kind === 'purchase_order') {
+            $orderNoRows = $kind_idx !== null
+                ? PurchaseOrderItemModel::query()
+                    ->select(['order_no'])
+                    ->where('purchase_order_idx', '=', $kind_idx)
+                    ->get()
+                    ->toArray()
+                : [];
+            $meta_json['godo_order_no'] = array_values(array_unique(array_filter(array_map(static function ($row) {
+                return trim((string)($row['order_no'] ?? ''));
+            }, $orderNoRows), static function ($orderNo) {
+                return $orderNo !== '';
+            })));
+        }
 
         $meta_json = json_encode($meta_json, JSON_UNESCAPED_UNICODE);
 
@@ -140,6 +156,15 @@ class PaymentRequestService
 
         $result = PaymentRequestModel::insert($inputData);
 
+        if ($kind === 'purchase_order' && $kind_idx !== null) {
+            PurchaseOrderModel::update(
+                ['idx' => $kind_idx],
+                [
+                    'status' => 'payment_requested',
+                    'updated_at' => date('Y-m-d H:i:s'),
+                ]
+            );
+        }
 
         $telegram = new TelegramUtils();
 

@@ -44,6 +44,7 @@ class ProductPartnerModel extends BaseModel
 		'kind',
 		'hbti_type',
 		'category_code',
+		'spec_data',
 		'matching_code',
 		'matching_option',
 		'matching_data',

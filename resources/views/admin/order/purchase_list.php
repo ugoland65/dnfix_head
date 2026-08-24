@@ -93,6 +93,7 @@
                                 <th>상태</th>
                                 <th>등록자</th>
                                 <th>등록일</th>
+                                <th>발주</th>
                                 <th>관리</th>
                             </tr>
                         </thead>
@@ -108,13 +109,29 @@
                                         <td class="text-right"><?= number_format((int)($purchaseOrder['item_count'] ?? 0)) ?></td>
                                         <td class="text-right"><?= number_format((int)($purchaseOrder['total_quantity'] ?? 0)) ?></td>
                                         <td class="text-right"><?= number_format((float)($purchaseOrder['total_amount'] ?? 0), 2) ?></td>
-                                        <td class="text-center"><?= htmlspecialchars((string)($purchaseOrder['status_text'] ?? '-'), ENT_QUOTES, 'UTF-8') ?></td>
+
+                                        <!-- 상태 -->
+                                        <td class="text-center">
+                                            <?= htmlspecialchars((string)($purchaseOrder['status_text'] ?? '-'), ENT_QUOTES, 'UTF-8') ?>
+                                        </td>
+
                                         <td class="text-center"><?= htmlspecialchars((string)($purchaseOrder['created_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
                                         <td class="text-center">
                                             <?php if (!empty($purchaseOrder['created_at'])) { ?>
                                                 <?= date('y.m.d H:i', strtotime($purchaseOrder['created_at'])) ?>
                                             <?php } ?>
                                         </td>
+
+                                        <!-- 발주 -->
+                                        <td class="text-center">
+                                            <?php if (($purchaseOrder['status'] ?? '') !== 'payment_requested') { ?>
+                                            <button type="button" id="" class="btnstyle1 btnstyle1-primary btnstyle1-sm" 
+                                                data-purchase-order-idx="<?= (int)($purchaseOrder['idx'] ?? 0) ?>"
+                                                data-godo-order-nos="<?= htmlspecialchars(json_encode($purchaseOrder['godo_order_nos'] ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES), ENT_QUOTES, 'UTF-8') ?>"
+                                                onclick="purchaseOrderReg.paymentRequestCreate(this);">결제요청서 등록</button>
+                                            <?php } ?>
+                                        </td>
+
                                         <td class="text-center">
                                             <button
                                                 type="button"
@@ -149,6 +166,34 @@
 </div>
 
 <script>
+    var purchaseOrderReg = (function() {
+        function paymentRequestCreate(button) {
+            var purchaseOrderIdx = Number($(button).data('purchase-order-idx') || 0);
+            if (purchaseOrderIdx <= 0) {
+                alert('발주서 번호가 없습니다.');
+                return;
+            }
+            var godoOrderNos = [];
+            try {
+                godoOrderNos = JSON.parse(String($(button).attr('data-godo-order-nos') || '[]'));
+            } catch (e) {
+                godoOrderNos = [];
+            }
+
+            openDialog('/admin/payment/payment_request_create', {
+                mode: 'create',
+                category: '위탁발주',
+                kind: 'purchase_order',
+                purchaseOrderIdx: purchaseOrderIdx,
+                godoOrderNos: godoOrderNos
+            }, '결제요청 생성', '800px', 'POST');
+        }
+
+        return {
+            paymentRequestCreate: paymentRequestCreate
+        };
+    })();
+
     function getSearchParams() {
         var params = {};
         var fields = {

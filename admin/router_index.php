@@ -23,6 +23,7 @@ use App\Controllers\Admin\PaymentRequestController;
 use App\Controllers\Admin\OrderGroupController;
 use App\Controllers\Admin\OrderController;
 use App\Controllers\Admin\PurchaseController;
+use App\Controllers\Admin\PartnersController;
 use App\Controllers\Admin\Coupang\CoupangController;
 use App\Controllers\Admin\CalendarController;
 use App\Controllers\Admin\SaleHistoryController;
@@ -138,6 +139,8 @@ try {
     $router->get('/provider_product/detail', ProductPartnerController::class, 'getProductPartnerDetail'); //공급사 상품 상세
     $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
     $router->get('/provider_product/discount_sale_log', ProductPartnerController::class, 'productPartnerDiscountSaleLog'); //공급사 상품 할인 내역 로그
+    $router->get('/partner/info', PartnersController::class, 'partnerInfo'); //공급사 상세
+    $router->post('/partner/save', PartnersController::class, 'savePartner'); //공급사 저장
 
     //경쟁사 DB
     $router->get('/competitor/competitor_product_db', CompetitorController::class, 'getCompetitorProductDb'); //경쟁사 사이트 상품DB

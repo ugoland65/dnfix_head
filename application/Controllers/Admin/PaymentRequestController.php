@@ -8,6 +8,8 @@ use App\Classes\Request;
 use App\Services\PaymentRequestService;
 use App\Utils\Pagination;
 use App\Services\OrderGroupService;
+use App\Models\PurchaseOrderModel;
+use App\Models\PartnersModel;
 
 class PaymentRequestController extends BaseClass
 {
@@ -121,7 +123,40 @@ class PaymentRequestController extends BaseClass
                 ];
                 $currency = $currencyMap[$oogGroup] ?? 'KRW';
 
+            } elseif ($kind === 'purchase_order') {
+                $purchaseOrderIdx = (int)($requestData['purchaseOrderIdx'] ?? 0);
+                if ($purchaseOrderIdx <= 0) {
+                    throw new Exception("발주서 번호가 없습니다.");
+                }
 
+                $purchaseOrder = PurchaseOrderModel::find($purchaseOrderIdx);
+                if (!$purchaseOrder) {
+                    throw new Exception("발주서를 찾을 수 없습니다.");
+                }
+                $purchaseOrderData = $purchaseOrder->toArray();
+                $kind_idx = $purchaseOrderIdx;
+                $amount = (float)($purchaseOrderData['total_amount'] ?? 0);
+                $currency = 'KRW';
+                $godoOrderNos = $requestData['godoOrderNos'] ?? [];
+                if (!is_array($godoOrderNos)) {
+                    $godoOrderNos = [];
+                }
+                $godoOrderNos = array_values(array_unique(array_filter(array_map(static function ($orderNo) {
+                    return trim((string)$orderNo);
+                }, $godoOrderNos), static function ($orderNo) {
+                    return $orderNo !== '';
+                })));
+
+                $supplierNo = (int)($purchaseOrderData['supplier_no'] ?? 0);
+                if ($supplierNo > 0) {
+                    $partner = PartnersModel::find($supplierNo);
+                    if ($partner) {
+                        $partnerData = $partner->toArray();
+                        $bank = trim((string)($partnerData['bank_name'] ?? ''));
+                        $bank_account = trim((string)($partnerData['bank_account'] ?? ''));
+                        $depositor = trim((string)($partnerData['bank_account_name'] ?? ''));
+                    }
+                }
             }
 
             $data = [
@@ -135,6 +170,7 @@ class PaymentRequestController extends BaseClass
                 'bank_account' => $bank_account ?? '',
                 'depositor' => $depositor ?? '',
                 'importAccount' => $importAccount ?? '',
+                'godoOrderNos' => $godoOrderNos ?? [],
             ];
 
             return view('admin.payment.payment_request_detail', $data);
@@ -178,6 +214,16 @@ class PaymentRequestController extends BaseClass
             $bank_account = $paymentRequest['bank_account'] ?? '';
             $depositor = $paymentRequest['depositor'] ?? '';
             $importAccount = $paymentRequest['foreign_account'] ?? '';
+            $metaJson = json_decode((string)($paymentRequest['meta_json'] ?? '{}'), true);
+            $godoOrderNos = $metaJson['godo_order_no'] ?? [];
+            if (!is_array($godoOrderNos)) {
+                $godoOrderNos = [$godoOrderNos];
+            }
+            $godoOrderNos = array_values(array_filter(array_map(static function ($orderNo) {
+                return trim((string)$orderNo);
+            }, $godoOrderNos), static function ($orderNo) {
+                return $orderNo !== '';
+            }));
 
             $data = [
                 'mode' => 'modify',
@@ -193,6 +239,7 @@ class PaymentRequestController extends BaseClass
                 'bank_account' => $bank_account ?? '',
                 'depositor' => $depositor ?? '',
                 'importAccount' => $importAccount ?? '',
+                'godoOrderNos' => $godoOrderNos,
             ];
 
             return view('admin.payment.payment_request_detail', $data);

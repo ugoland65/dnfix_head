@@ -135,6 +135,9 @@
                                 <th class="">첨부파일</th>
 
                                 <th class="">상태변경</th>
+
+                                <th class="">참조 주문번호<br>(고도몰)</th>
+
                                 <th class="">결제완료일</th>
                                 <th class="">결제완료자</th>
                                 <th class="">처리내용</th>
@@ -205,9 +208,11 @@
                                 <td class="text-center"><?= $reference_location ?></td>
                                 <td class="text-center">
                                     <?php if( $row['kind'] == 'order_sheet' ){ ?>
-                                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $row['kind_idx'] ?>','main')">#<?= $row['kind_idx'] ?></button>
+                                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $row['kind_idx'] ?>','main')">주문서 : #<?= $row['kind_idx'] ?></button>
+                                    <?php }elseif( $row['kind'] == 'purchase_order' ){ ?>
+                                        <a class="btnstyle1 btnstyle1-sm" style="text-decoration:none;" href="/admin/order/purchase/detail?idx=<?= (int)($row['kind_idx'] ?? 0) ?>" target="_blank" rel="noopener noreferrer">발주 : #<?= (int)($row['kind_idx'] ?? 0) ?></a>
                                     <?php }elseif( $row['kind'] == 'godo_refund' ){ ?>
-                                        <a href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['meta_json']['godo_order_no'] ?>" target="_blank"><?= $row['meta_json']['godo_order_no'] ?></a>
+                                        <a class="btnstyle1 btnstyle1-sm" style="text-decoration:none;" href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= $row['meta_json']['godo_order_no'] ?>" target="_blank" rel="noopener noreferrer">고도몰 주문 : <?= $row['meta_json']['godo_order_no'] ?></a>
                                     <?php } ?>
                                 </td>
                                 <td class="text-center">
@@ -219,6 +224,7 @@
                                             rel="noopener noreferrer"
                                             class="btnstyle1 btnstyle1-info btnstyle1-xs"
                                             title="<?= htmlspecialchars(basename($invoiceFilePath), ENT_QUOTES, 'UTF-8') ?>"
+                                            style="text-decoration:none;" 
                                         ><i class="fas fa-file-download"></i> 첨부파일 보기</a>
                                     <?php } else { ?>
                                         <span class="text-gray">-</span>
@@ -227,6 +233,36 @@
                                 <td>
                                     <button type="button" class="btnstyle1 btnstyle1-sm" onclick="paymentRequestDetail('<?= $row['idx'] ?>')">상태변경</button>
                                 </td>
+
+                                <!-- 참조 주문번호 -->
+                                <td>
+                                    <?php
+                                    $godoOrderNos = $row['meta_json']['godo_order_no'] ?? [];
+                                    if (!is_array($godoOrderNos)) {
+                                        $godoOrderNos = [$godoOrderNos];
+                                    }
+                                    $godoOrderNos = array_values(array_filter(array_map(static function ($orderNo) {
+                                        return trim((string)$orderNo);
+                                    }, $godoOrderNos), static function ($orderNo) {
+                                        return $orderNo !== '';
+                                    }));
+                                    ?>
+                                    <?php if (!empty($godoOrderNos)) { ?>
+                                        <?php foreach ($godoOrderNos as $godoOrderNo) { ?>
+                                            <a
+                                                class="btnstyle1 btnstyle1-sm"
+                                                style="display:block; margin-bottom:3px; text-decoration:none;"
+                                                href="http://gdadmin.dnfix202439.godomall.com/order/order_view.php?orderNo=<?= rawurlencode($godoOrderNo) ?>"
+                                                target="_blank"
+                                                rel="noopener noreferrer"
+                                            >고도몰 주문 : <?= htmlspecialchars($godoOrderNo, ENT_QUOTES, 'UTF-8') ?></a>
+                                        <?php } ?>
+                                    <?php } else { ?>
+                                        <span class="text-gray">-</span>
+                                    <?php } ?>
+                                </td>
+                                
+                                <!-- 결제 완료일 -->
                                 <td><?= $row['process_date'] ?? '' ?></td>
                                 <td><?= $row['approved_ad_name'] ?? '' ?></td>
                                 <td><?= $row['process_memo'] ?? '' ?></td>

@@ -92,8 +92,10 @@ class GodoInspectionService
 
     private const TORSO_CATEGORIES = [
         ['sourceCategoryCode' => '02010100', 'cateNm' => '미니 토르소', 'cateCd' => '022007003'],
-        ['sourceCategoryCode' => '02010200', 'cateNm' => '스탠다드 토르소', 'cateCd' => '022007002'],
-        ['sourceCategoryCode' => '02010300', 'cateNm' => '대형 토르소', 'cateCd' => '022007001'],
+        ['sourceCategoryCode' => '02010200', 'cateNm' => '라이트 토르소', 'cateCd' => '022007002'],
+        ['sourceCategoryCode' => '02010300', 'cateNm' => '리얼 토르소', 'cateCd' => '022007001'],
+        ['sourceCategoryCode' => '02060000', 'cateNm' => '하반신형', 'cateCd' => '022010'],
+        ['sourceCategoryCode' => '02080000', 'cateNm' => '퍼리/피규어', 'cateCd' => '022012'],
     ];
 
     private const MARGIN_GRADE_CATEGORIES = [
