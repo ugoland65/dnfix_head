@@ -13,6 +13,7 @@ use App\Models\ProductWorkCheckItemModel;
 use App\Models\ProductWorkCheckStatusModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
+use App\Models\ProductCategoryMappingModel;
 use App\Auth\AdminAuth;
 use App\Core\AuthAdmin;
 use App\Classes\ImageStorage;
@@ -37,7 +38,7 @@ class ProductService extends BaseClass
         $perPage = $criteria['per_page'] ?? 100;
         $page = $criteria['page'] ?? 1;
         $show_mode = $criteria['show_mode'] ?? null;
-        $search_value = $criteria['search_value'] ?? '';
+        $search_value = trim((string)($criteria['search_value'] ?? ''));
         $tier = $criteria['tier'] ?? null;
         $brand_idx = $criteria['brand_idx'] ?? null;
 
@@ -121,7 +122,7 @@ class ProductService extends BaseClass
         $s_margin_group = $criteria['s_margin_group'] ?? null;
         $s_work_task_code = trim((string)($criteria['s_work_task_code'] ?? ''));
         $s_work_task_done = strtoupper(trim((string)($criteria['s_work_task_done'] ?? '')));
-        $search_value = $criteria['search_value'] ?? null;
+        $search_value = trim((string)($criteria['search_value'] ?? ''));
         $s_sale_mode = $criteria['s_sale_mode'] ?? null;
         $s_sale_status = trim((string)($criteria['s_sale_status'] ?? ''));
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
@@ -1444,6 +1445,13 @@ class ProductService extends BaseClass
             }
 
             $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
+            $productData['cd_additional_category_codes'] = $this->getAdditionalCategoryCodesForProduct(
+                (int)($productData['CD_IDX'] ?? 0)
+            );
+            $productData['preference_tag_codes'] = $this->getProductCategoryMappingCodes(
+                (int)($productData['CD_IDX'] ?? 0),
+                'hashtag'
+            );
             $productData['work_check_list'] = $this->getWorkCheckListForProduct(
                 (int)($productData['CD_IDX'] ?? 0),
                 (string)($productData['CD_KIND_CODE'] ?? '')
@@ -1959,6 +1967,11 @@ class ProductService extends BaseClass
             (string)($postData['cd_kind_code_second'] ?? ''),
             (string)($postData['cd_kind_code_third'] ?? '')
         );
+        $additionalCategoryCodes = $this->normalizeAdditionalCategoryCodes(
+            $postData['cd_additional_category_codes'] ?? [],
+            $cdCategoryCode
+        );
+        $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
         $saleStatus = trim((string)($postData['sale_status'] ?? ''));
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
@@ -2123,6 +2136,8 @@ class ProductService extends BaseClass
             ->update($updateData);
         $beforeWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
         $beforeProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
+        $beforeAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
+        $beforePreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
 
         $beforeStockData = [];
         if (!empty($psIdx)) {
@@ -2156,11 +2171,17 @@ class ProductService extends BaseClass
         $beforeData['ps_discount_target_yn'] = $beforeDiscountTargetYn;
         $beforeData['work_check_list'] = $beforeWorkCheckList;
         $beforeData['product_label_mappings'] = $beforeProductLabelMappings;
+        $beforeData['cd_additional_category_codes'] = $beforeAdditionalCategoryCodes;
+        $beforeData['preference_tag_codes'] = $beforePreferenceTagCodes;
 
         $this->syncProductWorkChecks($idx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
         $afterWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
         $this->syncProductLabelMappings($idx, 'prdDB', $productLabelIdxs);
         $afterProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
+        $this->syncAdditionalCategoryCodes($idx, $additionalCategoryCodes);
+        $afterAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
+        $this->syncProductCategoryMappingCodes($idx, 'hashtag', $preferenceTagCodes);
+        $afterPreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
 
         $afterData = array_merge($oldProduct, $updateData);
         $afterDiscountTargetYn = $beforeDiscountTargetYn;
@@ -2177,6 +2198,8 @@ class ProductService extends BaseClass
         $afterData['ps_discount_target_yn'] = $afterDiscountTargetYn;
         $afterData['work_check_list'] = $afterWorkCheckList;
         $afterData['product_label_mappings'] = $afterProductLabelMappings;
+        $afterData['cd_additional_category_codes'] = $afterAdditionalCategoryCodes;
+        $afterData['preference_tag_codes'] = $afterPreferenceTagCodes;
 
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
@@ -2193,6 +2216,12 @@ class ProductService extends BaseClass
         }
         if (json_encode($beforeProductLabelMappings, JSON_UNESCAPED_UNICODE) !== json_encode($afterProductLabelMappings, JSON_UNESCAPED_UNICODE)) {
             $actionSummary .= ' (상품라벨 변경)';
+        }
+        if ($beforeAdditionalCategoryCodes !== $afterAdditionalCategoryCodes) {
+            $actionSummary .= ' (추가구분 변경)';
+        }
+        if ($beforePreferenceTagCodes !== $afterPreferenceTagCodes) {
+            $actionSummary .= ' (취향/태그 변경)';
         }
         $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
         try {
@@ -2312,6 +2341,11 @@ class ProductService extends BaseClass
             (string)($postData['cd_kind_code_second'] ?? ''),
             (string)($postData['cd_kind_code_third'] ?? '')
         );
+        $additionalCategoryCodes = $this->normalizeAdditionalCategoryCodes(
+            $postData['cd_additional_category_codes'] ?? [],
+            $cdCategoryCode
+        );
+        $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
         $saleStatus = trim((string)($postData['sale_status'] ?? '가등록'));
         if ($saleStatus === '') {
             $saleStatus = '가등록';
@@ -2503,7 +2537,11 @@ class ProductService extends BaseClass
 
         $this->syncProductWorkChecks($newIdx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
         $this->syncProductLabelMappings($newIdx, 'prdDB', $productLabelIdxs);
+        $this->syncAdditionalCategoryCodes($newIdx, $additionalCategoryCodes);
+        $this->syncProductCategoryMappingCodes($newIdx, 'hashtag', $preferenceTagCodes);
         $createdProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $newIdx);
+        $createdAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($newIdx);
+        $createdPreferenceTagCodes = $this->getProductCategoryMappingCodes($newIdx, 'hashtag');
 
         $adminActionLogService = new AdminActionLogService();
         $actionSummary = (string)($postData['action_summary'] ?? '');
@@ -2519,8 +2557,16 @@ class ProductService extends BaseClass
                 'action_mode' => 'create',
                 'action_summary' => $actionSummary,
                 'before_json' => [],
-                'after_json' => array_merge($insertData, ['product_label_mappings' => $createdProductLabelMappings]),
-                'diff_json' => array_merge($insertData, ['product_label_mappings' => $createdProductLabelMappings]),
+                'after_json' => array_merge($insertData, [
+                    'product_label_mappings' => $createdProductLabelMappings,
+                    'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
+                    'preference_tag_codes' => $createdPreferenceTagCodes,
+                ]),
+                'diff_json' => array_merge($insertData, [
+                    'product_label_mappings' => $createdProductLabelMappings,
+                    'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
+                    'preference_tag_codes' => $createdPreferenceTagCodes,
+                ]),
                 'action_url' => $actionUrl !== '' ? $actionUrl : null,
             ]);
         } catch (\Throwable $e) {
@@ -4581,6 +4627,206 @@ class ProductService extends BaseClass
         }
 
         return $result;
+    }
+
+    /**
+     * 상품에 저장된 추가 카테고리 코드를 순서대로 조회한다.
+     *
+     * @param int $productIdx
+     * @param string $productType
+     * @return array<int,string>
+     */
+    private function getAdditionalCategoryCodesForProduct(int $productIdx, string $productType = 'prdDB'): array
+    {
+        return $this->getProductCategoryMappingCodes($productIdx, 'additional', $productType);
+    }
+
+    /**
+     * 상품의 용도별 카테고리 매핑 코드를 순서대로 조회한다.
+     *
+     * @return array<int,string>
+     */
+    private function getProductCategoryMappingCodes(int $productIdx, string $categoryType, string $productType = 'prdDB'): array
+    {
+        $productType = trim($productType);
+        $categoryType = trim($categoryType);
+        if ($productIdx <= 0 || $productType === '' || $categoryType === '') {
+            return [];
+        }
+
+        $rows = ProductCategoryMappingModel::query()
+            ->select(['category_code'])
+            ->where('product_type', '=', $productType)
+            ->where('product_idx', '=', $productIdx)
+            ->where('category_type', '=', $categoryType)
+            ->orderBy('display_order', 'ASC')
+            ->orderBy('idx', 'ASC')
+            ->get()
+            ->toArray();
+
+        return array_values(array_filter(array_map(function ($row) {
+            return trim((string)($row['category_code'] ?? ''));
+        }, $rows)));
+    }
+
+    /**
+     * 전송된 추가 카테고리를 설정된 4차 이하 카테고리로 제한한다.
+     *
+     * @param mixed $rawCodes
+     * @param string $primaryCategoryCode
+     * @return array<int,string>
+     */
+    private function normalizeAdditionalCategoryCodes($rawCodes, string $primaryCategoryCode): array
+    {
+        if (is_string($rawCodes)) {
+            $decodedCodes = json_decode($rawCodes, true);
+            $rawCodes = is_array($decodedCodes) ? $decodedCodes : [$rawCodes];
+        }
+        if (!is_array($rawCodes)) {
+            return [];
+        }
+
+        $configProduct = config('admin.product');
+        $categoryRows = $configProduct['categories'] ?? [];
+        $validCodeMap = [];
+        $collectCodes = static function (array $rows, int $depth = 1) use (&$collectCodes, &$validCodeMap): void {
+            if ($depth > 4) {
+                return;
+            }
+
+            foreach ($rows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $code = trim((string)($row['code'] ?? ''));
+                if ($code !== '') {
+                    $validCodeMap[$code] = true;
+                }
+                $children = $row['children'] ?? [];
+                if (is_array($children) && !empty($children)) {
+                    $collectCodes($children, $depth + 1);
+                }
+            }
+        };
+        if (is_array($categoryRows)) {
+            $collectCodes($categoryRows);
+        }
+
+        $primaryCategoryCode = trim($primaryCategoryCode);
+        $normalizedCodes = [];
+        foreach ($rawCodes as $rawCode) {
+            $code = trim((string)$rawCode);
+            if (
+                $code === ''
+                || $code === $primaryCategoryCode
+                || !isset($validCodeMap[$code])
+                || isset($normalizedCodes[$code])
+            ) {
+                continue;
+            }
+            $normalizedCodes[$code] = $code;
+        }
+
+        return array_values($normalizedCodes);
+    }
+
+    /**
+     * 설정에 등록되어 사용 중인 취향/태그 코드만 허용한다.
+     *
+     * @param mixed $rawCodes
+     * @return array<int,string>
+     */
+    private function normalizePreferenceTagCodes($rawCodes): array
+    {
+        if (!is_array($rawCodes)) {
+            $rawCodes = [$rawCodes];
+        }
+
+        $configProduct = config('admin.product');
+        $preferenceTags = $configProduct['preference_tags'] ?? [];
+        $validCodeMap = [];
+        if (is_array($preferenceTags)) {
+            foreach ($preferenceTags as $tag) {
+                if (!is_array($tag) || empty($tag['is_active'])) {
+                    continue;
+                }
+                $code = trim((string)($tag['code'] ?? ''));
+                if ($code !== '') {
+                    $validCodeMap[$code] = true;
+                }
+            }
+        }
+
+        $normalizedCodes = [];
+        foreach ($rawCodes as $rawCode) {
+            $code = trim((string)$rawCode);
+            if ($code === '' || !isset($validCodeMap[$code])) {
+                continue;
+            }
+            $normalizedCodes[$code] = $code;
+        }
+
+        return array_values($normalizedCodes);
+    }
+
+    /**
+     * 상품의 추가 카테고리 매핑을 현재 선택값으로 동기화한다.
+     *
+     * @param int $productIdx
+     * @param array<int,string> $categoryCodes
+     * @param string $productType
+     * @return void
+     */
+    private function syncAdditionalCategoryCodes(int $productIdx, array $categoryCodes, string $productType = 'prdDB'): void
+    {
+        $this->syncProductCategoryMappingCodes($productIdx, 'additional', $categoryCodes, $productType);
+    }
+
+    /**
+     * 상품의 용도별 카테고리 매핑을 현재 선택값으로 동기화한다.
+     *
+     * @param int $productIdx
+     * @param string $categoryType
+     * @param array<int,string> $categoryCodes
+     * @param string $productType
+     * @return void
+     */
+    private function syncProductCategoryMappingCodes(
+        int $productIdx,
+        string $categoryType,
+        array $categoryCodes,
+        string $productType = 'prdDB'
+    ): void {
+        $productType = trim($productType);
+        $categoryType = trim($categoryType);
+        if ($productIdx <= 0 || $productType === '' || $categoryType === '') {
+            return;
+        }
+
+        $categoryCodes = array_values($categoryCodes);
+        $now = date('Y-m-d H:i:s');
+        foreach ($categoryCodes as $sortOffset => $categoryCode) {
+            ProductCategoryMappingModel::updateOrCreate(
+                [
+                    'product_type' => $productType,
+                    'product_idx' => $productIdx,
+                    'category_type' => $categoryType,
+                    'category_code' => $categoryCode,
+                ],
+                [
+                    'display_order' => $sortOffset + 1,
+                    'updated_at' => $now,
+                ]
+            );
+        }
+
+        $deleteQuery = ProductCategoryMappingModel::where('product_type', $productType)
+            ->where('product_idx', $productIdx)
+            ->where('category_type', $categoryType);
+        if (!empty($categoryCodes)) {
+            $deleteQuery->whereNotIn('category_code', $categoryCodes);
+        }
+        $deleteQuery->delete();
     }
 
     /**

@@ -6,6 +6,7 @@ use App\Classes\DB;
 use App\Core\AuthAdmin;
 use App\Models\GodoOrderModel;
 use App\Models\GodoOrderGoodsModel;
+use App\Models\PartnersModel;
 use App\Models\PurchaseOrderModel;
 use App\Models\PurchaseOrderItemModel;
 use PhpOffice\PhpSpreadsheet\Spreadsheet;
@@ -20,10 +21,15 @@ class GodoPurchaseOrderService
      *
      * @param array $orderGoodsSnos
      * @param string $requestedOrderName
+     * @param int $supplierPartnerIdx
      * @return array
      * @throws Exception
      */
-    public function createPurchaseOrderSheet(array $orderGoodsSnos, string $requestedOrderName = ''): array
+    public function createPurchaseOrderSheet(
+        array $orderGoodsSnos,
+        string $requestedOrderName = '',
+        int $supplierPartnerIdx = 0
+    ): array
     {
         $orderGoodsSnos = $this->normalizeOrderGoodsSnos($orderGoodsSnos);
         if (empty($orderGoodsSnos)) {
@@ -66,7 +72,7 @@ class GodoPurchaseOrderService
             }
         }
 
-        if (count($supplierMap) > 1) {
+        if ($supplierPartnerIdx < 1 && count($supplierMap) > 1) {
             throw new Exception('같은 공급사 상품만 발주서가 생성이 가능합니다');
         }
 
@@ -85,7 +91,23 @@ class GodoPurchaseOrderService
             }
         }
 
+        $supplierNo = (int)($goodsRows[0]['scm_no'] ?? 0);
         $supplierName = (string)array_key_first($supplierMap);
+        if ($supplierPartnerIdx > 0) {
+            $supplierPartner = PartnersModel::query()
+                ->select(['idx', 'name'])
+                ->where('idx', '=', $supplierPartnerIdx)
+                ->first();
+            $supplierPartner = $supplierPartner ? $supplierPartner->toArray() : null;
+            if (empty($supplierPartner)) {
+                throw new Exception('선택한 공급사를 찾을 수 없습니다.');
+            }
+            $supplierNo = (int)($supplierPartner['idx'] ?? 0);
+            $supplierName = trim((string)($supplierPartner['name'] ?? ''));
+            if ($supplierName === '') {
+                throw new Exception('선택한 공급사명이 올바르지 않습니다.');
+            }
+        }
         $supplierNameForFile = preg_replace('/[^a-zA-Z0-9가-힣_-]/u', '_', $supplierName);
         $supplierNameForFile = trim((string)$supplierNameForFile, '_');
         if ($supplierNameForFile === '') {
@@ -124,6 +146,7 @@ class GodoPurchaseOrderService
             DB::transaction(function () use (
             $orderName,
             $poCode,
+            $supplierNo,
             $supplierName,
             $goodsRows,
             $orderByOrderNo,
@@ -135,8 +158,6 @@ class GodoPurchaseOrderService
             $now,
             &$purchaseOrderIdx
             ) {
-                $supplierNo = (int)($goodsRows[0]['scm_no'] ?? 0);
-
                 $purchaseOrder = PurchaseOrderModel::create([
                     'order_name' => $orderName,
                     'po_code' => $poCode,

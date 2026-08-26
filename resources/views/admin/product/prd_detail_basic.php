@@ -153,6 +153,124 @@
     .torso-size-compare__results div { padding: 8px; border-radius: 6px; background: #fff; color: #64748b; font-size: 12px; }
     .torso-size-compare__results strong { display: block; margin-top: 3px; color: #346da9; font-size: 14px; }
     @media (max-width: 720px) { .torso-size-compare__stage { grid-template-columns: 1fr; } .torso-size-compare__results { grid-template-columns: 1fr; } }
+    .additional-category-list { display: grid; gap: 8px; }
+    .additional-category-row { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .additional-category-selects { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .additional-category-message { color: #dc2626; font-size: 12px; }
+    .additional-category-help { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+    .category-guide-open-button {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 5px 8px;
+        border: 1px solid #d1d5db;
+        border-radius: 5px;
+        background: #fff;
+        color: #475569;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .category-guide-open-button:hover { border-color: #94a3b8; background: #f8fafc; }
+    .category-guide-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10020;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, .62);
+    }
+    .category-guide-modal.is-open { display: flex; }
+    .category-guide-modal__panel {
+        display: flex;
+        flex-direction: column;
+        width: min(900px, 100%);
+        max-height: calc(100vh - 48px);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, .28);
+        overflow: hidden;
+    }
+    .category-guide-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 16px;
+        padding: 16px 20px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .category-guide-modal__header h2 { margin: 0; color: #1f2937; font-size: 18px; }
+    .category-guide-modal__close {
+        padding: 4px 8px;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .category-guide-modal__body {
+        min-height: 0;
+        padding: 16px 20px 20px;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+    .preference-tag-list { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+    .preference-tag-item { display: inline-flex; align-items: center; gap: 3px; }
+    .preference-tag-chip {
+        display: inline-flex;
+        align-items: center;
+        gap: 5px;
+        padding: 6px 9px;
+        border: 1px solid #cbd5e1;
+        border-radius: 999px;
+        background: #fff;
+        color: #334155;
+        font-size: 12px;
+        cursor: pointer;
+    }
+    .preference-tag-chip:has(input:checked) { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+    .preference-tag-chip input { margin: 0; }
+    .preference-tag-info-button {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 22px;
+        height: 22px;
+        padding: 0;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        cursor: pointer;
+    }
+    .preference-tag-info-button:hover { color: #2563eb; }
+    .preference-tag-info-button:hover::after,
+    .preference-tag-info-button:focus-visible::after {
+        position: absolute;
+        z-index: 30;
+        left: 50%;
+        bottom: calc(100% + 7px);
+        width: max-content;
+        max-width: 320px;
+        padding: 7px 9px;
+        border-radius: 5px;
+        background: #1e293b;
+        color: #fff;
+        font-size: 11px;
+        line-height: 1.4;
+        white-space: normal;
+        content: attr(data-tooltip);
+        transform: translateX(-50%);
+        box-shadow: 0 4px 12px rgba(15, 23, 42, .22);
+        pointer-events: none;
+    }
+    .preference-tag-detail-code { margin-left: 6px; color: #64748b; font-size: 12px; font-weight: 400; }
+    .preference-tag-detail-section { margin-bottom: 14px; padding: 13px 15px; border: 1px solid #e2e8f0; border-radius: 7px; }
+    .preference-tag-detail-section:last-child { margin-bottom: 0; }
+    .preference-tag-detail-section h3 { margin: 0 0 7px; color: #334155; font-size: 13px; }
+    .preference-tag-detail-section p { margin: 0; color: #475569; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
 
 </style>
 <?php
@@ -204,6 +322,7 @@
             <col width="150px" />
             <col />
         </colgroup>
+
         <tr id="product-basic-section">
             <td colspan="2" class="none-bg title">
                 <h1>상품 기본정보</h1>
@@ -341,6 +460,36 @@
                             }
                         }
 
+                        $normalizeAdditionalCategoryRows = static function (array $rows, int $depth = 1) use (&$normalizeAdditionalCategoryRows): array {
+                            if ($depth > 4) {
+                                return [];
+                            }
+
+                            $normalizedRows = [];
+                            foreach ($rows as $row) {
+                                if (!is_array($row)) {
+                                    continue;
+                                }
+                                $code = trim((string)($row['code'] ?? ''));
+                                if ($code === '') {
+                                    continue;
+                                }
+                                $key = trim((string)($row['key'] ?? ''));
+                                $name = trim((string)($row['name'] ?? ''));
+                                $children = (isset($row['children']) && is_array($row['children']))
+                                    ? $normalizeAdditionalCategoryRows($row['children'], $depth + 1)
+                                    : [];
+                                $normalizedRows[] = [
+                                    'key' => $key,
+                                    'code' => $code,
+                                    'name' => $name !== '' ? $name : ($key !== '' ? $key : $code),
+                                    'children' => $children,
+                                ];
+                            }
+                            return $normalizedRows;
+                        };
+                        $additionalCategoryTree = $normalizeAdditionalCategoryRows($categoryRows);
+
                         $selectedKindCode = trim((string)($productData['CD_KIND_CODE'] ?? ''));
                         $isHbtiKind = ($selectedKindCode === 'ONAHOLE');
                         $selectedCategoryCode = trim((string)($productData['CD_CATEGORY_CODE'] ?? ''));
@@ -373,6 +522,24 @@
                                 }
                             }
                         }
+
+                        $additionalCategoryCodes = $productData['cd_additional_category_codes']
+                            ?? $productData['additional_category_codes']
+                            ?? $productData['CD_ADDITIONAL_CATEGORY_CODES']
+                            ?? [];
+                        if (is_string($additionalCategoryCodes)) {
+                            $decodedAdditionalCategoryCodes = json_decode($additionalCategoryCodes, true);
+                            $additionalCategoryCodes = is_array($decodedAdditionalCategoryCodes)
+                                ? $decodedAdditionalCategoryCodes
+                                : preg_split('/\s*,\s*/', $additionalCategoryCodes, -1, PREG_SPLIT_NO_EMPTY);
+                        }
+                        if (!is_array($additionalCategoryCodes)) {
+                            $additionalCategoryCodes = [];
+                        }
+                        $additionalCategoryCodes = array_values(array_unique(array_filter(array_map(
+                            static fn ($code): string => trim((string)$code),
+                            $additionalCategoryCodes
+                        ))));
                     ?>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <select name="cd_kind_code">
@@ -392,11 +559,29 @@
                                 <option value="">3차 카테고리 선택</option>
                             </select>
                         </div>
+                        <button type="button" id="category_guide_open_btn" class="category-guide-open-button" aria-haspopup="dialog" aria-controls="category_guide_modal">
+                            <svg xmlns="http://www.w3.org/2000/svg" width="16" fill="currentColor" viewBox="0 0 480 480" color="#8C8C8C" class="css-s5xdrg"><path d="M240 209c8.836 0 16 7.164 16 16v81c0 8.836-7.164 16-16 16s-16-7.163-16-16v-81c0-8.837 7.163-16 16-16M240 157c9.941 0 18 8.059 18 18s-8.059 18-18 18-18-8.059-18-18 8.059-18 18-18"></path><path fill-rule="evenodd" d="M240 47c106.591 0 193 86.409 193 193s-86.409 193-193 193S47 346.591 47 240 133.409 47 240 47m0 32c-88.918 0-161 72.082-161 161s72.082 161 161 161 161-72.082 161-161S328.918 79 240 79" clip-rule="evenodd"></path></svg>
+                            <span>상품 구분 안내</span>
+                        </button>
+                    </div>
+
+                    <div id="category_guide_modal" class="category-guide-modal" aria-hidden="true">
+                        <div class="category-guide-modal__panel" role="dialog" aria-modal="true" aria-labelledby="category_guide_modal_title">
+                            <div class="category-guide-modal__header">
+                                <h2 id="category_guide_modal_title">상품 구분 안내</h2>
+                                <button type="button" class="category-guide-modal__close" aria-label="상품 구분 안내 닫기">&times;</button>
+                            </div>
+                            <div class="category-guide-modal__body">
+                                <?php
+                                $categoryGuidePrefix = '';
+                                $categoryGuideMode = 'modal';
+                                include __DIR__ . '/partials/category_guide.php';
+                                ?>
+                            </div>
+                        </div>
                     </div>
 
                     <?php
-                    $categoryGuidePrefix = '';
-                    include __DIR__ . '/partials/category_guide.php';
                     if (false) {
                     ?>
                     <div id="onahole-second-category-guide" style="<?= ($selectedKindCode === 'ONAHOLE' && $selectedSecondKindKey === '') ? '' : 'display:none;' ?>">
@@ -446,6 +631,90 @@
                 </td>
             </tr>
             
+            <!-- 추가 구분 -->
+            <tr>
+                <th>추가 구분</th>
+                <td>
+                    <div id="additional_category_list" class="additional-category-list"></div>
+                    <button type="button" id="add_additional_category_btn" class="btnstyle1 btnstyle1-xs">+ 카테고리 추가</button>
+                    <p class="additional-category-help">대표 카테고리를 제외한 카테고리를 여러 개 지정할 수 있습니다. 각 항목은 최대 4차 카테고리까지 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
+            <!-- 취향/태그 -->
+            <tr>
+                <th>취향/태그</th>
+                <td>
+                    <?php
+                    $preferenceTagConfig = config('admin.product');
+                    $preferenceTags = (isset($preferenceTagConfig['preference_tags']) && is_array($preferenceTagConfig['preference_tags']))
+                        ? $preferenceTagConfig['preference_tags']
+                        : [];
+                    $selectedPreferenceTagCodes = (isset($productData['preference_tag_codes']) && is_array($productData['preference_tag_codes']))
+                        ? array_fill_keys($productData['preference_tag_codes'], true)
+                        : [];
+                    ?>
+                    <div class="preference-tag-list">
+                        <?php foreach ($preferenceTags as $preferenceTag) {
+                            if (!is_array($preferenceTag) || empty($preferenceTag['is_active'])) {
+                                continue;
+                            }
+                            $preferenceTagCode = trim((string)($preferenceTag['code'] ?? ''));
+                            $preferenceTagName = trim((string)($preferenceTag['name'] ?? ''));
+                            $preferenceTagDescription = trim((string)($preferenceTag['description'] ?? ''));
+                            $preferenceTagAdminDescription = trim((string)($preferenceTag['admin_description'] ?? ''));
+                            if ($preferenceTagCode === '' || $preferenceTagName === '') {
+                                continue;
+                            }
+                        ?>
+                            <span class="preference-tag-item">
+                                <label class="preference-tag-chip">
+                                    <input
+                                        type="checkbox"
+                                        name="preference_tag_codes[]"
+                                        value="<?= htmlspecialchars($preferenceTagCode, ENT_QUOTES, 'UTF-8') ?>"
+                                        <?= isset($selectedPreferenceTagCodes[$preferenceTagCode]) ? 'checked' : '' ?>>
+                                    <span>#<?= htmlspecialchars($preferenceTagName, ENT_QUOTES, 'UTF-8') ?></span>
+                                </label>
+                                <button
+                                    type="button"
+                                    class="preference-tag-info-button"
+                                    aria-label="<?= htmlspecialchars($preferenceTagName, ENT_QUOTES, 'UTF-8') ?> 태그 안내"
+                                    data-code="<?= htmlspecialchars($preferenceTagCode, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-name="<?= htmlspecialchars($preferenceTagName, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-description="<?= htmlspecialchars($preferenceTagDescription, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-admin-description="<?= htmlspecialchars($preferenceTagAdminDescription, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-tooltip="<?= htmlspecialchars($preferenceTagAdminDescription, ENT_QUOTES, 'UTF-8') ?>">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" fill="currentColor" viewBox="0 0 480 480" aria-hidden="true"><path d="M240 209c8.836 0 16 7.164 16 16v81c0 8.836-7.164 16-16 16s-16-7.163-16-16v-81c0-8.837 7.163-16 16-16M240 157c9.941 0 18 8.059 18 18s-8.059 18-18 18-18-8.059-18-18 8.059-18 18-18"></path><path fill-rule="evenodd" d="M240 47c106.591 0 193 86.409 193 193s-86.409 193-193 193S47 346.591 47 240 133.409 47 240 47m0 32c-88.918 0-161 72.082-161 161s72.082 161 161 161 161-72.082 161-161S328.918 79 240 79" clip-rule="evenodd"></path></svg>
+                                </button>
+                            </span>
+                        <?php } ?>
+                    </div>
+
+                    <div id="preference_tag_modal" class="category-guide-modal" aria-hidden="true">
+                        <div class="category-guide-modal__panel" role="dialog" aria-modal="true" aria-labelledby="preference_tag_modal_title">
+                            <div class="category-guide-modal__header">
+                                <h2 id="preference_tag_modal_title">
+                                    <span class="preference-tag-detail-name"></span>
+                                    <span class="preference-tag-detail-code"></span>
+                                </h2>
+                                <button type="button" class="category-guide-modal__close preference-tag-modal__close" aria-label="취향/태그 안내 닫기">&times;</button>
+                            </div>
+                            <div class="category-guide-modal__body">
+                                <div class="preference-tag-detail-section">
+                                    <h3>고객 안내</h3>
+                                    <p class="preference-tag-detail-description"></p>
+                                </div>
+                                <div class="preference-tag-detail-section">
+                                    <h3>운영자 분류 기준</h3>
+                                    <p class="preference-tag-detail-admin-description"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
+                </td>
+            </tr>
+
             <tr>
                 <th>브랜드</th>
                 <td>
@@ -1087,7 +1356,6 @@
             <tr>
                 <th>사이트 옵션</th>
                 <td>
-
                     <table class="table-style border01">
                         <colgroup>
                             <col width="150px" />
@@ -1101,7 +1369,6 @@
                             </td>
                         </tr>
                     </table>
-
                 </td>
             </tr>
             <tr>
@@ -1943,11 +2210,111 @@
         const categoryChildrenByKind = <?= json_encode($categoryChildrenByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const additionalCategoryTree = <?= json_encode($additionalCategoryTree ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const initialAdditionalCategoryCodes = <?= json_encode($additionalCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const $cdSpec02010000Wrap = $('#cd-spec-02010000-wrap');
         const $cdSpec02020000Wrap = $('#cd-spec-02020000-wrap');
         const $cdSpec02050000Wrap = $('#cd-spec-02050000-wrap');
         let hasAppliedInitialSecondCategory = false;
         let hasAppliedInitialThirdCategory = false;
+        const $categoryGuideModal = $('#category_guide_modal');
+        let categoryGuidePreviousBodyOverflow = '';
+        const $preferenceTagModal = $('#preference_tag_modal');
+        let preferenceTagPreviousBodyOverflow = '';
+        let $preferenceTagLastTrigger = $();
+
+        function openCategoryGuideSection($section) {
+            const $sections = $categoryGuideModal.find('.category-guide-accordion-section');
+            $sections.removeClass('is-open');
+            $sections.find('.category-guide-accordion-title').attr('aria-expanded', 'false');
+            $section.addClass('is-open');
+            $section.find('.category-guide-accordion-title').attr('aria-expanded', 'true');
+        }
+
+        function openCategoryGuideModal() {
+            if (!$categoryGuideModal.length) {
+                return;
+            }
+
+            const primaryKind = String($('select[name="cd_kind_code"]').val() || '').trim();
+            const $sections = $categoryGuideModal.find('.category-guide-accordion-section');
+            let $initialSection = $sections.filter(function() {
+                return String($(this).attr('data-category-kind') || '') === primaryKind;
+            }).first();
+            if (!$initialSection.length) {
+                $initialSection = $sections.first();
+            }
+            openCategoryGuideSection($initialSection);
+
+            categoryGuidePreviousBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            $categoryGuideModal.addClass('is-open').attr('aria-hidden', 'false');
+            $categoryGuideModal.find('.category-guide-modal__close').trigger('focus');
+        }
+
+        function closeCategoryGuideModal() {
+            if (!$categoryGuideModal.hasClass('is-open')) {
+                return;
+            }
+            $categoryGuideModal.removeClass('is-open').attr('aria-hidden', 'true');
+            document.body.style.overflow = categoryGuidePreviousBodyOverflow;
+            $('#category_guide_open_btn').trigger('focus');
+        }
+
+        $('#category_guide_open_btn').on('click', openCategoryGuideModal);
+        $categoryGuideModal.on('click', '.category-guide-modal__close', closeCategoryGuideModal);
+        $categoryGuideModal.on('click', function(event) {
+            if (event.target === this) {
+                closeCategoryGuideModal();
+            }
+        });
+        $categoryGuideModal.on('click', '.category-guide-accordion-title', function() {
+            openCategoryGuideSection($(this).closest('.category-guide-accordion-section'));
+        });
+        $(document).on('keydown.categoryGuideModal', function(event) {
+            if (event.key === 'Escape' && $categoryGuideModal.hasClass('is-open')) {
+                closeCategoryGuideModal();
+            }
+        });
+
+        function closePreferenceTagModal() {
+            if (!$preferenceTagModal.hasClass('is-open')) {
+                return;
+            }
+            $preferenceTagModal.removeClass('is-open').attr('aria-hidden', 'true');
+            document.body.style.overflow = preferenceTagPreviousBodyOverflow;
+            if ($preferenceTagLastTrigger.length) {
+                $preferenceTagLastTrigger.trigger('focus');
+            }
+        }
+
+        $(document).on('click', '.preference-tag-info-button', function() {
+            const $button = $(this);
+            $preferenceTagLastTrigger = $button;
+            $preferenceTagModal.find('.preference-tag-detail-name').text('#' + String($button.attr('data-name') || ''));
+            $preferenceTagModal.find('.preference-tag-detail-code').text(String($button.attr('data-code') || ''));
+            $preferenceTagModal.find('.preference-tag-detail-description').text(
+                String($button.attr('data-description') || '등록된 고객 안내가 없습니다.')
+            );
+            $preferenceTagModal.find('.preference-tag-detail-admin-description').text(
+                String($button.attr('data-admin-description') || '등록된 운영자 분류 기준이 없습니다.')
+            );
+            preferenceTagPreviousBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            $preferenceTagModal.addClass('is-open').attr('aria-hidden', 'false');
+            $preferenceTagModal.find('.preference-tag-modal__close').trigger('focus');
+        });
+        $preferenceTagModal.on('click', '.preference-tag-modal__close', closePreferenceTagModal);
+        $preferenceTagModal.on('click', function(event) {
+            if (event.target === this) {
+                closePreferenceTagModal();
+            }
+        });
+        $(document).on('keydown.preferenceTagModal', function(event) {
+            if (event.key === 'Escape' && $preferenceTagModal.hasClass('is-open')) {
+                closePreferenceTagModal();
+            }
+        });
 
         function resolveCategoryCodeByKind(kindKey) {
             const key = String(kindKey || '').trim();
@@ -1955,6 +2322,129 @@
                 return '';
             }
             return String(categoryCodeByKind[key] || '').trim();
+        }
+
+        function findAdditionalCategoryPath(categoryCode, rows, path) {
+            const targetCode = String(categoryCode || '').trim();
+            const categoryRows = Array.isArray(rows) ? rows : [];
+            const currentPath = Array.isArray(path) ? path : [];
+
+            for (let i = 0; i < categoryRows.length; i++) {
+                const row = categoryRows[i] || {};
+                const nextPath = currentPath.concat(String(row.code || '').trim());
+                if (String(row.code || '').trim() === targetCode) {
+                    return nextPath;
+                }
+                const childPath = findAdditionalCategoryPath(targetCode, row.children, nextPath);
+                if (childPath.length > 0) {
+                    return childPath;
+                }
+            }
+            return [];
+        }
+
+        function getAdditionalCategoryRowsByPath(path, depth) {
+            let rows = Array.isArray(additionalCategoryTree) ? additionalCategoryTree : [];
+            for (let i = 0; i < depth; i++) {
+                const selectedCode = String(path[i] || '').trim();
+                const selectedRow = rows.find(function(row) {
+                    return String((row || {}).code || '').trim() === selectedCode;
+                });
+                rows = selectedRow && Array.isArray(selectedRow.children) ? selectedRow.children : [];
+            }
+            return rows;
+        }
+
+        function updateAdditionalCategoryRow($row) {
+            const path = [];
+            $row.find('.additional-category-select').each(function() {
+                const code = String($(this).val() || '').trim();
+                if (code) {
+                    path.push(code);
+                }
+            });
+
+            const categoryCode = path.length > 0 ? path[path.length - 1] : '';
+            const primaryCategoryCode = String($('#cd_category_code').val() || '').trim();
+            let message = '';
+            let submittedCode = categoryCode;
+
+            if (categoryCode && categoryCode === primaryCategoryCode) {
+                message = '대표 카테고리와 같은 카테고리는 추가할 수 없습니다.';
+                submittedCode = '';
+            } else if (categoryCode) {
+                $('#additional_category_list .additional-category-code').not($row.find('.additional-category-code')).each(function() {
+                    if (String($(this).val() || '').trim() === categoryCode) {
+                        message = '이미 추가한 카테고리입니다.';
+                        submittedCode = '';
+                        return false;
+                    }
+                });
+            }
+
+            $row.find('.additional-category-code').val(submittedCode);
+            $row.find('.additional-category-message').text(message);
+        }
+
+        function renderAdditionalCategoryRow($row, selectedPath) {
+            const path = Array.isArray(selectedPath) ? selectedPath : [];
+            const $selects = $row.find('.additional-category-selects').empty();
+
+            for (let depth = 0; depth < 4; depth++) {
+                const rows = getAdditionalCategoryRowsByPath(path, depth);
+                if (rows.length === 0) {
+                    break;
+                }
+
+                const $select = $('<select>', {
+                    class: 'additional-category-select',
+                    'data-depth': depth
+                }).append($('<option>', {
+                    value: '',
+                    text: (depth + 1) + '차 카테고리 선택'
+                }));
+
+                rows.forEach(function(row) {
+                    $select.append($('<option>', {
+                        value: String((row || {}).code || '').trim(),
+                        text: String((row || {}).name || (row || {}).code || '').trim()
+                    }));
+                });
+                $select.val(String(path[depth] || '').trim());
+                $selects.append($select);
+
+                if (!path[depth]) {
+                    break;
+                }
+            }
+            updateAdditionalCategoryRow($row);
+        }
+
+        function addAdditionalCategoryRow(categoryCode) {
+            const selectedPath = categoryCode
+                ? findAdditionalCategoryPath(categoryCode, additionalCategoryTree, [])
+                : [];
+            const $row = $('<div>', { class: 'additional-category-row' });
+            $row.append($('<div>', { class: 'additional-category-selects' }));
+            $row.append($('<input>', {
+                type: 'hidden',
+                name: 'cd_additional_category_codes[]',
+                class: 'additional-category-code'
+            }));
+            $row.append($('<button>', {
+                type: 'button',
+                class: 'btnstyle1 btnstyle1-danger btnstyle1-xs remove-additional-category-btn',
+                text: '삭제'
+            }));
+            $row.append($('<span>', { class: 'additional-category-message' }));
+            $('#additional_category_list').append($row);
+            renderAdditionalCategoryRow($row, selectedPath);
+        }
+
+        function revalidateAdditionalCategoryRows() {
+            $('#additional_category_list .additional-category-row').each(function() {
+                updateAdditionalCategoryRow($(this));
+            });
         }
 
         function renderTorsoSizeComparison() {
@@ -2061,8 +2551,7 @@
 
             $('#cd_category_code').val(categoryCode);
             toggleCdSpecFieldsByCategoryCode();
-            $('#onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
-            $('#torso-third-category-guide').toggle(primaryKind === 'TORSO' && secondKind === 'TORSO' && thirdKind === '');
+            revalidateAdditionalCategoryRows();
         }
 
         function toggleCdSpecFieldsByCategoryCode() {
@@ -2198,7 +2687,38 @@
         $('#cd_kind_code_third').on('change', function() {
             updateCategoryCodeInput();
         });
+        $('#add_additional_category_btn').on('click', function() {
+            addAdditionalCategoryRow('');
+        });
+        $(document).on('change', '.additional-category-select', function() {
+            const $select = $(this);
+            const $row = $select.closest('.additional-category-row');
+            const changedDepth = Number($select.attr('data-depth') || 0);
+            const selectedPath = [];
+
+            $row.find('.additional-category-select').each(function() {
+                const depth = Number($(this).attr('data-depth') || 0);
+                if (depth > changedDepth) {
+                    return false;
+                }
+                const code = String($(this).val() || '').trim();
+                if (code) {
+                    selectedPath.push(code);
+                }
+            });
+            renderAdditionalCategoryRow($row, selectedPath);
+        });
+        $(document).on('click', '.remove-additional-category-btn', function() {
+            $(this).closest('.additional-category-row').remove();
+        });
         $(document).on('input', '#cd-spec-02010000-wrap input[name^="cd_spec_vendor["], #cd-spec-02010000-wrap input[name^="cd_spec_measured["]', renderTorsoSizeComparison);
+        if (Array.isArray(initialAdditionalCategoryCodes) && initialAdditionalCategoryCodes.length > 0) {
+            initialAdditionalCategoryCodes.forEach(function(categoryCode) {
+                addAdditionalCategoryRow(String(categoryCode || '').trim());
+            });
+        } else {
+            addAdditionalCategoryRow('');
+        }
         renderSecondCategorySelect(false);
         renderTorsoSizeComparison();
 

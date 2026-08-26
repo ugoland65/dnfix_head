@@ -329,7 +329,7 @@
                 <input type='text' name='rack_code' id='rack_code' value="<?=$rack_code ?? '' ?>" placeholder="랙코드" style="width:80px;">
             </ul>
             <ul>
-                <input type='text' name='search_value' id='search_value' value="<?= $_GET['search_value'] ?? '' ?>" placeholder="검색어" style="min-width: 200px;">
+                <input type='text' name='search_value' id='search_value' value="<?= htmlspecialchars(trim((string)($_GET['search_value'] ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
             <ul>
                 <button type="button" class="btn btnstyle1 btnstyle1-primary btnstyle1-sm" id="searchBtn">
@@ -732,6 +732,8 @@
                                             }
                                         ?>
                                     </td>
+
+                                    <!-- 최근할인일 -->
                                     <td class="text-center">
                                         <?php
                                             $saleDate = $product['ps_sale_date'] ?? null;
@@ -739,6 +741,8 @@
                                                 !empty($saleDate) &&
                                                 $saleDate !== '0000-00-00 00:00:00' &&
                                                 $saleDate !== '0000-00-00' &&
+                                                isset($product['last_sale']['sale_count']) &&
+                                                (int)$product['last_sale']['sale_count'] > 0 &&
                                                 ($ts = strtotime($saleDate)) // strtotime 실패하면 false
                                             ) {
                                         ?>
@@ -910,7 +914,7 @@
             's_margin_group': $("#s_margin_group").val(),
             'rack_code': $("#rack_code").val(),
             'in_stock': $("#in_stock").val(),
-            'search_value': $("#search_value").val(),
+            'search_value': String($("#search_value").val() || '').trim(),
             's_sale_mode': $("#s_sale_mode").val(),
             's_discontinued': $("#s_discontinued").val(),
             's_label_idx': $("#s_label_idx").val(),
@@ -1366,6 +1370,13 @@
 
         $("#s_sale_status").change(function(){
             $("#searchBtn").trigger('click');
+        });
+
+        $("#search_value").on('keydown', function(e){
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $("#searchBtn").trigger('click');
+            }
         });
 
         $(document).on('contextmenu', '.product-kind-cell', function(e) {

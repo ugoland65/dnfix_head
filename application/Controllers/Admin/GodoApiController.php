@@ -394,9 +394,14 @@ class GodoApiController extends BaseClass
                 $orderGoodsSnos = [];
             }
             $orderName = trim((string)($requestData['order_name'] ?? ''));
+            $supplierPartnerIdx = (int)($requestData['supplier_partner_idx'] ?? 0);
 
             $purchaseOrderService = new GodoPurchaseOrderService();
-            $result = $purchaseOrderService->createPurchaseOrderSheet($orderGoodsSnos, $orderName);
+            $result = $purchaseOrderService->createPurchaseOrderSheet(
+                $orderGoodsSnos,
+                $orderName,
+                $supplierPartnerIdx
+            );
 
             return response()->json([
                 'success' => true,

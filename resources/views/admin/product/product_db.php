@@ -340,7 +340,7 @@
                 </select>
             </ul>
             <ul>
-                <input type='text' name='search_value' id='search_value' value="<?= $search_value?? '' ?>" placeholder="검색어" style="min-width: 200px;">
+                <input type='text' name='search_value' id='search_value' value="<?= htmlspecialchars(trim((string)($search_value ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
             <ul>
                 <button type="button" class="btn btnstyle1 btnstyle1-primary btnstyle1-sm" id="searchBtn">
@@ -789,7 +789,7 @@ function select_all() {
 		var fields = {
 			's_prd_kind': $("#s_prd_kind").val(),
             's_prd_kind_second': $("#s_prd_kind_second").val(),
-			'search_value': $("#search_value").val(),
+			'search_value': String($("#search_value").val() || '').trim(),
 			's_brand': $("#s_brand").val(),
             's_relation_group_idx': $("#s_relation_group_idx").val(),
             's_sale_status': $("#s_sale_status").val(),

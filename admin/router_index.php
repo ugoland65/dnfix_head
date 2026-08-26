@@ -179,6 +179,10 @@ try {
     $router->get('/order/godo_order_purchase_list', GodoApiController::class, 'godoOrderPurchaseList'); //구매대행 주문서 조회
     $router->get('/order/purchase/list', PurchaseController::class, 'purchaseOrderList'); //구매대행 발주서 리스트
     $router->get('/order/purchase/detail', PurchaseController::class, 'purchaseOrderDetail'); //구매대행 발주서 상세
+    $router->post('/order/purchase/goods_lookup', PurchaseController::class, 'purchaseOrderGoodsLookup'); //주문번호로 발주 추가 상품 조회
+    $router->post('/order/purchase/goods_add', PurchaseController::class, 'purchaseOrderGoodsAdd'); //기존 발주서에 주문상품 추가
+    $router->post('/order/purchase/goods_delete', PurchaseController::class, 'purchaseOrderGoodsDelete'); //기존 발주서에서 주문상품 삭제
+    $router->post('/order/purchase/amount_save', PurchaseController::class, 'purchaseOrderAmountSave'); //발주서 금액 산정 저장
     $router->post('/order/purchase/delete', PurchaseController::class, 'purchaseOrderDelete'); //구매대행 발주서 삭제
     $router->post('/order/purchase/merge', PurchaseController::class, 'purchaseOrderMerge'); //구매대행 발주서 병합
     $router->post('/order/godo_order_purchase/create_sheet', GodoApiController::class, 'createGodoPurchaseOrderSheet'); //구매대행 선택상품 발주서 생성

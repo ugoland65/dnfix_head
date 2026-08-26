@@ -537,7 +537,7 @@
 
                     <!-- 상품 이미지 -->
                     <td style="width:70px;">
-                        <img src="<?= $img_path ?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">
+                        <img src="<?= $img_path ?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" loading="lazy">
                     </td>
 
                     <!-- 상품 명 -->

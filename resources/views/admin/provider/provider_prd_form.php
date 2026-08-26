@@ -91,6 +91,30 @@
         background: #2563eb;
         color: #fff;
     }
+    .additional-category-list { display: grid; gap: 8px; }
+    .additional-category-row, .additional-category-selects { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+    .additional-category-message { color: #dc2626; font-size: 12px; }
+    .additional-category-help { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+    .preference-tag-list { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+    .preference-tag-item { display: inline-flex; align-items: center; gap: 3px; }
+    .preference-tag-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
+    .preference-tag-chip:has(input:checked) { border-color: #2563eb; background: #eff6ff; color: #1d4ed8; }
+    .preference-tag-chip input { margin: 0; }
+    .preference-tag-info-button { position: relative; display: inline-flex; align-items: center; justify-content: center; width: 22px; height: 22px; padding: 0; border: 0; background: transparent; color: #64748b; cursor: pointer; }
+    .preference-tag-info-button:hover { color: #2563eb; }
+    .preference-tag-info-button:hover::after, .preference-tag-info-button:focus-visible::after { position: absolute; z-index: 30; left: 50%; bottom: calc(100% + 7px); width: max-content; max-width: 320px; padding: 7px 9px; border-radius: 5px; background: #1e293b; color: #fff; font-size: 11px; line-height: 1.4; white-space: normal; content: attr(data-tooltip); transform: translateX(-50%); box-shadow: 0 4px 12px rgba(15, 23, 42, .22); pointer-events: none; }
+    .provider-tag-modal { position: fixed; inset: 0; z-index: 10020; display: none; align-items: center; justify-content: center; padding: 24px; background: rgba(15, 23, 42, .62); }
+    .provider-tag-modal.is-open { display: flex; }
+    .provider-tag-modal__panel { display: flex; flex-direction: column; width: min(760px, 100%); max-height: calc(100vh - 48px); border-radius: 10px; background: #fff; box-shadow: 0 20px 50px rgba(15, 23, 42, .28); overflow: hidden; }
+    .provider-tag-modal__header { display: flex; align-items: center; justify-content: space-between; gap: 16px; padding: 16px 20px; border-bottom: 1px solid #e5e7eb; }
+    .provider-tag-modal__header h2 { margin: 0; color: #1f2937; font-size: 18px; }
+    .provider-tag-modal__close { padding: 4px 8px; border: 0; background: transparent; color: #64748b; font-size: 24px; line-height: 1; cursor: pointer; }
+    .provider-tag-modal__body { min-height: 0; padding: 16px 20px 20px; overflow-y: auto; }
+    .preference-tag-detail-code { margin-left: 6px; color: #64748b; font-size: 12px; font-weight: 400; }
+    .preference-tag-detail-section { margin-bottom: 14px; padding: 13px 15px; border: 1px solid #e2e8f0; border-radius: 7px; }
+    .preference-tag-detail-section:last-child { margin-bottom: 0; }
+    .preference-tag-detail-section h3 { margin: 0 0 7px; color: #334155; font-size: 13px; }
+    .preference-tag-detail-section p { margin: 0; color: #475569; font-size: 13px; line-height: 1.6; white-space: pre-wrap; }
 </style>
 
 <?php if( empty($prd_data['godo_goodsNo']) ){ ?>
@@ -203,6 +227,34 @@
                                 $categoryChildrenByKind[$parentKey] = $childOptions;
                             }
                         }
+                        $normalizeProviderAdditionalCategories = static function (array $rows, int $depth = 1) use (&$normalizeProviderAdditionalCategories): array {
+                            if ($depth > 4) {
+                                return [];
+                            }
+                            $normalizedRows = [];
+                            foreach ($rows as $row) {
+                                if (!is_array($row)) {
+                                    continue;
+                                }
+                                $code = trim((string)($row['code'] ?? ''));
+                                if ($code === '') {
+                                    continue;
+                                }
+                                $key = trim((string)($row['key'] ?? ''));
+                                $name = trim((string)($row['name'] ?? ''));
+                                $children = (isset($row['children']) && is_array($row['children']))
+                                    ? $normalizeProviderAdditionalCategories($row['children'], $depth + 1)
+                                    : [];
+                                $normalizedRows[] = [
+                                    'key' => $key,
+                                    'code' => $code,
+                                    'name' => $name !== '' ? $name : ($key !== '' ? $key : $code),
+                                    'children' => $children,
+                                ];
+                            }
+                            return $normalizedRows;
+                        };
+                        $providerAdditionalCategoryTree = $normalizeProviderAdditionalCategories($categoryRows);
 
                         $selectedKindRaw = trim((string)($prd_data['kind'] ?? ''));
                         $selectedKindCode = $selectedKindRaw;
@@ -231,6 +283,9 @@
                                 }
                             }
                         }
+                        $providerAdditionalCategoryCodes = (isset($prd_data['additional_category_codes']) && is_array($prd_data['additional_category_codes']))
+                            ? array_values(array_unique(array_filter(array_map('strval', $prd_data['additional_category_codes']))))
+                            : [];
                     ?>
                     <div style="display:flex; align-items:center; gap:8px; flex-wrap:wrap;">
                         <select name="kind">
@@ -263,6 +318,82 @@
                     include dirname(__DIR__) . '/product/partials/category_guide.php';
                     ?>
 
+                </td>
+            </tr>
+
+            <tr>
+                <th>추가 구분</th>
+                <td>
+                    <input type="hidden" name="cd_additional_category_codes[]" value="">
+                    <div id="provider_additional_category_list" class="additional-category-list"></div>
+                    <button type="button" id="provider_add_additional_category_btn" class="btnstyle1 btnstyle1-xs">+ 카테고리 추가</button>
+                    <p class="additional-category-help">대표 카테고리를 제외한 카테고리를 여러 개 지정할 수 있습니다. 최대 4차 카테고리까지 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
+            <tr>
+                <th>취향/태그</th>
+                <td>
+                    <?php
+                    $providerProductConfig = config('admin.product');
+                    $providerPreferenceTags = (isset($providerProductConfig['preference_tags']) && is_array($providerProductConfig['preference_tags']))
+                        ? $providerProductConfig['preference_tags']
+                        : [];
+                    $selectedProviderPreferenceTagCodes = (isset($prd_data['preference_tag_codes']) && is_array($prd_data['preference_tag_codes']))
+                        ? array_fill_keys($prd_data['preference_tag_codes'], true)
+                        : [];
+                    ?>
+                    <input type="hidden" name="preference_tag_codes[]" value="">
+                    <div class="preference-tag-list">
+                        <?php foreach ($providerPreferenceTags as $preferenceTag) {
+                            if (!is_array($preferenceTag) || empty($preferenceTag['is_active'])) {
+                                continue;
+                            }
+                            $tagCode = trim((string)($preferenceTag['code'] ?? ''));
+                            $tagName = trim((string)($preferenceTag['name'] ?? ''));
+                            $tagDescription = trim((string)($preferenceTag['description'] ?? ''));
+                            $tagAdminDescription = trim((string)($preferenceTag['admin_description'] ?? ''));
+                            if ($tagCode === '' || $tagName === '') {
+                                continue;
+                            }
+                        ?>
+                            <span class="preference-tag-item">
+                                <label class="preference-tag-chip">
+                                    <input type="checkbox" name="preference_tag_codes[]" value="<?= htmlspecialchars($tagCode, ENT_QUOTES, 'UTF-8') ?>" <?= isset($selectedProviderPreferenceTagCodes[$tagCode]) ? 'checked' : '' ?>>
+                                    <span>#<?= htmlspecialchars($tagName, ENT_QUOTES, 'UTF-8') ?></span>
+                                </label>
+                                <button type="button"
+                                    class="preference-tag-info-button"
+                                    aria-label="<?= htmlspecialchars($tagName, ENT_QUOTES, 'UTF-8') ?> 태그 안내"
+                                    data-code="<?= htmlspecialchars($tagCode, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-name="<?= htmlspecialchars($tagName, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-description="<?= htmlspecialchars($tagDescription, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-admin-description="<?= htmlspecialchars($tagAdminDescription, ENT_QUOTES, 'UTF-8') ?>"
+                                    data-tooltip="<?= htmlspecialchars($tagAdminDescription, ENT_QUOTES, 'UTF-8') ?>">
+                                    <svg xmlns="http://www.w3.org/2000/svg" width="16" fill="currentColor" viewBox="0 0 480 480" aria-hidden="true"><path d="M240 209c8.836 0 16 7.164 16 16v81c0 8.836-7.164 16-16 16s-16-7.163-16-16v-81c0-8.837 7.163-16 16-16M240 157c9.941 0 18 8.059 18 18s-8.059 18-18 18-18-8.059-18-18 8.059-18 18-18"></path><path fill-rule="evenodd" d="M240 47c106.591 0 193 86.409 193 193s-86.409 193-193 193S47 346.591 47 240 133.409 47 240 47m0 32c-88.918 0-161 72.082-161 161s72.082 161 161 161 161-72.082 161-161S328.918 79 240 79" clip-rule="evenodd"></path></svg>
+                                </button>
+                            </span>
+                        <?php } ?>
+                    </div>
+
+                    <div id="provider_preference_tag_modal" class="provider-tag-modal" aria-hidden="true">
+                        <div class="provider-tag-modal__panel" role="dialog" aria-modal="true" aria-labelledby="provider_preference_tag_modal_title">
+                            <div class="provider-tag-modal__header">
+                                <h2 id="provider_preference_tag_modal_title"><span class="preference-tag-detail-name"></span><span class="preference-tag-detail-code"></span></h2>
+                                <button type="button" class="provider-tag-modal__close" aria-label="취향/태그 안내 닫기">&times;</button>
+                            </div>
+                            <div class="provider-tag-modal__body">
+                                <div class="preference-tag-detail-section">
+                                    <h3>고객 안내</h3>
+                                    <p class="preference-tag-detail-description"></p>
+                                </div>
+                                <div class="preference-tag-detail-section">
+                                    <h3>운영자 분류 기준</h3>
+                                    <p class="preference-tag-detail-admin-description"></p>
+                                </div>
+                            </div>
+                        </div>
+                    </div>
                 </td>
             </tr>
 
@@ -1050,6 +1181,8 @@
     $(document).ready(function() {
         $('.dn-select2').select2();
         initProviderCategorySelector();
+        initProviderAdditionalCategories();
+        initProviderPreferenceTags();
         initGodoCategorySelector();
 
         var $providerSectionNav = $('#provider_section_nav');
@@ -1096,6 +1229,8 @@
     const providerKindNameByCode = <?= json_encode($prd_kind_name ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialProviderSecondKindKey = <?= json_encode($selectedSecondKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialProviderThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const providerAdditionalCategoryTree = <?= json_encode($providerAdditionalCategoryTree ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialProviderAdditionalCategoryCodes = <?= json_encode($providerAdditionalCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let hasAppliedInitialProviderSecondCategory = false;
     let hasAppliedInitialProviderThirdCategory = false;
     const godoCateTree = <?= json_encode($godo_cate ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1114,6 +1249,193 @@
             return '';
         }
         return String(providerCategoryCodeByKind[key] || '').trim();
+    }
+
+    function findProviderAdditionalCategoryPath(categoryCode, rows, path) {
+        const targetCode = String(categoryCode || '').trim();
+        const currentRows = Array.isArray(rows) ? rows : [];
+        const currentPath = Array.isArray(path) ? path : [];
+        for (let i = 0; i < currentRows.length; i++) {
+            const row = currentRows[i] || {};
+            const rowCode = String(row.code || '').trim();
+            const nextPath = currentPath.concat(rowCode);
+            if (rowCode === targetCode) {
+                return nextPath;
+            }
+            const childPath = findProviderAdditionalCategoryPath(targetCode, row.children, nextPath);
+            if (childPath.length > 0) {
+                return childPath;
+            }
+        }
+        return [];
+    }
+
+    function getProviderAdditionalRows(path, depth) {
+        let rows = Array.isArray(providerAdditionalCategoryTree) ? providerAdditionalCategoryTree : [];
+        for (let i = 0; i < depth; i++) {
+            const selectedCode = String(path[i] || '').trim();
+            const selectedRow = rows.find(function(row) {
+                return String((row || {}).code || '').trim() === selectedCode;
+            });
+            rows = selectedRow && Array.isArray(selectedRow.children) ? selectedRow.children : [];
+        }
+        return rows;
+    }
+
+    function updateProviderAdditionalCategoryRow($row) {
+        const path = [];
+        $row.find('.provider-additional-category-select').each(function() {
+            const code = String($(this).val() || '').trim();
+            if (code) {
+                path.push(code);
+            }
+        });
+        const categoryCode = path.length ? path[path.length - 1] : '';
+        const primaryCategoryCode = String($('#provider_category_code').val() || '').trim();
+        let submittedCode = categoryCode;
+        let message = '';
+
+        if (categoryCode && categoryCode === primaryCategoryCode) {
+            submittedCode = '';
+            message = '대표 카테고리와 같은 카테고리는 추가할 수 없습니다.';
+        } else if (categoryCode) {
+            $('#provider_additional_category_list .provider-additional-category-code')
+                .not($row.find('.provider-additional-category-code'))
+                .each(function() {
+                    if (String($(this).val() || '').trim() === categoryCode) {
+                        submittedCode = '';
+                        message = '이미 추가한 카테고리입니다.';
+                        return false;
+                    }
+                });
+        }
+        $row.find('.provider-additional-category-code').val(submittedCode);
+        $row.find('.additional-category-message').text(message);
+    }
+
+    function renderProviderAdditionalCategoryRow($row, selectedPath) {
+        const path = Array.isArray(selectedPath) ? selectedPath : [];
+        const $selects = $row.find('.additional-category-selects').empty();
+        for (let depth = 0; depth < 4; depth++) {
+            const rows = getProviderAdditionalRows(path, depth);
+            if (!rows.length) {
+                break;
+            }
+            const $select = $('<select>', {
+                class: 'provider-additional-category-select',
+                'data-depth': depth
+            }).append($('<option>', {
+                value: '',
+                text: (depth + 1) + '차 카테고리 선택'
+            }));
+            rows.forEach(function(row) {
+                $select.append($('<option>', {
+                    value: String((row || {}).code || '').trim(),
+                    text: String((row || {}).name || (row || {}).code || '').trim()
+                }));
+            });
+            $select.val(String(path[depth] || '').trim());
+            $selects.append($select);
+            if (!path[depth]) {
+                break;
+            }
+        }
+        updateProviderAdditionalCategoryRow($row);
+    }
+
+    function addProviderAdditionalCategoryRow(categoryCode) {
+        const selectedPath = categoryCode
+            ? findProviderAdditionalCategoryPath(categoryCode, providerAdditionalCategoryTree, [])
+            : [];
+        const $row = $('<div>', { class: 'additional-category-row' });
+        $row.append($('<div>', { class: 'additional-category-selects' }));
+        $row.append($('<input>', {
+            type: 'hidden',
+            name: 'cd_additional_category_codes[]',
+            class: 'provider-additional-category-code'
+        }));
+        $row.append($('<button>', {
+            type: 'button',
+            class: 'btnstyle1 btnstyle1-danger btnstyle1-xs provider-remove-additional-category-btn',
+            text: '삭제'
+        }));
+        $row.append($('<span>', { class: 'additional-category-message' }));
+        $('#provider_additional_category_list').append($row);
+        renderProviderAdditionalCategoryRow($row, selectedPath);
+    }
+
+    function revalidateProviderAdditionalCategories() {
+        $('#provider_additional_category_list .additional-category-row').each(function() {
+            updateProviderAdditionalCategoryRow($(this));
+        });
+    }
+
+    function initProviderAdditionalCategories() {
+        $('#provider_add_additional_category_btn').on('click', function() {
+            addProviderAdditionalCategoryRow('');
+        });
+        $(document).on('change', '.provider-additional-category-select', function() {
+            const $select = $(this);
+            const $row = $select.closest('.additional-category-row');
+            const changedDepth = Number($select.attr('data-depth') || 0);
+            const selectedPath = [];
+            $row.find('.provider-additional-category-select').each(function() {
+                if (Number($(this).attr('data-depth') || 0) > changedDepth) {
+                    return false;
+                }
+                const code = String($(this).val() || '').trim();
+                if (code) {
+                    selectedPath.push(code);
+                }
+            });
+            renderProviderAdditionalCategoryRow($row, selectedPath);
+        });
+        $(document).on('click', '.provider-remove-additional-category-btn', function() {
+            $(this).closest('.additional-category-row').remove();
+        });
+        if (Array.isArray(initialProviderAdditionalCategoryCodes) && initialProviderAdditionalCategoryCodes.length) {
+            initialProviderAdditionalCategoryCodes.forEach(addProviderAdditionalCategoryRow);
+        } else {
+            addProviderAdditionalCategoryRow('');
+        }
+    }
+
+    function initProviderPreferenceTags() {
+        const $modal = $('#provider_preference_tag_modal');
+        let previousBodyOverflow = '';
+        let $lastTrigger = $();
+        const closeModal = function() {
+            if (!$modal.hasClass('is-open')) {
+                return;
+            }
+            $modal.removeClass('is-open').attr('aria-hidden', 'true');
+            document.body.style.overflow = previousBodyOverflow;
+            if ($lastTrigger.length) {
+                $lastTrigger.trigger('focus');
+            }
+        };
+        $(document).on('click', '.preference-tag-info-button', function() {
+            $lastTrigger = $(this);
+            $modal.find('.preference-tag-detail-name').text('#' + String($lastTrigger.attr('data-name') || ''));
+            $modal.find('.preference-tag-detail-code').text(String($lastTrigger.attr('data-code') || ''));
+            $modal.find('.preference-tag-detail-description').text(String($lastTrigger.attr('data-description') || '등록된 고객 안내가 없습니다.'));
+            $modal.find('.preference-tag-detail-admin-description').text(String($lastTrigger.attr('data-admin-description') || '등록된 운영자 분류 기준이 없습니다.'));
+            previousBodyOverflow = document.body.style.overflow;
+            document.body.style.overflow = 'hidden';
+            $modal.addClass('is-open').attr('aria-hidden', 'false');
+            $modal.find('.provider-tag-modal__close').trigger('focus');
+        });
+        $modal.on('click', '.provider-tag-modal__close', closeModal);
+        $modal.on('click', function(event) {
+            if (event.target === this) {
+                closeModal();
+            }
+        });
+        $(document).on('keydown.providerPreferenceTagModal', function(event) {
+            if (event.key === 'Escape') {
+                closeModal();
+            }
+        });
     }
 
     function updateProviderCategoryCodeInput() {
@@ -1136,6 +1458,7 @@
         }
         $('#provider-onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
         $('#provider-torso-third-category-guide').toggle(primaryKind === 'TORSO' && secondKind === 'TORSO' && thirdKind === '');
+        revalidateProviderAdditionalCategories();
     }
 
     function renderProviderSecondCategorySelect(resetSelection) {

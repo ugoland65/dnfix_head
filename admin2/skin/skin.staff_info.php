@@ -16,7 +16,6 @@ if( $_idx ){
 		)
 	);
 
-
 }else{
 	$_target_name = $_ad_name;
 

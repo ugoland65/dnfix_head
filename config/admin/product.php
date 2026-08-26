@@ -1,5 +1,6 @@
 <?php
 
+// prdDB 카테고리 대분류
 $prd_kind_name = [
     'ONAHOLE' => "오나홀",
     'TORSO' => "토르소",
@@ -24,6 +25,7 @@ $prd_kind_name = [
     'REALDOLL' => "리얼돌",
 ];
 
+// prdDB 상세 카테고리
 $categories = [
     [
         'code' => '01000000',
@@ -531,6 +533,30 @@ $categories = [
     ],
 ];
 
+// 취향/태그
+$preferenceTags = [
+    'FUTANARI' => [
+        'code' => 'FUTANARI',
+        'name' => '후타나리',
+
+        // 고객에게 표시되는 설명
+        'description' => '여성의 신체적 특징과 남성 성기가 함께 표현된 판타지 장르를 뜻합니다.',
+
+        // 운영자용 상품 분류 기준
+        'admin_description' => '홀과 딜도 기능이 함께 있는 제품',
+
+        // 연결되는 그룹 코드
+        'group_codes' => [],
+
+        // 쇼핑몰 카테고리 연결
+        'operation_category_code' => null,
+        'godo_category_code' => 061001,
+
+        // 사용 여부
+        'is_active' => true,
+    ],
+];
+
 
 $importing_country = [
     'jp' => "일본",
@@ -628,6 +654,7 @@ $sale_status_options = [
 $data = [
     'prd_kind_name' => $prd_kind_name,
     'categories' => $categories,
+    'preference_tags' => $preferenceTags,
     'importing_country' => $importing_country,
     'purchase_type_options' => $purchase_type_options,
     'sale_status_options' => $sale_status_options,

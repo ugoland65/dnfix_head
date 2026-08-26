@@ -9,8 +9,69 @@ use App\Models\GodoOrderGoodsModel;
 class GodoOrderSyncService
 {
     /**
+     * getGodoOrderInfo()의 주문 상세 응답을 기존 주문상품 동기화 형식으로 변환해 저장한다.
+     *
+     * @param array $orderDetail
+     * @return array
+     * @throws Exception
+     */
+    public function syncOrderDetail(array $orderDetail): array
+    {
+        $goodsRows = $orderDetail['orderGoods'] ?? [];
+        if (!is_array($goodsRows) || empty($goodsRows)) {
+            throw new Exception('주문에 저장할 상품 데이터가 없습니다.');
+        }
+
+        $header = $orderDetail;
+        unset($header['orderGoods'], $header['member'], $header['dc_info']);
+
+        $member = isset($orderDetail['member']) && is_array($orderDetail['member'])
+            ? $orderDetail['member']
+            : [];
+        foreach (['memNo', 'memId', 'memNm', 'cellPhone', 'groupNm'] as $memberField) {
+            if (!array_key_exists($memberField, $header) && array_key_exists($memberField, $member)) {
+                $header[$memberField] = $member[$memberField];
+            }
+        }
+
+        $goodsNos = [];
+        foreach ($goodsRows as $goodsRow) {
+            $goodsNo = trim((string)($goodsRow['goodsNo'] ?? ''));
+            if ($goodsNo !== '') {
+                $goodsNos[$goodsNo] = true;
+            }
+        }
+
+        $productMap = [];
+        if (!empty($goodsNos)) {
+            $productService = new ProductService();
+            $productMap = $productService->getProductWhereInGodoCode(array_keys($goodsNos));
+        }
+
+        $rows = [];
+        foreach ($goodsRows as $goodsRow) {
+            if (!is_array($goodsRow)) {
+                continue;
+            }
+
+            $row = array_merge($header, $goodsRow);
+            $goodsNo = trim((string)($goodsRow['goodsNo'] ?? ''));
+            if ($goodsNo !== '' && isset($productMap[$goodsNo])) {
+                $row['Product'] = $productMap[$goodsNo];
+            }
+            $rows[] = $row;
+        }
+
+        return $this->syncOrderGoodsList([
+            'orderData' => [
+                'data' => $rows,
+            ],
+        ]);
+    }
+
+    /**
      * 고도몰 주문상품 API 결과를 주문/주문상품 테이블에 동기화한다.
-     * - 신규 데이터만 저장 (기존 order_no / order_goods_sno 는 스킵)
+     * - 신규 데이터는 저장하고 기존 order_no / order_goods_sno 는 최신 값으로 갱신
      *
      * @param array $orderGoodsApiResponse GodoApiService::getOrderGoodsList() 응답
      * @return array
@@ -22,8 +83,10 @@ class GodoOrderSyncService
         if (!is_array($rows) || empty($rows)) {
             return [
                 'order_created_count' => 0,
+                'order_updated_count' => 0,
                 'order_skipped_count' => 0,
                 'goods_created_count' => 0,
+                'goods_updated_count' => 0,
                 'goods_skipped_count' => 0,
                 'invalid_count' => 0,
                 'message' => '동기화할 주문 데이터가 없습니다.',
@@ -58,8 +121,10 @@ class GodoOrderSyncService
         if (empty($orderNos)) {
             return [
                 'order_created_count' => 0,
+                'order_updated_count' => 0,
                 'order_skipped_count' => 0,
                 'goods_created_count' => 0,
+                'goods_updated_count' => 0,
                 'goods_skipped_count' => 0,
                 'invalid_count' => count($rows),
                 'message' => '유효한 주문번호(orderNo)가 없어 동기화를 중단했습니다.',
@@ -73,8 +138,10 @@ class GodoOrderSyncService
         $existingGoodsSnoMap = $this->getExistingGoodsSnoMap($goodsSnoList);
 
         $orderCreatedCount = 0;
+        $orderUpdatedCount = 0;
         $orderSkippedCount = 0;
         $goodsCreatedCount = 0;
+        $goodsUpdatedCount = 0;
         $goodsSkippedCount = 0;
         $invalidCount = 0;
 
@@ -85,15 +152,22 @@ class GodoOrderSyncService
             &$existingOrderMap,
             &$existingGoodsSnoMap,
             &$orderCreatedCount,
+            &$orderUpdatedCount,
             &$orderSkippedCount,
             &$goodsCreatedCount,
+            &$goodsUpdatedCount,
             &$goodsSkippedCount,
             &$invalidCount
         ) {
-            // 1) 주문 저장 (신규만)
+            // 1) 주문 저장 또는 최신 API 값으로 갱신
             foreach ($orderRowsMap as $orderNo => $groupRows) {
                 if (isset($existingOrderMap[$orderNo])) {
-                    $orderSkippedCount++;
+                    $orderPayload = $this->buildOrderUpdatePayload($orderNo, $groupRows, $now);
+                    GodoOrderModel::update(
+                        ['order_no' => $orderNo],
+                        $orderPayload
+                    );
+                    $orderUpdatedCount++;
                     continue;
                 }
 
@@ -108,7 +182,7 @@ class GodoOrderSyncService
                 $orderCreatedCount++;
             }
 
-            // 2) 주문상품 저장 (신규만)
+            // 2) 주문상품 저장 또는 최신 API 값으로 갱신
             foreach ($rows as $row) {
                 if (!is_array($row)) {
                     $invalidCount++;
@@ -136,7 +210,7 @@ class GodoOrderSyncService
                         ['order_goods_sno' => $orderGoodsSno],
                         $updatePayload
                     );
-                    $goodsSkippedCount++;
+                    $goodsUpdatedCount++;
                     continue;
                 }
 
@@ -150,11 +224,16 @@ class GodoOrderSyncService
 
         return [
             'order_created_count' => $orderCreatedCount,
+            'order_updated_count' => $orderUpdatedCount,
             'order_skipped_count' => $orderSkippedCount,
             'goods_created_count' => $goodsCreatedCount,
+            'goods_updated_count' => $goodsUpdatedCount,
             'goods_skipped_count' => $goodsSkippedCount,
             'invalid_count' => $invalidCount,
-            'message' => '고도몰 주문 동기화 완료 (주문 신규 ' . $orderCreatedCount . '건, 주문상품 신규 ' . $goodsCreatedCount . '건)',
+            'message' => '고도몰 주문 동기화 완료 (주문 신규 ' . $orderCreatedCount
+                . '건/갱신 ' . $orderUpdatedCount
+                . '건, 주문상품 신규 ' . $goodsCreatedCount
+                . '건/갱신 ' . $goodsUpdatedCount . '건)',
         ];
     }
 
@@ -308,6 +387,22 @@ class GodoOrderSyncService
     }
 
     /**
+     * 기존 주문 업데이트 payload 생성
+     *
+     * @param string $orderNo
+     * @param array $groupRows
+     * @param string $now
+     * @return array
+     */
+    private function buildOrderUpdatePayload(string $orderNo, array $groupRows, string $now): array
+    {
+        $payload = $this->buildOrderInsertPayload($orderNo, $groupRows, $now);
+        unset($payload['order_no'], $payload['created_at']);
+        $payload['updated_at'] = $now;
+        return $payload;
+    }
+
+    /**
      * 주문상품 insert payload 생성
      * @param int $godoOrderId
      * @param string $orderNo
@@ -388,6 +483,16 @@ class GodoOrderSyncService
         $payload = $this->buildOrderGoodsInsertPayload($godoOrderId, $orderNo, $orderGoodsSno, $row, $now);
         unset($payload['order_goods_sno']);
         unset($payload['created_at']);
+
+        // API 원본 필드가 아닌 내부 상품 매칭값은 응답에 매칭정보가 있을 때만 갱신한다.
+        if (!isset($row['ProductPartner']) || !is_array($row['ProductPartner'])) {
+            unset($payload['product_partner_id']);
+        }
+        if (!isset($row['Product']) || !is_array($row['Product'])) {
+            unset($payload['intranet_goods_id']);
+        }
+
+        $payload['updated_at'] = $now;
         return $payload;
     }
 

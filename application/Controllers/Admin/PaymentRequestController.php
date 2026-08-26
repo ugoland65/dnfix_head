@@ -135,7 +135,8 @@ class PaymentRequestController extends BaseClass
                 }
                 $purchaseOrderData = $purchaseOrder->toArray();
                 $kind_idx = $purchaseOrderIdx;
-                $amount = (float)($purchaseOrderData['total_amount'] ?? 0);
+                $amount = (float)($purchaseOrderData['purchase_final_amount']
+                    ?? ($purchaseOrderData['total_amount'] ?? 0));
                 $currency = 'KRW';
                 $godoOrderNos = $requestData['godoOrderNos'] ?? [];
                 if (!is_array($godoOrderNos)) {
