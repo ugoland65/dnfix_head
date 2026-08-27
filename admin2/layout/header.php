@@ -74,6 +74,8 @@
 		}
 	</style>
 	
+
+
 <?php if (!empty($_SESSION['_flash']['success'])): ?>
 	<script>
 	alert('<?=$_SESSION['_flash']['success']?>');

@@ -416,6 +416,12 @@ class OrderSheetController extends BaseClass
                 $result = $orderSheetService->calendarDel($requestData);
                 $message = $result['message'] ?? $result['msg'] ?? "캘린더가 삭제되었습니다.";
 
+            // 주문서 상품 메모 저장
+            }elseif( $actionMode == 'orderSheetProductMemoSave' ){
+
+                $result = $orderSheetService->orderSheetProductMemoSave($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "상품 메모가 저장되었습니다.";
+
             // 주문서 상품 실패 처리
             }elseif( $actionMode == 'orderSheetProductUnitFalse' ){
 
@@ -451,6 +457,18 @@ class OrderSheetController extends BaseClass
 
                 $result = $orderSheetService->orderSheetProductMoveGroup($requestData);
                 $message = $result['message'] ?? $result['msg'] ?? "주문서 상품이 그룹 이동되었습니다.";
+
+            // 다른 주문서 폼 및 폼그룹 조회
+            }elseif( $actionMode == 'orderSheetProductOtherFormTargets' ){
+
+                $result = $orderSheetService->getOtherOrderFormTargets($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "다른 주문서 폼 목록을 조회했습니다.";
+
+            // 다른 주문서 폼에 상품 등록
+            }elseif( $actionMode == 'orderSheetProductRegisterOtherForm' ){
+
+                $result = $orderSheetService->registerProductToOtherOrderForm($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "상품을 다른 주문서 폼에 등록했습니다.";
 
             // 주문서 재고 일괄등록
             }elseif( $actionMode == 'orderSheetAllStock' ){

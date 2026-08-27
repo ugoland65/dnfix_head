@@ -79,7 +79,7 @@ class AuthAdmin
     public static function getSession($key)
     {
 		self::startSession(); // 세션이 시작되지 않았다면 시작
-		return $_SESSION[$key];
+		return $_SESSION[$key] ?? null;
     }
 
 	public static function getSessionId()

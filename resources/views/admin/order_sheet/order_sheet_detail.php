@@ -10,6 +10,533 @@ $form_view = isset($form_view) ? (string)$form_view : 'show';
 var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 </script>
 
+<style>
+.order-sheet-product-loading {
+    position: absolute;
+    inset: 0;
+    z-index: 1000;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    background: rgba(255, 255, 255, 0.86);
+}
+
+.order-sheet-product-loading[hidden] {
+    display: none !important;
+}
+
+.order-sheet-product-loading__box {
+    min-width: 240px;
+    padding: 24px 28px;
+    border: 1px solid #d7dce5;
+    border-radius: 8px;
+    background: #fff;
+    box-shadow: 0 8px 24px rgba(0, 0, 0, 0.12);
+    color: #333;
+    font-size: 13px;
+    font-weight: 600;
+    text-align: center;
+}
+
+.order-sheet-product-loading__spinner {
+    width: 28px;
+    height: 28px;
+    margin: 0 auto 12px;
+    border: 3px solid #d9e2f3;
+    border-top-color: #1769d2;
+    border-radius: 50%;
+    animation: order-sheet-product-loading-spin 0.8s linear infinite;
+}
+
+@keyframes order-sheet-product-loading-spin {
+    to {
+        transform: rotate(360deg);
+    }
+}
+</style>
+<style type="text/css">
+    .number-point {
+        color: #ff0000;
+    }
+
+    .unit-price-sum {
+        font-size: 14px;
+        font-weight: 600;
+        color: #021aff;
+    }
+
+    .notice-box {
+        text-align: center;
+        font-size: 10px;
+    }
+
+    .notice-box i {
+        font-size: 16px;
+    }
+
+    .group-state {
+        display: inline-block;
+        font-size: 11px;
+        padding: 5px 10px;
+        border-radius: 5px;
+    }
+
+    .group-state.normal {
+        background-color: #eee;
+        border: 1px solid #ddd;
+    }
+
+    .group-state.ing {
+        background-color: #95f4ff;
+        border: 1px solid #0ed1e8;
+    }
+
+    .group-state.end {
+        background-color: #ffcbcb;
+        border: 1px solid #f88080;
+    }
+
+    .qty-control-wrap {
+        display: flex;
+        align-items: stretch;
+        gap: 2px;
+    }
+
+    .qty-control-wrap .qty-input {
+        width: 100%;
+    }
+
+    .qty-step-wrap {
+        display: flex;
+        flex-direction: column;
+        gap: 1px;
+        width: 16px;
+    }
+
+    .qty-step-btn {
+        width: 16px;
+        height: 13px;
+        line-height: 11px;
+        border: 1px solid #bfc7d9;
+        background: #f5f7fb;
+        color: #2f3b59;
+        font-size: 9px;
+        cursor: pointer;
+        padding: 0;
+        user-select: none;
+    }
+
+    .price-input-wrap{
+        display: flex;
+        flex-direction: column;
+        gap: 2px;
+    }
+
+    .unit-price-text{
+        font-size: 14px;
+    }
+    .krw-price{
+        color: #777;
+        font-size: 11px;
+    }
+
+    .en-title{
+        color: #777;
+        font-size: 10px !important;
+    }
+
+    .en-title-currency-code{
+        color: #777;
+        font-size: 10px !important;
+    }
+
+    .row-order-cell {
+        text-align: center;
+        vertical-align: middle;
+        cursor: ns-resize;
+        user-select: none;
+        touch-action: pan-y;
+    }
+
+    .row-order-handle {
+        position: relative;
+        display: inline-flex;
+        align-items: center;
+        justify-content: center;
+        width: 18px;
+        height: 52px;
+        border: 1px solid #d8deea;
+        border-radius: 4px;
+        background: #f7f9fc;
+        color: #60708f;
+    }
+
+    .row-order-handle::before,
+    .row-order-handle::after {
+        content: "";
+        position: absolute;
+        top: 8px;
+        bottom: 8px;
+        width: 2px;
+        border-radius: 2px;
+        background: repeating-linear-gradient(
+            to bottom,
+            #9ba8c2 0,
+            #9ba8c2 2px,
+            transparent 2px,
+            transparent 5px
+        );
+    }
+
+    .row-order-handle::before {
+        left: 5px;
+    }
+
+    .row-order-handle::after {
+        right: 5px;
+    }
+
+    .row-order-icon {
+        position: relative;
+        z-index: 1;
+        font-size: 11px;
+        line-height: 1;
+    }
+
+    .row-sort-active {
+        box-shadow: inset 0 0 0 2px #6f89ff;
+    }
+
+    .row-sort-placeholder td {
+        background: #eef3ff !important;
+        border-top: 1px dashed #91a7e8;
+        border-bottom: 1px dashed #91a7e8;
+        height: 44px;
+    }
+
+    .row-context-selected {
+        outline: 2px solid #5e78f0;
+        outline-offset: -2px;
+    }
+
+    .row-context-menu {
+        position: fixed;
+        z-index: 9999;
+        min-width: 150px;
+        background: #fff;
+        border: 1px solid #cdd5e5;
+        border-radius: 6px;
+        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
+        padding: 4px 0;
+    }
+
+    .row-context-menu[hidden] {
+        display: none;
+    }
+
+    .row-context-menu button {
+        display: flex;
+        align-items: center;
+        gap: 7px;
+        width: 100%;
+        border: 0;
+        background: transparent;
+        text-align: left;
+        padding: 8px 12px;
+        font-size: 12px;
+        color: #1f2c47;
+        cursor: pointer;
+    }
+
+    .row-context-menu button:hover {
+        background: #edf3ff;
+    }
+
+    .row-context-menu button.active {
+        background: #e7efff;
+        color: #1a397a;
+        font-weight: 600;
+    }
+
+    .row-context-menu button + button {
+        border-top: 1px solid #eef1f6;
+    }
+
+    #orderSheetRowMoveGroupList {
+        max-height: 252px; /* 약 7개 항목 */
+        overflow-y: auto;
+    }
+
+    #orderSheetRowMoveGroupList:not(:empty) {
+        border-top: 1px solid #eef1f6;
+    }
+
+    .row-context-menu-icon {
+        display: inline-flex;
+        width: 14px;
+        color: #4c5f86;
+        justify-content: center;
+        font-size: 12px;
+        line-height: 1;
+    }
+
+    .other-form-register-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10020;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        padding: 20px;
+        background: rgba(20, 29, 48, 0.48);
+    }
+
+    .other-form-register-modal[hidden] {
+        display: none;
+    }
+
+    .other-form-register-dialog {
+        width: min(520px, 100%);
+        max-height: min(680px, calc(100vh - 40px));
+        overflow: hidden;
+        background: #fff;
+        border-radius: 9px;
+        box-shadow: 0 18px 48px rgba(0, 0, 0, 0.24);
+    }
+
+    .other-form-register-header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        padding: 14px 16px;
+        border-bottom: 1px solid #e4e8f0;
+    }
+
+    .other-form-register-header h3 {
+        margin: 0;
+        font-size: 16px;
+        color: #17233b;
+    }
+
+    .other-form-register-close {
+        border: 0;
+        background: transparent;
+        color: #68758e;
+        font-size: 22px;
+        line-height: 1;
+        cursor: pointer;
+    }
+
+    .other-form-register-body {
+        max-height: calc(min(680px, 100vh - 40px) - 58px);
+        overflow-y: auto;
+        padding: 16px;
+    }
+
+    .other-form-register-guide {
+        margin: 0 0 12px;
+        color: #55627a;
+        font-size: 12px;
+    }
+
+    .other-form-register-list {
+        display: grid;
+        gap: 7px;
+    }
+
+    .other-form-register-list button {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 10px 12px;
+        border: 1px solid #dce2ed;
+        border-radius: 6px;
+        background: #fff;
+        color: #24324d;
+        text-align: left;
+        cursor: pointer;
+    }
+
+    .other-form-register-list button:hover {
+        border-color: #7189e8;
+        background: #f4f7ff;
+    }
+
+    .other-form-register-list button:disabled {
+        cursor: not-allowed;
+        opacity: 0.62;
+    }
+
+    .other-form-register-count {
+        flex: none;
+        margin-left: 12px;
+        color: #74819a;
+        font-size: 11px;
+    }
+
+    .other-form-register-back {
+        margin: 0 0 12px;
+        border: 0;
+        background: transparent;
+        color: #4863c6;
+        cursor: pointer;
+    }
+
+    .other-form-register-selected {
+        margin: 0 0 12px;
+        font-size: 14px;
+        color: #17233b;
+    }
+
+    .other-form-register-duplicate {
+        padding: 12px;
+        border: 1px solid #f0c6c6;
+        border-radius: 6px;
+        background: #fff4f4;
+        color: #b32626;
+        font-size: 12px;
+    }
+
+    .other-form-register-new {
+        display: flex;
+        gap: 7px;
+        margin-top: 14px;
+        padding-top: 14px;
+        border-top: 1px solid #e7eaf0;
+    }
+
+    .other-form-register-new input {
+        min-width: 0;
+        flex: 1;
+        height: 34px;
+        padding: 0 10px;
+        border: 1px solid #cfd6e3;
+        border-radius: 5px;
+    }
+
+    .other-form-register-new button {
+        flex: none;
+    }
+
+    .other-form-register-empty,
+    .other-form-register-loading {
+        padding: 26px 12px;
+        color: #6b7890;
+        text-align: center;
+        font-size: 12px;
+    }
+
+    .weight-sum-wrap{
+        ul{
+            font-size: 11px;
+        }
+    }
+
+    .stock-zero-filter.is-active {
+        background: #6c757d;
+        border-color: #6c757d;
+        color: #fff;
+    }
+
+    .ospl-prd-wrap .table-st1 tbody > tr.stock-zero-filter-hidden {
+        display: none !important;
+    }
+
+    .order-product-memo-cell {
+        position: relative;
+        min-width: 150px;
+        padding: 0 !important;
+        vertical-align: top;
+    }
+
+    .order-product-memo-display,
+    .order-product-memo-editor {
+        width: 100%;
+        box-sizing: border-box;
+        padding: 6px;
+        margin: 0;
+        color: #ff0000;
+        background: transparent;
+        white-space: pre-wrap;
+        overflow-wrap: anywhere;
+    }
+
+    .order-product-memo-display {
+        cursor: text;
+    }
+
+    .order-product-memo-display.is-empty {
+        color: #bbb;
+        font-size: 11px;
+        font-weight: 400;
+    }
+
+    .order-product-memo-editor {
+        position: absolute;
+        inset: 0;
+        z-index: 1;
+        display: block;
+        height: 100%;
+        min-height: 0;
+        border: 1px solid #7892d4 !important;
+        outline: none;
+        resize: vertical;
+        visibility: hidden;
+        opacity: 0;
+        pointer-events: none;
+    }
+
+    .order-product-memo-cell.is-editing .order-product-memo-display {
+        visibility: hidden;
+    }
+
+    .order-product-memo-cell.is-editing .order-product-memo-editor {
+        visibility: visible;
+        opacity: 1;
+        pointer-events: auto;
+    }
+
+    .order-product-memo-status {
+        position: absolute;
+        z-index: 2;
+        right: 5px;
+        bottom: 3px;
+        color: #777;
+        font-size: 10px;
+        pointer-events: none;
+    }
+
+    .order-product-memo-status.is-error {
+        color: #d60000;
+    }
+
+    .order-sheet-restock-overlay {
+        position: fixed;
+        inset: 0;
+        z-index: 10000;
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        background: rgba(20, 28, 45, 0.58);
+        color: #fff;
+    }
+
+    .order-sheet-restock-overlay[hidden] {
+        display: none;
+    }
+
+    .order-sheet-restock-overlay__message {
+        min-width: 280px;
+        padding: 28px 32px;
+        border-radius: 8px;
+        background: #1f2c47;
+        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
+        font-size: 14px;
+        font-weight: 600;
+        text-align: center;
+    }
+</style>
 <div class="order_sheet_detail">
     <ul class="left">
         <div class="overflow-y">
@@ -33,7 +560,15 @@ var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNE
         </div>
     </ul>
     <ul class="right">
-        <div id="order_sheet_detail_prd_list" class="order-sheet-detail-prd-list"></div>
+        <div id="order_sheet_detail_prd_list" class="order-sheet-detail-prd-list">
+            <div id="order_sheet_product_loading" class="order-sheet-product-loading" hidden>
+                <div class="order-sheet-product-loading__box" role="status" aria-live="polite">
+                    <div class="order-sheet-product-loading__spinner" aria-hidden="true"></div>
+                    상품 데이터를 불러오는 중입니다.
+                </div>
+            </div>
+            <div id="order_sheet_detail_prd_content"></div>
+        </div>
     </ul>
 </div>
 
@@ -46,6 +581,9 @@ var orderSheetDetail = function() {
 	var gState = "normal";
 	var open_idx = "<?= $idx ?>";
 	var open_oop_idx = "";
+	var productListRequest = null;
+	var productListRequestSeq = 0;
+	var productListLoadingTimer = null;
 
 	var ckTr = function( id, mode ) {
 
@@ -254,19 +792,60 @@ var orderSheetDetail = function() {
 
 		$(".ost-big").removeClass('active');
 		$("#group_side_" + oop_idx).addClass('active');
+		if (
+			window.orderSheetRealtime
+			&& typeof window.orderSheetRealtime.setActiveFormGroup === "function"
+		) {
+			window.orderSheetRealtime.setActiveFormGroup(oo_idx, oop_idx);
+		}
 
-		$.ajax({
+		productListRequestSeq++;
+		var requestSeq = productListRequestSeq;
+		var $loadingLayer = $("#order_sheet_product_loading");
+
+		if (productListLoadingTimer) {
+			clearTimeout(productListLoadingTimer);
+			productListLoadingTimer = null;
+		}
+		if (productListRequest && productListRequest.readyState !== 4) {
+			productListRequest.abort();
+		}
+
+		// 빠른 응답에는 로딩 레이어가 깜빡이지 않도록 잠시 지연해서 표시한다.
+		productListLoadingTimer = setTimeout(function() {
+			if (requestSeq === productListRequestSeq) {
+				$loadingLayer.prop("hidden", false);
+			}
+		}, 250);
+
+		productListRequest = $.ajax({
 			url: "/admin/order/sheet/detail_product",
 			data : { "oo_idx" : oo_idx, "oop_idx" : oop_idx, "form_view" : form_view  },
 			type: "POST",
 			dataType: "html",
 			success: function(html){
-				$("#order_sheet_detail_prd_list").html(html);
+				if (requestSeq === productListRequestSeq) {
+					$("#order_sheet_detail_prd_content").html(html);
+				}
 			},
 			error: function(request, status, error){
+				if (status === "abort" || requestSeq !== productListRequestSeq) {
+					return;
+				}
 				console.log("code:"+request.status+"\n"+"message:"+request.responseText+"\n"+"error:"+error);
 				showAlert("Error", "에러", "alert2" );
 				return false;
+			},
+			complete: function(){
+				if (requestSeq !== productListRequestSeq) {
+					return;
+				}
+				if (productListLoadingTimer) {
+					clearTimeout(productListLoadingTimer);
+					productListLoadingTimer = null;
+				}
+				$loadingLayer.prop("hidden", true);
+				productListRequest = null;
 			}
 		});
 
@@ -345,6 +924,15 @@ var orderSheetDetail = function() {
 		// 디테일 상품리스트 따로 호출
 		prdListShow: function( oo_idx, oop_idx, form_view ) {
 			showPrdList(oo_idx, oop_idx, form_view);
+		},
+
+		quantityEditing: function( oop_idx ) {
+			if (
+				window.orderSheetRealtime
+				&& typeof window.orderSheetRealtime.markQuantityEditing === "function"
+			) {
+				window.orderSheetRealtime.markQuantityEditing(open_idx, oop_idx);
+			}
 		},
 
 		//수량 변경

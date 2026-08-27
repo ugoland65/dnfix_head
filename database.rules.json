@@ -1,0 +1,54 @@
+{
+  "rules": {
+    ".read": false,
+    ".write": false,
+    "speed_test": {
+      "$channel": {
+        ".read": "auth != null",
+        ".write": "auth != null"
+      }
+    },
+    "presence": {
+      ".read": "auth != null && auth.token.intranet === true",
+      "$resourceType": {
+        "$resourceId": {
+          "$uid": {
+            ".write": "auth != null && auth.token.intranet === true && auth.uid === $uid",
+            "connections": {
+              "$connectionId": {
+                ".validate": "newData.hasChildren(['admin_name', 'editing', 'connected_at'])",
+                "admin_name": {
+                  ".validate": "newData.isString() && newData.val().length <= 100"
+                },
+                "editing": {
+                  ".validate": "newData.isBoolean()"
+                },
+                "editing_oop_idx": {
+                  ".validate": "newData.isString() && newData.val().length <= 30"
+                },
+                "editing_at": {
+                  ".validate": "newData.isNumber()"
+                },
+                "saved_oop_idx": {
+                  ".validate": "newData.isString() && newData.val().length <= 30"
+                },
+                "saved_event_id": {
+                  ".validate": "newData.isString() && newData.val().length <= 100"
+                },
+                "saved_at": {
+                  ".validate": "newData.isNumber()"
+                },
+                "saved_at_client": {
+                  ".validate": "newData.isNumber()"
+                },
+                "connected_at": {
+                  ".validate": "newData.isNumber()"
+                }
+              }
+            }
+          }
+        }
+      }
+    }
+  }
+}

@@ -1,271 +1,3 @@
-<style type="text/css">
-    .number-point {
-        color: #ff0000;
-    }
-
-    .unit-price-sum {
-        font-size: 14px;
-        font-weight: 600;
-        color: #021aff;
-    }
-
-    .notice-box {
-        text-align: center;
-        font-size: 10px;
-    }
-
-    .notice-box i {
-        font-size: 16px;
-    }
-
-    .group-state {
-        display: inline-block;
-        font-size: 11px;
-        padding: 5px 10px;
-        border-radius: 5px;
-    }
-
-    .group-state.normal {
-        background-color: #eee;
-        border: 1px solid #ddd;
-    }
-
-    .group-state.ing {
-        background-color: #95f4ff;
-        border: 1px solid #0ed1e8;
-    }
-
-    .group-state.end {
-        background-color: #ffcbcb;
-        border: 1px solid #f88080;
-    }
-
-    .qty-control-wrap {
-        display: flex;
-        align-items: stretch;
-        gap: 2px;
-    }
-
-    .qty-control-wrap .qty-input {
-        width: 100%;
-    }
-
-    .qty-step-wrap {
-        display: flex;
-        flex-direction: column;
-        gap: 1px;
-        width: 16px;
-    }
-
-    .qty-step-btn {
-        width: 16px;
-        height: 13px;
-        line-height: 11px;
-        border: 1px solid #bfc7d9;
-        background: #f5f7fb;
-        color: #2f3b59;
-        font-size: 9px;
-        cursor: pointer;
-        padding: 0;
-        user-select: none;
-    }
-
-    .price-input-wrap{
-        display: flex;
-        flex-direction: column;
-        gap: 2px;
-    }
-
-    .unit-price-text{
-        font-size: 14px;
-    }
-    .krw-price{
-        color: #777;
-        font-size: 11px;
-    }
-
-    .en-title{
-        color: #777;
-        font-size: 10px !important;
-    }
-
-    .en-title-currency-code{
-        color: #777;
-        font-size: 10px !important;
-    }
-
-    .row-order-cell {
-        text-align: center;
-        vertical-align: middle;
-        cursor: ns-resize;
-        user-select: none;
-        touch-action: pan-y;
-    }
-
-    .row-order-handle {
-        position: relative;
-        display: inline-flex;
-        align-items: center;
-        justify-content: center;
-        width: 18px;
-        height: 52px;
-        border: 1px solid #d8deea;
-        border-radius: 4px;
-        background: #f7f9fc;
-        color: #60708f;
-    }
-
-    .row-order-handle::before,
-    .row-order-handle::after {
-        content: "";
-        position: absolute;
-        top: 8px;
-        bottom: 8px;
-        width: 2px;
-        border-radius: 2px;
-        background: repeating-linear-gradient(
-            to bottom,
-            #9ba8c2 0,
-            #9ba8c2 2px,
-            transparent 2px,
-            transparent 5px
-        );
-    }
-
-    .row-order-handle::before {
-        left: 5px;
-    }
-
-    .row-order-handle::after {
-        right: 5px;
-    }
-
-    .row-order-icon {
-        position: relative;
-        z-index: 1;
-        font-size: 11px;
-        line-height: 1;
-    }
-
-    .row-sort-active {
-        box-shadow: inset 0 0 0 2px #6f89ff;
-    }
-
-    .row-sort-placeholder td {
-        background: #eef3ff !important;
-        border-top: 1px dashed #91a7e8;
-        border-bottom: 1px dashed #91a7e8;
-        height: 44px;
-    }
-
-    .row-context-selected {
-        outline: 2px solid #5e78f0;
-        outline-offset: -2px;
-    }
-
-    .row-context-menu {
-        position: fixed;
-        z-index: 9999;
-        min-width: 150px;
-        background: #fff;
-        border: 1px solid #cdd5e5;
-        border-radius: 6px;
-        box-shadow: 0 8px 22px rgba(0, 0, 0, 0.14);
-        padding: 4px 0;
-    }
-
-    .row-context-menu[hidden] {
-        display: none;
-    }
-
-    .row-context-menu button {
-        display: flex;
-        align-items: center;
-        gap: 7px;
-        width: 100%;
-        border: 0;
-        background: transparent;
-        text-align: left;
-        padding: 8px 12px;
-        font-size: 12px;
-        color: #1f2c47;
-        cursor: pointer;
-    }
-
-    .row-context-menu button:hover {
-        background: #edf3ff;
-    }
-
-    .row-context-menu button.active {
-        background: #e7efff;
-        color: #1a397a;
-        font-weight: 600;
-    }
-
-    .row-context-menu button + button {
-        border-top: 1px solid #eef1f6;
-    }
-
-    #orderSheetRowMoveGroupList {
-        max-height: 252px; /* 약 7개 항목 */
-        overflow-y: auto;
-    }
-
-    #orderSheetRowMoveGroupList:not(:empty) {
-        border-top: 1px solid #eef1f6;
-    }
-
-    .row-context-menu-icon {
-        display: inline-flex;
-        width: 14px;
-        color: #4c5f86;
-        justify-content: center;
-        font-size: 12px;
-        line-height: 1;
-    }
-
-    .weight-sum-wrap{
-        ul{
-            font-size: 11px;
-        }
-    }
-
-    .stock-zero-filter.is-active {
-        background: #6c757d;
-        border-color: #6c757d;
-        color: #fff;
-    }
-
-    .ospl-prd-wrap .table-st1 tbody > tr.stock-zero-filter-hidden {
-        display: none !important;
-    }
-
-    .order-sheet-restock-overlay {
-        position: fixed;
-        inset: 0;
-        z-index: 10000;
-        display: flex;
-        align-items: center;
-        justify-content: center;
-        background: rgba(20, 28, 45, 0.58);
-        color: #fff;
-    }
-
-    .order-sheet-restock-overlay[hidden] {
-        display: none;
-    }
-
-    .order-sheet-restock-overlay__message {
-        min-width: 280px;
-        padding: 28px 32px;
-        border-radius: 8px;
-        background: #1f2c47;
-        box-shadow: 0 10px 30px rgba(0, 0, 0, 0.3);
-        font-size: 14px;
-        font-weight: 600;
-        text-align: center;
-    }
-</style>
 <div id="orderSheetRestockOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
     <div class="order-sheet-restock-overlay__message">재입고 알림 요청 수량을 수집하고 있습니다.<br>잠시만 기다려주세요.</div>
 </div>
@@ -537,7 +269,7 @@
 
                     <!-- 상품 이미지 -->
                     <td style="width:70px;">
-                        <img src="<?= $img_path ?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" loading="lazy">
+                        <img src="<?= $img_path ?>" style="height:60px; border:1px solid #eee !important; cursor:pointer;" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" >
                     </td>
 
                     <!-- 상품 명 -->
@@ -579,14 +311,12 @@
                         </div>
 
                         <?php if (!empty($item['om'])) { ?>
-                            <div class="m-t-3">
-                                
+                            <div class="m-t-3">                  
                                 <span style="color:#1e5eff; display:inline-block; margin-top:3px; font-size:11px;"><i class="far fa-sticky-note m-r-2" title="폼 그룹 메모"></i><?= $item['om'] ?? '' ?></span>
                             </div>
                         <?php } ?>
                         <?php if (!empty($item['product']['cd_memo3'])) { ?>
-                            <div class="m-t-3">
-                                
+                            <div class="m-t-3"> 
                                 <span style="color:#ff0000; display:inline-block; margin-top:3px; font-size:11px;"><i class="fas fa-clipboard-list m-r-2" title="상품 주문 메모"></i><?= $item['product']['cd_memo3'] ?></span>
                             </div>
                         <?php } ?>
@@ -605,8 +335,24 @@
                     </td>
 
                     <!-- 주문메모 -->
-                    <td style="min-width:150px; height:90px; padding:0 !important; ">
-                        <textarea name="memo" id="memo_<?= $item['idx'] ?? '' ?>" class="memo-auto-fit" style="width:100%; height:90px; background-color:transparent; border:none !important; resize: none; padding:5px; margin:0 !important; box-sizing:border-box; color:#ff0000;"><?= $item['selpd']['memo'] ?? '' ?></textarea>
+                    <?php
+                        $_product_memo = (string)($item['product_memo'] ?? '');
+                        $_product_memo_html = htmlspecialchars($_product_memo, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
+                        $_product_memo_empty = trim($_product_memo) === '';
+                    ?>
+                    <td class="order-product-memo-cell"
+                        data-oo-idx="<?= (int)($oo_idx ?? 0) ?>"
+                        data-oop-idx="<?= (int)($oop_idx ?? 0) ?>"
+                        data-pidx="<?= (int)($item['idx'] ?? 0) ?>">
+                        <div class="order-product-memo-display<?= $_product_memo_empty ? ' is-empty' : '' ?>"
+                             role="button"
+                             tabindex="0"
+                             title="Edit memo"><?php if ($_product_memo_empty) { ?>Add memo<?php } else { ?><?= nl2br($_product_memo_html) ?><?php } ?></div>
+                        <textarea name="memo"
+                                  id="memo_<?= (int)($item['idx'] ?? 0) ?>"
+                                  class="order-product-memo-editor"
+                                  maxlength="5000"><?= $_product_memo_html ?></textarea>
+                        <span class="order-product-memo-status" aria-live="polite"></span>
                     </td>
 
                     <!-- 주문수량 -->
@@ -620,7 +366,7 @@
                     ?>
                     <td style="width:80px;">
                         <div class="qty-control-wrap">
-                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" data-saved-qty="<?= $item['selpd']['qty'] ?? 0 ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" onkeyUP="orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
+                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" data-saved-qty="<?= $item['selpd']['qty'] ?? 0 ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" oninput="orderSheetDetail.quantityEditing('<?= $oop_idx ?? '' ?>'); orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
                             <div class="qty-step-wrap">
                                 <button type="button" class="qty-step-btn" data-step="1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▲</button>
                                 <button type="button" class="qty-step-btn" data-step="-1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▼</button>
@@ -1011,6 +757,32 @@
     <button type="button" data-row-action="move-bottom"><span class="row-context-menu-icon">↓</span>맨 아래로 이동</button>
     <button type="button" data-row-action="group-move"><span class="row-context-menu-icon">⇄</span>그룹이동</button>
     <div id="orderSheetRowMoveGroupList"></div>
+    <button type="button" data-row-action="other-form-register"><span class="row-context-menu-icon">＋</span>다른 주문서 폼 등록</button>
+</div>
+
+<div id="orderSheetOtherFormModal" class="other-form-register-modal" hidden>
+    <div class="other-form-register-dialog" role="dialog" aria-modal="true" aria-labelledby="orderSheetOtherFormModalTitle">
+        <div class="other-form-register-header">
+            <h3 id="orderSheetOtherFormModalTitle">다른 주문서 폼 등록</h3>
+            <button type="button" class="other-form-register-close" data-other-form-action="close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="other-form-register-body">
+            <div id="orderSheetOtherFormStepForms">
+                <p class="other-form-register-guide">상품을 등록할 주문서 폼을 선택하세요.</p>
+                <div id="orderSheetOtherFormList" class="other-form-register-list"></div>
+            </div>
+            <div id="orderSheetOtherFormStepGroups" hidden>
+                <button type="button" class="other-form-register-back" data-other-form-action="back">← 주문서 폼 다시 선택</button>
+                <p id="orderSheetOtherFormSelected" class="other-form-register-selected"></p>
+                <div id="orderSheetOtherFormDuplicate" class="other-form-register-duplicate" hidden></div>
+                <div id="orderSheetOtherFormGroupList" class="other-form-register-list"></div>
+                <div id="orderSheetOtherFormNewGroup" class="other-form-register-new">
+                    <input type="text" id="orderSheetOtherFormNewGroupName" maxlength="100" placeholder="새 폼그룹명 입력">
+                    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" data-other-form-action="create-group">새 그룹 생성 후 등록</button>
+                </div>
+            </div>
+        </div>
+    </div>
 </div>
 
 <script>
@@ -1388,7 +1160,6 @@
             var send_idx = [];
             var send_price = [];
             var send_qty = [];
-            var send_memo = [];
 
             var total_qty = 0;
             var total_price = 0;
@@ -1401,7 +1172,6 @@
                 send_idx.push(checkbox_id);
                 send_price.push($("#unit_price_" + checkbox_id).val());
                 send_qty.push($("#unit_qty_" + checkbox_id).val());
-                send_memo.push($("#memo_" + checkbox_id).val());
 
                 var unitQtyRaw = $("#unit_qty_" + checkbox_id).val();
                 var unitQty = toNumber(unitQtyRaw, 0);
@@ -1425,8 +1195,7 @@
                     "total_cbm": total_cbm,
                     "send_idx": send_idx,
                     "send_price": send_price,
-                    "send_qty": send_qty,
-                    "send_memo": send_memo
+                    "send_qty": send_qty
                 },
                 type: "POST",
                 dataType: "json",
@@ -1435,6 +1204,16 @@
                         showToast("설정이 저장되었습니다.", new Date().toLocaleTimeString());
                         if (window.orderSheetDetail && typeof window.orderSheetDetail.groupState === 'function') {
                             window.orderSheetDetail.groupState("end");
+                        }
+                        if (
+                            window.orderSheetRealtime
+                            && typeof window.orderSheetRealtime.publishFormGroupSaved === 'function'
+                        ) {
+                            window.orderSheetRealtime
+                                .publishFormGroupSaved(oo_idx, oop_idx)
+                                .catch(function(error) {
+                                    console.error('폼그룹 저장 알림 전송에 실패했습니다.', error);
+                                });
                         }
                         $(".qty-input").each(function() {
                             var savedQty = String($(this).val() || '0').replace(/,/g, '');
@@ -1560,6 +1339,7 @@
                 next = 0;
             }
             $input.val(next);
+            orderSheetDetail.quantityEditing(oopIdx);
             orderSheetDetail.qtyGogo(idx, oopIdx);
         }
 
@@ -1567,7 +1347,19 @@
         var $prdWrap = $('.ospl-prd-wrap').first();
         var $rowContextMenu = $('#orderSheetRowContextMenu');
         var $rowMoveGroupList = $('#orderSheetRowMoveGroupList');
+        var $otherFormModal = $('#orderSheetOtherFormModal');
+        var $otherFormStepForms = $('#orderSheetOtherFormStepForms');
+        var $otherFormStepGroups = $('#orderSheetOtherFormStepGroups');
+        var $otherFormList = $('#orderSheetOtherFormList');
+        var $otherFormGroupList = $('#orderSheetOtherFormGroupList');
+        var $otherFormDuplicate = $('#orderSheetOtherFormDuplicate');
+        var $otherFormNewGroup = $('#orderSheetOtherFormNewGroup');
+        var $otherFormNewGroupName = $('#orderSheetOtherFormNewGroupName');
         var $contextTargetRow = $();
+        var otherFormTargets = [];
+        var selectedOtherForm = null;
+        var otherFormRegisterPidx = '';
+        var otherFormRegisterInFlight = false;
         var rowOrderSaveInFlight = false;
         var rowOrderSaveQueued = false;
         var rowOrderSaveDebounceTimer = null;
@@ -1751,6 +1543,193 @@
             });
         }
 
+        function closeOtherFormModal() {
+            if (otherFormRegisterInFlight) {
+                return;
+            }
+            $otherFormModal.attr('hidden', true);
+            $otherFormList.empty();
+            $otherFormGroupList.empty();
+            $otherFormDuplicate.attr('hidden', true).empty();
+            $otherFormNewGroupName.val('');
+            otherFormTargets = [];
+            selectedOtherForm = null;
+            otherFormRegisterPidx = '';
+        }
+
+        function renderOtherFormList() {
+            $otherFormStepGroups.attr('hidden', true);
+            $otherFormStepForms.removeAttr('hidden');
+            $otherFormList.empty();
+
+            if (!otherFormTargets.length) {
+                $('<div>', {
+                    'class': 'other-form-register-empty',
+                    text: '등록 가능한 다른 주문서 폼이 없습니다.'
+                }).appendTo($otherFormList);
+                return;
+            }
+
+            $.each(otherFormTargets, function(index, form) {
+                var groupCount = $.isArray(form.groups) ? form.groups.length : 0;
+                var $button = $('<button>', {
+                    type: 'button',
+                    'data-other-form-action': 'select-form',
+                    'data-form-idx': String(form.form_idx || '')
+                });
+                $('<span>').text(String(form.name || ('주문서 폼 ' + form.form_idx))).appendTo($button);
+                $('<span>', {
+                    'class': 'other-form-register-count',
+                    text: '폼그룹 ' + groupCount + '개'
+                }).appendTo($button);
+                $button.appendTo($otherFormList);
+            });
+        }
+
+        function selectOtherForm(formIdx) {
+            selectedOtherForm = null;
+            $.each(otherFormTargets, function(index, form) {
+                if (String(form.form_idx || '') === String(formIdx || '')) {
+                    selectedOtherForm = form;
+                    return false;
+                }
+            });
+            if (!selectedOtherForm) {
+                showAlert("Error", "선택한 주문서 폼 정보를 찾을 수 없습니다.", "alert2");
+                return;
+            }
+
+            $otherFormStepForms.attr('hidden', true);
+            $otherFormStepGroups.removeAttr('hidden');
+            $('#orderSheetOtherFormSelected').text(
+                "'" + String(selectedOtherForm.name || '') + "' 폼의 폼그룹을 선택하세요."
+            );
+            $otherFormGroupList.empty();
+            $otherFormNewGroupName.val('');
+
+            if (selectedOtherForm.duplicate_group) {
+                var duplicateMessage = "'" + String(selectedOtherForm.name || '') + "' 폼의 '"
+                    + String(selectedOtherForm.duplicate_group.name || '') + "' 그룹에 이미 등록된 상품입니다.";
+                $otherFormDuplicate.text(duplicateMessage).removeAttr('hidden');
+                $otherFormNewGroup.attr('hidden', true);
+                showAlert("Info", duplicateMessage, "alert2");
+                return;
+            }
+
+            $otherFormDuplicate.attr('hidden', true).empty();
+            $otherFormNewGroup.removeAttr('hidden');
+            var groups = $.isArray(selectedOtherForm.groups) ? selectedOtherForm.groups : [];
+            if (!groups.length) {
+                $('<div>', {
+                    'class': 'other-form-register-empty',
+                    text: '기존 폼그룹이 없습니다. 아래에서 새 폼그룹을 생성하세요.'
+                }).appendTo($otherFormGroupList);
+                return;
+            }
+
+            $.each(groups, function(index, group) {
+                var $button = $('<button>', {
+                    type: 'button',
+                    'data-other-form-action': 'select-group',
+                    'data-oop-idx': String(group.oop_idx || '')
+                });
+                $('<span>').text(String(group.name || ('그룹 ' + group.oop_idx))).appendTo($button);
+                $('<span>', {
+                    'class': 'other-form-register-count',
+                    text: '선택'
+                }).appendTo($button);
+                $button.appendTo($otherFormGroupList);
+            });
+        }
+
+        function openOtherFormModal(pidx) {
+            otherFormRegisterPidx = String(pidx || '').trim();
+            if (!otherFormRegisterPidx) {
+                showAlert("Error", "등록할 상품 정보가 없습니다.", "alert2");
+                return;
+            }
+
+            selectedOtherForm = null;
+            otherFormTargets = [];
+            $otherFormStepGroups.attr('hidden', true);
+            $otherFormStepForms.removeAttr('hidden');
+            $otherFormList.html('<div class="other-form-register-loading">주문서 폼 목록을 불러오는 중입니다.</div>');
+            $otherFormModal.removeAttr('hidden');
+
+            $.ajax({
+                url: "/admin/order/sheet/action",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    action_mode: "orderSheetProductOtherFormTargets",
+                    current_form_idx: "<?= $orderSheet['oo_form_idx'] ?? '' ?>",
+                    pidx: otherFormRegisterPidx
+                },
+                success: function(res) {
+                    if (!res || res.success !== true) {
+                        closeOtherFormModal();
+                        showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "주문서 폼 목록을 불러오지 못했습니다.", "alert2");
+                        return;
+                    }
+                    otherFormTargets = $.isArray(res.forms) ? res.forms : [];
+                    renderOtherFormList();
+                },
+                error: function(request, status, error) {
+                    console.log("code:" + request.status + "\nmessage:" + request.responseText + "\nerror:" + error);
+                    closeOtherFormModal();
+                    showAlert("Error", "주문서 폼 목록을 불러오는 중 오류가 발생했습니다.", "alert2");
+                }
+            });
+        }
+
+        function registerCurrentProductToOtherForm(targetOopIdx, newGroupName) {
+            if (otherFormRegisterInFlight || !selectedOtherForm || !otherFormRegisterPidx) {
+                return;
+            }
+
+            targetOopIdx = String(targetOopIdx || '').trim();
+            newGroupName = $.trim(String(newGroupName || ''));
+            if (!targetOopIdx && !newGroupName) {
+                showAlert("Info", "등록할 폼그룹을 선택하거나 새 그룹명을 입력해주세요.", "alert2");
+                return;
+            }
+
+            otherFormRegisterInFlight = true;
+            $otherFormModal.find('button, input').prop('disabled', true);
+            $.ajax({
+                url: "/admin/order/sheet/action",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    action_mode: "orderSheetProductRegisterOtherForm",
+                    source_oop_idx: "<?= $oop_idx ?? '' ?>",
+                    pidx: otherFormRegisterPidx,
+                    target_form_idx: String(selectedOtherForm.form_idx || ''),
+                    target_oop_idx: targetOopIdx,
+                    new_group_name: newGroupName
+                },
+                success: function(res) {
+                    if (!res || res.success !== true) {
+                        showAlert("Info", (res && (res.message || res.msg)) ? (res.message || res.msg) : "다른 주문서 폼 등록에 실패했습니다.", "alert2");
+                        return;
+                    }
+                    var successMessage = "'" + String(res.form_name || selectedOtherForm.name || '') + "' 폼의 '"
+                        + String(res.group_name || '') + "' 그룹에 상품을 등록했습니다.";
+                    otherFormRegisterInFlight = false;
+                    closeOtherFormModal();
+                    showToast(successMessage, new Date().toLocaleTimeString());
+                },
+                error: function(request, status, error) {
+                    console.log("code:" + request.status + "\nmessage:" + request.responseText + "\nerror:" + error);
+                    showAlert("Error", "다른 주문서 폼 등록 중 오류가 발생했습니다.", "alert2");
+                },
+                complete: function() {
+                    otherFormRegisterInFlight = false;
+                    $otherFormModal.find('button, input').prop('disabled', false);
+                }
+            });
+        }
+
         function collectOrderedRowIds() {
             var orderedIds = [];
             $prdTableBody.find('> tr').each(function() {
@@ -1926,6 +1905,11 @@
                     $rowMoveGroupList.html(listHtml);
                     $groupMoveBtn.addClass('active');
                     return;
+                } else if (action === 'other-form-register') {
+                    var registerPidx = getCurrentRowPidx();
+                    hideRowContextMenu();
+                    openOtherFormModal(registerPidx);
+                    return;
                 }
 
                 hideRowContextMenu();
@@ -1948,16 +1932,71 @@
                 hideRowContextMenu();
                 moveCurrentRowToGroup(targetOopIdx, pidx);
             })
+            .off('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]')
+            .on('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]', function(e) {
+                e.preventDefault();
+                var action = String($(this).data('other-form-action') || '');
+                if (action === 'close') {
+                    closeOtherFormModal();
+                } else if (action === 'back') {
+                    selectedOtherForm = null;
+                    renderOtherFormList();
+                } else if (action === 'select-form') {
+                    selectOtherForm(String($(this).data('form-idx') || ''));
+                } else if (action === 'select-group') {
+                    if (!selectedOtherForm || selectedOtherForm.duplicate_group) {
+                        return;
+                    }
+                    var targetOopIdx = String($(this).data('oop-idx') || '');
+                    var targetGroupName = $.trim($(this).find('span').first().text() || '');
+                    if (window.confirm("'" + targetGroupName + "' 그룹에 이 상품을 등록하시겠습니까?")) {
+                        registerCurrentProductToOtherForm(targetOopIdx, '');
+                    }
+                } else if (action === 'create-group') {
+                    if (!selectedOtherForm || selectedOtherForm.duplicate_group) {
+                        return;
+                    }
+                    var newGroupName = $.trim($otherFormNewGroupName.val() || '');
+                    if (!newGroupName) {
+                        $otherFormNewGroupName.focus();
+                        showAlert("Info", "새 폼그룹명을 입력해주세요.", "alert2");
+                        return;
+                    }
+                    if (window.confirm("'" + newGroupName + "' 그룹을 만들고 이 상품을 등록하시겠습니까?")) {
+                        registerCurrentProductToOtherForm('', newGroupName);
+                    }
+                }
+            })
+            .off('click.orderSheetOtherFormBackdrop', '#orderSheetOtherFormModal')
+            .on('click.orderSheetOtherFormBackdrop', '#orderSheetOtherFormModal', function(e) {
+                if (e.target === this) {
+                    closeOtherFormModal();
+                }
+            })
+            .off('keydown.orderSheetOtherFormNewGroup', '#orderSheetOtherFormNewGroupName')
+            .on('keydown.orderSheetOtherFormNewGroup', '#orderSheetOtherFormNewGroupName', function(e) {
+                if (e.key === 'Enter') {
+                    e.preventDefault();
+                    $('#orderSheetOtherFormModal [data-other-form-action="create-group"]').trigger('click');
+                }
+            })
             .off('click.orderSheetRowMenuHide')
             .on('click.orderSheetRowMenuHide', function(e) {
-                if (!$(e.target).closest('#orderSheetRowContextMenu').length) {
+                if (
+                    !$(e.target).closest('#orderSheetRowContextMenu').length
+                    && !$(e.target).closest('#orderSheetOtherFormModal').length
+                ) {
                     hideRowContextMenu();
                 }
             })
             .off('keydown.orderSheetRowMenuHide')
             .on('keydown.orderSheetRowMenuHide', function(e) {
                 if (e.key === 'Escape') {
-                    hideRowContextMenu();
+                    if (!$otherFormModal.is('[hidden]')) {
+                        closeOtherFormModal();
+                    } else {
+                        hideRowContextMenu();
+                    }
                 }
             });
 
@@ -1965,6 +2004,147 @@
             .off('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide')
             .on('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide', function() {
                 hideRowContextMenu();
+            });
+
+        function renderProductMemo($cell, memo) {
+            var $display = $cell.find('.order-product-memo-display').first();
+            var value = String(memo === null || memo === undefined ? '' : memo);
+            if ($.trim(value) === '') {
+                $display.addClass('is-empty').text('Add memo');
+            } else {
+                $display.removeClass('is-empty').text(value);
+            }
+        }
+
+        function closeProductMemoEditor($cell, memo) {
+            renderProductMemo($cell, memo);
+            $cell.removeClass('is-editing');
+        }
+
+        function openProductMemoEditor($cell) {
+            var $editor = $cell.find('.order-product-memo-editor').first();
+            if (!$editor.length || $cell.hasClass('is-saving') || $cell.hasClass('is-editing')) {
+                return;
+            }
+
+            if ($editor.data('persisted-value') === undefined) {
+                $editor.data('persisted-value', String($editor.val() || ''));
+            }
+            $editor.data('cancel-edit', false);
+            $cell.addClass('is-editing');
+            $cell.find('.order-product-memo-status').removeClass('is-error').text('');
+            $editor.trigger('focus');
+
+            var editorElement = $editor.get(0);
+            if (editorElement && typeof editorElement.setSelectionRange === 'function') {
+                var endPosition = String($editor.val() || '').length;
+                editorElement.setSelectionRange(endPosition, endPosition);
+            }
+        }
+
+        function saveProductMemo($editor) {
+            var $cell = $editor.closest('.order-product-memo-cell');
+            var memo = String($editor.val() || '');
+            var persistedValue = String($editor.data('persisted-value') || '');
+            var $status = $cell.find('.order-product-memo-status').first();
+
+            if (memo === persistedValue) {
+                closeProductMemoEditor($cell, persistedValue);
+                $status.text('');
+                return;
+            }
+
+            // 응답을 기다리지 않고 편집 UI를 먼저 닫아 큰 테이블의 다음 셀을 즉시 편집할 수 있게 한다.
+            closeProductMemoEditor($cell, memo);
+            $cell.addClass('is-saving');
+            $status.removeClass('is-error').text('저장 중...');
+
+            $.ajax({
+                url: '/admin/order/sheet/action',
+                type: 'POST',
+                dataType: 'json',
+                data: {
+                    action_mode: 'orderSheetProductMemoSave',
+                    oo_idx: $cell.attr('data-oo-idx'),
+                    oop_idx: $cell.attr('data-oop-idx'),
+                    pidx: $cell.attr('data-pidx'),
+                    memo: memo
+                },
+                success: function(res) {
+                    if (!res || res.success !== true) {
+                        $status
+                            .addClass('is-error')
+                            .attr('title', (res && (res.message || res.msg)) ? (res.message || res.msg) : '메모 저장 중 오류가 발생했습니다.')
+                            .text('저장 실패');
+                        return;
+                    }
+
+                    var savedMemo = (res.memo === null || res.memo === undefined)
+                        ? memo
+                        : String(res.memo);
+                    $editor.val(savedMemo).data('persisted-value', savedMemo);
+                    renderProductMemo($cell, savedMemo);
+                    $status.removeClass('is-error').removeAttr('title').text('저장됨');
+                    setTimeout(function() {
+                        if ($status.text() === '저장됨') {
+                            $status.text('');
+                        }
+                    }, 1500);
+                },
+                error: function(request, status, error) {
+                    console.log('code:' + request.status + '\nmessage:' + request.responseText + '\nerror:' + error);
+                    $status
+                        .addClass('is-error')
+                        .attr('title', '메모 저장 중 오류가 발생했습니다.')
+                        .text('저장 실패');
+                },
+                complete: function() {
+                    $cell.removeClass('is-saving');
+                }
+            });
+        }
+
+        // 상품 목록은 AJAX로 교체되므로 메모 편집 이벤트를 위임 방식으로 등록한다.
+        $(document)
+            .off('click.orderSheetProductMemo', '.order-product-memo-display')
+            .on('click.orderSheetProductMemo', '.order-product-memo-display', function(e) {
+                e.preventDefault();
+                openProductMemoEditor($(this).closest('.order-product-memo-cell'));
+            })
+            .off('keydown.orderSheetProductMemoDisplay', '.order-product-memo-display')
+            .on('keydown.orderSheetProductMemoDisplay', '.order-product-memo-display', function(e) {
+                if (e.key === 'Enter' || e.key === ' ') {
+                    e.preventDefault();
+                    openProductMemoEditor($(this).closest('.order-product-memo-cell'));
+                }
+            })
+            .off('keydown.orderSheetProductMemoEditor', '.order-product-memo-editor')
+            .on('keydown.orderSheetProductMemoEditor', '.order-product-memo-editor', function(e) {
+                var $editor = $(this);
+                if (e.key === 'Escape') {
+                    e.preventDefault();
+                    $editor
+                        .data('cancel-edit', true)
+                        .val(String($editor.data('persisted-value') || ''))
+                        .trigger('blur');
+                } else if (e.key === 'Enter' && (e.ctrlKey || e.metaKey)) {
+                    e.preventDefault();
+                    $editor.trigger('blur');
+                }
+            })
+            .off('blur.orderSheetProductMemo', '.order-product-memo-editor')
+            .on('blur.orderSheetProductMemo', '.order-product-memo-editor', function() {
+                var $editor = $(this);
+                var $cell = $editor.closest('.order-product-memo-cell');
+                if ($editor.data('cancel-edit') === true) {
+                    var savedValue = String($editor.data('persisted-value') || '');
+                    $editor.val(savedValue);
+                    $editor.data('cancel-edit', false);
+                    closeProductMemoEditor($cell, savedValue);
+                    $cell.find('.order-product-memo-status').removeClass('is-error').text('');
+                    return;
+                }
+                saveProductMemo($editor);
             });
 
 

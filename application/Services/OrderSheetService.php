@@ -9,6 +9,7 @@ use App\Models\AdminModel;
 use App\Core\AuthAdmin;
 use App\Classes\UploadedFile;
 use App\Services\AdminActionLogService;
+use App\Models\OrderGroupModel;
 use App\Models\OrderGroupProductModel;
 use App\Models\ProductModel;
 use App\Models\ProductStockModel;
@@ -16,6 +17,7 @@ use App\Models\ProductStockUnitModel;
 use App\Models\InspectionProcessLogModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
+use App\Models\OrderSheetProductMemoModel;
 use App\Classes\DB;
 
 class OrderSheetService
@@ -2520,6 +2522,40 @@ class OrderSheetService
         }
         $prd_idxs = array_values(array_unique($prd_idxs));
 
+        // 상품 메모는 전용 테이블 값을 우선 사용하고, 아직 이관되지 않은 메모만 oo_json 값을 사용한다.
+        $productMemoByPidx = [];
+        if (!empty($prd_idxs)) {
+            $memoRows = OrderSheetProductMemoModel::query()
+                ->select(['pidx', 'memo'])
+                ->where('oo_idx', '=', (int)$oo_idx)
+                ->where('oop_idx', '=', (int)$oop_idx)
+                ->whereIn('pidx', $prd_idxs)
+                ->get()
+                ->toArray();
+
+            foreach ($memoRows as $memoRow) {
+                $memoPidx = (string)($memoRow['pidx'] ?? '');
+                if ($memoPidx !== '') {
+                    // 빈 문자열도 기존 JSON 메모를 덮어쓰는 유효한 값이다.
+                    $productMemoByPidx[$memoPidx] = (string)($memoRow['memo'] ?? '');
+                }
+            }
+        }
+
+        foreach ($orderGroupProduct['oop_data'] as &$memoItem) {
+            if (!is_array($memoItem)) {
+                continue;
+            }
+
+            $memoPidx = (string)($memoItem['idx'] ?? '');
+            if ($memoPidx !== '' && array_key_exists($memoPidx, $productMemoByPidx)) {
+                $memoItem['product_memo'] = $productMemoByPidx[$memoPidx];
+            } else {
+                $memoItem['product_memo'] = (string)($memoItem['selpd']['memo'] ?? '');
+            }
+        }
+        unset($memoItem);
+
         $orderSheetProductList = [];
         if (!empty($prd_idxs)) {
             $orderSheetProductList = ProductModel::query()
@@ -2733,6 +2769,118 @@ class OrderSheetService
 
 
     /**
+     * 주문서 상품 메모 개별 저장
+     *
+     * @param array $data
+     * @return array
+     */
+    public function orderSheetProductMemoSave(array $data): array
+    {
+        $ooIdx = (int)($data['oo_idx'] ?? 0);
+        $oopIdx = (int)($data['oop_idx'] ?? 0);
+        $pidx = (int)($data['pidx'] ?? 0);
+        if ($ooIdx <= 0 || $oopIdx <= 0 || $pidx <= 0) {
+            throw new Exception('메모 저장에 필요한 상품 정보가 누락되었습니다.');
+        }
+
+        $memo = (string)($data['memo'] ?? '');
+        $memo = str_replace(["\r\n", "\r"], "\n", $memo);
+        $memo = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $memo) ?? '';
+        $memoLength = function_exists('mb_strlen')
+            ? mb_strlen($memo, 'UTF-8')
+            : strlen($memo);
+        if ($memoLength > 5000) {
+            throw new Exception('메모는 최대 5,000자까지 입력할 수 있습니다.');
+        }
+
+        $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        if ($adminIdx <= 0) {
+            throw new Exception('로그인 정보를 확인할 수 없습니다.');
+        }
+
+        $orderRow = OrderSheetModel::query()
+            ->from('ona_order as A')
+            ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+            ->where('A.oo_idx', '=', $ooIdx)
+            ->select(['A.oo_idx', 'A.oo_json', 'B.oog_brand'])
+            ->first();
+        $orderRow = $orderRow ? $orderRow->toArray() : [];
+        if (empty($orderRow)) {
+            throw new Exception('주문서를 찾을 수 없습니다.');
+        }
+
+        $isOrderGroup = false;
+        $brandRows = json_decode((string)($orderRow['oog_brand'] ?? '[]'), true);
+        if (is_array($brandRows)) {
+            foreach ($brandRows as $brandRow) {
+                if (is_array($brandRow) && (int)($brandRow['oop_idx'] ?? 0) === $oopIdx) {
+                    $isOrderGroup = true;
+                    break;
+                }
+            }
+        }
+
+        // 이전 주문서에서 폼 구성이 바뀐 경우에도 이미 저장된 주문그룹은 허용한다.
+        if (!$isOrderGroup) {
+            $orderGroups = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
+            if (is_array($orderGroups)) {
+                foreach ($orderGroups as $orderGroup) {
+                    if (is_array($orderGroup) && (int)($orderGroup['bidx'] ?? 0) === $oopIdx) {
+                        $isOrderGroup = true;
+                        break;
+                    }
+                }
+            }
+        }
+        if (!$isOrderGroup) {
+            throw new Exception('해당 주문서에 포함된 주문그룹이 아닙니다.');
+        }
+
+        $groupRow = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->where('oop_idx', '=', $oopIdx)
+            ->first();
+        $groupRow = $groupRow ? $groupRow->toArray() : [];
+        if (empty($groupRow)) {
+            throw new Exception('주문그룹을 찾을 수 없습니다.');
+        }
+
+        $groupProducts = json_decode((string)($groupRow['oop_data'] ?? '[]'), true);
+        $isGroupProduct = false;
+        if (is_array($groupProducts)) {
+            foreach ($groupProducts as $groupProduct) {
+                if (is_array($groupProduct) && (int)($groupProduct['idx'] ?? 0) === $pidx) {
+                    $isGroupProduct = true;
+                    break;
+                }
+            }
+        }
+        if (!$isGroupProduct) {
+            throw new Exception('해당 주문그룹에 포함된 상품이 아닙니다.');
+        }
+
+        OrderSheetProductMemoModel::updateOrCreate(
+            [
+                'oo_idx' => $ooIdx,
+                'oop_idx' => $oopIdx,
+                'pidx' => $pidx,
+            ],
+            [
+                'memo' => $memo,
+                'updated_by' => $adminIdx,
+                'updated_at' => date('Y-m-d H:i:s'),
+            ]
+        );
+
+        return [
+            'success' => true,
+            'memo' => $memo,
+            'msg' => '메모가 저장되었습니다.',
+        ];
+    }
+
+
+    /**
      * 주문서 주문그룹 상품 저장
      * 
      * 레거시 processing.order_sheet.php 의 orderSheet_groupOrder 로직을 서비스화한 메서드.
@@ -2750,7 +2898,6 @@ class OrderSheetService
         $sendIdx = $data['send_idx'] ?? [];
         $sendPrice = $data['send_price'] ?? [];
         $sendQty = $data['send_qty'] ?? [];
-        $sendMemo = $data['send_memo'] ?? [];
 
         if (!is_array($sendIdx)) {
             $sendIdx = [];
@@ -2760,9 +2907,6 @@ class OrderSheetService
         }
         if (!is_array($sendQty)) {
             $sendQty = [];
-        }
-        if (!is_array($sendMemo)) {
-            $sendMemo = [];
         }
 
         $toFloat = static function ($value): float {
@@ -2812,18 +2956,38 @@ class OrderSheetService
             $ooJson = [];
         }
 
+        // 메모 저장은 전용 테이블에서 처리한다. 그룹 저장 시 기존 JSON 메모는 수정하지 않는다.
+        $legacyMemoByPidx = [];
+        foreach ($ooJson as $groupRow) {
+            if (!is_array($groupRow) || (string)($groupRow['bidx'] ?? '') !== $oopIdx) {
+                continue;
+            }
+            $legacySelectedProducts = $groupRow['selpd'] ?? [];
+            if (!is_array($legacySelectedProducts)) {
+                $legacySelectedProducts = [];
+            }
+            foreach ($legacySelectedProducts as $selectedProduct) {
+                if (!is_array($selectedProduct)) {
+                    continue;
+                }
+                $selectedPidx = (string)($selectedProduct['pidx'] ?? '');
+                if ($selectedPidx !== '') {
+                    $legacyMemoByPidx[$selectedPidx] = (string)($selectedProduct['memo'] ?? '');
+                }
+            }
+            break;
+        }
+
         $instSelpd = [];
         $sendCount = count($sendIdx);
         for ($i = 0; $i < $sendCount; $i++) {
-            $memoRaw = (string)($sendMemo[$i] ?? '');
-            $memoRaw = str_replace(["\r\n", "\r"], "\n", $memoRaw);
-            $memoRaw = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $memoRaw) ?? '';
+            $selectedPidx = (string)($sendIdx[$i] ?? '');
 
             $instSelpd[] = [
-                'pidx' => (string)($sendIdx[$i] ?? ''),
+                'pidx' => $selectedPidx,
                 'price' => $toFloat($sendPrice[$i] ?? 0),
                 'qty' => (int)$toFloat($sendQty[$i] ?? 0),
-                'memo' => $memoRaw,
+                'memo' => $legacyMemoByPidx[$selectedPidx] ?? '',
             ];
         }
 
@@ -3567,6 +3731,300 @@ class OrderSheetService
             'success' => true,
             'msg' => '완료',
         ];
+    }
+
+    /**
+     * 다른 주문서 폼 등록 대상 목록
+     *
+     * @param array $data
+     * @return array
+     */
+    public function getOtherOrderFormTargets(array $data): array
+    {
+        $currentFormIdx = (int)($data['current_form_idx'] ?? 0);
+        $pidx = trim((string)($data['pidx'] ?? ''));
+        if ($pidx === '' || !ctype_digit($pidx) || (int)$pidx <= 0) {
+            throw new Exception('등록할 상품 정보가 없습니다.');
+        }
+
+        $formRows = OrderGroupModel::query()
+            ->select(['oog_idx', 'oog_name', 'oog_brand'])
+            ->orderBy('oog_name', 'asc')
+            ->get()
+            ->toArray();
+
+        $formGroups = [];
+        $allOopIdxs = [];
+        foreach ($formRows as $formRow) {
+            $formIdx = (int)($formRow['oog_idx'] ?? 0);
+            if ($formIdx <= 0 || $formIdx === $currentFormIdx) {
+                continue;
+            }
+
+            $groups = $this->decodeOrderFormJsonList($formRow['oog_brand'] ?? '[]');
+            $formGroups[$formIdx] = $groups;
+            foreach ($groups as $group) {
+                $oopIdx = (int)($group['oop_idx'] ?? 0);
+                if ($oopIdx > 0) {
+                    $allOopIdxs[$oopIdx] = $oopIdx;
+                }
+            }
+        }
+
+        $groupMap = [];
+        if (!empty($allOopIdxs)) {
+            $groupRows = OrderGroupProductModel::query()
+                ->select(['oop_idx', 'oop_name', 'oop_data'])
+                ->whereIn('oop_idx', array_values($allOopIdxs))
+                ->get()
+                ->toArray();
+            foreach ($groupRows as $groupRow) {
+                $groupMap[(int)($groupRow['oop_idx'] ?? 0)] = $groupRow;
+            }
+        }
+
+        $forms = [];
+        foreach ($formRows as $formRow) {
+            $formIdx = (int)($formRow['oog_idx'] ?? 0);
+            if ($formIdx <= 0 || $formIdx === $currentFormIdx) {
+                continue;
+            }
+
+            $groups = [];
+            $duplicateGroup = null;
+            foreach ($formGroups[$formIdx] ?? [] as $groupMeta) {
+                $oopIdx = (int)($groupMeta['oop_idx'] ?? 0);
+                if ($oopIdx <= 0 || !isset($groupMap[$oopIdx])) {
+                    continue;
+                }
+
+                $groupName = trim((string)($groupMeta['name'] ?? $groupMap[$oopIdx]['oop_name'] ?? ''));
+                if ($groupName === '') {
+                    $groupName = '그룹 ' . $oopIdx;
+                }
+                $groups[] = [
+                    'oop_idx' => $oopIdx,
+                    'name' => $groupName,
+                ];
+
+                if ($duplicateGroup === null) {
+                    foreach ($this->decodeOrderFormJsonList($groupMap[$oopIdx]['oop_data'] ?? '[]') as $productRow) {
+                        if ((string)($productRow['idx'] ?? '') === $pidx) {
+                            $duplicateGroup = [
+                                'oop_idx' => $oopIdx,
+                                'name' => $groupName,
+                            ];
+                            break;
+                        }
+                    }
+                }
+            }
+
+            $forms[] = [
+                'form_idx' => $formIdx,
+                'name' => trim((string)($formRow['oog_name'] ?? '')) ?: ('주문서 폼 ' . $formIdx),
+                'groups' => $groups,
+                'duplicate_group' => $duplicateGroup,
+            ];
+        }
+
+        return [
+            'success' => true,
+            'forms' => $forms,
+        ];
+    }
+
+    /**
+     * 상품을 다른 주문서 폼의 기존 또는 신규 폼그룹에 등록
+     *
+     * @param array $data
+     * @return array
+     */
+    public function registerProductToOtherOrderForm(array $data): array
+    {
+        $sourceOopIdx = (int)($data['source_oop_idx'] ?? 0);
+        $pidx = trim((string)($data['pidx'] ?? ''));
+        $targetFormIdx = (int)($data['target_form_idx'] ?? 0);
+        $targetOopIdx = (int)($data['target_oop_idx'] ?? 0);
+        $newGroupName = trim((string)($data['new_group_name'] ?? ''));
+
+        if ($sourceOopIdx <= 0 || $targetFormIdx <= 0 || $pidx === '' || !ctype_digit($pidx)) {
+            throw new Exception('필수 값이 누락되었습니다.');
+        }
+        if ($targetOopIdx <= 0 && $newGroupName === '') {
+            throw new Exception('등록할 폼그룹을 선택하거나 새 그룹명을 입력해주세요.');
+        }
+        if ($targetOopIdx > 0 && $newGroupName !== '') {
+            throw new Exception('기존 폼그룹과 새 폼그룹을 동시에 선택할 수 없습니다.');
+        }
+        $groupNameLength = function_exists('mb_strlen') ? mb_strlen($newGroupName, 'UTF-8') : strlen($newGroupName);
+        if ($newGroupName !== '' && $groupNameLength > 100) {
+            throw new Exception('새 폼그룹명은 100자 이하로 입력해주세요.');
+        }
+
+        return DB::transaction(function () use (
+            $sourceOopIdx,
+            $pidx,
+            $targetFormIdx,
+            $targetOopIdx,
+            $newGroupName
+        ) {
+            $sourceGroup = OrderGroupProductModel::query()
+                ->select(['oop_idx', 'oop_data'])
+                ->where('oop_idx', '=', $sourceOopIdx)
+                ->first();
+            $sourceGroup = $sourceGroup ? $sourceGroup->toArray() : [];
+            if (empty($sourceGroup)) {
+                throw new Exception('현재 폼그룹 정보를 찾을 수 없습니다.');
+            }
+
+            $sourceProduct = null;
+            foreach ($this->decodeOrderFormJsonList($sourceGroup['oop_data'] ?? '[]') as $productRow) {
+                if ((string)($productRow['idx'] ?? '') === $pidx) {
+                    $sourceProduct = $productRow;
+                    break;
+                }
+            }
+            if ($sourceProduct === null) {
+                throw new Exception('현재 폼그룹에서 등록할 상품을 찾을 수 없습니다.');
+            }
+
+            // 같은 폼에 대한 동시 등록 요청을 직렬화해 JSON 기반 중복 검사를 보장한다.
+            $targetFormStatement = DB::connection()->prepare(
+                'SELECT oog_idx, oog_name, oog_code, oog_brand
+                 FROM ona_order_group
+                 WHERE oog_idx = :oog_idx
+                 FOR UPDATE'
+            );
+            $targetFormStatement->execute(['oog_idx' => $targetFormIdx]);
+            $targetForm = $targetFormStatement->fetch(\PDO::FETCH_ASSOC);
+            if (!is_array($targetForm)) {
+                $targetForm = [];
+            }
+            if (empty($targetForm)) {
+                throw new Exception('대상 주문서 폼을 찾을 수 없습니다.');
+            }
+
+            $targetFormName = trim((string)($targetForm['oog_name'] ?? '')) ?: ('주문서 폼 ' . $targetFormIdx);
+            $groupMetadata = $this->decodeOrderFormJsonList($targetForm['oog_brand'] ?? '[]');
+            $groupNameMap = [];
+            $formOopIdxs = [];
+            foreach ($groupMetadata as $groupMeta) {
+                $formOopIdx = (int)($groupMeta['oop_idx'] ?? 0);
+                if ($formOopIdx <= 0) {
+                    continue;
+                }
+                $formOopIdxs[$formOopIdx] = $formOopIdx;
+                $groupNameMap[$formOopIdx] = trim((string)($groupMeta['name'] ?? ''));
+            }
+
+            $targetGroupRows = [];
+            if (!empty($formOopIdxs)) {
+                $rows = OrderGroupProductModel::query()
+                    ->select(['oop_idx', 'oop_name', 'oop_data'])
+                    ->whereIn('oop_idx', array_values($formOopIdxs))
+                    ->get()
+                    ->toArray();
+                foreach ($rows as $row) {
+                    $targetGroupRows[(int)($row['oop_idx'] ?? 0)] = $row;
+                }
+            }
+
+            foreach ($targetGroupRows as $formOopIdx => $groupRow) {
+                foreach ($this->decodeOrderFormJsonList($groupRow['oop_data'] ?? '[]') as $productRow) {
+                    if ((string)($productRow['idx'] ?? '') !== $pidx) {
+                        continue;
+                    }
+                    $duplicateGroupName = $groupNameMap[$formOopIdx]
+                        ?: (trim((string)($groupRow['oop_name'] ?? '')) ?: ('그룹 ' . $formOopIdx));
+                    throw new Exception(
+                        "'{$targetFormName}' 폼의 '{$duplicateGroupName}' 그룹에 이미 등록된 상품입니다."
+                    );
+                }
+            }
+
+            $registeredGroupName = '';
+            if ($targetOopIdx > 0) {
+                if (!isset($formOopIdxs[$targetOopIdx]) || !isset($targetGroupRows[$targetOopIdx])) {
+                    throw new Exception('선택한 폼그룹이 대상 주문서 폼에 속하지 않습니다.');
+                }
+
+                $targetData = $this->decodeOrderFormJsonList($targetGroupRows[$targetOopIdx]['oop_data'] ?? '[]');
+                $targetData[] = $sourceProduct;
+                OrderGroupProductModel::query()
+                    ->where('oop_idx', '=', $targetOopIdx)
+                    ->update([
+                        'oop_data' => json_encode($targetData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ]);
+                $registeredGroupName = $groupNameMap[$targetOopIdx]
+                    ?: (trim((string)($targetGroupRows[$targetOopIdx]['oop_name'] ?? '')) ?: ('그룹 ' . $targetOopIdx));
+                $registeredOopIdx = $targetOopIdx;
+            } else {
+                $oopCode = trim((string)($targetForm['oog_code'] ?? ''));
+                if ($oopCode === '') {
+                    throw new Exception('대상 주문서 폼의 가격코드가 없어 새 폼그룹을 만들 수 없습니다.');
+                }
+
+                $registeredOopIdx = (int)OrderGroupProductModel::query()->insertGetId([
+                    'oop_name' => $newGroupName,
+                    'oop_code' => $oopCode,
+                    'oop_data' => json_encode([$sourceProduct], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                ]);
+                if ($registeredOopIdx <= 0) {
+                    throw new Exception('새 폼그룹 생성에 실패했습니다.');
+                }
+
+                $groupMetadata[] = [
+                    'name' => $newGroupName,
+                    'active' => 'Y',
+                    'oop_idx' => (string)$registeredOopIdx,
+                ];
+                OrderGroupModel::query()
+                    ->where('oog_idx', '=', $targetFormIdx)
+                    ->update([
+                        'oog_brand' => json_encode($groupMetadata, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                    ]);
+                $registeredGroupName = $newGroupName;
+            }
+
+            return [
+                'success' => true,
+                'msg' => '완료',
+                'form_idx' => $targetFormIdx,
+                'form_name' => $targetFormName,
+                'oop_idx' => $registeredOopIdx,
+                'group_name' => $registeredGroupName,
+            ];
+        });
+    }
+
+    /**
+     * JSON 배열과 레거시의 대괄호 없는 JSON 목록을 모두 배열로 변환한다.
+     *
+     * @param mixed $raw
+     * @return array
+     */
+    private function decodeOrderFormJsonList($raw): array
+    {
+        $text = trim((string)$raw);
+        if ($text === '') {
+            return [];
+        }
+
+        $decoded = json_decode($text, true);
+        if (is_array($decoded)) {
+            return array_values(array_filter($decoded, static function ($row) {
+                return is_array($row);
+            }));
+        }
+
+        $decoded = json_decode('[' . $text . ']', true);
+        if (!is_array($decoded)) {
+            return [];
+        }
+        return array_values(array_filter($decoded, static function ($row) {
+            return is_array($row);
+        }));
     }
 
 

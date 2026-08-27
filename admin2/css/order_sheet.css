@@ -103,3 +103,55 @@
     font-weight:600;
     word-break:break-word;
 }
+
+.order-sheet-presence{
+    display:flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:6px;
+    margin-left:20px;
+    font-size:12px;
+}
+.order-sheet-presence__label{
+    color:#273650;
+}
+.order-sheet-presence__status{
+    color:#71809a;
+}
+.order-sheet-presence__users{
+    display:inline-flex;
+    align-items:center;
+    flex-wrap:wrap;
+    gap:5px;
+}
+.order-sheet-presence__user{
+    display:inline-flex;
+    align-items:center;
+    gap:3px;
+    padding:3px 8px;
+    border:1px solid #c9d5e7;
+    border-radius:12px;
+    background:#f7f9fc;
+    color:#273650;
+}
+.order-sheet-presence__user--self{
+    border-color:#86b7fe;
+    background:#eaf3ff;
+    color:#0b57a4;
+}
+.order-sheet-presence__tabs{
+    color:#71809a;
+    font-size:11px;
+}
+.order-sheet-presence__notice{
+    padding:3px 9px;
+    border:1px solid #f0b36a;
+    border-radius:12px;
+    background:#fff5e8;
+    color:#b84a00;
+    font-size:11px;
+    font-weight:600;
+}
+.order-sheet-presence__notice[hidden]{
+    display:none !important;
+}

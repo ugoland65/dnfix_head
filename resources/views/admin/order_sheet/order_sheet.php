@@ -35,6 +35,28 @@ $convertedKrw = $displayExchangeRate > 0
             신규주문서 생성
         </button>
     </div>
+
+    <?php if ($idx > 0) { ?>
+        <div
+            id="firebaseOrderPresence"
+            class="order-sheet-presence"
+            data-order-id="<?= $idx ?>"
+        >
+            <strong class="order-sheet-presence__label">현재 이 페이지 접속자</strong>
+            <span class="order-sheet-presence__status" data-presence-status>확인 중...</span>
+            <span
+                class="order-sheet-presence__users"
+                data-presence-users
+                aria-live="polite"
+            ></span>
+            <span
+                class="order-sheet-presence__notice"
+                data-presence-notice
+                aria-live="assertive"
+                hidden
+            ></span>
+        </div>
+    <?php } ?>
 </div>
 <div id="contents_body">
     <div id="contents_body_wrap">

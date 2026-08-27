@@ -2,6 +2,11 @@
 RewriteEngine On
 RewriteBase /
 
+# Firebase 관리자 인증 API
+RewriteCond %{REQUEST_FILENAME} !-f
+RewriteCond %{REQUEST_FILENAME} !-d
+RewriteRule ^api/firebase/token$ /api/router_index.php [QSA,L]
+
 # API2 라우팅 (admin·기타 룰보다 우선)
 RewriteCond %{REQUEST_FILENAME} !-f
 RewriteCond %{REQUEST_FILENAME} !-d
