@@ -450,6 +450,7 @@ class ProductController extends BaseClass
     {
         $requestData = $request->all();
         $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+        $selectedCollectionIndex = max(0, (int)($requestData['collection_index'] ?? 0));
         $collectionData = [];
         $collectionError = '';
         $productData = [];
@@ -471,17 +472,27 @@ class ProductController extends BaseClass
                     'page' => 1,
                     'limit' => 100,
                 ]);
-                $sourceItem = $collectionData['data']['items'][0] ?? [];
+                $sourceItems = is_array($collectionData['data']['items'] ?? null)
+                    ? $collectionData['data']['items']
+                    : [];
+                if (!isset($sourceItems[$selectedCollectionIndex])) {
+                    $selectedCollectionIndex = 0;
+                }
+                $sourceItem = $sourceItems[$selectedCollectionIndex] ?? [];
                 $sourceProductIdentifier = is_array($sourceItem) ? (string)($sourceItem['product_pk'] ?? '') : '';
                 if ($sourceProductIdentifier === '' && is_array($sourceItem) && !empty($sourceItem['product_code'])) {
                     $sourceProductIdentifier = (string)$sourceItem['product_code'];
                 }
                 if (is_array($sourceItem) && !empty($sourceItem['site_code']) && $sourceProductIdentifier !== '') {
+                    $sourceCollectedAt = is_array($sourceItem['collected_at'] ?? null)
+                        ? (string)($sourceItem['collected_at']['date'] ?? '')
+                        : (string)($sourceItem['collected_at'] ?? '');
                     $collectionItemData = ProductCollectionItemModel::query()
                         ->where('matched_product_pk', '=', $prdIdx)
                         ->where('source_type', '=', 'maker')
                         ->where('source_site_code', '=', (string)$sourceItem['site_code'])
                         ->where('source_product_pk', '=', $sourceProductIdentifier)
+                        ->where('source_collected_at', '=', $sourceCollectedAt)
                         ->orderBy('idx', 'DESC')
                         ->first();
                     $collectionItemData = is_array($collectionItemData)
@@ -496,9 +507,6 @@ class ProductController extends BaseClass
                                 $sourceImageUrls[] = $sourceUrl;
                             }
                         }
-                        $sourceCollectedAt = is_array($sourceItem['collected_at'] ?? null)
-                            ? (string)($sourceItem['collected_at']['date'] ?? '')
-                            : (string)($sourceItem['collected_at'] ?? '');
                         $collectionItemData = ProductCollectionItemModel::create([
                             'matched_product_pk' => $prdIdx,
                             'source_type' => 'maker',
@@ -541,6 +549,7 @@ class ProductController extends BaseClass
             'hostingCollectionItemIdx' => $hostingCollectionItemIdx,
             'collectionItemData' => $collectionItemData,
             'collectionActionLogs' => $collectionActionLogs,
+            'selectedCollectionIndex' => $selectedCollectionIndex,
         ]);
     }
     
@@ -589,6 +598,11 @@ class ProductController extends BaseClass
             'nipporigift.net' => 'http://www.nipporigift.net/',
             'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
             'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
+            'mzakka.com' => 'https://mzakka.com/',
+            'i.mzakka.com' => 'https://mzakka.com/',
+            'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
+            'e-nls.com' => 'https://www.e-nls.com/',
+            'image.e-nls.com' => 'https://www.e-nls.com/',
         ];
         if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$normalizedHost])) {
             http_response_code(400);
@@ -631,7 +645,9 @@ class ProductController extends BaseClass
      */
     public function downloadCollectedProductImages(Request $request)
     {
-        $prdIdx = (int)($request->all()['prd_idx'] ?? 0);
+        $requestData = $request->all();
+        $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+        $collectionIndex = max(0, (int)($requestData['collection_index'] ?? 0));
         if ($prdIdx < 1) {
             http_response_code(400);
             return 'Invalid product.';
@@ -646,7 +662,7 @@ class ProductController extends BaseClass
             'page' => 1,
             'limit' => 100,
         ]);
-        $item = $apiData['data']['items'][0] ?? [];
+        $item = $apiData['data']['items'][$collectionIndex] ?? [];
         $imageSources = is_array($item['image_sources'] ?? null) ? $item['image_sources'] : [];
         if (empty($imageSources)) {
             http_response_code(404);
@@ -665,13 +681,23 @@ class ProductController extends BaseClass
             'image/gif' => 'gif',
             'image/webp' => 'webp',
         ];
+        $imageSourceSites = [
+            'nipporigift.net' => 'http://www.nipporigift.net/',
+            'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
+            'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
+            'mzakka.com' => 'https://mzakka.com/',
+            'i.mzakka.com' => 'https://mzakka.com/',
+            'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
+            'e-nls.com' => 'https://www.e-nls.com/',
+            'image.e-nls.com' => 'https://www.e-nls.com/',
+        ];
         $imageCount = 0;
         foreach (array_slice($imageSources, 0, 50) as $imageSource) {
             $imageUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
             $urlParts = parse_url($imageUrl);
             $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
             $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
-            if (!in_array($scheme, ['http', 'https'], true) || $host !== 'nipporigift.net') {
+            if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$host])) {
                 continue;
             }
 
@@ -682,7 +708,7 @@ class ProductController extends BaseClass
                 CURLOPT_CONNECTTIMEOUT => 5,
                 CURLOPT_TIMEOUT => 20,
                 CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
-                CURLOPT_REFERER => 'http://www.nipporigift.net/',
+                CURLOPT_REFERER => $imageSourceSites[$host],
             ]);
             $imageBody = curl_exec($curl);
             $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
@@ -781,7 +807,9 @@ class ProductController extends BaseClass
     {
         $collectionItem = null;
         try {
-            $prdIdx = (int)($request->all()['prd_idx'] ?? 0);
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $collectionIndex = max(0, (int)($requestData['collection_index'] ?? 0));
             if ($prdIdx < 1) {
                 throw new \InvalidArgumentException('상품 번호가 올바르지 않습니다.');
             }
@@ -797,7 +825,7 @@ class ProductController extends BaseClass
                 'page' => 1,
                 'limit' => 100,
             ]);
-            $sourceItem = $apiData['data']['items'][0] ?? [];
+            $sourceItem = $apiData['data']['items'][$collectionIndex] ?? [];
             if (!is_array($sourceItem)) {
                 throw new \RuntimeException('업로드할 수집 상품 정보를 찾을 수 없습니다.');
             }
@@ -985,6 +1013,12 @@ class ProductController extends BaseClass
             $fieldMap = [
                 'accessories' => 'translated_accessories',
                 'maker_comment' => 'translated_maker_comment',
+                'seller_comment' => 'translated_seller_comment',
+            ];
+            $fieldLabels = [
+                'accessories' => '부속품',
+                'maker_comment' => '메이커 코멘트',
+                'seller_comment' => '판매사 코멘트',
             ];
             if ($prdIdx < 1 || $collectionItemIdx < 1 || !isset($fieldMap[$field])) {
                 throw new \InvalidArgumentException('번역 저장 요청이 올바르지 않습니다.');
@@ -1010,7 +1044,7 @@ class ProductController extends BaseClass
                 'target_table' => 'product_collection_item',
                 'target_pk' => (string)$collectionItemIdx,
                 'action_mode' => 'translation_' . $field,
-                'action_summary' => ($field === 'accessories' ? '부속품' : '메이커 코멘트') . ' 번역 저장',
+                'action_summary' => ($fieldLabels[$field] ?? $field) . ' 번역 저장',
                 'before_json' => [$fieldMap[$field] => $collectionItem[$fieldMap[$field]] ?? null],
                 'after_json' => [$fieldMap[$field] => $translation],
                 'diff_json' => [$fieldMap[$field] => [

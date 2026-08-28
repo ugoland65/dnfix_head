@@ -297,12 +297,36 @@ class ProductSupplierPyApiService
                 'identifier_type' => 'query',
                 'identifier_key' => 'product_id',
                 'payload_key' => 'product_pk',
+                'payload_value_type' => 'int',
             ],
             'tamatoys.tma.co.jp' => [
                 'endpoint' => '/maker-products/tamatoys/crawl',
                 'identifier_type' => 'path_code',
                 'required_path_prefix' => '/item/detail/',
                 'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+            ],
+            'mzakka.com' => [
+                'endpoint' => '/maker-products/mzakka/crawl',
+                'identifier_type' => 'query_code',
+                'identifier_key' => 'item_id',
+                'required_path' => '/pc/detail/item.php',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+            ],
+            'nobunaga-toys.com' => [
+                'endpoint' => '/maker-products/nobunaga/crawl',
+                'identifier_type' => 'query_numeric',
+                'identifier_key' => 'pid',
+                'required_path' => '/',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'int',
+            ],
+            'e-nls.com' => [
+                'endpoint' => '/maker-products/nls/crawl',
+                'identifier_type' => 'path_pict_numeric',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'int',
             ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
@@ -328,6 +352,29 @@ class ProductSupplierPyApiService
             if ($identifier === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
                 throw new \InvalidArgumentException('타마토이즈 상품 코드가 올바르지 않습니다.');
             }
+        } elseif ($collector['identifier_type'] === 'query_code') {
+            parse_str((string)($urlParts['query'] ?? ''), $queryParams);
+            $identifier = trim((string)($queryParams[$collector['identifier_key']] ?? ''));
+            if ($path !== (string)$collector['required_path']) {
+                throw new \InvalidArgumentException('엠자카 URL은 /pc/detail/item.php 상품 상세 페이지여야 합니다.');
+            }
+            if ($identifier === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
+                throw new \InvalidArgumentException('엠자카 URL에는 유효한 item_id 값이 필요합니다.');
+            }
+        } elseif ($collector['identifier_type'] === 'query_numeric') {
+            parse_str((string)($urlParts['query'] ?? ''), $queryParams);
+            $identifier = trim((string)($queryParams[$collector['identifier_key']] ?? ''));
+            if ($path !== (string)$collector['required_path']) {
+                throw new \InvalidArgumentException('노부나가 URL은 사이트 최상위 상품 페이지여야 합니다.');
+            }
+            if ($identifier === '' || !ctype_digit($identifier) || (int)$identifier < 1) {
+                throw new \InvalidArgumentException('노부나가 URL에는 유효한 pid 값이 필요합니다.');
+            }
+        } elseif ($collector['identifier_type'] === 'path_pict_numeric') {
+            if (!preg_match('#^/pict[0-9]+-([1-9][0-9]*)/?$#', $path, $nlsMatches)) {
+                throw new \InvalidArgumentException('NLS URL은 /pict1-상품번호 형식이어야 합니다.');
+            }
+            $identifier = $nlsMatches[1];
         }
 
         $matchedProductPk = (int)($data['matched_product_pk'] ?? 0);
@@ -346,11 +393,9 @@ class ProductSupplierPyApiService
             'requester_user_name' => $requesterUserName,
             'requested_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Seoul')))->format(DATE_ATOM),
         ];
-        if ($host === 'tamatoys.tma.co.jp') {
-            $payload['product_pk'] = $identifier;
-        } else {
-            $payload[$collector['payload_key']] = (int)$identifier;
-        }
+        $payload[$collector['payload_key']] = ($collector['payload_value_type'] ?? 'string') === 'int'
+            ? (int)$identifier
+            : $identifier;
         $headers = [
             'Content-Type: application/json',
             'Accept: application/json',

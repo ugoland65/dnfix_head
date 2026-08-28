@@ -119,6 +119,11 @@ class ProductImageHostingService
             'nipporigift.net' => 'http://www.nipporigift.net/',
             'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
             'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
+            'mzakka.com' => 'https://mzakka.com/',
+            'i.mzakka.com' => 'https://mzakka.com/',
+            'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
+            'e-nls.com' => 'https://www.e-nls.com/',
+            'image.e-nls.com' => 'https://www.e-nls.com/',
         ];
         if (!isset($imageSourceSites[$host])) {
             throw new \InvalidArgumentException('허용되지 않은 원본 이미지 도메인입니다.');
