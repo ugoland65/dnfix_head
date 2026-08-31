@@ -7,6 +7,13 @@ use App\Utils\HttpClient;
 
 class GodoApiService extends BaseClass {
 
+    /*
+    // POST + X-Api-Key 인증용. 고도몰 Front CSRF로 당분간 GET만 사용한다.
+    private const GODO_GOODS_API_URL = 'https://showdang.co.kr/dnfix/api/goods_api.php';
+    private const GODO_GOODS_API_KEY_HEADER = 'X-Api-Key';
+    private const GODO_GOODS_API_KEY = 'sdm_gapi_b7e4c19a2f8d0635c4a1e9b7d2f6c0a8';
+    */
+
     public function __construct() {
         parent::__construct();
     }
@@ -1501,21 +1508,24 @@ class GodoApiService extends BaseClass {
      */
     public function getGodoGoodsInfoByStockCodes($codes, $withCategory = null)
     {
-
-        if($withCategory == "Y"){
-            $withCategoryParam = "&withCategory=Y";
-        }else{
-            $withCategoryParam = "";
+        $codeList = $this->splitGodoCodeList($codes);
+        if (empty($codeList)) {
+            return [];
         }
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes='.$codes.$withCategoryParam;
-
-        $response = HttpClient::getData($apiUrl);
-        $responseData = json_decode($response, true);
-        if(!is_array($responseData)){
-            throw new \Exception('고도몰 API 응답 파싱 실패');
+        $withCategoryParam = ($withCategory == "Y") ? "&withCategory=Y" : "";
+        $merged = [];
+        foreach (array_chunk($codeList, 40) as $chunk) {
+            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes=' . implode(',', $chunk) . $withCategoryParam;
+            $rows = $this->extractGodoGoodsList($this->requestGodoGoodsApi($apiUrl));
+            foreach ($rows as $row) {
+                if (is_array($row)) {
+                    $merged[] = $row;
+                }
+            }
         }
-        return $responseData;
+
+        return $merged;
     }
 
 
@@ -1534,13 +1544,23 @@ class GodoApiService extends BaseClass {
             $withCategoryParam = "";
         }
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos='.$goodsNos.$withCategoryParam;
-        $response = HttpClient::getData($apiUrl);
-        $responseData = json_decode($response, true);
-        if(!is_array($responseData)){
-            throw new \Exception('고도몰 API 응답 파싱 실패');
+        $goodsNoList = $this->splitGodoCodeList($goodsNos);
+        if (empty($goodsNoList)) {
+            return [];
         }
-        return $responseData;
+
+        $merged = [];
+        foreach (array_chunk($goodsNoList, 40) as $chunk) {
+            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos=' . implode(',', $chunk) . $withCategoryParam;
+            $rows = $this->extractGodoGoodsList($this->requestGodoGoodsApi($apiUrl));
+            foreach ($rows as $row) {
+                if (is_array($row)) {
+                    $merged[] = $row;
+                }
+            }
+        }
+
+        return $merged;
     }
 
 
@@ -1560,12 +1580,7 @@ class GodoApiService extends BaseClass {
 
         // goods_api.php 쪽에서 mode=count|list 를 직접 허용하도록 확장된 구조 사용
         $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=reInquiryGoodsNos&restockMode='.$restockMode.'&goodsNos='.$goodsNos;
-        $response = HttpClient::getData($apiUrl);
-        $responseData = json_decode($response, true);
-        if(!is_array($responseData)){
-            throw new \Exception('고도몰 API 응답 파싱 실패');
-        }
-        return $responseData;
+        return $this->requestGodoGoodsApi($apiUrl);
     }
 
 
@@ -1849,6 +1864,106 @@ class GodoApiService extends BaseClass {
     }
 
     /**
+     * 고도몰 단종/취급중단 처리
+     * 다른 goods_api와 동일하게 GET으로 호출한다.
+     *
+     * @param string|int $goodsNo
+     * @param string $discontinued discontinued|sales_end
+     * @param string|array $deleteCategoryCds 삭제할 카테고리 코드 CSV 또는 배열
+     * @return array
+     */
+    public function setGodoProductDiscontinued($goodsNo, $discontinued = 'discontinued', $deleteCategoryCds = '')
+    {
+        $goodsNo = trim((string)$goodsNo);
+        if ($goodsNo === '' || !preg_match('/^\d+$/', $goodsNo)) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $discontinuedMode = strtolower(trim((string)$discontinued));
+        if ($discontinuedMode === 'sales_end' || $discontinuedMode === 'stopped') {
+            $discontinuedMode = 'sales_end';
+        } else {
+            $discontinuedMode = 'discontinued';
+        }
+
+        $deleteCategoryCdsCsv = $this->normalizeGodoCategoryCds($deleteCategoryCds);
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=discontinued&goodsNo='.$goodsNo.'&discontinuedMode='.$discontinuedMode;
+        if ($deleteCategoryCdsCsv !== '') {
+            $apiUrl .= '&deleteCategoryCds=' . urlencode($deleteCategoryCdsCsv);
+        }
+
+        /*
+        // POST + X-Api-Key 인증. 고도몰 Front CSRF로 500이 나서 당분간 GET만 사용한다.
+        $query = [
+            'mode' => 'discontinued',
+            'goodsNo' => $goodsNo,
+            'discontinuedMode' => $discontinuedMode,
+        ];
+        if ($deleteCategoryCdsCsv !== '') {
+            $query['deleteCategoryCds'] = $deleteCategoryCdsCsv;
+        }
+        $meta = HttpClient::getDataWithMeta(
+            self::GODO_GOODS_API_URL . '?' . http_build_query($query),
+            $this->getGodoGoodsApiAuthHeaders()
+        );
+        $response = (string)($meta['response'] ?? '');
+        $httpCode = (int)($meta['http_code'] ?? 0);
+        $curlError = trim((string)($meta['curl_error'] ?? ''));
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \Exception('고도몰 API 응답 파싱 실패 | HTTP ' . $httpCode . ' | ' . $curlError);
+        }
+        */
+
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+
+        return $responseData;
+    }
+
+
+    /*
+    // POST + X-Api-Key 인증용. 재개 시 위 주석과 함께 해제한다.
+    private function getGodoGoodsApiAuthHeaders()
+    {
+        return [
+            self::GODO_GOODS_API_KEY_HEADER . ': ' . self::GODO_GOODS_API_KEY,
+        ];
+    }
+    */
+
+
+    /**
+     * 고도몰 카테고리 코드를 CSV로 정규화한다.
+     *
+     * @param mixed $categoryCds
+     * @return string
+     */
+    private function normalizeGodoCategoryCds($categoryCds)
+    {
+        if (is_array($categoryCds)) {
+            $codeList = $categoryCds;
+        } else {
+            $codeList = explode(',', (string)$categoryCds);
+        }
+
+        $normalized = [];
+        foreach ($codeList as $code) {
+            $code = trim((string)$code);
+            if ($code === '' || !preg_match('/^\d{3}(\d{3}){0,3}$/', $code)) {
+                continue;
+            }
+            $normalized[] = $code;
+        }
+
+        return implode(',', array_values(array_unique($normalized)));
+    }
+
+    /**
      * updateColumns CSV에서 특정 key를 제거한다.
      * 예: a=1,godo_goods_price=1000,b=2 -> a=1,b=2
      *
@@ -1878,6 +1993,126 @@ class GodoApiService extends BaseClass {
         }
 
         return implode(',', $filteredPairs);
+    }
+
+
+    /**
+     * 쉼표 구분 코드 문자열을 배열로 나눈다.
+     *
+     * @param mixed $codes
+     * @return array
+     */
+    private function splitGodoCodeList($codes)
+    {
+        if (is_array($codes)) {
+            $codeList = $codes;
+        } else {
+            $codeList = explode(',', (string)$codes);
+        }
+
+        $normalized = [];
+        foreach ($codeList as $code) {
+            $code = trim((string)$code);
+            if ($code !== '') {
+                $normalized[] = $code;
+            }
+        }
+
+        return array_values(array_unique($normalized));
+    }
+
+
+    /**
+     * 고도몰 상품 목록 응답에서 실제 상품 배열을 꺼낸다.
+     * { mode, total, data: [...] } 형태와 바로 배열인 형태를 모두 허용한다.
+     *
+     * @param mixed $responseData
+     * @return array
+     */
+    private function extractGodoGoodsList($responseData)
+    {
+        if (!is_array($responseData)) {
+            return [];
+        }
+
+        if (isset($responseData['data']) && is_array($responseData['data'])) {
+            $first = reset($responseData['data']);
+            if ($first === false || is_array($first)) {
+                return $responseData['data'];
+            }
+        }
+
+        $first = reset($responseData);
+        if (is_array($first) && (isset($first['goodsNo']) || isset($first['goodsCd']))) {
+            return $responseData;
+        }
+
+        return [];
+    }
+
+
+    /**
+     * 고도몰 goods_api 응답을 JSON으로 파싱한다.
+     * 파싱 실패 시 HTTP 상태와 원문 응답을 예외에 포함한다.
+     *
+     * @param string $apiUrl
+     * @return array
+     */
+    private function requestGodoGoodsApi($apiUrl)
+    {
+        $meta = HttpClient::getDataWithMeta($apiUrl);
+        $response = (string)($meta['response'] ?? '');
+        $httpCode = (int)($meta['http_code'] ?? 0);
+        $curlError = trim((string)($meta['curl_error'] ?? ''));
+
+        $responseData = json_decode($response, true);
+        if (is_array($responseData)) {
+            return $responseData;
+        }
+        
+
+        throw new \Exception($this->buildGodoApiParseErrorMessage($apiUrl, $response, $httpCode, $curlError));
+    }
+
+
+    /**
+     * 고도몰 API 파싱 실패 메시지에 원문 응답을 붙인다.
+     *
+     * @param string $apiUrl
+     * @param string $response
+     * @param int $httpCode
+     * @param string $curlError
+     * @return string
+     */
+    private function buildGodoApiParseErrorMessage($apiUrl, $response, $httpCode, $curlError)
+    {
+        $jsonError = json_last_error_msg();
+        $rawPreview = trim((string)$response);
+        if ($rawPreview === '') {
+            $rawPreview = '(빈 응답)';
+        } else {
+            $maxLen = 2000;
+            if (function_exists('mb_strlen') && function_exists('mb_substr')) {
+                if (mb_strlen($rawPreview, 'UTF-8') > $maxLen) {
+                    $rawPreview = mb_substr($rawPreview, 0, $maxLen, 'UTF-8') . '...';
+                }
+            } elseif (strlen($rawPreview) > $maxLen) {
+                $rawPreview = substr($rawPreview, 0, $maxLen) . '...';
+            }
+        }
+
+        $parts = ['고도몰 API 응답 파싱 실패'];
+        if ($httpCode > 0) {
+            $parts[] = 'HTTP ' . $httpCode;
+        }
+        if ($curlError !== '') {
+            $parts[] = 'cURL: ' . $curlError;
+        }
+        $parts[] = 'json_error: ' . $jsonError;
+        $parts[] = '요청: ' . $apiUrl;
+        $parts[] = '응답: ' . $rawPreview;
+
+        return implode(' | ', $parts);
     }
 
 }

@@ -10,7 +10,7 @@ function userModify(id, mode) {
 
 //상품 창 prd_provider_info
 function prdProviderQuick(idx, vmode = "info") {
-	window.open("/ad/ajax/prd_provider_info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+	window.open("/admin/provider_product/info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1270,height=830,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 }
 
 //브랜드 수정

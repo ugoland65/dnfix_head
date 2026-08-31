@@ -55,6 +55,7 @@ if ($shippingImage !== '') {
             <?php if (!empty($product['is_sale_month'])) { ?><span>월간할인</span><?php } ?>
             <?php if (!empty($product['is_sale_special'])) { ?><span>특가할인</span><?php } ?>
             <?php if (!empty($product['is_discontinued'])) { ?><span class="is-muted">단종</span><?php } ?>
+            <?php if (!empty($product['is_handling_stopped'])) { ?><span class="is-muted">취급중단</span><?php } ?>
         </div>
         <?php if (!empty($product['BD_NAME'])) { ?><p class="admobile-product-detail__brand"><?= htmlspecialchars((string)$product['BD_NAME'], ENT_QUOTES, 'UTF-8') ?></p><?php } ?>
         <h1><?= htmlspecialchars((string)($product['CD_NAME'] ?? '상품명 없음'), ENT_QUOTES, 'UTF-8') ?></h1>

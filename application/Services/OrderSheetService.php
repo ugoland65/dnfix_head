@@ -613,7 +613,9 @@ class OrderSheetService
                 ->select([
                     'A.CD_IDX',
                     'A.CD_KIND_CODE',
+                    'A.CD_CATEGORY_CODE',
                     'A.CD_NAME',
+                    'A.CD_NAME_OG',
                     'A.CD_IMG',
                     'A.CD_CODE',
                     'A.CD_SIZE2',
@@ -622,6 +624,7 @@ class OrderSheetService
                     'A.cd_cost_price',
                     'A.cd_godo_code',
                     'A.is_discontinued',
+                    'A.is_handling_stopped',
                     'A.cd_weight_fn',
                     'B.ps_idx',
                     'B.ps_stock',
@@ -722,13 +725,11 @@ class OrderSheetService
             }
         }
         $stockCodes = array_values(array_unique($stockCodes));
-        if (!empty($stockCodes)) {
-            try {
-
-                $godoApiService = new GodoApiService();
+        $godoApiService = new GodoApiService();
+        try {
+            if (!empty($stockCodes)) {
                 $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes(implode(',', $stockCodes), "Y");
-
-                //dump($godoGoodsRows);
+                //dd($godoGoodsRows);
                 if (!is_array($godoGoodsRows)) {
                     $godoGoodsRows = [];
                 }
@@ -738,14 +739,48 @@ class OrderSheetService
                         continue;
                     }
                     $goodsCd = trim((string)($godoRow['goodsCd'] ?? ''));
-                    if ($goodsCd === '') {
-                        continue;
+                    $goodsNo = trim((string)($godoRow['goodsNo'] ?? ''));
+                    if ($goodsCd !== '') {
+                        $godoGoodsMap[$goodsCd] = $godoRow;
                     }
-                    $godoGoodsMap[$goodsCd] = $godoRow;
+                    if ($goodsNo !== '') {
+                        $godoGoodsMap['goodsNo:' . $goodsNo] = $godoRow;
+                    }
                 }
-            } catch (\Throwable $e) {
-                $godoApiErrorMessage = $e->getMessage();
             }
+
+            $unmatchedGoodsNos = [];
+            foreach ($productMap as $row) {
+                $psIdxKey = trim((string)($row['ps_idx'] ?? ''));
+                $cdGodoCode = trim((string)($row['cd_godo_code'] ?? ''));
+                if ($psIdxKey !== '' && isset($godoGoodsMap[$psIdxKey])) {
+                    continue;
+                }
+                if ($cdGodoCode !== '' && $cdGodoCode !== '0' && !isset($godoGoodsMap['goodsNo:' . $cdGodoCode])) {
+                    $unmatchedGoodsNos[] = $cdGodoCode;
+                }
+            }
+            $unmatchedGoodsNos = array_values(array_unique($unmatchedGoodsNos));
+            if (!empty($unmatchedGoodsNos)) {
+                $extraGoodsRows = $godoApiService->getGodoGoodsInfoByGoodsNo(implode(',', $unmatchedGoodsNos), "Y");
+                if (is_array($extraGoodsRows)) {
+                    foreach ($extraGoodsRows as $godoRow) {
+                        if (!is_array($godoRow)) {
+                            continue;
+                        }
+                        $goodsCd = trim((string)($godoRow['goodsCd'] ?? ''));
+                        $goodsNo = trim((string)($godoRow['goodsNo'] ?? ''));
+                        if ($goodsCd !== '') {
+                            $godoGoodsMap[$goodsCd] = $godoRow;
+                        }
+                        if ($goodsNo !== '') {
+                            $godoGoodsMap['goodsNo:' . $goodsNo] = $godoRow;
+                        }
+                    }
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoApiErrorMessage = $e->getMessage();
         }
 
         $goodsNos = [];
@@ -788,7 +823,12 @@ class OrderSheetService
             $cdKindCode = trim((string)($product['CD_KIND_CODE'] ?? ''));
             $cdGodoCode = trim((string)($product['cd_godo_code'] ?? ''));
             $godoGoods = $godoGoodsMap[$psIdxKey] ?? [];
+            if (empty($godoGoods) && $cdGodoCode !== '' && $cdGodoCode !== '0') {
+                $godoGoods = $godoGoodsMap['goodsNo:' . $cdGodoCode] ?? [];
+            }
             $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
+            $godoGoodsName = trim((string)($godoGoods['goodsNm'] ?? ''));
+            $godoPurchaseGoodsName = trim((string)($godoGoods['purchaseGoodsNm'] ?? ''));
             $onlyAdultFl = strtolower(trim((string)($godoGoods['onlyAdultFl'] ?? '')));
             $stockFl = strtolower(trim((string)($godoGoods['stockFl'] ?? '')));
             $soldOutFl = strtolower(trim((string)($godoGoods['soldOutFl'] ?? '')));
@@ -830,8 +870,10 @@ class OrderSheetService
                 'qty' => (int)($row['qty'] ?? 0),
                 'is_false' => !empty($row['is_false']),
                 'cd_kind_code' => $cdKindCode,
+                'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
                 'brand_name' => (string)($product['BD_NAME'] ?? ''),
                 'name' => (string)($product['CD_NAME'] ?? ''),
+                'name_og' => (string)($product['CD_NAME_OG'] ?? ''),
                 'barcode' => (string)($product['CD_CODE'] ?? ''),
                 'cd_hbti' => (string)($product['cd_hbti'] ?? ''),
                 'goods_price' => (string)($product['cd_sale_price'] ?? ''),
@@ -845,6 +887,8 @@ class OrderSheetService
                 'img_path' => $imgPath,
                 'cd_godo_code' => $cdGodoCode,
                 'godo_goods_no' => $godoGoodsNo,
+                'godo_goods_name' => $godoGoodsName,
+                'godo_purchase_goods_name' => $godoPurchaseGoodsName,
                 'godo_stock_qty' => $godoStockQty,
                 'godo_code_matched' => $isGodoCodeMatched,
                 'godo_goods_found' => !empty($godoGoods),
@@ -857,6 +901,7 @@ class OrderSheetService
                 'is_sale_month' => (int)($product['is_sale_month'] ?? 0),
                 'is_sale_special' => (int)($product['is_sale_special'] ?? 0),
                 'is_discontinued' => (int)($product['is_discontinued'] ?? 0),
+                'is_handling_stopped' => (int)($product['is_handling_stopped'] ?? 0),
                 'restock_request_count' => $restockRequestCount,
                 'godo_category_lines' => $godoCategoryLines,
                 'godo_process_log' => $godoProcessLogByProductIdx[$pidx] ?? null,
@@ -2575,6 +2620,7 @@ class OrderSheetService
                     'A.cd_price_fn',
                     'A.cd_memo3',
                     'A.is_discontinued',
+                    'A.is_handling_stopped',
                     'A.cd_godo_code',
                     'A.cd_restock_alert_qty',
                     'A.cd_restock_alert_collected_at',
@@ -3730,6 +3776,10 @@ class OrderSheetService
         return [
             'success' => true,
             'msg' => '완료',
+            'from_oop_idx' => $fromOopIdx,
+            'to_oop_idx' => $toOopIdx,
+            'from_total_count' => count($fromData),
+            'to_total_count' => count($toData),
         ];
     }
 

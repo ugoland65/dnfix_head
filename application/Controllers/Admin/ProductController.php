@@ -373,6 +373,7 @@ class ProductController extends BaseClass
                 'is_sale_month' => 0,
                 'is_sale_special' => 0,
                 'is_discontinued' => 0,
+                'is_handling_stopped' => 0,
             ];
 
             $data = [
@@ -422,6 +423,16 @@ class ProductController extends BaseClass
             $brandService = new BrandService();
             $brandForSelect = $brandService->getBrandForSelect();
 
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $godoDiscontinuedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prdIdx,
+                InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED
+            );
+            $godoHandlingStoppedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prdIdx,
+                InspectionProcessLogService::LOCATION_PRODUCT_GODO_HANDLING_STOPPED
+            );
+
             $data = [
                 'mode' => 'edit',
                 'prd_idx' => $prdIdx,
@@ -430,6 +441,8 @@ class ProductController extends BaseClass
                 'categories' => $categories,
                 'brandForSelect' => $brandForSelect,
                 'sale_status_options' => $saleStatusOptions,
+                'godoDiscontinuedLog' => $godoDiscontinuedLog,
+                'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
             ];
 
             return view('admin.product.prd_detail_basic', $data);
@@ -1566,8 +1579,24 @@ class ProductController extends BaseClass
                     $result = $this->productService->setProductDiscontinued($requestData);
                     break;
 
+                case 'set_godo_product_discontinued':
+                    $result = $this->productService->setGodoProductDiscontinued($requestData);
+                    break;
+
+                case 'set_godo_product_handling_stopped':
+                    $result = $this->productService->setGodoProductHandlingStopped($requestData);
+                    break;
+
                 case 'unset_product_discontinued':
                     $result = $this->productService->unsetProductDiscontinued($requestData);
+                    break;
+
+                case 'set_product_handling_stopped':
+                    $result = $this->productService->setProductHandlingStopped($requestData);
+                    break;
+
+                case 'unset_product_handling_stopped':
+                    $result = $this->productService->unsetProductHandlingStopped($requestData);
                     break;
 
                 case 'process_single_godo_inspection':

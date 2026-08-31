@@ -44,6 +44,7 @@ class ProductPartnerController extends BaseClass
             $s_godo_sale_status = $requestData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
             $s_prd_kind = $requestData['s_prd_kind'] ?? null; // 상품분류(1차)
             $s_prd_kind_second = $requestData['s_prd_kind_second'] ?? null; // 상품분류(2차)
+            $s_discontinued = $requestData['s_discontinued'] ?? null; // 단종/취급중단
 
             $payload = [
                 'paging' => true,
@@ -58,6 +59,7 @@ class ProductPartnerController extends BaseClass
                 's_godo_sale_status' => $s_godo_sale_status,
                 's_prd_kind' => $s_prd_kind,
                 's_prd_kind_second' => $s_prd_kind_second,
+                's_discontinued' => $s_discontinued,
             ];
 
             $productPartnerService = new ProductPartnerService();
@@ -151,6 +153,7 @@ class ProductPartnerController extends BaseClass
                 's_status' => $s_godo_sale_status,
                 's_prd_kind' => $s_prd_kind,
                 's_prd_kind_second' => $s_prd_kind_second,
+                's_discontinued' => $s_discontinued,
                 'sort_mode' => $sort_mode,
                 'pagination' => $paginationArray,
                 'paginationHtml' => $paginationHtml,
@@ -289,6 +292,49 @@ class ProductPartnerController extends BaseClass
         }
         catch(Throwable $e){
             dump($e->getMessage());
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 위탁 상품 상세 팝업
+     *
+     * @param Request $request
+     * @return mixed
+     */
+    public function getProductPartnerInfoPage( Request $request )
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $vmode = (string)($requestData['vmode'] ?? 'info');
+
+            if ($prdIdx <= 0) {
+                throw new \Exception('prd_idx가 비어있습니다.');
+            }
+
+            $allowedModes = ['info', 'discount_sale_log', 'match', 'log'];
+            if (!in_array($vmode, $allowedModes, true)) {
+                $vmode = 'info';
+            }
+
+            $productPartnerService = new ProductPartnerService();
+            $productPartner = $productPartnerService->getProductPartnerInfo($prdIdx);
+
+            $data = [
+                'prd_idx' => $prdIdx,
+                'vmode' => $vmode,
+                'prd_data' => $productPartner ?? [],
+            ];
+
+            return view('admin.provider.provider_prd_info', $data)
+                ->extends('admin.layout.popup_layout', [
+                    'headTitle' => '위탁상품 상세',
+                ]);
+        } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
@@ -561,6 +607,30 @@ class ProductPartnerController extends BaseClass
                 $result = true;
                 $message = '최근 할인일이 저장되었습니다.';
                 $errorMessage = '최근 할인일 저장에 실패했습니다.';
+
+            }elseif( $actionMode == 'set_product_discontinued' ){
+                $productPartnerService->setProductDiscontinued($requestData);
+                $result = true;
+                $message = '단종 처리되었습니다.';
+                $errorMessage = '단종 처리에 실패했습니다.';
+
+            }elseif( $actionMode == 'unset_product_discontinued' ){
+                $productPartnerService->unsetProductDiscontinued($requestData);
+                $result = true;
+                $message = '단종이 해제되었습니다.';
+                $errorMessage = '단종 해제에 실패했습니다.';
+
+            }elseif( $actionMode == 'set_product_handling_stopped' ){
+                $productPartnerService->setProductHandlingStopped($requestData);
+                $result = true;
+                $message = '취급중단 처리되었습니다.';
+                $errorMessage = '취급중단 처리에 실패했습니다.';
+
+            }elseif( $actionMode == 'unset_product_handling_stopped' ){
+                $productPartnerService->unsetProductHandlingStopped($requestData);
+                $result = true;
+                $message = '취급중단이 해제되었습니다.';
+                $errorMessage = '취급중단 해제에 실패했습니다.';
 
             }elseif( $actionMode == 'update_product_partner_category' ){
                 $payload = [

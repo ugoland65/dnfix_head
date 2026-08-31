@@ -10,6 +10,8 @@ class InspectionProcessLogService
     public const LOCATION_ORDER_SHEET_ALL_STOCK = 'order_sheet_all_stock';
     public const LOCATION_PRODUCT_SINGLE_GODO_INSPECTION = 'product_single_godo_inspection';
     public const LOCATION_ORDER_SHEET_STOCK_SINGLE = 'order_sheet_stock_single';
+    public const LOCATION_PRODUCT_GODO_DISCONTINUED = 'product_godo_discontinued';
+    public const LOCATION_PRODUCT_GODO_HANDLING_STOPPED = 'product_godo_handling_stopped';
 
     /**
      * 재고 일괄등록 로그 저장
@@ -22,6 +24,36 @@ class InspectionProcessLogService
         return $this->write(array_merge($payload, [
             'location_code' => self::LOCATION_ORDER_SHEET_ALL_STOCK,
             'relation_pk' => (int)($payload['relation_pk'] ?? 0),
+        ]));
+    }
+
+    /**
+     * 고도몰 단종 처리 로그 저장
+     *
+     * @param array $payload
+     * @return int
+     */
+    public function logProductGodoDiscontinued(array $payload): int
+    {
+        return $this->write(array_merge($payload, [
+            'location_code' => self::LOCATION_PRODUCT_GODO_DISCONTINUED,
+            'prd_idx' => (int)($payload['prd_idx'] ?? 0),
+            'godo_goods_no' => trim((string)($payload['godo_goods_no'] ?? '')),
+        ]));
+    }
+
+    /**
+     * 고도몰 취급중단 처리 로그 저장
+     *
+     * @param array $payload
+     * @return int
+     */
+    public function logProductGodoHandlingStopped(array $payload): int
+    {
+        return $this->write(array_merge($payload, [
+            'location_code' => self::LOCATION_PRODUCT_GODO_HANDLING_STOPPED,
+            'prd_idx' => (int)($payload['prd_idx'] ?? 0),
+            'godo_goods_no' => trim((string)($payload['godo_goods_no'] ?? '')),
         ]));
     }
 
@@ -125,6 +157,48 @@ class InspectionProcessLogService
         unset($row);
 
         return $rows;
+    }
+
+    /**
+     * 상품+위치 기준 최근 로그 1건
+     *
+     * @param int $prdIdx
+     * @param string $locationCode
+     * @return array
+     */
+    public function getLatestByPrdIdxAndLocation(int $prdIdx, string $locationCode): array
+    {
+        if ($prdIdx <= 0 || trim($locationCode) === '') {
+            return [];
+        }
+
+        $row = InspectionProcessLogModel::query()
+            ->select([
+                'ipl_idx',
+                'location_code',
+                'prd_idx',
+                'ps_idx',
+                'godo_goods_no',
+                'process_content',
+                'result_content',
+                'executor_admin_idx',
+                'executor_admin_id',
+                'executor_admin_name',
+                'executed_at',
+            ])
+            ->where('prd_idx', '=', $prdIdx)
+            ->where('location_code', '=', $locationCode)
+            ->orderBy('ipl_idx', 'desc')
+            ->first();
+        if (empty($row)) {
+            return [];
+        }
+
+        $row = is_array($row) ? $row : $row->toArray();
+        $row['process_content'] = $this->jsonDecode($row['process_content'] ?? '');
+        $row['result_content'] = $this->jsonDecode($row['result_content'] ?? '');
+
+        return $row;
     }
 
     /**

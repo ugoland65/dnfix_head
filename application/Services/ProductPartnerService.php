@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use Exception;
 use App\Core\BaseClass;
 use App\Models\ProductPartnerModel;
 use App\Models\ProductModel;
@@ -40,6 +41,7 @@ class ProductPartnerService extends BaseClass
         $s_prd_kind_second = $payloadData['s_prd_kind_second'] ?? null;
         $sort_mode = $payloadData['sort_mode'] ?? 'idx';
         $s_godo_sale_status = $payloadData['s_godo_sale_status'] ?? null; // 고도몰 판매상태
+        $s_discontinued = $payloadData['s_discontinued'] ?? null; // 단종/취급중단
         $with_api_data = $payloadData['with_api_data'] ?? false;
         $is_match_excluded = $payloadData['is_match_excluded'] ?? null;
 
@@ -70,6 +72,18 @@ class ProductPartnerService extends BaseClass
         // 고도몰 판매상태
         if( !empty($s_godo_sale_status) ){
             $query->where('prd_partner.status', $s_godo_sale_status);
+        }
+
+        // 단종/취급중단 검색
+        if ($s_discontinued !== null && $s_discontinued !== '') {
+            if ((string)$s_discontinued === '1') {
+                $query->where('prd_partner.is_discontinued', 1);
+            } elseif ((string)$s_discontinued === 'stopped') {
+                $query->where('prd_partner.is_handling_stopped', 1);
+            } elseif ((string)$s_discontinued === '0') {
+                $query->where('prd_partner.is_discontinued', 0)
+                    ->where('prd_partner.is_handling_stopped', 0);
+            }
         }
 
 
@@ -1563,6 +1577,145 @@ class ProductPartnerService extends BaseClass
         }
 
         return $kindValue;
+    }
+
+    /**
+     * 위탁상품 단종 설정
+     */
+    public function setProductDiscontinued(array $postData): array
+    {
+        return $this->updateSaleStopFlags($postData, 'discontinued', 1, '위탁상품 단종 설정');
+    }
+
+    /**
+     * 위탁상품 단종 해제
+     */
+    public function unsetProductDiscontinued(array $postData): array
+    {
+        return $this->updateSaleStopFlags($postData, 'discontinued', 0, '위탁상품 단종 해제');
+    }
+
+    /**
+     * 위탁상품 취급중단 설정
+     */
+    public function setProductHandlingStopped(array $postData): array
+    {
+        return $this->updateSaleStopFlags($postData, 'handling_stopped', 1, '위탁상품 취급중단 설정');
+    }
+
+    /**
+     * 위탁상품 취급중단 해제
+     */
+    public function unsetProductHandlingStopped(array $postData): array
+    {
+        return $this->updateSaleStopFlags($postData, 'handling_stopped', 0, '위탁상품 취급중단 해제');
+    }
+
+    /**
+     * 단종/취급중단 플래그 갱신. 둘은 동시에 켜지지 않는다.
+     */
+    private function updateSaleStopFlags(array $postData, string $flag, int $value, string $defaultSummary): array
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('위탁상품 고유번호가 없습니다.');
+        }
+
+        $oldProduct = ProductPartnerModel::query()
+            ->select('idx', 'is_discontinued', 'is_handling_stopped')
+            ->where('idx', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('위탁상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        $currentDiscontinued = (int)($oldProduct['is_discontinued'] ?? 0);
+        $currentHandlingStopped = (int)($oldProduct['is_handling_stopped'] ?? 0);
+
+        if ($flag === 'discontinued') {
+            if ($value === 1 && $currentDiscontinued === 1) {
+                throw new Exception('이미 단종 처리된 상품입니다.');
+            }
+            if ($value === 0 && $currentDiscontinued === 0) {
+                throw new Exception('이미 단종 해제된 상품입니다.');
+            }
+            $updateData = [
+                'is_discontinued' => $value,
+            ];
+            if ($value === 1) {
+                $updateData['is_handling_stopped'] = 0;
+            }
+        } else {
+            if ($value === 1 && $currentHandlingStopped === 1) {
+                throw new Exception('이미 취급중단 처리된 상품입니다.');
+            }
+            if ($value === 0 && $currentHandlingStopped === 0) {
+                throw new Exception('이미 취급중단 해제된 상품입니다.');
+            }
+            $updateData = [
+                'is_handling_stopped' => $value,
+            ];
+            if ($value === 1) {
+                $updateData['is_discontinued'] = 0;
+            }
+        }
+
+        ProductPartnerModel::query()
+            ->where('idx', '=', $idx)
+            ->update($updateData);
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $readableDiff = [];
+        foreach ($diff as $key => $value) {
+            if ($key === 'is_discontinued') {
+                $readableDiff['단종'] = [
+                    'before' => ((int)($value['before'] ?? 0) === 1) ? 'Y' : 'N',
+                    'after' => ((int)($value['after'] ?? 0) === 1) ? 'Y' : 'N',
+                ];
+                continue;
+            }
+            if ($key === 'is_handling_stopped') {
+                $readableDiff['취급중단'] = [
+                    'before' => ((int)($value['before'] ?? 0) === 1) ? 'Y' : 'N',
+                    'after' => ((int)($value['after'] ?? 0) === 1) ? 'Y' : 'N',
+                ];
+                continue;
+            }
+            $readableDiff[$key] = $value;
+        }
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = $defaultSummary;
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        $actionMode = ($flag === 'discontinued')
+            ? ($value === 1 ? 'discontinued' : 'undiscontinued')
+            : ($value === 1 ? 'handling_stopped' : 'unhandling_stopped');
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'prd_partner',
+                'target_table' => 'prd_partner',
+                'target_pk' => (string)$idx,
+                'action_mode' => $actionMode,
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $readableDiff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 상태 변경 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'success' => true,
+            'status' => 'success',
+            'message' => '완료',
+            'idx' => $idx,
+        ];
     }
 
 }

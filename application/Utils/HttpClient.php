@@ -109,18 +109,41 @@ class HttpClient
                 $url .= (strpos($url, '?') === false ? '?' : '&') . $query;
             }
 
+            $headers = self::setHeaders($header);
+            $isFormUrlEncoded = false;
+            foreach ((array)$headers as $headerLine) {
+                if (stripos((string)$headerLine, 'Content-Type:') === 0 && stripos((string)$headerLine, 'application/x-www-form-urlencoded') !== false) {
+                    $isFormUrlEncoded = true;
+                    break;
+                }
+            }
+
             $ch = curl_init();
             curl_setopt($ch, CURLOPT_URL, $url);
-            curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
             curl_setopt($ch, CURLOPT_TIMEOUT, 30);
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
+            if ($method === 'POST') {
+                curl_setopt($ch, CURLOPT_POST, true);
+                if (defined('CURLOPT_POSTREDIR')) {
+                    curl_setopt($ch, CURLOPT_POSTREDIR, 7);
+                }
+            } else {
+                curl_setopt($ch, CURLOPT_CUSTOMREQUEST, $method);
+            }
 
             if ($method !== 'GET' && !empty($data)) {
-                curl_setopt($ch, CURLOPT_POSTFIELDS, is_array($data) ? json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) : $data);
+                if (is_array($data)) {
+                    $postFields = $isFormUrlEncoded
+                        ? http_build_query($data)
+                        : json_encode($data, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                } else {
+                    $postFields = $data;
+                }
+                curl_setopt($ch, CURLOPT_POSTFIELDS, $postFields);
             }
-            curl_setopt($ch, CURLOPT_HTTPHEADER, self::setHeaders($header));
+            curl_setopt($ch, CURLOPT_HTTPHEADER, $headers);
 
             $response = curl_exec($ch);
             $httpCode = (int)curl_getinfo($ch, CURLINFO_HTTP_CODE);

@@ -37,8 +37,29 @@ include ($docRoot."/admin2/layout/header_popup.php");
 
 <div class="prd-quick-left">
 
+	<?php if (!empty($prd_data['is_sale_month']) || !empty($prd_data['is_sale_special']) || !empty($prd_data['is_discontinued']) || !empty($prd_data['is_handling_stopped'])) { ?>
+		<div class="on_sale_label_wrap">
+			<?php if (!empty($prd_data['is_sale_month'])) { ?>
+				<label class="on_sale_label xs monthly">월간할인</label>
+			<?php } ?>
+			<?php if (!empty($prd_data['is_sale_special'])) { ?>
+				<label class="on_sale_label xs special">특가할인</label>
+			<?php } ?>
+			<?php if (!empty($prd_data['is_discontinued'])) { ?>
+				<label class="on_sale_label xs discontinued">단종</label>
+			<?php } ?>
+			<?php if (!empty($prd_data['is_handling_stopped'])) { ?>
+				<label class="on_sale_label xs handling-stopped">취급중단</label>
+			<?php } ?>
+		</div>
+	<?php } ?>
+
     <div class="prd-img">
-		<img src="<?=$img_path?>" style="height:150px; border:1px solid #eee !important;">
+		<?php if ($img_path) { ?>
+			<img src="<?=$img_path?>" style="height:150px; border:1px solid #eee !important;">
+		<?php } else { ?>
+			<div style="width:150px; height:150px; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#999;">이미지 없음</div>
+		<?php } ?>
 	</div>
 
 	<div class="prd-quick-info">

@@ -299,9 +299,10 @@
             </ul>
             <ul>
                 <select name="s_discontinued" id="s_discontinued" >
-                    <option value="">단종여부</option>
+                    <option value="">단종/취급중단</option>
                     <option value="1" <? if( $s_discontinued == '1' ) echo "selected";?> >단종</option>
-                    <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >미단종</option>
+                    <option value="stopped" <? if( $s_discontinued == 'stopped' ) echo "selected";?> >취급중단</option>
+                    <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >정상</option>
                 </select>
             </ul>
             <ul>
@@ -524,6 +525,9 @@
                                         <?php } ?>
                                         <?php if( $product['is_discontinued'] ){ ?>
                                             <label class="on_sale_label xs discontinued">단종</label>
+                                        <?php } ?>
+                                        <?php if( !empty($product['is_handling_stopped']) ){ ?>
+                                            <label class="on_sale_label xs handling-stopped">취급중단</label>
                                         <?php } ?>
                                         <?php
                                             $productLabels = (isset($product['product_labels']) && is_array($product['product_labels']))

@@ -286,7 +286,7 @@ $(function(){
 				text: '신규 일일 재고관리 (엑셀) 바로가기',
 				btnClass: 'btn-red',
 				action: function(){
-					location.href='/ad/order/stock_excel';
+					location.href='/admin/stock/stock_excel';
 				}
 			},
 			cencle: {

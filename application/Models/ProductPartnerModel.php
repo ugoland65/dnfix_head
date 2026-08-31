@@ -56,6 +56,8 @@ class ProductPartnerModel extends BaseModel
 		'detail_crawler_date',
 		'discount_target_yn', // 할인대상 여부 (Y/N)
 		'last_sale_date', // 마지막 할인일
+		'is_discontinued', // 단종
+		'is_handling_stopped', // 취급중단
 	];	
 
 }

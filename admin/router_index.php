@@ -136,6 +136,7 @@ try {
 
     $router->get('/provider_product/db', ProductPartnerController::class, 'getSupplierProductDb'); //공급사 사이트 상품DB
     $router->post('/provider_product/action', ProductPartnerController::class, 'providerProductAction'); //공급사 상품 액션
+    $router->get('/provider_product/info', ProductPartnerController::class, 'getProductPartnerInfoPage'); //공급사 상품 상세 팝업
     $router->get('/provider_product/detail', ProductPartnerController::class, 'getProductPartnerDetail'); //공급사 상품 상세
     $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
     $router->get('/provider_product/discount_sale_log', ProductPartnerController::class, 'productPartnerDiscountSaleLog'); //공급사 상품 할인 내역 로그
@@ -199,6 +200,13 @@ try {
     $router->get('/stock/rack_change', RackController::class, 'rackChange'); //랙그룹변경 페이지
     $router->post('/stock/save_rack_change', RackController::class, 'saveRackChange'); //랙그룹변경 저장
 
+    $router->get('/stock/stock_excel', ProductStockHistoryController::class, 'stockExcelPage'); //일일 재고관리 (엑셀)
+    $router->get('/stock/stock_excel_view', ProductStockHistoryController::class, 'stockExcelView'); //일일 재고관리 상세
+    $router->post('/stock/stock_excel_view', ProductStockHistoryController::class, 'stockExcelView'); //일일 재고관리 상세
+    $router->post('/stock/upload_stock_excel', ProductStockHistoryController::class, 'uploadStockExcel'); //일일재고 엑셀 업로드
+    $router->post('/stock/register_day_stock', ProductStockHistoryController::class, 'registerDayStock'); //일일 재고 입출고 등록
+    $router->post('/stock/revert_day_stock', ProductStockHistoryController::class, 'revertDayStock'); //일일 재고 입출고 되돌리기
+    $router->post('/stock/delete_day_stock', ProductStockHistoryController::class, 'deleteDayStock'); //일일재고 이력 삭제
     $router->get('/stock_history/list', ProductStockHistoryController::class, 'productStockHistoryListApi'); //일일재고 목록 API
     $router->post('/stock/save_daily_stock_temp', ProductStockHistoryController::class, 'saveDailyStockTemp'); //일일재고 임시저장
 

@@ -98,7 +98,7 @@ var onlyAD = function () {
 	 */
 	function prdProviderQuick(idx, vmode) {
 		if (vmode == undefined) vmode = "info";
-		window.open("/ad/ajax/prd_provider_info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		window.open("/admin/provider_product/info?prd_idx=" + idx + "&vmode=" + vmode, "prdProviderQuick_" + idx, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 	}
 
 	/**

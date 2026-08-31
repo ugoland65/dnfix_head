@@ -424,7 +424,7 @@ $gnb_lang = "ko";
 				<div class="sub-menu">
 					<ul>
 						<li>
-							<a href="/ad/order/stock_excel">일일 재고관리</a>
+							<a href="/admin/stock/stock_excel">일일 재고관리</a>
 						</li>
 						<li>
 							<a href="/admin/order/sheet/list">주문(발주) 리스트</a>

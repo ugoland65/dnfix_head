@@ -24,6 +24,7 @@ class InspectionProcessLogModel extends BaseModel
         'executor_admin_id',
         'executor_admin_name',
         'executed_at',
+        'created_at',
         'is_stock_qty_sent', // 고도몰 API 호출 시 재고수량(stockQty) 전송 여부
     ];
 }

@@ -21,7 +21,7 @@ if (!$_prd_idx) {
 if ($_prd_idx) {
 
 	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
-		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.cd_sale_price, A.cd_cost_price";
+		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.is_handling_stopped, A.cd_sale_price, A.cd_cost_price";
 
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special  ";
 	$_colum .= ", C.BD_NAME";
@@ -110,8 +110,7 @@ if ($_prd_idx) {
 
 
 	if( !empty($prd_data['cd_sale_price']) ){
-			
-		//$_margin_per = round($prd_data['margin_per'],2) ?? 0;
+		$_margin_per = 0;
 
 		if( $prd_data['cd_sale_price'] > 0 && $prd_data['cd_cost_price'] > 0 ){
 			if( $prd_data['cd_sale_price'] < 29999 ){
@@ -235,7 +234,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 </style>
 <div class="prd-quick-left">
 
-	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special'] || $prd_data['is_discontinued']) { ?>
+	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special'] || $prd_data['is_discontinued'] || !empty($prd_data['is_handling_stopped'])) { ?>
 		<div class="on_sale_label_wrap">
 			<?php if ($prd_data['is_sale_month']) { ?>
 				<label class="on_sale_label xs monthly">월간할인</label>
@@ -245,6 +244,9 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			<?php } ?>
 			<?php if ($prd_data['is_discontinued']) { ?>
 				<label class="on_sale_label xs discontinued">단종</label>
+			<?php } ?>
+			<?php if (!empty($prd_data['is_handling_stopped'])) { ?>
+				<label class="on_sale_label xs handling-stopped">취급중단</label>
 			<?php } ?>
 		</div>
 	<?php } ?>
@@ -477,13 +479,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			<?php if (!empty($prd_data['cd_godo_code'])) { ?>
 				<ul>
 					<dl>
-						<dt>쑈당몰 상품보기</dt>
+						<dt>쑈당몰 보기</dt>
 						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
 					</dl>
 				</ul>
 				<ul>
 					<dl>
-						<dt>고도몰 상품관리</dt>
+						<dt>고도몰 관리</dt>
 						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
 					</dl>
 				</ul>

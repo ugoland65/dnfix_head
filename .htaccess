@@ -64,9 +64,16 @@ RewriteRule ^ad/processing/(.*)$ /admin2/processing.php?processing_mode=$1 [QSA,
 RewriteRule ^ad/proc/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/controller.php?class=$1&method=$2 [QSA,L]
 RewriteRule ^ad/proc/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/controller.php?folder=$1&class=$2&method=$3 [QSA,L]
 
+# 위탁상품 상세 팝업 구 URL → 신규 라우트
+RewriteRule ^ad/ajax/prd_provider_info$ /admin/provider_product/info [R=302,QSA,L]
+RewriteRule ^ad/prd/prd_provider_info$ /admin/provider_product/info [R=302,QSA,L]
+
 # AJAX 요청 Rewrite
 RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1 [QSA,L]
 RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1&get1=$2 [QSA,L]
+
+# 일일 재고관리 (엑셀) 구 URL → 신규 라우트
+RewriteRule ^ad/order/stock_excel$ /admin/stock/stock_excel [R=302,QSA,L]
 
 # 관리자 페이지 그룹 및 다중 GET 변수
 RewriteRule ^ad/([a-zA-Z0-9]+)/([0-9a-zA-Z\-_]+)$ /admin2/index.php?pgroup=$1&pageN=$2 [QSA,L]

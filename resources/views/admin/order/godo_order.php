@@ -591,7 +591,7 @@ $orderList['error'] = is_array($orderList['error'] ?? null) ? $orderList['error'
         }).done(function(response) {
             if (response && response.status === 'success') {
                 var uid = response.data && response.data.uid ? response.data.uid : 0;
-                var moveUrl = '/ad/order/stock_excel' + (uid ? ('?idx=' + encodeURIComponent(uid)) : '');
+                var moveUrl = '/admin/stock/stock_excel' + (uid ? ('?idx=' + encodeURIComponent(uid)) : '');
                 dnConfirm(
                     '일일재고 저장 완료',
                     (response.message || '저장이 완료되었습니다.') + '<br>일일재고 페이지로 이동하시겠습니까?',

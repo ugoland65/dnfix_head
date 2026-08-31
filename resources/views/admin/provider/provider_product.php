@@ -217,6 +217,14 @@
 					</select>
 				</ul>
 				<ul>
+					<select name="s_discontinued" id="s_discontinued">
+						<option value="">단종/취급중단</option>
+						<option value="1" <? if (($s_discontinued ?? '') == '1') echo "selected"; ?>>단종</option>
+						<option value="stopped" <? if (($s_discontinued ?? '') == 'stopped') echo "selected"; ?>>취급중단</option>
+						<option value="0" <? if (($s_discontinued ?? '') == '0') echo "selected"; ?>>정상</option>
+					</select>
+				</ul>
+				<ul>
 					<input type="text" name="s_keyword" id="s_keyword" placeholder="상품명 검색" value="<?= $s_keyword ?? '' ?>">
 				</ul>
 				<ul>
@@ -353,6 +361,12 @@
 										</span>
 									</td>
 									<td class="prd-name">
+										<?php if (!empty($item['is_discontinued'])) { ?>
+											<label class="on_sale_label xs discontinued">단종</label>
+										<?php } ?>
+										<?php if (!empty($item['is_handling_stopped'])) { ?>
+											<label class="on_sale_label xs handling-stopped">취급중단</label>
+										<?php } ?>
 										<a href="javascript:prdProviderQuick(<?= $item['idx'] ?>);"><?= $item['name'] ?></a>
 										<? if (!empty($item['memo'])) { ?>
 											<br><span class="prd-memo text-red"><?= $item['memo'] ?></span>
@@ -828,6 +842,7 @@
 			's_prd_kind_second': $("#s_prd_kind_second").val(),
 			'sort_mode': $("#sort_kind").val(),
 			's_godo_sale_status': $("#s_godo_sale_status").val(),
+			's_discontinued': $("#s_discontinued").val(),
 		};
 
 		// 추가 파라미터가 있으면 병합

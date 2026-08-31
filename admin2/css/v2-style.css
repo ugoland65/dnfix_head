@@ -106,6 +106,9 @@
 .on_sale_label.discontinued{
 	background-color:#222121;
 }
+.on_sale_label.handling-stopped{
+	background-color:#6c757d;
+}
 
 .on_sale_label.RANDOM{
 	background-color:#dc3545;

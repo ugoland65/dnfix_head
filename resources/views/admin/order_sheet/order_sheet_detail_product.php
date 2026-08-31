@@ -275,7 +275,7 @@
                     <!-- 상품 명 -->
                     <td class="text-left">
 
-                        <?php if( $item['product']['is_sale_month'] || $item['product']['is_sale_special'] || $item['product']['is_discontinued'] ){ ?>
+                        <?php if( $item['product']['is_sale_month'] || $item['product']['is_sale_special'] || $item['product']['is_discontinued'] || !empty($item['product']['is_handling_stopped']) ){ ?>
                         <div class="p-b-5">
                             <?php if( $item['product']['is_sale_month'] ){ ?>
                                 <label class="on_sale_label xs monthly">월간할인</label>
@@ -285,6 +285,9 @@
                             <?php } ?>
                             <?php if( $item['product']['is_discontinued'] ){ ?>
                                 <label class="on_sale_label xs discontinued">단종</label>
+                            <?php } ?>
+                            <?php if( !empty($item['product']['is_handling_stopped']) ){ ?>
+                                <label class="on_sale_label xs handling-stopped">취급중단</label>
                             <?php } ?>
                         </div>
                         <?php } ?>
@@ -366,7 +369,7 @@
                     ?>
                     <td style="width:80px;">
                         <div class="qty-control-wrap">
-                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" data-saved-qty="<?= $item['selpd']['qty'] ?? 0 ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" oninput="orderSheetDetail.quantityEditing('<?= $oop_idx ?? '' ?>'); orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
+                            <input type='text' name='cd_code2' id="unit_qty_<?= $item['idx'] ?? '' ?>" class="qty-input" autocomplete="off" autocorrect="off" spellcheck="false" data-is-false="<?= $_is_false_row ? '1' : '0' ?>" data-saved-qty="<?= $item['selpd']['qty'] ?? 0 ?>" style="width:40px; font-size:15px; font-weight:bold; color:<?= $_color ?>;" value="<?= $item['selpd']['qty'] ?? 0 ?>" oninput="orderSheetDetail.quantityEditing('<?= $oop_idx ?? '' ?>'); orderSheetDetail.qtyGogo('<?= $item['idx'] ?? '' ?>', '<?= $oop_idx ?? '' ?>');" <?= $_is_false_row ? 'disabled' : '' ?>>
                             <div class="qty-step-wrap">
                                 <button type="button" class="qty-step-btn" data-step="1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▲</button>
                                 <button type="button" class="qty-step-btn" data-step="-1" data-idx="<?= $item['idx'] ?? '' ?>" data-oopidx="<?= $oop_idx ?? '' ?>" <?= $_is_false_row ? 'disabled' : '' ?>>▼</button>
@@ -1510,7 +1513,37 @@
             return groups;
         }
 
-        function moveCurrentRowToGroup(targetOopIdx, pidx) {
+        function repositionRowContextMenu() {
+            if (!$rowContextMenu.length || $rowContextMenu.is('[hidden]')) {
+                return;
+            }
+            var menuWidth = $rowContextMenu.outerWidth() || 210;
+            var menuHeight = $rowContextMenu.outerHeight() || 120;
+            var viewportWidth = window.innerWidth || $(window).width();
+            var viewportHeight = window.innerHeight || $(window).height();
+            var currentLeft = parseFloat($rowContextMenu.css('left'));
+            var currentTop = parseFloat($rowContextMenu.css('top'));
+            if (!isFinite(currentLeft)) {
+                currentLeft = 8;
+            }
+            if (!isFinite(currentTop)) {
+                currentTop = 8;
+            }
+            var maxLeft = viewportWidth - menuWidth - 8;
+            var maxTop = viewportHeight - menuHeight - 8;
+            $rowContextMenu.css({
+                left: Math.max(8, Math.min(currentLeft, maxLeft)),
+                top: Math.max(8, Math.min(currentTop, maxTop))
+            });
+        }
+
+        function isGroupMoveNestedAction(action) {
+            return action === 'group-move-target'
+                || action === 'group-move-stay'
+                || action === 'group-move-go';
+        }
+
+        function moveCurrentRowToGroup(targetOopIdx, pidx, stayOnCurrentPage) {
             pidx = String(pidx || getCurrentRowPidx()).trim();
             if (!targetOopIdx || !pidx) {
                 showAlert("Error", "이동할 상품 정보가 없습니다.", "alert2");
@@ -1531,7 +1564,23 @@
                 success: function(res) {
                     if (res && res.success === true) {
                         showToast("상품이 그룹으로 이동되었습니다.", new Date().toLocaleTimeString());
-                        orderSheet.Detail("<?= $oo_idx ?? '' ?>", targetOopIdx, "<?= $form_view ?? '' ?>");
+                        if (window.orderSheetDetail && typeof window.orderSheetDetail.updateGroupProductCount === 'function') {
+                            if (res.from_oop_idx !== undefined && res.from_total_count !== undefined) {
+                                window.orderSheetDetail.updateGroupProductCount(res.from_oop_idx, res.from_total_count);
+                            }
+                            if (res.to_oop_idx !== undefined && res.to_total_count !== undefined) {
+                                window.orderSheetDetail.updateGroupProductCount(res.to_oop_idx, res.to_total_count);
+                            }
+                        }
+                        if (stayOnCurrentPage) {
+                            if (window.orderSheetDetail && typeof window.orderSheetDetail.PrdListReload === 'function') {
+                                window.orderSheetDetail.PrdListReload(true);
+                            } else {
+                                orderSheet.Detail("<?= $oo_idx ?? '' ?>", "<?= $oop_idx ?? '' ?>", "<?= $form_view ?? '' ?>");
+                            }
+                        } else {
+                            orderSheet.Detail("<?= $oo_idx ?? '' ?>", targetOopIdx, "<?= $form_view ?? '' ?>");
+                        }
                     } else {
                         showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "그룹 이동 중 오류가 발생했습니다.", "alert2");
                     }
@@ -1849,10 +1898,13 @@
                 e.preventDefault();
                 showRowContextMenu($(this), e.clientX, e.clientY);
             })
-            .off('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]:not([data-row-action="group-move-target"])')
-            .on('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]:not([data-row-action="group-move-target"])', function(e) {
-                e.preventDefault();
+            .off('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]')
+            .on('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]', function(e) {
                 var action = String($(this).data('row-action') || '');
+                if (isGroupMoveNestedAction(action)) {
+                    return;
+                }
+                e.preventDefault();
                 if (!$contextTargetRow.length) {
                     hideRowContextMenu();
                     return;
@@ -1904,6 +1956,7 @@
                     }
                     $rowMoveGroupList.html(listHtml);
                     $groupMoveBtn.addClass('active');
+                    repositionRowContextMenu();
                     return;
                 } else if (action === 'other-form-register') {
                     var registerPidx = getCurrentRowPidx();
@@ -1914,9 +1967,10 @@
 
                 hideRowContextMenu();
             })
-            .off('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]')
-            .on('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"]', function(e) {
+            .off('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"], #orderSheetRowContextMenu [data-row-action="group-move-stay"], #orderSheetRowContextMenu [data-row-action="group-move-go"]')
+            .on('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"], #orderSheetRowContextMenu [data-row-action="group-move-stay"], #orderSheetRowContextMenu [data-row-action="group-move-go"]', function(e) {
                 e.preventDefault();
+                var action = String($(this).data('row-action') || '');
                 if (hasCurrentRowOrderQty()) {
                     showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
                     hideRowContextMenu();
@@ -1927,10 +1981,38 @@
                     hideRowContextMenu();
                     return;
                 }
-                var targetOopIdx = String($(this).data('target-oopidx') || '').trim();
+
+                if (action === 'group-move-target') {
+                    var $targetBtn = $(this);
+                    if ($targetBtn.hasClass('active') && $rowMoveGroupList.find('.row-context-group-move-choice').length) {
+                        $targetBtn.removeClass('active');
+                        $rowMoveGroupList.find('.row-context-group-move-choice').remove();
+                        repositionRowContextMenu();
+                        return;
+                    }
+
+                    var targetOopIdx = String($targetBtn.data('target-oopidx') || '').trim();
+                    $rowMoveGroupList.find('[data-row-action="group-move-target"]').removeClass('active');
+                    $rowMoveGroupList.find('.row-context-group-move-choice').remove();
+                    $targetBtn.addClass('active');
+                    $targetBtn.after(
+                        '<div class="row-context-group-move-choice">' +
+                            '<button type="button" class="row-context-group-move-btn stay" data-row-action="group-move-stay" data-target-oopidx="' + targetOopIdx + '">완료 유지</button>' +
+                            '<button type="button" class="row-context-group-move-btn go" data-row-action="group-move-go" data-target-oopidx="' + targetOopIdx + '">완료 이동</button>' +
+                        '</div>'
+                    );
+                    var choiceEl = $targetBtn.next('.row-context-group-move-choice').get(0);
+                    if (choiceEl && typeof choiceEl.scrollIntoView === 'function') {
+                        choiceEl.scrollIntoView({ block: 'nearest' });
+                    }
+                    repositionRowContextMenu();
+                    return;
+                }
+
+                var moveTargetOopIdx = String($(this).data('target-oopidx') || '').trim();
                 var pidx = getCurrentRowPidx();
                 hideRowContextMenu();
-                moveCurrentRowToGroup(targetOopIdx, pidx);
+                moveCurrentRowToGroup(moveTargetOopIdx, pidx, action === 'group-move-stay');
             })
             .off('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]')
             .on('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]', function(e) {

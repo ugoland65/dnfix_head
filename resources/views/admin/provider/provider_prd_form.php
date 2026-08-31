@@ -51,10 +51,7 @@
 
     .provider-section-nav {
         position: fixed;
-        /*
         top: 75px;
-        */
-        top: 10px;
         left: calc(50% + 100px);
         z-index: 1001;
         max-width: calc(100vw - 32px);
@@ -152,7 +149,7 @@
         </colgroup>
         <tr>
             <td colspan="2" class="none-bg title">
-                <h1 id="provider-basic-section">상품 기본정보</h1>
+                <h1 id="provider-basic-section">위탁상품 기본정보</h1>
             </td>
         </tr>
         <tbody>
@@ -486,6 +483,7 @@
                     ?>
                 </td>
             </tr>
+
             <tr>
                 <th>주문가</th>
                 <td>
@@ -541,11 +539,43 @@
             <tr>
                 <th>부가세</th>
                 <td>
-                    <?php if ($prd_data['price_data']['is_vat'] == 'Y') { ?>
+                    <?php
+                        $priceData = (isset($prd_data['price_data']) && is_array($prd_data['price_data']))
+                            ? $prd_data['price_data']
+                            : [];
+                        $isVat = (string)($priceData['is_vat'] ?? '');
+                    ?>
+                    <?php if ($isVat === 'Y') { ?>
                         포함
-                    <?php }elseif ($prd_data['price_data']['is_vat'] == 'N') { ?>
+                    <?php }elseif ($isVat === 'N') { ?>
                         미포함
                     <?php } ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>단종/취급중단</th>
+                <td>
+                    <?php
+                        $isDiscontinued = !empty($prd_data['is_discontinued']);
+                        $isHandlingStopped = !empty($prd_data['is_handling_stopped']);
+                        $prdIdx = (int)($prd_data['idx'] ?? 0);
+                    ?>
+                    <?php if ($isDiscontinued) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="unsetProductDiscontinued('<?= $prdIdx ?>')">단종 해제</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="setProductDiscontinued('<?= $prdIdx ?>', <?= $isHandlingStopped ? 'true' : 'false' ?>)">단종 처리</button>
+                    <?php } ?>
+
+                    <?php if ($isHandlingStopped) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="unsetProductHandlingStopped('<?= $prdIdx ?>')">취급중단 해제</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="setProductHandlingStopped('<?= $prdIdx ?>', <?= $isDiscontinued ? 'true' : 'false' ?>)">취급중단 처리</button>
+                    <?php } ?>
+                    <div class="admin-guide-text">
+                        - 단종: 더 이상 판매하지 않음 / 취급중단: 더 이상 사입하지 않음 (남은 재고는 판매 가능)
+                        <br>- 두 상태는 동시에 지정할 수 없습니다.
+                    </div>
                 </td>
             </tr>
 
@@ -1020,13 +1050,19 @@
         <tr>
             <th>부가세</th>
             <td>
-                <label><input type="radio" name="is_vat" value="Y" <? if ($prd_data['price_data']['is_vat'] == 'Y') echo "checked"; ?>> 포함</label>
-                <label><input type="radio" name="is_vat" value="N" <? if ($prd_data['price_data']['is_vat'] == 'N') echo "checked"; ?>> 미포함</label>
+                <?php
+                    $priceDataForVat = (isset($prd_data['price_data']) && is_array($prd_data['price_data']))
+                        ? $prd_data['price_data']
+                        : [];
+                    $isVatForForm = (string)($priceDataForVat['is_vat'] ?? '');
+                ?>
+                <label><input type="radio" name="is_vat" value="Y" <? if ($isVatForForm === 'Y') echo "checked"; ?>> 포함</label>
+                <label><input type="radio" name="is_vat" value="N" <? if ($isVatForForm === 'N') echo "checked"; ?>> 미포함</label>
             </td>
         </tr>
         <tr>
             <th>최저판매가</th>
-            <td><input type='text' name='min_sale_price' size='40' value="<?= number_format($prd_data['min_sale_price']) ?>" style="width:150px;" class="comma-input"></td>
+            <td><input type='text' name='min_sale_price' size='40' value="<?= number_format($prd_data['min_sale_price'] ?? 0) ?>" style="width:150px;" class="comma-input"></td>
         </tr>
         <tr>
             <th>상품원가 (공급사 제공가격)</th>
@@ -1861,6 +1897,52 @@
 
         renderSelectedGodoCategoryItems();
         updateGodoCategorySelector();
+    }
+
+    function requestProviderSaleStop(actionMode, prdIdx) {
+        if (!prdIdx) {
+            alert('위탁상품 고유번호가 없습니다.');
+            return;
+        }
+
+        ajaxRequest('/admin/provider_product/action', {
+            action_mode: actionMode,
+            prd_idx: prdIdx,
+            action_url: window.location.pathname + window.location.search
+        })
+            .done(function(res) {
+                if (res && (res.success || res.status === 'success')) {
+                    alert(res.message || '처리가 완료되었습니다.');
+                    location.reload();
+                } else {
+                    alert(res && res.message ? res.message : '처리 실패');
+                }
+            })
+            .fail(function(res) {
+                alert(res && res.message ? res.message : '에러');
+            });
+    }
+
+    function setProductDiscontinued(prdIdx, switchFromHandlingStopped) {
+        if (switchFromHandlingStopped && !confirm('취급중단이 해제되고 단종으로 변경됩니다. 진행할까요?')) {
+            return;
+        }
+        requestProviderSaleStop('set_product_discontinued', prdIdx);
+    }
+
+    function unsetProductDiscontinued(prdIdx) {
+        requestProviderSaleStop('unset_product_discontinued', prdIdx);
+    }
+
+    function setProductHandlingStopped(prdIdx, switchFromDiscontinued) {
+        if (switchFromDiscontinued && !confirm('단종이 해제되고 취급중단으로 변경됩니다. 진행할까요?')) {
+            return;
+        }
+        requestProviderSaleStop('set_product_handling_stopped', prdIdx);
+    }
+
+    function unsetProductHandlingStopped(prdIdx) {
+        requestProviderSaleStop('unset_product_handling_stopped', prdIdx);
     }
 
     /**

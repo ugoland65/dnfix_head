@@ -238,13 +238,9 @@ class ProductService extends BaseClass
             $query->where('A.CD_KIND_CODE', $s_prd_kind);
         }
         if (!empty($s_prd_kind_second)) {
-            $categoryCodeMap = $this->buildCategoryCodeMapByKind();
-            $secondCategoryCode = trim((string)($categoryCodeMap[$s_prd_kind_second] ?? ''));
-            if ($secondCategoryCode === '') {
-                $secondCategoryCode = trim((string)$s_prd_kind_second);
-            }
-            if ($secondCategoryCode !== '') {
-                $query->where('A.CD_CATEGORY_CODE', $secondCategoryCode);
+            $secondCategoryCodes = $this->getCategoryCodesIncludingDescendants((string)$s_prd_kind_second);
+            if (!empty($secondCategoryCodes)) {
+                $query->whereIn('A.CD_CATEGORY_CODE', $secondCategoryCodes);
             }
         }
 
@@ -253,10 +249,16 @@ class ProductService extends BaseClass
             $query->where('A.cd_national', $s_importing_country);
         }
 
-        // 단종여부 검색
-        if ($s_discontinued) {
-            
-            $query->where('A.is_discontinued', $s_discontinued);
+        // 단종/취급중단 검색
+        if ($s_discontinued !== null && $s_discontinued !== '') {
+            if ((string)$s_discontinued === '1') {
+                $query->where('A.is_discontinued', 1);
+            } elseif ((string)$s_discontinued === 'stopped') {
+                $query->where('A.is_handling_stopped', 1);
+            } elseif ((string)$s_discontinued === '0') {
+                $query->where('A.is_discontinued', 0)
+                    ->where('A.is_handling_stopped', 0);
+            }
         }
 
         if ($s_sale_status !== '') {
@@ -1337,7 +1339,7 @@ class ProductService extends BaseClass
         $query = ProductModel::query()
             ->select([
                 'COMPARISON_DB.*',
-                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
+                'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock', 'prd_stock.ps_stock_hold', 'prd_stock.ps_stock_object', 'prd_stock.ps_alarm_count', 'prd_stock.ps_discount_target_yn', 'prd_stock.is_sale_month', 'prd_stock.is_sale_special',
                 'BRAND_DB.BD_NAME', 'BRAND_DB.BD_NAME_EN'
             ])
             ->leftJoin('prd_stock', 'prd_stock.ps_prd_idx', '=', 'COMPARISON_DB.CD_IDX')
@@ -1356,6 +1358,8 @@ class ProductService extends BaseClass
 
             $productData['ps_idx'] = $productData['ps_idx'] ?? null;
             $productData['ps_rack_code'] = $productData['ps_rack_code'] ?? '';
+            $productData['ps_stock'] = (int)($productData['ps_stock'] ?? 0);
+            $productData['ps_stock_hold'] = (int)($productData['ps_stock_hold'] ?? 0);
             $productData['ps_stock_object'] = $productData['ps_stock_object'] ?? '';
             $productData['ps_alarm_count'] = $productData['ps_alarm_count'] ?? 0;
             $productData['ps_discount_target_yn'] = $productData['ps_discount_target_yn'] ?? 'Y';
@@ -5026,6 +5030,78 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 2차 카테고리 검색 시 해당 코드와 하위(3차) 코드를 모두 반환한다.
+     * 상품 저장 시 3차가 지정되면 CD_CATEGORY_CODE가 3차 코드로 들어가므로,
+     * 2차 검색은 하위 코드까지 포함해야 한다.
+     *
+     * @param string $kindOrCode 2차 카테고리 key 또는 code
+     * @return array<int,string>
+     */
+    private function getCategoryCodesIncludingDescendants(string $kindOrCode): array
+    {
+        $kindOrCode = trim($kindOrCode);
+        if ($kindOrCode === '') {
+            return [];
+        }
+
+        $configProduct = config('admin.product');
+        $categories = $configProduct['categories'] ?? [];
+        if (!is_array($categories)) {
+            return [];
+        }
+
+        $collectCodes = function (array $node) use (&$collectCodes): array {
+            $codes = [];
+            $code = trim((string)($node['code'] ?? ''));
+            if ($code !== '') {
+                $codes[] = $code;
+            }
+            $children = (isset($node['children']) && is_array($node['children'])) ? $node['children'] : [];
+            foreach ($children as $child) {
+                if (is_array($child)) {
+                    foreach ($collectCodes($child) as $childCode) {
+                        $codes[] = $childCode;
+                    }
+                }
+            }
+            return $codes;
+        };
+
+        $matchedCodes = [];
+        foreach ($categories as $categoryRow) {
+            if (!is_array($categoryRow)) {
+                continue;
+            }
+            $children = (isset($categoryRow['children']) && is_array($categoryRow['children'])) ? $categoryRow['children'] : [];
+            foreach ($children as $childRow) {
+                if (!is_array($childRow)) {
+                    continue;
+                }
+                $childKey = trim((string)($childRow['key'] ?? ''));
+                $childCode = trim((string)($childRow['code'] ?? ''));
+                if ($kindOrCode !== $childKey && $kindOrCode !== $childCode) {
+                    continue;
+                }
+                foreach ($collectCodes($childRow) as $code) {
+                    $matchedCodes[] = $code;
+                }
+            }
+        }
+
+        if (!empty($matchedCodes)) {
+            return array_values(array_unique($matchedCodes));
+        }
+
+        $categoryCodeMap = $this->buildCategoryCodeMapByKind();
+        $fallbackCode = trim((string)($categoryCodeMap[$kindOrCode] ?? ''));
+        if ($fallbackCode === '') {
+            $fallbackCode = $kindOrCode;
+        }
+
+        return $fallbackCode !== '' ? [$fallbackCode] : [];
+    }
+
+    /**
      * config 카테고리 트리에서 code => name 맵을 생성한다.
      *
      * @return array<string,string>
@@ -5311,7 +5387,7 @@ class ProductService extends BaseClass
         $idx = (int)($postData['prd_idx'] ?? 0);
 
         $oldProduct = ProductModel::query()
-            ->select('CD_IDX', 'is_discontinued')
+            ->select('CD_IDX', 'is_discontinued', 'is_handling_stopped')
             ->where('CD_IDX', '=', $idx)
             ->first();
         if (empty($oldProduct)) {
@@ -5325,6 +5401,7 @@ class ProductService extends BaseClass
 
         $updateData = [
             'is_discontinued' => 1,
+            'is_handling_stopped' => 0,
         ];
 
         ProductModel::query()
@@ -5366,6 +5443,218 @@ class ProductService extends BaseClass
 
 
     /**
+     * 인트라넷 단종 + 고도몰 단종 처리
+     * 고도몰 판매가 문구: 단종상품
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoProductDiscontinued(array $postData): array
+    {
+        $postData['discontinued_mode'] = 'discontinued';
+        return $this->applyGodoProductSalesStop($postData, 'discontinued');
+    }
+
+    /**
+     * 인트라넷 취급중단 + 고도몰 취급중단 처리
+     * 고도몰 판매가 문구: 판매종료
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoProductHandlingStopped(array $postData): array
+    {
+        $postData['discontinued_mode'] = 'sales_end';
+        return $this->applyGodoProductSalesStop($postData, 'sales_end');
+    }
+
+    /**
+     * 고도몰 단종/취급중단 공통 처리
+     *
+     * @param array $postData
+     * @param string $salesStopType discontinued|sales_end
+     * @return array
+     */
+    private function applyGodoProductSalesStop(array $postData, string $salesStopType): array
+    {
+        $isHandlingStop = ($salesStopType === 'sales_end');
+        $label = $isHandlingStop ? '취급중단' : '단종';
+        $actionMode = $isHandlingStop ? 'set_godo_product_handling_stopped' : 'set_godo_product_discontinued';
+
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code', 'is_discontinued', 'is_handling_stopped')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $stock = ProductStockModel::query()
+            ->select(['ps_stock', 'ps_stock_hold'])
+            ->where('ps_prd_idx', '=', $idx)
+            ->first();
+        $stock = empty($stock) ? [] : (is_array($stock) ? $stock : $stock->toArray());
+        $currentStock = (int)($stock['ps_stock'] ?? 0);
+        $holdStock = (int)($stock['ps_stock_hold'] ?? 0);
+        if ($currentStock > 0 || $holdStock > 0) {
+            throw new Exception('현재 재고 또는 보류 재고가 남아 있어 고도몰 ' . $label . ' 처리할 수 없습니다. (현재고: ' . $currentStock . ', 보류: ' . $holdStock . ')');
+        }
+
+        $intranetAlreadyDiscontinued = ((int)($product['is_discontinued'] ?? 0) === 1);
+        $intranetAlreadyHandlingStopped = ((int)($product['is_handling_stopped'] ?? 0) === 1);
+        $intranetAlready = $isHandlingStop ? $intranetAlreadyHandlingStopped : $intranetAlreadyDiscontinued;
+        $intranetApplied = false;
+        if (!$intranetAlready) {
+            if ($isHandlingStop) {
+                $this->setProductHandlingStopped($postData);
+            } else {
+                $this->setProductDiscontinued($postData);
+            }
+            $intranetApplied = true;
+        }
+
+        $discontinuedMode = $isHandlingStop ? 'sales_end' : 'discontinued';
+        $deleteCategoryCds = $postData['delete_category_cds'] ?? ($postData['deleteCategoryCds'] ?? '');
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->setGodoProductDiscontinued($goodsNo, $discontinuedMode, $deleteCategoryCds);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 ' . $label . ' 처리에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $deletedCategoryCds = [];
+        if (isset($godoResponse['deletedCategoryCds']) && is_array($godoResponse['deletedCategoryCds'])) {
+            $deletedCategoryCds = $godoResponse['deletedCategoryCds'];
+        } elseif (isset($godoResponse['updated']['deletedCategoryCds']) && is_array($godoResponse['updated']['deletedCategoryCds'])) {
+            $deletedCategoryCds = $godoResponse['updated']['deletedCategoryCds'];
+        }
+
+        $deletedCategories = [];
+        if (isset($godoResponse['deletedCategories']) && is_array($godoResponse['deletedCategories'])) {
+            $deletedCategories = $godoResponse['deletedCategories'];
+        }
+
+        $keptCategoryCds = [];
+        if (isset($godoResponse['updated']['keptCategoryCds']) && is_array($godoResponse['updated']['keptCategoryCds'])) {
+            $keptCategoryCds = $godoResponse['updated']['keptCategoryCds'];
+        }
+
+        $successMessage = '고도몰 ' . $label . ' 처리가 완료되었습니다.';
+        $resultContent = [
+            'success' => $godoSuccess,
+            'status' => $godoSuccess ? '처리완료' : '실패',
+            'message' => $godoSuccess ? $successMessage : $godoError,
+            'discontinued_mode' => $discontinuedMode,
+            'deleted_category_cds' => $deletedCategoryCds,
+            'deleted_categories' => $deletedCategories,
+            'kept_category_cds' => $keptCategoryCds,
+            'godo_response' => $godoResponse,
+        ];
+
+        $inspectionProcessLogService = new InspectionProcessLogService();
+        $inspectionPayload = [
+            'prd_idx' => $idx,
+            'godo_goods_no' => $goodsNo,
+            'process_content' => [
+                'discontinued_mode' => $discontinuedMode,
+                'requested_delete_category_cds' => $deleteCategoryCds,
+                'intranet_already_discontinued' => $intranetAlreadyDiscontinued,
+                'intranet_already_handling_stopped' => $intranetAlreadyHandlingStopped,
+                'intranet_applied' => $intranetApplied,
+            ],
+            'result_content' => $resultContent,
+        ];
+        try {
+            if ($isHandlingStop) {
+                $inspectionProcessLogService->logProductGodoHandlingStopped($inspectionPayload);
+            } else {
+                $inspectionProcessLogService->logProductGodoDiscontinued($inspectionPayload);
+            }
+        } catch (\Throwable $e) {
+            // 검수 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'is_discontinued' => $intranetAlreadyDiscontinued ? 1 : 0,
+            'is_handling_stopped' => $intranetAlreadyHandlingStopped ? 1 : 0,
+            'godo_sales_stop' => 0,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'is_discontinued' => $isHandlingStop ? 0 : 1,
+            'is_handling_stopped' => $isHandlingStop ? 1 : 0,
+            'godo_sales_stop' => $godoSuccess ? 1 : 0,
+            'godo_price_string' => $isHandlingStop ? '판매종료' : '단종상품',
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'deleted_category_cds' => $deletedCategoryCds,
+            'deleted_categories' => $deletedCategories,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => $actionMode,
+                'action_summary' => $godoSuccess ? ('고도몰 ' . $label . ' 처리') : ('고도몰 ' . $label . ' 처리 실패'),
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            $prefix = $intranetApplied ? ('인트라넷 ' . $label . '은 완료되었습니다. ') : '';
+            throw new Exception($prefix . '고도몰 ' . $label . ' 처리 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $intranetApplied
+                ? ('인트라넷 ' . $label . '과 고도몰 ' . $label . ' 처리를 완료했습니다.')
+                : ('고도몰 ' . $label . ' 처리를 완료했습니다.'),
+            'msg' => '완료',
+            'idx' => $idx,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+
+    /**
      * 상품 단종 해제
      * @param array $postData 파라미터
      * @return array
@@ -5375,7 +5664,7 @@ class ProductService extends BaseClass
         $idx = (int)($postData['prd_idx'] ?? 0);
     
         $oldProduct = ProductModel::query()
-            ->select('CD_IDX', 'is_discontinued')
+            ->select('CD_IDX', 'is_discontinued', 'is_handling_stopped')
             ->where('CD_IDX', '=', $idx)
             ->first();
         if (empty($oldProduct)) {
@@ -5426,6 +5715,131 @@ class ProductService extends BaseClass
             'idx' => $idx,
         ];
 
+    }
+
+    /**
+     * 상품 취급중단 설정
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function setProductHandlingStopped($postData)
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+
+        $oldProduct = ProductModel::query()
+            ->select('CD_IDX', 'is_discontinued', 'is_handling_stopped')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        if ((int)($oldProduct['is_handling_stopped'] ?? 0) === 1) {
+            throw new Exception('이미 취급중단 처리된 상품입니다.');
+        }
+
+        $updateData = [
+            'is_handling_stopped' => 1,
+            'is_discontinued' => 0,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 취급중단 설정';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 취급중단 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
+    }
+
+    /**
+     * 상품 취급중단 해제
+     * @param array $postData 파라미터
+     * @return array
+     */
+    public function unsetProductHandlingStopped($postData)
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+
+        $oldProduct = ProductModel::query()
+            ->select('CD_IDX', 'is_discontinued', 'is_handling_stopped')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($oldProduct)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $oldProduct = is_array($oldProduct) ? $oldProduct : $oldProduct->toArray();
+
+        if ((int)($oldProduct['is_handling_stopped'] ?? 0) === 0) {
+            throw new Exception('이미 취급중단 해제된 상품입니다.');
+        }
+
+        $updateData = [
+            'is_handling_stopped' => 0,
+        ];
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+
+        $afterData = array_merge($oldProduct, $updateData);
+        $adminActionLogService = new AdminActionLogService();
+        $diff = $adminActionLogService->buildDiff($oldProduct, $afterData);
+        $actionSummary = (string)($postData['action_summary'] ?? '');
+        if ($actionSummary === '') {
+            $actionSummary = '상품 취급중단 해제';
+        }
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'update',
+                'action_summary' => $actionSummary,
+                'before_json' => $oldProduct,
+                'after_json' => $afterData,
+                'diff_json' => $diff,
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 취급중단 해제 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        return [
+            'success' => true,
+            'message' => '완료',
+            'msg' => '완료',
+            'idx' => $idx,
+        ];
     }
 
     /**
@@ -5487,7 +5901,10 @@ class ProductService extends BaseClass
                         ? $godoGoodsResponse['data']
                         : $godoGoodsResponse;
                 } else {
-                    $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                    $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
+                        ? $godoGoodsResponse['data']
+                        : $godoGoodsResponse;
                 }
                 if (!is_array($godoGoodsRows)) {
                     $godoGoodsRows = [];

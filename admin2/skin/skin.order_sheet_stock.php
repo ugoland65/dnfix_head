@@ -1,13 +1,31 @@
 <?
 	// 변수 초기화
 	$_idx = $_GET['idx'] ?? $_POST['idx'] ?? "";
-	$_selpd = [];
+	$_selpd_groups = [];
 	
-	$oo_data = sql_fetch_array(sql_query_error("select oo_name, oo_json, oo_stock from ona_order where oo_idx = '".$_idx."' "));
+	$oo_data = sql_fetch_array(sql_query_error("select A.oo_name, A.oo_json, A.oo_false, A.oo_stock, B.oog_brand from ona_order A left join ona_order_group B ON B.oog_idx = A.oo_form_idx where A.oo_idx = '".$_idx."' "));
 
 	// 배열 검증
 	if (!is_array($oo_data)) {
 		$oo_data = [];
+	}
+
+	$ooFalseRows = json_decode((string)($oo_data['oo_false'] ?? '[]'), true);
+	if (!is_array($ooFalseRows)) {
+		$ooFalseRows = json_decode('[' . trim((string)($oo_data['oo_false'] ?? '')) . ']', true);
+	}
+	if (!is_array($ooFalseRows)) {
+		$ooFalseRows = [];
+	}
+	$ooFalsePidxMap = [];
+	foreach ($ooFalseRows as $ooFalseRow) {
+		if (!is_array($ooFalseRow)) {
+			continue;
+		}
+		$ooFalsePidx = (int)($ooFalseRow['pidx'] ?? 0);
+		if ($ooFalsePidx > 0) {
+			$ooFalsePidxMap[$ooFalsePidx] = true;
+		}
 	}
 
 	$_json_oo_stock = json_decode($oo_data['oo_stock'] ?? '{}', true);
@@ -21,8 +39,58 @@
 		$_select_order = [];
 	}
 
+	$oogBrand = json_decode((string)($oo_data['oog_brand'] ?? '[]'), true);
+	if (!is_array($oogBrand)) {
+		$oogBrand = json_decode('[' . trim((string)($oo_data['oog_brand'] ?? '')) . ']', true);
+	}
+	if (!is_array($oogBrand)) {
+		$oogBrand = [];
+	}
+
+	$oopSortByIdx = [];
+	$oopFormNameByIdx = [];
+	$oopSort = 0;
+	foreach ($oogBrand as $brandRow) {
+		if (!is_array($brandRow)) {
+			continue;
+		}
+		$oopIdx = (int)($brandRow['oop_idx'] ?? 0);
+		if ($oopIdx <= 0 || isset($oopSortByIdx[$oopIdx])) {
+			continue;
+		}
+		$oopSortByIdx[$oopIdx] = $oopSort;
+		$oopSort++;
+		$formName = trim((string)($brandRow['name'] ?? ''));
+		if ($formName !== '') {
+			$oopFormNameByIdx[$oopIdx] = $formName;
+		}
+	}
+
 	// 배열 검증 후 count
 	$_select_order_count = is_array($_select_order) ? count($_select_order) : 0;
+
+	$oopIdxList = [];
+	for ( $z=0; $z<$_select_order_count; $z++ ){
+		if (!isset($_select_order[$z]) || !is_array($_select_order[$z])) {
+			continue;
+		}
+		$oopIdx = (int)($_select_order[$z]['bidx'] ?? 0);
+		if ($oopIdx > 0) {
+			$oopIdxList[$oopIdx] = $oopIdx;
+		}
+	}
+
+	$oopNameByIdx = [];
+	if (!empty($oopIdxList)) {
+		$oopIdxSql = implode(',', array_map('intval', array_values($oopIdxList)));
+		$oopResult = sql_query_error("select oop_idx, oop_name from ona_order_prd where oop_idx in (".$oopIdxSql.")");
+		while ($oopRow = sql_fetch_array($oopResult)) {
+			$oopIdx = (int)($oopRow['oop_idx'] ?? 0);
+			if ($oopIdx > 0) {
+				$oopNameByIdx[$oopIdx] = trim((string)($oopRow['oop_name'] ?? ''));
+			}
+		}
+	}
 
 	for ( $z=0; $z<$_select_order_count; $z++ ){
 		
@@ -36,6 +104,13 @@
 			continue;
 		}
 
+		$groupBidx = (int)($_select_order[$z]['bidx'] ?? 0);
+		$groupName = $oopFormNameByIdx[$groupBidx] ?? ($oopNameByIdx[$groupBidx] ?? '');
+		if ($groupName === '') {
+			$groupName = $groupBidx > 0 ? ('그룹 ' . $groupBidx) : '폼그룹';
+		}
+
+		$groupItems = [];
 		$_ary_selpd_count = count($_ary_selpd);
 		
 		for ($i=0; $i<$_ary_selpd_count; $i++){ 
@@ -45,20 +120,45 @@
 				continue;
 			}
 
+			if (!empty($_ary_selpd[$i]['false']) || isset($ooFalsePidxMap[(int)($_ary_selpd[$i]['pidx'] ?? 0)])) {
+				continue;
+			}
+
 			if( empty($_ary_selpd[$i]['false']) ){
 				$_false = false;
 			}else{
 				$_false = $_ary_selpd[$i]['false'];
 			}
 
-			$_selpd[] = array(
+			$groupItems[] = array(
 				"pidx" => $_ary_selpd[$i]['pidx'] ?? '',
 				"qty" => $_ary_selpd[$i]['qty'] ?? 0,
 				"false" => $_false
 			);
 
 		}
+
+		if (empty($groupItems)) {
+			continue;
+		}
+
+		$_selpd_groups[] = array(
+			"bidx" => $groupBidx,
+			"name" => $groupName,
+			"items" => $groupItems
+		);
 	}
+
+	usort($_selpd_groups, static function ($a, $b) use ($oopSortByIdx) {
+		$aIdx = (int)($a['bidx'] ?? 0);
+		$bIdx = (int)($b['bidx'] ?? 0);
+		$aSort = $oopSortByIdx[$aIdx] ?? PHP_INT_MAX;
+		$bSort = $oopSortByIdx[$bIdx] ?? PHP_INT_MAX;
+		if ($aSort === $bSort) {
+			return $aIdx <=> $bIdx;
+		}
+		return $aSort <=> $bSort;
+	});
 
 /*
 	echo "<pre>";
@@ -105,19 +205,37 @@
 		<th>메모</th>
 	</tr>
 <?
-// 배열 검증 후 count
-$_selpd_count = is_array($_selpd) ? count($_selpd) : 0;
+$_selpd_groups_count = is_array($_selpd_groups) ? count($_selpd_groups) : 0;
 
-for ( $i=0; $i<$_selpd_count; $i++ ){
+for ( $g=0; $g<$_selpd_groups_count; $g++ ){
+	if (!isset($_selpd_groups[$g]) || !is_array($_selpd_groups[$g])) {
+		continue;
+	}
+
+	$_group_items = $_selpd_groups[$g]['items'] ?? [];
+	if (!is_array($_group_items) || empty($_group_items)) {
+		continue;
+	}
+	$_group_name = (string)($_selpd_groups[$g]['name'] ?? '폼그룹');
+?>
+	<tr>
+		<th colspan="8" class="text-left"><?= htmlspecialchars($_group_name, ENT_QUOTES, 'UTF-8') ?></th>
+	</tr>
+<?
+	$_group_items_count = count($_group_items);
+	for ( $i=0; $i<$_group_items_count; $i++ ){
 	
 	// 배열 요소 검증
-	if (!isset($_selpd[$i]) || !is_array($_selpd[$i])) {
+	if (!isset($_group_items[$i]) || !is_array($_group_items[$i])) {
 		continue;
 	}
 			
-	$_pidx = $_selpd[$i]['pidx'] ?? '';
-	$_qty = $_selpd[$i]['qty'] ?? 0;
-	$_false = $_selpd[$i]['false'] ?? false;
+	$_pidx = $_group_items[$i]['pidx'] ?? '';
+	$_qty = $_group_items[$i]['qty'] ?? 0;
+	$_false = $_group_items[$i]['false'] ?? false;
+	if (!empty($_false) || isset($ooFalsePidxMap[(int)$_pidx])) {
+		continue;
+	}
 
 	$prd_data = sql_fetch_array(sql_query_error("select 
 		A.CD_NAME, A.CD_IMG, A.CD_CODE, A.CD_CODE2, A.cd_code_fn, A.CD_INV_NAME1, A.CD_INV_NAME2, A.CD_INV_MATERIAL, A.CD_NAME_OG, A.CD_COO,
@@ -176,7 +294,7 @@ for ( $i=0; $i<$_selpd_count; $i++ ){
 			<? } ?>
 		</td>
 	</tr>
-<? } ?>
+<? } } ?>
 </table>
 </form>
 

@@ -66,7 +66,8 @@ class ProductModel extends BaseModel
 		'CD_MACHING_CODE',
 		'cd_hbti_data',
 		'cd_hbti',
-		'is_discontinued',
+		'is_discontinued', // 단종
+		'is_handling_stopped', // 취급중단
 		'CD_WEIGHT',
 		'CD_WEIGHT2',
 		'CD_WEIGHT3',

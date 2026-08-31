@@ -82,6 +82,9 @@ $inStock = (string)($inStock ?? 'all');
                         <?php if (!empty($product['is_discontinued'])) { ?>
                             <span class="admobile-product-status admobile-product-status--muted">단종</span>
                         <?php } ?>
+                        <?php if (!empty($product['is_handling_stopped'])) { ?>
+                            <span class="admobile-product-status admobile-product-status--muted">취급중단</span>
+                        <?php } ?>
                     </div>
                     <?php if (!empty($product['brand_name'])) { ?>
                         <p class="admobile-product-card__brand"><?= htmlspecialchars((string)$product['brand_name'], ENT_QUOTES, 'UTF-8') ?></p>

@@ -222,7 +222,7 @@ var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNE
     .row-context-menu {
         position: fixed;
         z-index: 9999;
-        min-width: 150px;
+        min-width: 168px;
         background: #fff;
         border: 1px solid #cdd5e5;
         border-radius: 6px;
@@ -269,6 +269,54 @@ var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNE
 
     #orderSheetRowMoveGroupList:not(:empty) {
         border-top: 1px solid #eef1f6;
+    }
+
+    .row-context-group-move-choice {
+        display: flex;
+        gap: 6px;
+        padding: 8px 10px;
+        background: #f6f8fd;
+        border-top: 1px solid #e8eef8;
+        border-bottom: 1px solid #e8eef8;
+    }
+
+    .row-context-menu .row-context-group-move-choice button.row-context-group-move-btn {
+        display: inline-flex;
+        justify-content: center;
+        align-items: center;
+        flex: 1;
+        width: auto;
+        min-height: 28px;
+        padding: 0 8px;
+        border: 1px solid #c5d0e3;
+        border-radius: 4px;
+        background: #fff;
+        color: #314e86;
+        font-size: 12px;
+        font-weight: 600;
+        line-height: 1;
+        text-align: center;
+        white-space: nowrap;
+        box-shadow: 0 1px 1px rgba(31, 44, 71, 0.06);
+    }
+
+    .row-context-menu .row-context-group-move-choice button.row-context-group-move-btn + button.row-context-group-move-btn {
+        border-top: 1px solid #2f6fed;
+    }
+
+    .row-context-menu .row-context-group-move-choice button.row-context-group-move-btn:hover {
+        background: #eef3ff;
+    }
+
+    .row-context-menu .row-context-group-move-choice button.row-context-group-move-btn.go {
+        border-color: #2f6fed;
+        background: #2f6fed;
+        color: #fff;
+    }
+
+    .row-context-menu .row-context-group-move-choice button.row-context-group-move-btn.go:hover {
+        background: #245cd4;
+        border-color: #245cd4;
     }
 
     .row-context-menu-icon {
@@ -544,7 +592,7 @@ var oogBrand = <?= json_encode($groupSideRows, JSON_UNESCAPED_UNICODE | JSON_UNE
                 <div class="ost-big <?= !empty($groupRow['has_order']) ? 'inorder' : '' ?>" id="group_side_<?= $groupRow['oop_idx'] ?? '' ?>" onclick="orderSheetDetail.PrdList('<?= $idx ?>', '<?= $groupRow['oop_idx'] ?? '' ?>')">
                     <ul><b><?= $groupRow['name'] ?? '' ?></b></ul>
                     <ul class="m-t-3">
-                        <b><?= (int)($groupRow['oop_total_count'] ?? 0) ?></b> /
+                        <b id="group_side_total_count_<?= htmlspecialchars((string)($groupRow['oop_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"><?= (int)($groupRow['oop_total_count'] ?? 0) ?></b> /
                         <span class="oprice-sum-goods-cate" id="oprice_sum_goods_<?= $groupRow['oop_idx'] ?? '' ?>"><?= (int)($groupRow['item'] ?? 0) ?></span>
                         <?php if ((int)($groupRow['false'] ?? 0) > 0) { ?>
                             <span>실패 : <?= (int)($groupRow['false'] ?? 0) ?></span>
@@ -786,7 +834,7 @@ var orderSheetDetail = function() {
 	}
 
 
-	var showPrdList = function ( oo_idx, oop_idx, form_view ) {
+	var showPrdList = function ( oo_idx, oop_idx, form_view, preserveScroll ) {
 
 		if( !form_view ) form_view = normalFormView;
 
@@ -797,6 +845,14 @@ var orderSheetDetail = function() {
 			&& typeof window.orderSheetRealtime.setActiveFormGroup === "function"
 		) {
 			window.orderSheetRealtime.setActiveFormGroup(oo_idx, oop_idx);
+		}
+
+		var savedScrollTop = 0;
+		var savedScrollLeft = 0;
+		if (preserveScroll) {
+			var $prdWrapForScroll = $('.ospl-prd-wrap').first();
+			savedScrollTop = $prdWrapForScroll.scrollTop() || 0;
+			savedScrollLeft = $prdWrapForScroll.scrollLeft() || 0;
 		}
 
 		productListRequestSeq++;
@@ -826,6 +882,20 @@ var orderSheetDetail = function() {
 			success: function(html){
 				if (requestSeq === productListRequestSeq) {
 					$("#order_sheet_detail_prd_content").html(html);
+					if (preserveScroll) {
+						var restoreProductListScroll = function() {
+							var $newPrdWrap = $('.ospl-prd-wrap').first();
+							if (!$newPrdWrap.length) {
+								return;
+							}
+							$newPrdWrap.scrollTop(savedScrollTop);
+							$newPrdWrap.scrollLeft(savedScrollLeft);
+						};
+						restoreProductListScroll();
+						if (typeof window.requestAnimationFrame === 'function') {
+							window.requestAnimationFrame(restoreProductListScroll);
+						}
+					}
 				}
 			},
 			error: function(request, status, error){
@@ -917,8 +987,20 @@ var orderSheetDetail = function() {
 
 		},
 
-		PrdListReload: function( ) {
-			showPrdList(open_idx, open_oop_idx);
+		PrdListReload: function( preserveScroll ) {
+			showPrdList(open_idx, open_oop_idx, null, !!preserveScroll);
+		},
+
+		updateGroupProductCount: function(oopIdx, totalCount) {
+			var idx = String(oopIdx || '').trim();
+			if (idx === '') {
+				return;
+			}
+			var count = parseInt(totalCount, 10);
+			if (!isFinite(count) || isNaN(count) || count < 0) {
+				count = 0;
+			}
+			$('#group_side_total_count_' + idx).text(String(count));
 		},
 
 		// 디테일 상품리스트 따로 호출

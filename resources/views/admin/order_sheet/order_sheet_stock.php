@@ -63,12 +63,12 @@
             <button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetStockPopup.allStock()">재고등록</button>
         </div>
         <?php if ($godoApiErrorMessage !== '') { ?>
-            <div class="m-t-8" style="color:#dc3545; font-size:12px;">
+            <div class="m-t-8" style="color:#dc3545; font-size:12px; white-space:pre-wrap; word-break:break-all; border:1px solid #fecaca; background:#fef2f2; padding:8px 10px;">
                 고도몰 정보 조회 실패: <?= htmlspecialchars($godoApiErrorMessage, ENT_QUOTES, 'UTF-8') ?>
             </div>
         <?php } ?>
         <?php if ($godoRestockApiErrorMessage !== '') { ?>
-            <div class="m-t-8" style="color:#dc3545; font-size:12px;">
+            <div class="m-t-8" style="color:#dc3545; font-size:12px; white-space:pre-wrap; word-break:break-all; border:1px solid #fecaca; background:#fef2f2; padding:8px 10px;">
                 고도몰 재입고 알림 조회 실패: <?= htmlspecialchars($godoRestockApiErrorMessage, ENT_QUOTES, 'UTF-8') ?>
             </div>
         <?php } ?>
@@ -176,7 +176,7 @@
                         <?php } ?>
                     </td>
                     <td class="text-left">
-                        <?php if (!empty($item['is_sale_month']) || !empty($item['is_sale_special']) || !empty($item['is_discontinued'])) { ?>
+                        <?php if (!empty($item['is_sale_month']) || !empty($item['is_sale_special']) || !empty($item['is_discontinued']) || !empty($item['is_handling_stopped'])) { ?>
                             <div class="on_sale_label_wrap">
                                 <?php if (!empty($item['is_sale_month'])) { ?>
                                     <label class="on_sale_label xs monthly">월간할인</label>
@@ -186,6 +186,9 @@
                                 <?php } ?>
                                 <?php if (!empty($item['is_discontinued'])) { ?>
                                     <label class="on_sale_label xs discontinued">단종</label>
+                                <?php } ?>
+                                <?php if (!empty($item['is_handling_stopped'])) { ?>
+                                    <label class="on_sale_label xs handling-stopped">취급중단</label>
                                 <?php } ?>
                             </div>
                         <?php } ?>
