@@ -12,6 +12,12 @@ $godoGoodsName = trim((string)($item['godo_goods_name'] ?? ''));
 $godoPurchaseGoodsName = trim((string)($item['godo_purchase_goods_name'] ?? ''));
 $prdIdx = (int)($item['pidx'] ?? ($prd_idx ?? 0));
 $psIdx = (int)($item['ps_idx'] ?? 0);
+$inspectionUiContext = trim((string)($inspectionUiContext ?? 'product'));
+$isProviderInspection = ($inspectionUiContext === 'provider');
+$inspectionActionUrl = $isProviderInspection ? '/admin/provider_product/action' : '/admin/product/action';
+$inspectionLocationCode = $isProviderInspection
+    ? 'provider_product_godo_inspection'
+    : 'product_single_godo_inspection';
 $inspectionHistoryRows = (isset($inspectionHistoryRows) && is_array($inspectionHistoryRows)) ? $inspectionHistoryRows : [];
 
 $godoInspectionService = new \App\Services\GodoInspectionService();
@@ -115,6 +121,7 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
         <input type="hidden" name="action_mode" value="process_single_godo_inspection">
         <input type="hidden" name="prd_idx" value="<?= $prdIdx ?>">
         <input type="hidden" name="ps_idx" value="<?= $psIdx ?>">
+        <input type="hidden" name="location_code" value="<?= htmlspecialchars($inspectionLocationCode, ENT_QUOTES, 'UTF-8') ?>">
         <table class="inspection-checklist-table">
             <thead>
             <tr>
@@ -239,6 +246,8 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
                 $locationText = $locationCode;
                 if ($locationCode === 'product_single_godo_inspection') {
                     $locationText = '상품 개별 검수';
+                } elseif ($locationCode === 'provider_product_godo_inspection') {
+                    $locationText = '위탁상품 검수';
                 } elseif ($locationCode === 'order_sheet_all_stock') {
                     $locationText = '재고 일괄등록';
                 }
@@ -427,15 +436,17 @@ var singleGodoInspection = (function () {
             var $button = $form.find('button[onclick*="processSelected"]');
             $button.prop('disabled', true);
             $.ajax({
-                url: '/admin/product/action',
+                url: <?= json_encode($inspectionActionUrl) ?>,
                 type: 'POST',
                 dataType: 'json',
                 data: $form.serializeArray(),
                 success: function (res) {
                     $button.prop('disabled', false);
-                    if (res && res.success === true) {
+                    if (res && (res.success === true || res.status === 'success')) {
                         alert((res.message || '처리가 완료되었습니다.'));
-                        if (typeof prdInfo !== 'undefined' && prdInfo && typeof prdInfo.mode === 'function') {
+                        if (typeof prdProviderInfo !== 'undefined' && prdProviderInfo && typeof prdProviderInfo.view === 'function') {
+                            prdProviderInfo.view('godo_inspection');
+                        } else if (typeof prdInfo !== 'undefined' && prdInfo && typeof prdInfo.mode === 'function') {
                             // 완료 후 동일한 "고도몰 검수 처리" 탭을 다시 로드한다.
                             prdInfo.mode(1, 'godo_inspection');
                         } else {

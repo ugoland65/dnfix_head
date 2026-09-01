@@ -16,6 +16,8 @@ use App\Services\ProductSupplierPyApiService;
 use App\Services\PartnersService;
 use App\Services\BrandService;
 use App\Services\SaleHistoryService;
+use App\Services\GodoInspectionService;
+use App\Services\InspectionProcessLogService;
 use App\Utils\Pagination;
 
 class ProductPartnerController extends BaseClass 
@@ -316,7 +318,7 @@ class ProductPartnerController extends BaseClass
                 throw new \Exception('prd_idx가 비어있습니다.');
             }
 
-            $allowedModes = ['info', 'discount_sale_log', 'match', 'log'];
+            $allowedModes = ['info', 'discount_sale_log', 'match', 'log', 'godo_inspection'];
             if (!in_array($vmode, $allowedModes, true)) {
                 $vmode = 'info';
             }
@@ -334,6 +336,55 @@ class ProductPartnerController extends BaseClass
                 ->extends('admin.layout.popup_layout', [
                     'headTitle' => '위탁상품 상세',
                 ]);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 위탁상품 상세 (고도몰 검수 처리)
+     */
+    public function getProductPartnerGodoInspection(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            if ($prdIdx <= 0) {
+                throw new Exception('prd_idx가 비어있습니다.');
+            }
+
+            $productPartnerService = new ProductPartnerService();
+            $inspectionData = $productPartnerService->getSingleProductGodoInspectionData($prdIdx);
+
+            $godoInspectionService = new GodoInspectionService();
+            $inspectionContext = $godoInspectionService->buildInspectionContext(
+                (array)($inspectionData['item'] ?? []),
+                GodoInspectionService::CONTEXT_PROVIDER_PRODUCT
+            );
+            $inspectionVersion = $godoInspectionService->getInspectionVersion();
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $inspectionHistoryRows = $inspectionProcessLogService->getHistoryByPrdIdx(
+                $prdIdx,
+                30,
+                InspectionProcessLogService::LOCATION_PROVIDER_PRODUCT_GODO_INSPECTION
+            );
+
+            $data = [
+                'prd_idx' => $prdIdx,
+                'inspectionVersion' => $inspectionVersion,
+                'item' => $inspectionData['item'] ?? [],
+                'inspectionContext' => $inspectionContext,
+                'inspectionHistoryRows' => $inspectionHistoryRows,
+                'godoApiErrorMessage' => $inspectionData['godoApiErrorMessage'] ?? '',
+                'godoInfoLoadedAt' => $inspectionData['godoInfoLoadedAt'] ?? '',
+                'godoInfoLoadMs' => $inspectionData['godoInfoLoadMs'] ?? 0,
+                'inspectionUiContext' => 'provider',
+            ];
+
+            return view('admin.product.prd_detail_godo_inspection', $data);
         } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
@@ -631,6 +682,10 @@ class ProductPartnerController extends BaseClass
                 $result = true;
                 $message = '취급중단이 해제되었습니다.';
                 $errorMessage = '취급중단 해제에 실패했습니다.';
+
+            }elseif( $actionMode == 'process_single_godo_inspection' ){
+                $result = $productPartnerService->processSingleProductGodoInspection($requestData);
+                return response()->json($result);
 
             }elseif( $actionMode == 'update_product_partner_category' ){
                 $payload = [

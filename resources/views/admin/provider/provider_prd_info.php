@@ -123,7 +123,7 @@ if (!empty($prd_data['created_at'])) {
 
     <div class="prd-img">
 		<?php if ($img_path) { ?>
-			<img src="<?= htmlspecialchars((string)$img_path, ENT_QUOTES, 'UTF-8') ?>" style="height:150px; border:1px solid #eee !important;">
+			<img src="<?= htmlspecialchars((string)$img_path, ENT_QUOTES, 'UTF-8') ?>" referrerpolicy="no-referrer" style="height:150px; border:1px solid #eee !important;">
 		<?php } else { ?>
 			<div style="width:150px; height:150px; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#999;">이미지 없음</div>
 		<?php } ?>
@@ -157,7 +157,7 @@ if (!empty($prd_data['created_at'])) {
 
     <?php if (!empty($prd_data['supplier_img_src'])) { ?>
     <div class="prd-img m-t-10">
-		<img src="<?= htmlspecialchars((string)$prd_data['supplier_img_src'], ENT_QUOTES, 'UTF-8') ?>" style="height:150px; border:1px solid #eee !important;">
+		<img src="<?= htmlspecialchars((string)$prd_data['supplier_img_src'], ENT_QUOTES, 'UTF-8') ?>" referrerpolicy="no-referrer" style="height:150px; border:1px solid #eee !important;">
 	</div>
     <?php } ?>
 
@@ -183,6 +183,7 @@ if (!empty($prd_data['created_at'])) {
 		<ul class="<?= $vmode === 'info' ? 'active' : '' ?>" data-mode="info">상품정보</ul>
         <ul class="<?= $vmode === 'discount_sale_log' ? 'active' : '' ?>" data-mode="discount_sale_log">할인내역</ul>
 		<ul class="<?= $vmode === 'match' ? 'active' : '' ?>" data-mode="match">검색매칭</ul>
+        <ul class="<?= $vmode === 'godo_inspection' ? 'active' : '' ?>" data-mode="godo_inspection">고도몰 검수 처리</ul>
         <ul class="<?= $vmode === 'log' ? 'active' : '' ?>" data-mode="log">수정로그</ul>
 	</div>
 
@@ -291,12 +292,14 @@ const prdProviderInfo = (function(){
         match: '/ad/ajax/prd_provider_info_match',
         cancelMatchProviderProduct: '/admin/provider_product/proc/cancel_match_provider_product/',
         loadGodoGoodsInfo: '/router/loadGodoGoodsInfo/',
+        godo_inspection: '/admin/provider_product/detail_godo_inspection',
         log: '/admin/admin_action_log/list',
     };
 
     function view(mode){
         var endPoint = '';
         var payload = {};
+        var requestMethod = 'GET';
 
         if (mode == 'info') {
             endPoint = API_ENDPOINTS.info;
@@ -307,12 +310,16 @@ const prdProviderInfo = (function(){
         } else if (mode == 'match') {
             endPoint = API_ENDPOINTS.match;
             payload = { prd_idx : prd_idx };
+        } else if (mode == 'godo_inspection') {
+            endPoint = API_ENDPOINTS.godo_inspection;
+            payload = { prd_idx : prd_idx };
+            requestMethod = 'POST';
         } else if (mode == 'log') {
             endPoint = API_ENDPOINTS.log;
             payload = { prd_idx : prd_idx, target_type : 'prd_partner' };
         }
 
-        ajaxRequest(endPoint, payload, {  method: 'GET', dataType: 'html' })
+        ajaxRequest(endPoint, payload, {  method: requestMethod, dataType: 'html' })
             .then((getdata) => {
                 $('#crm_body').html(getdata);
             })

@@ -140,6 +140,7 @@ try {
     $router->get('/provider_product/detail', ProductPartnerController::class, 'getProductPartnerDetail'); //공급사 상품 상세
     $router->post('/provider_product/save', ProductPartnerController::class, 'saveProductPartnerDetail'); //공급사 상품 상세 저장
     $router->get('/provider_product/discount_sale_log', ProductPartnerController::class, 'productPartnerDiscountSaleLog'); //공급사 상품 할인 내역 로그
+    $router->post('/provider_product/detail_godo_inspection', ProductPartnerController::class, 'getProductPartnerGodoInspection'); //위탁상품 고도몰 검수
     $router->get('/partner/info', PartnersController::class, 'partnerInfo'); //공급사 상세
     $router->post('/partner/save', PartnersController::class, 'savePartner'); //공급사 저장
 

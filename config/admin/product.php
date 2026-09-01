@@ -1,6 +1,6 @@
 <?php
 
-// prdDB 카테고리 대분류
+// prdDB 카테고리 대분류 (상품당 1개만, 중복 불가)
 $prd_kind_name = [
     'ONAHOLE' => "오나홀",
     'TORSO' => "토르소",
@@ -19,7 +19,7 @@ $prd_kind_name = [
     'UNDERWEAR' => "속옷",
     'COSTUME' => "코스튬",
     'BDSM' => "BDSM",
-    'SIDE' => "보조용품",
+    'SIDE' => "관리/보조",
     'SET' => "세트상품",
     'ONLYORDER' => "주문전용상품",
     'REALDOLL' => "리얼돌",
@@ -516,8 +516,51 @@ $categories = [
     [
         'code' => '17000000',
         'key' => 'SIDE',
-        'name' => '보조용품',
-        'children' => []
+        'name' => '관리/보조',
+        'children' => [
+            [
+                'code' => '17010000',
+                'key' => 'SIDE_CLEAN',
+                'name' => '세척/세정',
+                'children' => []
+            ],
+            [
+                'code' => '17020000',
+                'key' => 'SIDE_POWDER',
+                'name' => '관리/파우더',
+                'children' => []
+            ],
+            [
+                'code' => '17030000',
+                'key' => 'SIDE_WARMER',
+                'name' => '워머/히팅',
+                'children' => []
+            ],
+            [
+                'code' => '17040000',
+                'key' => 'SIDE_DRY',
+                'name' => '드라이/건조',
+                'children' => []
+            ],
+            [
+                'code' => '17050000',
+                'key' => 'SIDE_POUCH',
+                'name' => '보관/파우치',
+                'children' => []
+            ],
+            [
+                'code' => '17060000',
+                'key' => 'SIDE_ONAHOLE_ACCESSORY',
+                'name' => '오나홀 보조',
+                'children' => []
+            ],
+            [
+                'code' => '17070000',
+                'key' => 'SIDE_OTHER',
+                'name' => '기타용품',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '18000000',
@@ -530,6 +573,104 @@ $categories = [
         'key' => 'ONLYORDER',
         'name' => '주문전용상품',
         'children' => []
+    ],
+];
+
+/**
+ * 1차 카테고리별 서브 카테고리 (중복 선택 가능)
+ * - 메인은 $prd_kind_name 중 1개만 가진다.
+ * - 서브는 1차 카테고리 안에서 그룹(특징별 등) > 항목 구조이며, 상품마다 여러 개 선택할 수 있다.
+ * - 저장은 추가 구분과 같이 product_category_mappings 를 사용한다.
+ *   category_type = 'sub', category_code = 항목 코드(ONAHOLE_FEATURE_VORTEX 등).
+ *   그룹 코드(ONAHOLE_FEATURE)는 UI 묶음용이며 매핑에는 넣지 않는다.
+ * - 다른 1차 카테고리도 같은 형태로 그룹을 추가하면 된다. (예: TORSO => 특징별)
+ */
+$subCategoriesByKind = [
+    'ONAHOLE' => [
+        [
+            'code' => 'ONAHOLE_FEATURE',
+            'name' => '특징별',
+            'children' => [
+                [
+                    'code' => 'ONAHOLE_FEATURE_VORTEX',
+                    'name' => '소용돌이 구조',
+                    'description' => '주름형 구조가 나선으로 되어 사용시 휘감는 효과가 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_MULTI_MATERIAL',
+                    'name' => '다중소재 구조',
+                    'description' => '소재가 1개 이상 사용된 구조',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_CLEAR',
+                    'name' => '클리어/투명',
+                    'description' => '투명한 재질이 사용된 구조',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_MINI_BODY',
+                    'name' => '미니바디 조형',
+                    'description' => '토르소 형태로 조형된 구조, 가슴 조형 등이 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_ZERO_DIMENSION',
+                    'name' => '무차원 가공',
+                    'description' => '공간 없이 헤집고 가야 하는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_TWO_HOLE',
+                    'name' => '2구멍',
+                    'description' => '1개 이상 구멍이 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_THROUGH',
+                    'name' => '관통 유형',
+                    'description' => '앞뒤가 뚫린 유형',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_WOMB',
+                    'name' => '자궁홀',
+                    'description' => '자궁 기믹, 포르치오 기믹이 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_ANAL',
+                    'name' => '애널형',
+                    'description' => '애널 기믹, 컨셉이 애널이라고 표현한 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_FOLD',
+                    'name' => '주름형(히다계)',
+                    'description' => '일정한 간격으로 주름 기믹이 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_NUB',
+                    'name' => '돌기형(이보계)',
+                    'description' => '돌기가 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_HERRING_ROE',
+                    'name' => '청어알형',
+                    'description' => '둥근 돌기들이 청어알처럼 모여 있는 경우',
+                    'image' => '',
+                ],
+                [
+                    'code' => 'ONAHOLE_FEATURE_ELECTRIC',
+                    'name' => '전자기믹',
+                    'description' => '배터리, 전원 연결해서 진동·전자 효과가 있는 경우',
+                    'image' => '',
+                ],
+            ],
+        ],
     ],
 ];
 
@@ -550,9 +691,29 @@ $preferenceTags = [
 
         // 쇼핑몰 카테고리 연결
         'operation_category_code' => null,
-        'godo_category_code' => 061001,
+        'godo_category_code' => '061001',
 
         // 사용 여부
+        'is_active' => true,
+    ],
+    'AV_ACTRESS' => [
+        'code' => 'AV_ACTRESS',
+        'name' => 'AV여배우',
+        'description' => '실존 또는 가상 AV 여배우를 모티브로 한 제품입니다.',
+        'admin_description' => 'AV 여배우 이름·컨셉이 상품명이나 조형에 명시된 제품',
+        'group_codes' => [],
+        'operation_category_code' => null,
+        'godo_category_code' => '061002',
+        'is_active' => true,
+    ],
+    'GYARU' => [
+        'code' => 'GYARU',
+        'name' => '갸루',
+        'description' => '태닝한 피부, 밝은 머리, 화려한 메이크업 등 갸루 스타일을 모티브로 한 제품입니다.',
+        'admin_description' => '갸루(ギャル) 컨셉·조형이 명시된 제품',
+        'group_codes' => [],
+        'operation_category_code' => null,
+        'godo_category_code' => '061003',
         'is_active' => true,
     ],
 ];
@@ -654,6 +815,7 @@ $sale_status_options = [
 $data = [
     'prd_kind_name' => $prd_kind_name,
     'categories' => $categories,
+    'sub_categories_by_kind' => $subCategoriesByKind,
     'preference_tags' => $preferenceTags,
     'importing_country' => $importing_country,
     'purchase_type_options' => $purchase_type_options,

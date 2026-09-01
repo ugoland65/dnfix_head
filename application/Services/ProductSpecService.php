@@ -6,7 +6,13 @@ class ProductSpecService
     public function getSpecType(string $categoryCode): string
     {
         $categoryCode = trim($categoryCode);
-        return preg_match('/^0201\d{4}$/', $categoryCode) ? '02010000' : $categoryCode;
+        if (preg_match('/^0201\d{4}$/', $categoryCode)) {
+            return '02010000';
+        }
+        if (preg_match('/^01\d{6}$/', $categoryCode)) {
+            return '01000000';
+        }
+        return $categoryCode;
     }
 
     public function getSchema(string $categoryCode): array
@@ -19,6 +25,14 @@ class ProductSpecService
     public function getSchemas(): array
     {
         return [
+            '01000000' => [
+                'label' => '오나홀',
+                'fields' => [
+                    'weight' => ['상품중량', 'g', true],
+                    'inner_length' => ['내부길이', 'cm', true],
+                ],
+                'options' => [],
+            ],
             '02010000' => [
                 'label' => '토르소형',
                 'fields' => [

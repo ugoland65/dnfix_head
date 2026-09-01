@@ -4,9 +4,10 @@ namespace App\Services;
 
 class GodoInspectionService
 {
-    public const INSPECTION_VERSION = '20260729_v2';
+    public const INSPECTION_VERSION = '20260901_v2';
     public const CONTEXT_PRODUCT_SINGLE = 'product_single';
     public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
+    public const CONTEXT_PROVIDER_PRODUCT = 'provider_product';
 
     private const BRAND1_CATEGORY_LIST = [
         '049' => '중국수입 브랜드',
@@ -80,6 +81,26 @@ class GodoInspectionService
         ['sourceCategoryCode' => '01110000', 'cateNm' => '면타입', 'cateCd' => '026005002'],
     ];
 
+    /**
+     * 오나홀 특징별(서브 카테고리) 고도몰 코드
+     * 중량별/유형별과 달리 한 상품에 여러 개를 동시에 둘 수 있다.
+     */
+    private const ONAHOLE_FEATURE_CATEGORIES = [
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_VORTEX', 'cateNm' => '소용돌이 구조', 'cateCd' => '026004002'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_MULTI_MATERIAL', 'cateNm' => '다중소재 구조', 'cateCd' => '026004009'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_CLEAR', 'cateNm' => '클리어/투명', 'cateCd' => '026004007'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_MINI_BODY', 'cateNm' => '미니바디 조형', 'cateCd' => '026004010'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_ZERO_DIMENSION', 'cateNm' => '무차원 가공', 'cateCd' => '026004008'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_TWO_HOLE', 'cateNm' => '2구멍', 'cateCd' => '026004003'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_THROUGH', 'cateNm' => '관통 유형', 'cateCd' => '026004011'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_WOMB', 'cateNm' => '자궁홀', 'cateCd' => '026004004'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_ANAL', 'cateNm' => '애널형', 'cateCd' => '026004005'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_FOLD', 'cateNm' => '주름형(히다계)', 'cateCd' => '026004014'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_NUB', 'cateNm' => '돌기형(이보계)', 'cateCd' => '026004013'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_ELECTRIC', 'cateNm' => '전자기믹', 'cateCd' => '026004012'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_HERRING_ROE', 'cateNm' => '청어알형', 'cateCd' => '026004015'],
+    ];
+
     private const ONAHOLE_INNER_LENGTH_CATEGORIES = [
         ['cateNm' => '10cm 미만', 'cateCd' => '026006007', 'min' => 0, 'max' => 9.99],
         ['cateNm' => '10cm ~ 11.9cm', 'cateCd' => '026006002', 'min' => 10, 'max' => 11.9],
@@ -94,6 +115,7 @@ class GodoInspectionService
         ['sourceCategoryCode' => '02010100', 'cateNm' => '미니 토르소', 'cateCd' => '022007003'],
         ['sourceCategoryCode' => '02010200', 'cateNm' => '라이트 토르소', 'cateCd' => '022007002'],
         ['sourceCategoryCode' => '02010300', 'cateNm' => '리얼 토르소', 'cateCd' => '022007001'],
+        ['sourceCategoryCode' => '02030000', 'cateNm' => '엉덩이형', 'cateCd' => '022008'],
         ['sourceCategoryCode' => '02060000', 'cateNm' => '하반신형', 'cateCd' => '022010'],
         ['sourceCategoryCode' => '02080000', 'cateNm' => '퍼리/피규어', 'cateCd' => '022012'],
     ];
@@ -142,6 +164,8 @@ class GodoInspectionService
         $cdHbti = strtoupper(trim((string)($item['cd_hbti'] ?? '')));
         $cdKindCode = strtoupper(trim((string)($item['cd_kind_code'] ?? '')));
         $cdCategoryCode = trim((string)($item['cd_category_code'] ?? ''));
+        $cdSubCategoryCodes = $item['cd_sub_category_codes'] ?? [];
+        $preferenceTagCodes = $item['preference_tag_codes'] ?? [];
         $godoStockFl = strtolower(trim((string)($item['godo_stock_fl'] ?? '')));
         $godoSoldOutFl = strtolower(trim((string)($item['godo_sold_out_fl'] ?? '')));
         $currentStockQty = (int)($item['stock_qty'] ?? 0);
@@ -170,6 +194,9 @@ class GodoInspectionService
         $onaholeWeightCategoryMap = $this->buildCategoryMap(self::ONAHOLE_WEIGHT_CATEGORIES);
         $onaholePriceCategoryMap = $this->buildCategoryMap(self::ONAHOLE_PRICE_CATEGORIES);
         $onaholeTypeCategoryMap = $this->buildCategoryMap(self::ONAHOLE_TYPE_CATEGORIES);
+        $onaholeFeatureCategoryMap = $this->buildCategoryMap(self::ONAHOLE_FEATURE_CATEGORIES);
+        $preferenceTagCategories = $this->getPreferenceTagCategories();
+        $preferenceTagCategoryMap = $this->buildCategoryMap($preferenceTagCategories);
         $onaholeInnerLengthCategoryMap = $this->buildCategoryMap(self::ONAHOLE_INNER_LENGTH_CATEGORIES);
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
@@ -281,6 +308,8 @@ class GodoInspectionService
         $currentOnaholeWeightCategories = [];
         $currentOnaholePriceCategories = [];
         $currentOnaholeTypeCategories = [];
+        $currentOnaholeFeatureCategories = [];
+        $currentPreferenceTagCategories = [];
         $currentOnaholeHbtiCategories = [];
         $currentOnaholeInnerLengthCategories = [];
         $currentMarginGradeCategories = [];
@@ -300,6 +329,12 @@ class GodoInspectionService
             if (strlen($cateCd) === 9 && strpos($cateCd, '026005') === 0) {
                 $currentOnaholeTypeCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
+            if (strlen($cateCd) === 9 && strpos($cateCd, '026004') === 0) {
+                $currentOnaholeFeatureCategories[] = ['cateCd' => $cateCd, 'line' => $line];
+            }
+            if (strlen($cateCd) === 6 && strpos($cateCd, '061') === 0) {
+                $currentPreferenceTagCategories[] = ['cateCd' => $cateCd, 'line' => $line];
+            }
             if (strlen($cateCd) === 9 && strpos($cateCd, '026010') === 0) {
                 $currentOnaholeHbtiCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
@@ -318,6 +353,14 @@ class GodoInspectionService
         $targetOnaholeTypeCategory = $this->findTargetCategoryBySourceCategoryCode(
             self::ONAHOLE_TYPE_CATEGORIES,
             $cdCategoryCode
+        );
+        $targetOnaholeFeatureCategories = $this->findTargetCategoriesBySourceCategoryCodes(
+            self::ONAHOLE_FEATURE_CATEGORIES,
+            $cdSubCategoryCodes
+        );
+        $targetPreferenceTagCategories = $this->findTargetCategoriesBySourceCategoryCodes(
+            $preferenceTagCategories,
+            $preferenceTagCodes
         );
         $targetOnaholeInnerLengthCategory = $this->findTargetCategoryByValue(self::ONAHOLE_INNER_LENGTH_CATEGORIES, $innerLengthNormalized);
         $targetMarginGradeCategory = $marginGradeCategoryMap[$marginGrade] ?? null;
@@ -352,11 +395,21 @@ class GodoInspectionService
                 'solution' => "<span>인트라넷 원상품명과 고도몰 원상품명이 일치하지 않습니다.</span>\n인트라넷 : <b>{$intranetPurchaseGoodsName}</b>\n고도몰 : <b>{$godoPurchaseGoodsName}</b>",
             ];
         }
-        if (!$isMatchedByGoodsNo && $psIdx <= 0) {
-            $inspectionIssues[] = ['required' => '필수', 'issue' => '재고코드 미생성', 'solution' => '<span>재고코드를 입력해주세요.</span>'];
-        }
-        if (!$isMatchedByGoodsNo && $psIdx > 0) {
-            $inspectionIssues[] = ['required' => '필수', 'issue' => '재고코드는 있으나 매칭된 고도몰 상품번호가 없음', 'solution' => '<span>고도몰에 재고코드가 등록된 상품이 없습니다.</span>'];
+        if ($contextType === self::CONTEXT_PROVIDER_PRODUCT) {
+            if (!$isMatchedByGoodsNo) {
+                $inspectionIssues[] = [
+                    'required' => '필수',
+                    'issue' => '고도몰 상품번호 미등록',
+                    'solution' => '<span>위탁상품에 고도몰 상품번호가 없거나, 고도몰에서 해당 상품을 찾지 못했습니다.</span>',
+                ];
+            }
+        } else {
+            if (!$isMatchedByGoodsNo && $psIdx <= 0) {
+                $inspectionIssues[] = ['required' => '필수', 'issue' => '재고코드 미생성', 'solution' => '<span>재고코드를 입력해주세요.</span>'];
+            }
+            if (!$isMatchedByGoodsNo && $psIdx > 0) {
+                $inspectionIssues[] = ['required' => '필수', 'issue' => '재고코드는 있으나 매칭된 고도몰 상품번호가 없음', 'solution' => '<span>고도몰에 재고코드가 등록된 상품이 없습니다.</span>'];
+            }
         }
         if ($isMatchedByGoodsNo && $hasCdGodoCode && $goodsNo !== $cdGodoCode) {
             $inspectionIssues[] = [
@@ -411,6 +464,42 @@ class GodoInspectionService
                 "<span>오나홀 > 유형별 카테고리가 미지정되어 있습니다.</span>",
                 "<span>오나홀 > 유형별 카테고리 오분류</span>",
                 $onaholeTypeCategoryMap
+            );
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'ONAHOLE' && !empty($targetOnaholeFeatureCategories)) {
+            $this->appendMultiCategoryMatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentOnaholeFeatureCategories,
+                $targetOnaholeFeatureCategories,
+                '특징별 카테고리 미지정',
+                '특징별 카테고리 오류',
+                '<span>오나홀 > 특징별 카테고리가 미지정되어 있습니다.</span>'
+                    . "\n<span>서브 카테고리는 여러 개를 동시에 지정할 수 있으며, 선택한 항목의 고도몰 카테고리가 모두 있어야 합니다.</span>",
+                '<span>오나홀 > 특징별 카테고리가 인트라넷 서브 카테고리와 일치하지 않습니다.</span>'
+                    . "\n<span>서브 카테고리는 여러 개를 동시에 지정할 수 있으며, 선택한 항목은 유지하고 부족한 항목만 추가합니다.</span>",
+                $onaholeFeatureCategoryMap
+            );
+        }
+
+        if ($isMatchedByGoodsNo && !empty($targetPreferenceTagCategories)) {
+            $this->appendMultiCategoryMatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentPreferenceTagCategories,
+                $targetPreferenceTagCategories,
+                '취향/태그 카테고리 미지정',
+                '취향/태그 카테고리 오류',
+                '<span>취향/태그 카테고리가 미지정되어 있습니다.</span>'
+                    . "\n<span>취향/태그는 여러 개를 동시에 지정할 수 있으며, 선택한 항목의 고도몰 카테고리가 모두 있어야 합니다.</span>",
+                '<span>취향/태그 카테고리가 인트라넷 선택값과 일치하지 않습니다.</span>'
+                    . "\n<span>선택한 태그는 유지하고, 부족한 항목은 추가하며 선택하지 않은 취향/태그는 삭제합니다.</span>",
+                $preferenceTagCategoryMap
             );
         }
 
@@ -499,7 +588,8 @@ class GodoInspectionService
 
         if ($isMatchedByGoodsNo) {
             if ($targetMarginGradeCategory === null) {
-                $inspectionIssues[] = ['required' => '필수', 'issue' => '마진그룹 미산출', 'solution' => '<span>판매가/원가 기준 마진그룹이 산출되지 않습니다.</span>'];
+                $marginBasisText = ($contextType === self::CONTEXT_PROVIDER_PRODUCT) ? '판매가/주문가' : '판매가/원가';
+                $inspectionIssues[] = ['required' => '필수', 'issue' => '마진그룹 미산출', 'solution' => "<span>{$marginBasisText} 기준 마진그룹이 산출되지 않습니다.</span>"];
             } else {
                 $this->appendCategoryMismatchIssue(
                     $inspectionIssues,
@@ -581,14 +671,15 @@ class GodoInspectionService
         $normalizedIntranetCostCompare = $normalizePriceValue($intranetCostPriceNormalized);
         $normalizedGodoCostCompare = $normalizePriceValue($godoCostPriceNormalized);
         $hasIntranetCost = ($normalizedIntranetCostCompare !== null && (float)$normalizedIntranetCostCompare > 0);
+        $intranetCostLabel = ($contextType === self::CONTEXT_PROVIDER_PRODUCT) ? '주문가' : '책정원가';
         if ($isMatchedByGoodsNo && !$hasIntranetCost) {
-            $inspectionIssues[] = ['required' => '필수', 'issue' => '원가정보 없음', 'solution' => '<span>인트라넷에 책정원가가 없습니다.</span>'];
+            $inspectionIssues[] = ['required' => '필수', 'issue' => '원가정보 없음', 'solution' => "<span>인트라넷에 {$intranetCostLabel}가 없습니다.</span>"];
         }
         if ($isMatchedByGoodsNo && $hasIntranetCost && ($godoCostPriceNormalized === '' || !is_numeric($godoCostPriceNormalized) || (float)$godoCostPriceNormalized <= 0)) {
             $inspectionIssues[] = [
                 'required' => '필수',
                 'issue' => '원가 미입력',
-                'solution' => "<span>고도몰에 원가정보가 미입력되어 있습니다.</span>\n인트라넷 책정원가 : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>",
+                'solution' => "<span>고도몰에 원가정보가 미입력되어 있습니다.</span>\n인트라넷 {$intranetCostLabel} : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>",
             ];
         }
         if ($isMatchedByGoodsNo && $hasIntranetCost && $normalizedGodoCostCompare !== null && (float)$normalizedGodoCostCompare > 0) {
@@ -597,7 +688,7 @@ class GodoInspectionService
                 $inspectionIssues[] = [
                     'required' => '필수',
                     'issue' => '원가 불일치',
-                    'solution' => "<span>인트라넷 책정원가와 고도몰 원가값이 틀립니다.</span>\n인트라넷 : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>\n고도몰 : <b>{$formatPriceDisplay($godoCostPriceRaw)}</b>",
+                    'solution' => "<span>인트라넷 {$intranetCostLabel}와 고도몰 원가값이 틀립니다.</span>\n인트라넷 : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>\n고도몰 : <b>{$formatPriceDisplay($godoCostPriceRaw)}</b>",
                 ];
             }
         }
@@ -772,6 +863,11 @@ class GodoInspectionService
                 $actionState = '자동처리 불가';
                 $actionReason = '재고코드 정보 부족';
                 break;
+            case '고도몰 상품번호 미등록':
+                $actionTarget = '인트라넷';
+                $actionState = '자동처리 불가';
+                $actionReason = '고도몰 상품번호 등록 필요';
+                break;
             case '재고코드는 있으나 매칭된 고도몰 상품번호가 없음':
                 $actionTarget = '고도몰';
                 $actionState = '자동처리 불가';
@@ -840,6 +936,10 @@ class GodoInspectionService
                 break;
             case '유형별 카테고리 미지정':
             case '유형별 카테고리 오류':
+            case '특징별 카테고리 미지정':
+            case '특징별 카테고리 오류':
+            case '취향/태그 카테고리 미지정':
+            case '취향/태그 카테고리 오류':
             case 'HBTI 카테고리 오류':
             case 'HBTI 카테고리 미지정':
             case '토르소 카테고리 미지정':
@@ -995,6 +1095,171 @@ class GodoInspectionService
     }
 
     /**
+     * 인트라넷 서브 카테고리 코드들에 대응하는 고도몰 카테고리 목록을 찾는다.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @param mixed $sourceCategoryCodes
+     * @return array<int,array{cateNm:string,cateCd:string}>
+     */
+    private function findTargetCategoriesBySourceCategoryCodes(array $rows, $sourceCategoryCodes): array
+    {
+        if (is_string($sourceCategoryCodes)) {
+            $decoded = json_decode($sourceCategoryCodes, true);
+            $sourceCategoryCodes = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', $sourceCategoryCodes, -1, PREG_SPLIT_NO_EMPTY);
+        }
+        if (!is_array($sourceCategoryCodes)) {
+            return [];
+        }
+
+        $sourceCodeMap = [];
+        foreach ($sourceCategoryCodes as $sourceCategoryCode) {
+            $code = trim((string)$sourceCategoryCode);
+            if ($code !== '') {
+                $sourceCodeMap[$code] = true;
+            }
+        }
+        if (empty($sourceCodeMap)) {
+            return [];
+        }
+
+        $targets = [];
+        $seenCateCd = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $sourceCategoryCode = trim((string)($row['sourceCategoryCode'] ?? ''));
+            $targetCateCd = trim((string)($row['cateCd'] ?? ''));
+            if ($sourceCategoryCode === '' || $targetCateCd === '' || !isset($sourceCodeMap[$sourceCategoryCode]) || isset($seenCateCd[$targetCateCd])) {
+                continue;
+            }
+            $seenCateCd[$targetCateCd] = true;
+            $targets[] = [
+                'cateNm' => trim((string)($row['cateNm'] ?? '')),
+                'cateCd' => $targetCateCd,
+            ];
+        }
+
+        return $targets;
+    }
+
+    /**
+     * 다중 선택 카테고리의 미지정/오분류를 판정하고 추가/삭제 큐를 갱신한다.
+     *
+     * @param array<int,array<string,mixed>> $inspectionIssues
+     * @param array<int,array<string,string>> $categoryAddQueue
+     * @param array<int,array<string,string>> $categoryDeleteQueue
+     * @param callable $queueAddCategory
+     * @param array<int,array<string,string>> $currentCategories
+     * @param array<int,array{cateNm:string,cateCd:string}> $targetCategories
+     * @param array<string,array{cateNm:string,cateCd:string}> $categoryNameMap
+     */
+    private function appendMultiCategoryMatchIssue(
+        array &$inspectionIssues,
+        array &$categoryAddQueue,
+        array &$categoryDeleteQueue,
+        callable $queueAddCategory,
+        array $currentCategories,
+        array $targetCategories,
+        string $missingIssueName,
+        string $wrongIssueName,
+        string $missingPrefixText,
+        string $wrongPrefixText,
+        array $categoryNameMap
+    ): void {
+        if (empty($targetCategories)) {
+            return;
+        }
+
+        $targetCateCdMap = [];
+        foreach ($targetCategories as $target) {
+            $cateCd = trim((string)($target['cateCd'] ?? ''));
+            if ($cateCd === '' || isset($targetCateCdMap[$cateCd])) {
+                continue;
+            }
+            $targetCateCdMap[$cateCd] = [
+                'cateNm' => trim((string)($target['cateNm'] ?? '')),
+                'cateCd' => $cateCd,
+            ];
+        }
+        if (empty($targetCateCdMap)) {
+            return;
+        }
+
+        $currentCateCdMap = [];
+        foreach ($currentCategories as $row) {
+            $cateCd = trim((string)($row['cateCd'] ?? ''));
+            if ($cateCd === '' || isset($currentCateCdMap[$cateCd])) {
+                continue;
+            }
+            $currentCateCdMap[$cateCd] = [
+                'cateCd' => $cateCd,
+                'line' => trim((string)($row['line'] ?? '')),
+            ];
+        }
+
+        $toAdd = [];
+        foreach ($targetCateCdMap as $cateCd => $target) {
+            if (!isset($currentCateCdMap[$cateCd])) {
+                $toAdd[] = $target;
+                $queueAddCategory($categoryAddQueue, $cateCd, (string)$target['cateNm']);
+            }
+        }
+
+        $toDelete = [];
+        foreach ($currentCateCdMap as $cateCd => $row) {
+            if (isset($targetCateCdMap[$cateCd])) {
+                continue;
+            }
+            $cateNm = (string)($categoryNameMap[$cateCd]['cateNm'] ?? '');
+            $toDelete[] = [
+                'cateCd' => $cateCd,
+                'cateNm' => $cateNm,
+                'line' => (string)($row['line'] ?? ''),
+            ];
+            $queueAddCategory($categoryDeleteQueue, $cateCd, $cateNm);
+        }
+
+        if (empty($toAdd) && empty($toDelete)) {
+            return;
+        }
+
+        if (empty($currentCateCdMap)) {
+            $addLines = [];
+            foreach ($toAdd as $target) {
+                $addLines[] = '<b>' . (string)$target['cateNm'] . '</b> ( ' . (string)$target['cateCd'] . ' )';
+            }
+            $inspectionIssues[] = [
+                'required' => '필수',
+                'issue' => $missingIssueName,
+                'solution' => $missingPrefixText . "\n추가 카테고리 : " . implode("\n", $addLines),
+            ];
+            return;
+        }
+
+        $wrongLines = [];
+        foreach ($toDelete as $row) {
+            $lineLabel = (string)$row['line'];
+            if ($lineLabel === '') {
+                $lineLabel = (string)$row['cateNm'] !== '' ? (string)$row['cateNm'] : (string)$row['cateCd'];
+            }
+            $wrongLines[] = $lineLabel . ' ( ' . (string)$row['cateCd'] . ' ) - 삭제';
+        }
+        $addLines = [];
+        foreach ($toAdd as $target) {
+            $addLines[] = '<b>' . (string)$target['cateNm'] . '</b> ( ' . (string)$target['cateCd'] . ' ) - 추가';
+        }
+
+        $inspectionIssues[] = [
+            'required' => '필수',
+            'issue' => $wrongIssueName,
+            'solution' => $wrongPrefixText
+                . "\n오분류 카테고리 : " . (!empty($wrongLines) ? implode("\n", $wrongLines) : '-')
+                . "\n알맞은 카테고리 : " . (!empty($addLines) ? implode("\n", $addLines) : '-'),
+        ];
+    }
+
+    /**
      * 카테고리 미지정/오분류를 공통 로직으로 판정하고
      * 이슈 목록 및 추가/삭제 큐를 함께 갱신한다.
      */
@@ -1054,6 +1319,45 @@ class GodoInspectionService
     }
 
     /**
+     * 취향/태그 → 고도몰 카테고리 목록
+     * config/admin/product.php 의 preference_tags 를 기준으로 구성한다.
+     *
+     * @return array<int,array{sourceCategoryCode:string,cateNm:string,cateCd:string}>
+     */
+    private function getPreferenceTagCategories(): array
+    {
+        static $rows = null;
+        if (is_array($rows)) {
+            return $rows;
+        }
+
+        $rows = [];
+        $productConfig = config('admin.product');
+        $preferenceTags = (isset($productConfig['preference_tags']) && is_array($productConfig['preference_tags']))
+            ? $productConfig['preference_tags']
+            : [];
+
+        foreach ($preferenceTags as $preferenceTag) {
+            if (!is_array($preferenceTag) || empty($preferenceTag['is_active'])) {
+                continue;
+            }
+            $code = trim((string)($preferenceTag['code'] ?? ''));
+            $name = trim((string)($preferenceTag['name'] ?? ''));
+            $cateCd = trim((string)($preferenceTag['godo_category_code'] ?? ''));
+            if ($code === '' || $name === '' || $cateCd === '' || $cateCd === '0') {
+                continue;
+            }
+            $rows[] = [
+                'sourceCategoryCode' => $code,
+                'cateNm' => $name,
+                'cateCd' => $cateCd,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * 카테고리 코드로 기본 카테고리명을 조회한다.
      *
      * @param string $cateCd
@@ -1070,6 +1374,8 @@ class GodoInspectionService
             self::ONAHOLE_WEIGHT_CATEGORIES,
             self::ONAHOLE_PRICE_CATEGORIES,
             self::ONAHOLE_TYPE_CATEGORIES,
+            self::ONAHOLE_FEATURE_CATEGORIES,
+            $this->getPreferenceTagCategories(),
             self::ONAHOLE_HBTI_CATEGORIES,
             self::ONAHOLE_INNER_LENGTH_CATEGORIES,
             self::TORSO_CATEGORIES,

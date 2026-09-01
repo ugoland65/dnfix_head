@@ -8,6 +8,7 @@
 	<meta http-equiv="content-script-type" content="text/javascript" />
 	<meta http-equiv="X-UA-Compatible" content="IE=edge" />
 	<meta http-equiv="imagetoolbar" content="no" />
+	<meta name="referrer" content="no-referrer">
 
 	<!-- FontAwesome -->
 	<link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.7.2/css/all.min.css" 

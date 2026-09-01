@@ -158,6 +158,70 @@
     .additional-category-selects { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .additional-category-message { color: #dc2626; font-size: 12px; }
     .additional-category-help { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+    .sub-category-list { display: grid; gap: 12px; }
+    .sub-category-group__title { margin: 0 0 8px; color: #334155; font-size: 13px; font-weight: 700; }
+    .sub-category-group__hint { margin-left: 6px; color: #64748b; font-size: 12px; font-weight: 400; }
+    .sub-category-group__items { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+    .sub-category-empty { margin: 0; color: #64748b; font-size: 12px; }
+    .sub-category-guide {
+        margin-top: 12px;
+        border: 1px solid #dbe3ee;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+    }
+    .sub-category-guide[hidden] { display: none !important; }
+    .sub-category-guide__toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 11px 14px;
+        border: 0;
+        background: #f8fafc;
+        color: #1e3a5f;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+    }
+    .sub-category-guide__toggle:hover { background: #f1f5f9; }
+    .sub-category-guide__icon { color: #64748b; font-weight: 400; transition: transform .2s ease; }
+    .sub-category-guide.is-open .sub-category-guide__icon { transform: rotate(180deg); }
+    .sub-category-guide__body { display: none; padding: 12px; border-top: 1px solid #e5e7eb; }
+    .sub-category-guide.is-open .sub-category-guide__body { display: grid; gap: 8px; }
+    .sub-category-guide__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border: 1px solid #e3eaf5;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .sub-category-guide__image,
+    .sub-category-guide__image-placeholder {
+        flex: 0 0 96px;
+        width: 96px;
+        height: 96px;
+        border-radius: 6px;
+    }
+    .sub-category-guide__image { display: block; object-fit: cover; background: #f8fafc; }
+    .sub-category-guide__image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed #cbd5e1;
+        background: repeating-linear-gradient(-45deg, #f8fafc, #f8fafc 7px, #eef2f7 7px, #eef2f7 14px);
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: center;
+    }
+    .sub-category-guide__text { min-width: 0; }
+    .sub-category-guide__text strong { display: block; margin-bottom: 4px; color: #1f2937; font-size: 13px; }
+    .sub-category-guide__text p { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
     .category-guide-open-button {
         display: inline-flex;
         align-items: center;
@@ -401,7 +465,7 @@
 
             <!-- 상품 구분 -->
             <tr>
-                <th>상품 구분</th>
+                <th>상품 구분<br>(메인 카테고리)</th>
                 <td>
                     <?php
                         $categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
@@ -634,11 +698,90 @@
             
             <!-- 추가 구분 -->
             <tr>
-                <th>추가 구분</th>
+                <th>추가 구분<br>(추가 메인 카테고리)</th>
                 <td>
                     <div id="additional_category_list" class="additional-category-list"></div>
                     <button type="button" id="add_additional_category_btn" class="btnstyle1 btnstyle1-xs">+ 카테고리 추가</button>
                     <p class="additional-category-help">대표 카테고리를 제외한 카테고리를 여러 개 지정할 수 있습니다. 각 항목은 최대 4차 카테고리까지 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
+            <!-- 서브 카테고리 -->
+            <tr>
+                <th>서브 카테고리</th>
+                <td>
+                    <?php
+                    $subCategoryConfig = config('admin.product');
+                    $subCategoriesByKind = (isset($subCategoryConfig['sub_categories_by_kind']) && is_array($subCategoryConfig['sub_categories_by_kind']))
+                        ? $subCategoryConfig['sub_categories_by_kind']
+                        : [];
+                    $selectedSubCategoryCodes = (isset($productData['cd_sub_category_codes']) && is_array($productData['cd_sub_category_codes']))
+                        ? array_values(array_unique(array_filter(array_map(
+                            static fn ($code): string => trim((string)$code),
+                            $productData['cd_sub_category_codes']
+                        ))))
+                        : [];
+                    ?>
+                    <input type="hidden" name="cd_sub_category_codes[]" value="">
+                    <div id="sub_category_list" class="sub-category-list"></div>
+                    <?php foreach ($subCategoriesByKind as $subCategoryKind => $subCategoryGroups) {
+                        if (!is_array($subCategoryGroups) || $subCategoryGroups === []) {
+                            continue;
+                        }
+                        $subCategoryKind = trim((string)$subCategoryKind);
+                        if ($subCategoryKind === '') {
+                            continue;
+                        }
+                    ?>
+                    <div class="sub-category-guide" data-sub-category-kind="<?= htmlspecialchars($subCategoryKind, ENT_QUOTES, 'UTF-8') ?>" hidden>
+                        <button type="button" class="sub-category-guide__toggle" aria-expanded="false">
+                            <span>서브 카테고리 안내</span>
+                            <span class="sub-category-guide__icon" aria-hidden="true">⌄</span>
+                        </button>
+                        <div class="sub-category-guide__body">
+                            <?php foreach ($subCategoryGroups as $subCategoryGroup) {
+                                if (!is_array($subCategoryGroup)) {
+                                    continue;
+                                }
+                                $subCategoryItems = $subCategoryGroup['children'] ?? [];
+                                if (!is_array($subCategoryItems)) {
+                                    continue;
+                                }
+                                foreach ($subCategoryItems as $subCategoryItem) {
+                                    if (!is_array($subCategoryItem)) {
+                                        continue;
+                                    }
+                                    $guideName = trim((string)($subCategoryItem['name'] ?? ''));
+                                    $guideDescription = trim((string)($subCategoryItem['description'] ?? ''));
+                                    $guideImage = trim((string)($subCategoryItem['image'] ?? ''));
+                                    if ($guideName === '') {
+                                        continue;
+                                    }
+                            ?>
+                            <div class="sub-category-guide__item">
+                                <?php if ($guideImage !== '') { ?>
+                                    <img
+                                        class="sub-category-guide__image"
+                                        src="<?= htmlspecialchars($guideImage, ENT_QUOTES, 'UTF-8') ?>"
+                                        alt="<?= htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8') ?>"
+                                        loading="lazy">
+                                <?php } else { ?>
+                                    <div class="sub-category-guide__image-placeholder" aria-hidden="true">이미지<br>준비중</div>
+                                <?php } ?>
+                                <div class="sub-category-guide__text">
+                                    <strong><?= htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php if ($guideDescription !== '') { ?>
+                                        <p><?= htmlspecialchars($guideDescription, ENT_QUOTES, 'UTF-8') ?></p>
+                                    <?php } ?>
+                                </div>
+                            </div>
+                            <?php
+                                }
+                            } ?>
+                        </div>
+                    </div>
+                    <?php } ?>
+                    <p class="additional-category-help">특징별 항목은 여러 개를 동시에 선택할 수 있습니다. 고도몰 특징별 카테고리도 선택한 항목만큼 모두 지정됩니다.</p>
                 </td>
             </tr>
 
@@ -2443,6 +2586,8 @@
         const initialThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const additionalCategoryTree = <?= json_encode($additionalCategoryTree ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const initialAdditionalCategoryCodes = <?= json_encode($additionalCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const subCategoriesByKind = <?= json_encode($subCategoriesByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+        const initialSubCategoryCodes = <?= json_encode($selectedSubCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
         const $cdSpec02010000Wrap = $('#cd-spec-02010000-wrap');
         const $cdSpec02020000Wrap = $('#cd-spec-02020000-wrap');
         const $cdSpec02050000Wrap = $('#cd-spec-02050000-wrap');
@@ -2502,11 +2647,12 @@
         $categoryGuideModal.on('click', '.category-guide-accordion-title', function() {
             openCategoryGuideSection($(this).closest('.category-guide-accordion-section'));
         });
-        $(document).on('keydown.categoryGuideModal', function(event) {
-            if (event.key === 'Escape' && $categoryGuideModal.hasClass('is-open')) {
-                closeCategoryGuideModal();
-            }
-        });
+        $(document).off('keydown.prdDetailBasicCategoryGuide')
+            .on('keydown.prdDetailBasicCategoryGuide', function(event) {
+                if (event.key === 'Escape' && $categoryGuideModal.hasClass('is-open')) {
+                    closeCategoryGuideModal();
+                }
+            });
 
         function closePreferenceTagModal() {
             if (!$preferenceTagModal.hasClass('is-open')) {
@@ -2519,7 +2665,8 @@
             }
         }
 
-        $(document).on('click', '.preference-tag-info-button', function() {
+        $(document).off('click.prdDetailBasicPreferenceTag', '.preference-tag-info-button')
+            .on('click.prdDetailBasicPreferenceTag', '.preference-tag-info-button', function() {
             const $button = $(this);
             $preferenceTagLastTrigger = $button;
             $preferenceTagModal.find('.preference-tag-detail-name').text('#' + String($button.attr('data-name') || ''));
@@ -2541,11 +2688,12 @@
                 closePreferenceTagModal();
             }
         });
-        $(document).on('keydown.preferenceTagModal', function(event) {
-            if (event.key === 'Escape' && $preferenceTagModal.hasClass('is-open')) {
-                closePreferenceTagModal();
-            }
-        });
+        $(document).off('keydown.prdDetailBasicPreferenceTag')
+            .on('keydown.prdDetailBasicPreferenceTag', function(event) {
+                if (event.key === 'Escape' && $preferenceTagModal.hasClass('is-open')) {
+                    closePreferenceTagModal();
+                }
+            });
 
         function resolveCategoryCodeByKind(kindKey) {
             const key = String(kindKey || '').trim();
@@ -2670,6 +2818,127 @@
             $row.append($('<span>', { class: 'additional-category-message' }));
             $('#additional_category_list').append($row);
             renderAdditionalCategoryRow($row, selectedPath);
+        }
+
+        function collectCheckedSubCategoryCodes() {
+            const codes = [];
+            $('#sub_category_list input[name="cd_sub_category_codes[]"]:checked').each(function() {
+                const code = String($(this).val() || '').trim();
+                if (code) {
+                    codes.push(code);
+                }
+            });
+            return codes;
+        }
+
+        function getSubCategoryGroupsByKind(kindCode) {
+            const groups = subCategoriesByKind[kindCode];
+            return Array.isArray(groups) ? groups : [];
+        }
+
+        function updateSubCategoryGuideVisibility(kindCode) {
+            $('.sub-category-guide').each(function() {
+                const $guide = $(this);
+                const isMatch = String($guide.attr('data-sub-category-kind') || '') === String(kindCode || '');
+                $guide.prop('hidden', !isMatch);
+                if (!isMatch) {
+                    $guide.removeClass('is-open');
+                    $guide.find('.sub-category-guide__toggle').attr('aria-expanded', 'false');
+                }
+            });
+        }
+
+        function getSubCategoryLeafCodes(kindCode) {
+            const codes = [];
+            getSubCategoryGroupsByKind(kindCode).forEach(function(group) {
+                const children = Array.isArray((group || {}).children) ? group.children : [];
+                children.forEach(function(child) {
+                    const code = String((child || {}).code || '').trim();
+                    if (code) {
+                        codes.push(code);
+                    }
+                });
+            });
+            return codes;
+        }
+
+        let rememberedSubCategoryCodes = Array.isArray(initialSubCategoryCodes)
+            ? initialSubCategoryCodes.map(function(code) { return String(code || '').trim(); }).filter(Boolean)
+            : [];
+        let lastRenderedSubCategoryKind = '';
+
+        function renderSubCategoryList(useSavedSelection) {
+            const $list = $('#sub_category_list');
+            if (!$list.length) {
+                return;
+            }
+
+            const kindCode = String($('select[name="cd_kind_code"]').val() || '').trim();
+            if (!useSavedSelection && lastRenderedSubCategoryKind) {
+                const previousLeafMap = {};
+                getSubCategoryLeafCodes(lastRenderedSubCategoryKind).forEach(function(code) {
+                    previousLeafMap[code] = true;
+                });
+                rememberedSubCategoryCodes = rememberedSubCategoryCodes.filter(function(code) {
+                    return !previousLeafMap[code];
+                }).concat(collectCheckedSubCategoryCodes());
+            }
+            lastRenderedSubCategoryKind = kindCode;
+
+            const groups = getSubCategoryGroupsByKind(kindCode);
+            const selectedMap = {};
+            rememberedSubCategoryCodes.forEach(function(code) {
+                const normalized = String(code || '').trim();
+                if (normalized) {
+                    selectedMap[normalized] = true;
+                }
+            });
+
+            $list.empty();
+            updateSubCategoryGuideVisibility(kindCode);
+            if (!groups.length) {
+                $list.append($('<p>', {
+                    class: 'sub-category-empty',
+                    text: kindCode
+                        ? '현재 1차 카테고리에는 지정할 서브 카테고리가 없습니다.'
+                        : '1차 카테고리를 먼저 선택하면 서브 카테고리를 지정할 수 있습니다.'
+                }));
+                return;
+            }
+
+            groups.forEach(function(group) {
+                const groupName = String((group || {}).name || '').trim();
+                const children = Array.isArray((group || {}).children) ? group.children : [];
+                const $group = $('<div>', { class: 'sub-category-group' });
+                if (groupName) {
+                    const $title = $('<h4>', { class: 'sub-category-group__title' });
+                    $title.append(document.createTextNode(groupName));
+                    $title.append($('<span>', {
+                        class: 'sub-category-group__hint',
+                        text: '중복 선택 가능'
+                    }));
+                    $group.append($title);
+                }
+                const $items = $('<div>', { class: 'sub-category-group__items' });
+                children.forEach(function(child) {
+                    const code = String((child || {}).code || '').trim();
+                    const name = String((child || {}).name || code).trim();
+                    if (!code || !name) {
+                        return;
+                    }
+                    const $label = $('<label>', { class: 'preference-tag-chip' });
+                    $label.append($('<input>', {
+                        type: 'checkbox',
+                        name: 'cd_sub_category_codes[]',
+                        value: code,
+                        checked: !!selectedMap[code]
+                    }));
+                    $label.append($('<span>', { text: name }));
+                    $items.append($label);
+                });
+                $group.append($items);
+                $list.append($group);
+            });
         }
 
         function revalidateAdditionalCategoryRows() {
@@ -2911,6 +3180,7 @@
 
         $('select[name="cd_kind_code"]').on('change', function() {
             renderSecondCategorySelect(true);
+            renderSubCategoryList(false);
         });
         $('#cd_kind_code_second').on('change', function() {
             renderThirdCategorySelect(true);
@@ -2921,7 +3191,8 @@
         $('#add_additional_category_btn').on('click', function() {
             addAdditionalCategoryRow('');
         });
-        $(document).on('change', '.additional-category-select', function() {
+        $(document).off('change.prdDetailBasicAdditionalCategory', '.additional-category-select')
+            .on('change.prdDetailBasicAdditionalCategory', '.additional-category-select', function() {
             const $select = $(this);
             const $row = $select.closest('.additional-category-row');
             const changedDepth = Number($select.attr('data-depth') || 0);
@@ -2939,10 +3210,18 @@
             });
             renderAdditionalCategoryRow($row, selectedPath);
         });
-        $(document).on('click', '.remove-additional-category-btn', function() {
-            $(this).closest('.additional-category-row').remove();
-        });
-        $(document).on('input', '#cd-spec-02010000-wrap input[name^="cd_spec_vendor["], #cd-spec-02010000-wrap input[name^="cd_spec_measured["]', renderTorsoSizeComparison);
+        $(document).off('click.prdDetailBasicAdditionalCategory', '.remove-additional-category-btn')
+            .on('click.prdDetailBasicAdditionalCategory', '.remove-additional-category-btn', function() {
+                $(this).closest('.additional-category-row').remove();
+            });
+        $(document).off('click', '.sub-category-guide__toggle')
+            .on('click.prdDetailBasicSubCategoryGuide', '.sub-category-guide__toggle', function() {
+                const $guide = $(this).closest('.sub-category-guide');
+                const isOpen = $guide.toggleClass('is-open').hasClass('is-open');
+                $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+            });
+        $(document).off('input.prdDetailBasicTorsoCompare', '#cd-spec-02010000-wrap input[name^="cd_spec_vendor["], #cd-spec-02010000-wrap input[name^="cd_spec_measured["]')
+            .on('input.prdDetailBasicTorsoCompare', '#cd-spec-02010000-wrap input[name^="cd_spec_vendor["], #cd-spec-02010000-wrap input[name^="cd_spec_measured["]', renderTorsoSizeComparison);
         if (Array.isArray(initialAdditionalCategoryCodes) && initialAdditionalCategoryCodes.length > 0) {
             initialAdditionalCategoryCodes.forEach(function(categoryCode) {
                 addAdditionalCategoryRow(String(categoryCode || '').trim());
@@ -2950,10 +3229,12 @@
         } else {
             addAdditionalCategoryRow('');
         }
+        renderSubCategoryList(true);
         renderSecondCategorySelect(false);
         renderTorsoSizeComparison();
 
-        $(document).on('change', 'input[type="checkbox"][name^="work_task_done["]', function() {
+        $(document).off('change.prdDetailBasicWorkTask', 'input[type="checkbox"][name^="work_task_done["]')
+            .on('change.prdDetailBasicWorkTask', 'input[type="checkbox"][name^="work_task_done["]', function() {
             var $chip = $(this).closest('.work-check-chip');
             var isDone = $(this).is(':checked');
             $chip
@@ -3109,11 +3390,13 @@
             $('#reference_links_tbody').append(buildReferenceLinkRow('', ''));
         });
 
-        $(document).on('click', '.remove-reference-link-btn', function() {
-            $(this).closest('tr').remove();
-        });
+        $(document).off('click.prdDetailBasicReferenceLink', '.remove-reference-link-btn')
+            .on('click.prdDetailBasicReferenceLink', '.remove-reference-link-btn', function() {
+                $(this).closest('tr').remove();
+            });
 
-        $(document).on('click', '.reference-link-open-btn', function() {
+        $(document).off('click.prdDetailBasicReferenceLinkOpen', '.reference-link-open-btn')
+            .on('click.prdDetailBasicReferenceLinkOpen', '.reference-link-open-btn', function() {
             var $row = $(this).closest('tr');
             var $urlInput = $row.find('input[name="reference_link_url[]"]');
             var normalizedUrl = normalizeReferenceUrl($urlInput.val());
@@ -3127,7 +3410,8 @@
         });
 
         // 링크명이 비어있고 URL 입력 시, 링크명에 도메인 자동 채움
-        $(document).on('blur', 'input[name="reference_link_url[]"]', function() {
+        $(document).off('blur.prdDetailBasicReferenceLink', 'input[name="reference_link_url[]"]')
+            .on('blur.prdDetailBasicReferenceLink', 'input[name="reference_link_url[]"]', function() {
             var $row = $(this).closest('tr');
             var $titleInput = $row.find('input[name="reference_link_title[]"]');
             if (String($titleInput.val() || '').trim() !== '') {
@@ -3182,7 +3466,8 @@
         const $imagePreviewModal = $('#prd_image_preview_modal');
         const $imagePreviewTarget = $('#prd_image_preview_target');
 
-        $(document).on('click', '.prd-image-preview-trigger', function() {
+        $(document).off('click.prdDetailBasicImagePreview', '.prd-image-preview-trigger')
+            .on('click.prdDetailBasicImagePreview', '.prd-image-preview-trigger', function() {
             const src = String($(this).data('preview-src') || $(this).attr('src') || '').trim();
             if (!src) {
                 return;
@@ -3209,11 +3494,12 @@
             closeImagePreviewModal();
         });
 
-        $(document).on('keydown', function(e) {
-            if (e.key === 'Escape' && $imagePreviewModal.hasClass('is-open')) {
-                closeImagePreviewModal();
-            }
-        });
+        $(document).off('keydown.prdDetailBasicImagePreview')
+            .on('keydown.prdDetailBasicImagePreview', function(e) {
+                if (e.key === 'Escape' && $imagePreviewModal.hasClass('is-open')) {
+                    closeImagePreviewModal();
+                }
+            });
 
     });
 </script>

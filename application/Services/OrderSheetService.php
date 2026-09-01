@@ -17,6 +17,7 @@ use App\Models\ProductStockUnitModel;
 use App\Models\InspectionProcessLogModel;
 use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
+use App\Models\ProductCategoryMappingModel;
 use App\Models\OrderSheetProductMemoModel;
 use App\Classes\DB;
 
@@ -641,6 +642,35 @@ class OrderSheetService
             }
         }
 
+        $subCategoryCodesByProductIdx = [];
+        $preferenceTagCodesByProductIdx = [];
+        if (!empty($pidxList)) {
+            $mappingRows = ProductCategoryMappingModel::query()
+                ->select(['product_idx', 'category_code', 'category_type'])
+                ->where('product_type', '=', 'prdDB')
+                ->whereIn('category_type', ['sub', 'hashtag'])
+                ->whereIn('product_idx', $pidxList)
+                ->orderBy('display_order', 'ASC')
+                ->orderBy('idx', 'ASC')
+                ->get()
+                ->toArray();
+            foreach ($mappingRows as $mappingRow) {
+                $productIdx = (int)($mappingRow['product_idx'] ?? 0);
+                $categoryCode = trim((string)($mappingRow['category_code'] ?? ''));
+                $categoryType = trim((string)($mappingRow['category_type'] ?? ''));
+                if ($productIdx <= 0 || $categoryCode === '') {
+                    continue;
+                }
+                if ($categoryType === 'sub') {
+                    $subCategoryCodesByProductIdx[$productIdx][] = $categoryCode;
+                    continue;
+                }
+                if ($categoryType === 'hashtag') {
+                    $preferenceTagCodesByProductIdx[$productIdx][] = $categoryCode;
+                }
+            }
+        }
+
         $stockProcessedByPsIdx = [];
         $stockProcessTokensByPsIdx = [];
         foreach ($productMap as $productRow) {
@@ -871,6 +901,8 @@ class OrderSheetService
                 'is_false' => !empty($row['is_false']),
                 'cd_kind_code' => $cdKindCode,
                 'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
+                'cd_sub_category_codes' => $subCategoryCodesByProductIdx[$pidx] ?? [],
+                'preference_tag_codes' => $preferenceTagCodesByProductIdx[$pidx] ?? [],
                 'brand_name' => (string)($product['BD_NAME'] ?? ''),
                 'name' => (string)($product['CD_NAME'] ?? ''),
                 'name_og' => (string)($product['CD_NAME_OG'] ?? ''),

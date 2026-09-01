@@ -9,6 +9,7 @@ class InspectionProcessLogService
 {
     public const LOCATION_ORDER_SHEET_ALL_STOCK = 'order_sheet_all_stock';
     public const LOCATION_PRODUCT_SINGLE_GODO_INSPECTION = 'product_single_godo_inspection';
+    public const LOCATION_PROVIDER_PRODUCT_GODO_INSPECTION = 'provider_product_godo_inspection';
     public const LOCATION_ORDER_SHEET_STOCK_SINGLE = 'order_sheet_stock_single';
     public const LOCATION_PRODUCT_GODO_DISCONTINUED = 'product_godo_discontinued';
     public const LOCATION_PRODUCT_GODO_HANDLING_STOPPED = 'product_godo_handling_stopped';
@@ -116,9 +117,10 @@ class InspectionProcessLogService
      *
      * @param int $prdIdx
      * @param int $limit
+     * @param string $locationCode
      * @return array
      */
-    public function getHistoryByPrdIdx(int $prdIdx, int $limit = 30): array
+    public function getHistoryByPrdIdx(int $prdIdx, int $limit = 30, string $locationCode = ''): array
     {
         if ($prdIdx <= 0) {
             return [];
@@ -127,7 +129,7 @@ class InspectionProcessLogService
             $limit = 30;
         }
 
-        $rows = InspectionProcessLogModel::query()
+        $query = InspectionProcessLogModel::query()
             ->select([
                 'ipl_idx',
                 'inspection_version',
@@ -144,7 +146,12 @@ class InspectionProcessLogService
                 'executed_at',
                 'created_at',
             ])
-            ->where('prd_idx', '=', $prdIdx)
+            ->where('prd_idx', '=', $prdIdx);
+        $locationCode = trim($locationCode);
+        if ($locationCode !== '') {
+            $query->where('location_code', '=', $locationCode);
+        }
+        $rows = $query
             ->orderBy('ipl_idx', 'desc')
             ->limit($limit)
             ->get()

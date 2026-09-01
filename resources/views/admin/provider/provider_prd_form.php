@@ -49,6 +49,22 @@
         font-weight:bold;
     }
 
+    .button-wrap-back {
+        height: 60px;
+    }
+    .button-wrap {
+        width: calc(100% - 205px);
+        height: 60px;
+        line-height: 60px;
+        text-align: center;
+        background: rgba(0, 0, 0, .4);
+        border-top: 1px solid #000;
+        position: fixed;
+        bottom: 0;
+        right: 0;
+        z-index: 1002;
+    }
+
     .provider-section-nav {
         position: fixed;
         top: 75px;
@@ -92,6 +108,70 @@
     .additional-category-row, .additional-category-selects { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
     .additional-category-message { color: #dc2626; font-size: 12px; }
     .additional-category-help { margin: 8px 0 0; color: #64748b; font-size: 12px; }
+    .sub-category-list { display: grid; gap: 12px; }
+    .sub-category-group__title { margin: 0 0 8px; color: #334155; font-size: 13px; font-weight: 700; }
+    .sub-category-group__hint { margin-left: 6px; color: #64748b; font-size: 12px; font-weight: 400; }
+    .sub-category-group__items { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
+    .sub-category-empty { margin: 0; color: #64748b; font-size: 12px; }
+    .sub-category-guide {
+        margin-top: 12px;
+        border: 1px solid #dbe3ee;
+        border-radius: 8px;
+        background: #fff;
+        overflow: hidden;
+    }
+    .sub-category-guide[hidden] { display: none !important; }
+    .sub-category-guide__toggle {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        width: 100%;
+        padding: 11px 14px;
+        border: 0;
+        background: #f8fafc;
+        color: #1e3a5f;
+        font-size: 13px;
+        font-weight: 700;
+        text-align: left;
+        cursor: pointer;
+    }
+    .sub-category-guide__toggle:hover { background: #f1f5f9; }
+    .sub-category-guide__icon { color: #64748b; font-weight: 400; transition: transform .2s ease; }
+    .sub-category-guide.is-open .sub-category-guide__icon { transform: rotate(180deg); }
+    .sub-category-guide__body { display: none; padding: 12px; border-top: 1px solid #e5e7eb; }
+    .sub-category-guide.is-open .sub-category-guide__body { display: grid; gap: 8px; }
+    .sub-category-guide__item {
+        display: flex;
+        align-items: center;
+        gap: 12px;
+        padding: 10px;
+        border: 1px solid #e3eaf5;
+        border-radius: 6px;
+        background: #fff;
+    }
+    .sub-category-guide__image,
+    .sub-category-guide__image-placeholder {
+        flex: 0 0 96px;
+        width: 96px;
+        height: 96px;
+        border-radius: 6px;
+    }
+    .sub-category-guide__image { display: block; object-fit: cover; background: #f8fafc; }
+    .sub-category-guide__image-placeholder {
+        display: flex;
+        align-items: center;
+        justify-content: center;
+        border: 1px dashed #cbd5e1;
+        background: repeating-linear-gradient(-45deg, #f8fafc, #f8fafc 7px, #eef2f7 7px, #eef2f7 14px);
+        color: #94a3b8;
+        font-size: 11px;
+        font-weight: 600;
+        line-height: 1.4;
+        text-align: center;
+    }
+    .sub-category-guide__text { min-width: 0; }
+    .sub-category-guide__text strong { display: block; margin-bottom: 4px; color: #1f2937; font-size: 13px; }
+    .sub-category-guide__text p { margin: 0; color: #64748b; font-size: 12px; line-height: 1.5; }
     .preference-tag-list { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
     .preference-tag-item { display: inline-flex; align-items: center; gap: 3px; }
     .preference-tag-chip { display: inline-flex; align-items: center; gap: 5px; padding: 6px 9px; border: 1px solid #cbd5e1; border-radius: 999px; background: #fff; color: #334155; font-size: 12px; cursor: pointer; }
@@ -154,7 +234,7 @@
         </tr>
         <tbody>
             <tr>
-                <th>공급사 상품 고유번호</th>
+                <th>위탁상품 고유번호</th>
                 <td>
                     <b style="font-size:16px;"><?= $prd_data['idx'] ?></b>
                 </td>
@@ -325,6 +405,85 @@
                     <div id="provider_additional_category_list" class="additional-category-list"></div>
                     <button type="button" id="provider_add_additional_category_btn" class="btnstyle1 btnstyle1-xs">+ 카테고리 추가</button>
                     <p class="additional-category-help">대표 카테고리를 제외한 카테고리를 여러 개 지정할 수 있습니다. 최대 4차 카테고리까지 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
+            <tr>
+                <th>서브 카테고리</th>
+                <td>
+                    <?php
+                    $providerSubCategoryConfig = config('admin.product');
+                    $providerSubCategoriesByKind = (isset($providerSubCategoryConfig['sub_categories_by_kind']) && is_array($providerSubCategoryConfig['sub_categories_by_kind']))
+                        ? $providerSubCategoryConfig['sub_categories_by_kind']
+                        : [];
+                    $selectedProviderSubCategoryCodes = (isset($prd_data['cd_sub_category_codes']) && is_array($prd_data['cd_sub_category_codes']))
+                        ? array_values(array_unique(array_filter(array_map(
+                            static fn ($code): string => trim((string)$code),
+                            $prd_data['cd_sub_category_codes']
+                        ))))
+                        : [];
+                    ?>
+                    <input type="hidden" name="cd_sub_category_codes[]" value="">
+                    <div id="provider_sub_category_list" class="sub-category-list"></div>
+                    <?php foreach ($providerSubCategoriesByKind as $subCategoryKind => $subCategoryGroups) {
+                        if (!is_array($subCategoryGroups) || $subCategoryGroups === []) {
+                            continue;
+                        }
+                        $subCategoryKind = trim((string)$subCategoryKind);
+                        if ($subCategoryKind === '') {
+                            continue;
+                        }
+                    ?>
+                    <div class="sub-category-guide" data-sub-category-kind="<?= htmlspecialchars($subCategoryKind, ENT_QUOTES, 'UTF-8') ?>" hidden>
+                        <button type="button" class="sub-category-guide__toggle" aria-expanded="false">
+                            <span>서브 카테고리 안내</span>
+                            <span class="sub-category-guide__icon" aria-hidden="true">⌄</span>
+                        </button>
+                        <div class="sub-category-guide__body">
+                            <?php foreach ($subCategoryGroups as $subCategoryGroup) {
+                                if (!is_array($subCategoryGroup)) {
+                                    continue;
+                                }
+                                $subCategoryItems = $subCategoryGroup['children'] ?? [];
+                                if (!is_array($subCategoryItems)) {
+                                    continue;
+                                }
+                                foreach ($subCategoryItems as $subCategoryItem) {
+                                    if (!is_array($subCategoryItem)) {
+                                        continue;
+                                    }
+                                    $guideName = trim((string)($subCategoryItem['name'] ?? ''));
+                                    $guideDescription = trim((string)($subCategoryItem['description'] ?? ''));
+                                    $guideImage = trim((string)($subCategoryItem['image'] ?? ''));
+                                    if ($guideName === '') {
+                                        continue;
+                                    }
+                            ?>
+                            <div class="sub-category-guide__item">
+                                <?php if ($guideImage !== '') { ?>
+                                    <img
+                                        class="sub-category-guide__image"
+                                        src="<?= htmlspecialchars($guideImage, ENT_QUOTES, 'UTF-8') ?>"
+                                        alt="<?= htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8') ?>"
+                                        loading="lazy"
+                                        referrerpolicy="no-referrer">
+                                <?php } else { ?>
+                                    <div class="sub-category-guide__image-placeholder" aria-hidden="true">이미지<br>준비중</div>
+                                <?php } ?>
+                                <div class="sub-category-guide__text">
+                                    <strong><?= htmlspecialchars($guideName, ENT_QUOTES, 'UTF-8') ?></strong>
+                                    <?php if ($guideDescription !== '') { ?>
+                                        <p><?= htmlspecialchars($guideDescription, ENT_QUOTES, 'UTF-8') ?></p>
+                                    <?php } ?>
+                                </div>
+                            </div>
+                            <?php
+                                }
+                            } ?>
+                        </div>
+                    </div>
+                    <?php } ?>
+                    <p class="additional-category-help">특징별 항목은 여러 개를 동시에 선택할 수 있습니다. 고도몰 특징별 카테고리도 선택한 항목만큼 모두 지정됩니다.</p>
                 </td>
             </tr>
 
@@ -1214,10 +1373,12 @@
 
 
 <script>
+(function() {
     $(document).ready(function() {
         $('.dn-select2').select2();
         initProviderCategorySelector();
         initProviderAdditionalCategories();
+        initProviderSubCategories();
         initProviderPreferenceTags();
         initGodoCategorySelector();
 
@@ -1267,6 +1428,8 @@
     const initialProviderThirdKindKey = <?= json_encode($selectedThirdKindKey ?? '', JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const providerAdditionalCategoryTree = <?= json_encode($providerAdditionalCategoryTree ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     const initialProviderAdditionalCategoryCodes = <?= json_encode($providerAdditionalCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const providerSubCategoriesByKind = <?= json_encode($providerSubCategoriesByKind ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+    const initialProviderSubCategoryCodes = <?= json_encode($selectedProviderSubCategoryCodes ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     let hasAppliedInitialProviderSecondCategory = false;
     let hasAppliedInitialProviderThirdCategory = false;
     const godoCateTree = <?= json_encode($godo_cate ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1410,7 +1573,8 @@
         $('#provider_add_additional_category_btn').on('click', function() {
             addProviderAdditionalCategoryRow('');
         });
-        $(document).on('change', '.provider-additional-category-select', function() {
+        $(document).off('change.providerAdditionalCategory', '.provider-additional-category-select')
+            .on('change.providerAdditionalCategory', '.provider-additional-category-select', function() {
             const $select = $(this);
             const $row = $select.closest('.additional-category-row');
             const changedDepth = Number($select.attr('data-depth') || 0);
@@ -1426,7 +1590,8 @@
             });
             renderProviderAdditionalCategoryRow($row, selectedPath);
         });
-        $(document).on('click', '.provider-remove-additional-category-btn', function() {
+        $(document).off('click.providerAdditionalCategory', '.provider-remove-additional-category-btn')
+            .on('click.providerAdditionalCategory', '.provider-remove-additional-category-btn', function() {
             $(this).closest('.additional-category-row').remove();
         });
         if (Array.isArray(initialProviderAdditionalCategoryCodes) && initialProviderAdditionalCategoryCodes.length) {
@@ -1450,7 +1615,8 @@
                 $lastTrigger.trigger('focus');
             }
         };
-        $(document).on('click', '.preference-tag-info-button', function() {
+        $(document).off('click.providerPreferenceTag', '.preference-tag-info-button')
+            .on('click.providerPreferenceTag', '.preference-tag-info-button', function() {
             $lastTrigger = $(this);
             $modal.find('.preference-tag-detail-name').text('#' + String($lastTrigger.attr('data-name') || ''));
             $modal.find('.preference-tag-detail-code').text(String($lastTrigger.attr('data-code') || ''));
@@ -1467,7 +1633,8 @@
                 closeModal();
             }
         });
-        $(document).on('keydown.providerPreferenceTagModal', function(event) {
+        $(document).off('keydown.providerPreferenceTagModal')
+            .on('keydown.providerPreferenceTagModal', function(event) {
             if (event.key === 'Escape') {
                 closeModal();
             }
@@ -1577,9 +1744,141 @@
         updateProviderCategoryCodeInput();
     }
 
+    function collectCheckedProviderSubCategoryCodes() {
+        const codes = [];
+        $('#provider_sub_category_list input[name="cd_sub_category_codes[]"]:checked').each(function() {
+            const code = String($(this).val() || '').trim();
+            if (code) {
+                codes.push(code);
+            }
+        });
+        return codes;
+    }
+
+    function getProviderSubCategoryGroupsByKind(kindCode) {
+        const groups = providerSubCategoriesByKind[kindCode];
+        return Array.isArray(groups) ? groups : [];
+    }
+
+    function updateProviderSubCategoryGuideVisibility(kindCode) {
+        $('.sub-category-guide').each(function() {
+            const $guide = $(this);
+            const isMatch = String($guide.attr('data-sub-category-kind') || '') === String(kindCode || '');
+            $guide.prop('hidden', !isMatch);
+            if (!isMatch) {
+                $guide.removeClass('is-open');
+                $guide.find('.sub-category-guide__toggle').attr('aria-expanded', 'false');
+            }
+        });
+    }
+
+    function getProviderSubCategoryLeafCodes(kindCode) {
+        const codes = [];
+        getProviderSubCategoryGroupsByKind(kindCode).forEach(function(group) {
+            const children = Array.isArray((group || {}).children) ? group.children : [];
+            children.forEach(function(child) {
+                const code = String((child || {}).code || '').trim();
+                if (code) {
+                    codes.push(code);
+                }
+            });
+        });
+        return codes;
+    }
+
+    let rememberedProviderSubCategoryCodes = Array.isArray(initialProviderSubCategoryCodes)
+        ? initialProviderSubCategoryCodes.map(function(code) { return String(code || '').trim(); }).filter(Boolean)
+        : [];
+    let lastRenderedProviderSubCategoryKind = '';
+
+    function renderProviderSubCategoryList(useSavedSelection) {
+        const $list = $('#provider_sub_category_list');
+        if (!$list.length) {
+            return;
+        }
+
+        const kindCode = String($('select[name="kind"]').val() || '').trim();
+        if (!useSavedSelection && lastRenderedProviderSubCategoryKind) {
+            const previousLeafMap = {};
+            getProviderSubCategoryLeafCodes(lastRenderedProviderSubCategoryKind).forEach(function(code) {
+                previousLeafMap[code] = true;
+            });
+            rememberedProviderSubCategoryCodes = rememberedProviderSubCategoryCodes.filter(function(code) {
+                return !previousLeafMap[code];
+            }).concat(collectCheckedProviderSubCategoryCodes());
+        }
+        lastRenderedProviderSubCategoryKind = kindCode;
+
+        const groups = getProviderSubCategoryGroupsByKind(kindCode);
+        const selectedMap = {};
+        rememberedProviderSubCategoryCodes.forEach(function(code) {
+            const normalized = String(code || '').trim();
+            if (normalized) {
+                selectedMap[normalized] = true;
+            }
+        });
+
+        $list.empty();
+        updateProviderSubCategoryGuideVisibility(kindCode);
+        if (!groups.length) {
+            $list.append($('<p>', {
+                class: 'sub-category-empty',
+                text: kindCode
+                    ? '현재 1차 카테고리에는 지정할 서브 카테고리가 없습니다.'
+                    : '1차 카테고리를 먼저 선택하면 서브 카테고리를 지정할 수 있습니다.'
+            }));
+            return;
+        }
+
+        groups.forEach(function(group) {
+            const groupName = String((group || {}).name || '').trim();
+            const children = Array.isArray((group || {}).children) ? group.children : [];
+            const $group = $('<div>', { class: 'sub-category-group' });
+            if (groupName) {
+                const $title = $('<h4>', { class: 'sub-category-group__title' });
+                $title.append(document.createTextNode(groupName));
+                $title.append($('<span>', {
+                    class: 'sub-category-group__hint',
+                    text: '중복 선택 가능'
+                }));
+                $group.append($title);
+            }
+            const $items = $('<div>', { class: 'sub-category-group__items' });
+            children.forEach(function(child) {
+                const code = String((child || {}).code || '').trim();
+                const name = String((child || {}).name || code).trim();
+                if (!code || !name) {
+                    return;
+                }
+                const $label = $('<label>', { class: 'preference-tag-chip' });
+                $label.append($('<input>', {
+                    type: 'checkbox',
+                    name: 'cd_sub_category_codes[]',
+                    value: code,
+                    checked: !!selectedMap[code]
+                }));
+                $label.append($('<span>', { text: name }));
+                $items.append($label);
+            });
+            $group.append($items);
+            $list.append($group);
+        });
+    }
+
+    function initProviderSubCategories() {
+        $(document).off('click.providerSubCategoryGuide', '.sub-category-guide__toggle')
+            .on('click.providerSubCategoryGuide', '.sub-category-guide__toggle', function() {
+                const $guide = $(this).closest('.sub-category-guide');
+                const isOpen = $guide.toggleClass('is-open').hasClass('is-open');
+                $(this).attr('aria-expanded', isOpen ? 'true' : 'false');
+            });
+        renderProviderSubCategoryList(true);
+    }
+
     function initProviderCategorySelector() {
         $('select[name="kind"]').on('change', function() {
             renderProviderSecondCategorySelect(true);
+            renderProviderSubCategoryList(false);
         });
         $('#provider_kind_second').on('change', function() {
             renderProviderThirdCategorySelect(true);
@@ -1886,7 +2185,8 @@
             addSelectedGodoCategory();
         });
 
-        $(document).on('click', '.remove-godo-cate-btn', function() {
+        $(document).off('click.providerGodoCate', '.remove-godo-cate-btn')
+            .on('click.providerGodoCate', '.remove-godo-cate-btn', function() {
             const index = Number($(this).data('index'));
             if (Number.isNaN(index) || index < 0 || index >= selectedGodoCategoryItems.length) {
                 return;
@@ -2074,4 +2374,14 @@
         $memo.trigger('focus');
     }
 
+    window.copyInputValue = copyInputValue;
+    window.copySupplierDetailImgHtml = copySupplierDetailImgHtml;
+    window.matchGodoGoods = matchGodoGoods;
+    window.updateSupplierProductDetail = updateSupplierProductDetail;
+    window.setProductDiscontinued = setProductDiscontinued;
+    window.unsetProductDiscontinued = unsetProductDiscontinued;
+    window.setProductHandlingStopped = setProductHandlingStopped;
+    window.unsetProductHandlingStopped = unsetProductHandlingStopped;
+    window.applyQuickMemo = applyQuickMemo;
+})();
 </script>

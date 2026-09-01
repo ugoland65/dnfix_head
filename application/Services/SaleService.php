@@ -25,6 +25,9 @@ class SaleService
         $s_date = $criteria['s_date'] ?? date('Y-m-01');
         $e_date = $criteria['e_date'] ?? date('Y-m-d');
         $s_kind = trim((string)($criteria['s_kind'] ?? ''));
+        $sKindSecond = trim((string)($criteria['s_kind_second'] ?? ''));
+        $sKindThird = trim((string)($criteria['s_kind_third'] ?? ''));
+        $sKindFourth = trim((string)($criteria['s_kind_fourth'] ?? ''));
         $limit = (int)($criteria['limit'] ?? 0);
 
         $query = ProductStockUnitModel::query()
@@ -42,6 +45,7 @@ class SaleService
                 cd.CD_IDX AS cd_idx,
                 cd.CD_IMG AS cd_img,
                 cd.CD_KIND_CODE AS cd_kind_code,
+                cd.CD_CATEGORY_CODE AS cd_category_code,
                 cd.CD_NAME AS prd_name,
                 cd_memo2,
                 cd.CD_BRAND_IDX AS brand_idx,
@@ -64,6 +68,16 @@ class SaleService
             $query->where('cd.CD_KIND_CODE', '=', $s_kind);
         }
 
+        $filterCategoryCode = $sKindFourth !== '' ? $sKindFourth : ($sKindThird !== '' ? $sKindThird : $sKindSecond);
+        if ($filterCategoryCode !== '') {
+            $categoryCodes = $this->collectCategoryCodesForFilter($filterCategoryCode);
+            if (!empty($categoryCodes)) {
+                $query->whereIn('cd.CD_CATEGORY_CODE', $categoryCodes);
+            } else {
+                $query->where('cd.CD_CATEGORY_CODE', '=', $filterCategoryCode);
+            }
+        }
+
         if ($limit > 0) {
             $query->limit($limit);
         }
@@ -72,6 +86,9 @@ class SaleService
 
         $config_product = config('admin.product');
         $prdKindName = $config_product['prd_kind_name'] ?? [];
+        $categories = (isset($config_product['categories']) && is_array($config_product['categories']))
+            ? $config_product['categories']
+            : [];
 
 
         $brandIds = [];
@@ -105,6 +122,11 @@ class SaleService
         foreach($result as &$row){
 
             $row['prd_kind_name'] = $prdKindName[$row['cd_kind_code']] ?? '미지정';
+            $row['prd_category_path'] = $this->resolveCategoryPathLabel(
+                $categories,
+                (string)($row['cd_category_code'] ?? ''),
+                (string)$row['prd_kind_name']
+            );
             $row['brand_name'] = $brandMap[$row['brand_idx']] ?? '';
 
             // 두 번째 브랜드명 (존재하고 0이 아닐 경우)
@@ -165,5 +187,142 @@ class SaleService
 
 
         return $result;
+    }
+
+    /**
+     * 선택한 카테고리와 하위 카테고리 코드를 모두 수집한다.
+     *
+     * @param string $categoryCode
+     * @return array<int,string>
+     */
+    private function collectCategoryCodesForFilter(string $categoryCode): array
+    {
+        $categoryCode = trim($categoryCode);
+        if ($categoryCode === '') {
+            return [];
+        }
+
+        $configProduct = config('admin.product');
+        $categories = $configProduct['categories'] ?? [];
+        if (!is_array($categories)) {
+            return [$categoryCode];
+        }
+
+        $node = $this->findCategoryNodeByCode($categories, $categoryCode);
+        if (!is_array($node)) {
+            return [$categoryCode];
+        }
+
+        $codes = $this->collectCategoryCodesFromNode($node);
+        if (!in_array($categoryCode, $codes, true)) {
+            array_unshift($codes, $categoryCode);
+        }
+
+        return array_values(array_unique($codes));
+    }
+
+    /**
+     * @param array<int,mixed> $rows
+     * @param string $categoryCode
+     * @return array<string,mixed>|null
+     */
+    private function findCategoryNodeByCode(array $rows, string $categoryCode): ?array
+    {
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            if (trim((string)($row['code'] ?? '')) === $categoryCode) {
+                return $row;
+            }
+            $children = $row['children'] ?? [];
+            if (is_array($children) && $children !== []) {
+                $found = $this->findCategoryNodeByCode($children, $categoryCode);
+                if (is_array($found)) {
+                    return $found;
+                }
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param array<string,mixed> $node
+     * @return array<int,string>
+     */
+    private function collectCategoryCodesFromNode(array $node): array
+    {
+        $codes = [];
+        $code = trim((string)($node['code'] ?? ''));
+        if ($code !== '') {
+            $codes[] = $code;
+        }
+        $children = $node['children'] ?? [];
+        if (!is_array($children)) {
+            return $codes;
+        }
+        foreach ($children as $child) {
+            if (!is_array($child)) {
+                continue;
+            }
+            $codes = array_merge($codes, $this->collectCategoryCodesFromNode($child));
+        }
+
+        return $codes;
+    }
+
+    /**
+     * @param array<int,mixed> $rows
+     * @param string $categoryCode
+     * @param string $fallbackLabel
+     * @return string
+     */
+    private function resolveCategoryPathLabel(array $rows, string $categoryCode, string $fallbackLabel): string
+    {
+        $categoryCode = trim($categoryCode);
+        if ($categoryCode === '') {
+            return $fallbackLabel;
+        }
+
+        $path = $this->findCategoryNamePath($rows, $categoryCode, []);
+        if (empty($path)) {
+            return $fallbackLabel;
+        }
+
+        return implode(' > ', $path);
+    }
+
+    /**
+     * @param array<int,mixed> $rows
+     * @param string $categoryCode
+     * @param array<int,string> $currentPath
+     * @return array<int,string>
+     */
+    private function findCategoryNamePath(array $rows, string $categoryCode, array $currentPath): array
+    {
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $code = trim((string)($row['code'] ?? ''));
+            $name = trim((string)($row['name'] ?? $row['key'] ?? $code));
+            $nextPath = $currentPath;
+            if ($name !== '') {
+                $nextPath[] = $name;
+            }
+            if ($code === $categoryCode) {
+                return $nextPath;
+            }
+            $children = $row['children'] ?? [];
+            if (is_array($children) && $children !== []) {
+                $found = $this->findCategoryNamePath($children, $categoryCode, $nextPath);
+                if (!empty($found)) {
+                    return $found;
+                }
+            }
+        }
+
+        return [];
     }
 }

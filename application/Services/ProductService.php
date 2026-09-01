@@ -1456,6 +1456,10 @@ class ProductService extends BaseClass
                 (int)($productData['CD_IDX'] ?? 0),
                 'hashtag'
             );
+            $productData['cd_sub_category_codes'] = $this->getProductCategoryMappingCodes(
+                (int)($productData['CD_IDX'] ?? 0),
+                'sub'
+            );
             $productData['work_check_list'] = $this->getWorkCheckListForProduct(
                 (int)($productData['CD_IDX'] ?? 0),
                 (string)($productData['CD_KIND_CODE'] ?? '')
@@ -1976,6 +1980,10 @@ class ProductService extends BaseClass
             $cdCategoryCode
         );
         $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
+        $subCategoryCodes = $this->normalizeSubCategoryCodes(
+            $postData['cd_sub_category_codes'] ?? [],
+            $cdKindCode
+        );
         $saleStatus = trim((string)($postData['sale_status'] ?? ''));
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
@@ -2142,6 +2150,7 @@ class ProductService extends BaseClass
         $beforeProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
         $beforeAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
         $beforePreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
+        $beforeSubCategoryCodes = $this->getProductCategoryMappingCodes($idx, 'sub');
 
         $beforeStockData = [];
         if (!empty($psIdx)) {
@@ -2177,6 +2186,7 @@ class ProductService extends BaseClass
         $beforeData['product_label_mappings'] = $beforeProductLabelMappings;
         $beforeData['cd_additional_category_codes'] = $beforeAdditionalCategoryCodes;
         $beforeData['preference_tag_codes'] = $beforePreferenceTagCodes;
+        $beforeData['cd_sub_category_codes'] = $beforeSubCategoryCodes;
 
         $this->syncProductWorkChecks($idx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
         $afterWorkCheckList = $this->getWorkCheckListForProduct($idx, $cdKindCode);
@@ -2186,6 +2196,8 @@ class ProductService extends BaseClass
         $afterAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
         $this->syncProductCategoryMappingCodes($idx, 'hashtag', $preferenceTagCodes);
         $afterPreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
+        $this->syncProductCategoryMappingCodes($idx, 'sub', $subCategoryCodes);
+        $afterSubCategoryCodes = $this->getProductCategoryMappingCodes($idx, 'sub');
 
         $afterData = array_merge($oldProduct, $updateData);
         $afterDiscountTargetYn = $beforeDiscountTargetYn;
@@ -2204,6 +2216,7 @@ class ProductService extends BaseClass
         $afterData['product_label_mappings'] = $afterProductLabelMappings;
         $afterData['cd_additional_category_codes'] = $afterAdditionalCategoryCodes;
         $afterData['preference_tag_codes'] = $afterPreferenceTagCodes;
+        $afterData['cd_sub_category_codes'] = $afterSubCategoryCodes;
 
         $adminActionLogService = new AdminActionLogService();
         $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
@@ -2226,6 +2239,9 @@ class ProductService extends BaseClass
         }
         if ($beforePreferenceTagCodes !== $afterPreferenceTagCodes) {
             $actionSummary .= ' (취향/태그 변경)';
+        }
+        if ($beforeSubCategoryCodes !== $afterSubCategoryCodes) {
+            $actionSummary .= ' (서브카테고리 변경)';
         }
         $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
         try {
@@ -2350,6 +2366,10 @@ class ProductService extends BaseClass
             $cdCategoryCode
         );
         $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
+        $subCategoryCodes = $this->normalizeSubCategoryCodes(
+            $postData['cd_sub_category_codes'] ?? [],
+            $cdKindCode
+        );
         $saleStatus = trim((string)($postData['sale_status'] ?? '가등록'));
         if ($saleStatus === '') {
             $saleStatus = '가등록';
@@ -2543,9 +2563,11 @@ class ProductService extends BaseClass
         $this->syncProductLabelMappings($newIdx, 'prdDB', $productLabelIdxs);
         $this->syncAdditionalCategoryCodes($newIdx, $additionalCategoryCodes);
         $this->syncProductCategoryMappingCodes($newIdx, 'hashtag', $preferenceTagCodes);
+        $this->syncProductCategoryMappingCodes($newIdx, 'sub', $subCategoryCodes);
         $createdProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $newIdx);
         $createdAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($newIdx);
         $createdPreferenceTagCodes = $this->getProductCategoryMappingCodes($newIdx, 'hashtag');
+        $createdSubCategoryCodes = $this->getProductCategoryMappingCodes($newIdx, 'sub');
 
         $adminActionLogService = new AdminActionLogService();
         $actionSummary = (string)($postData['action_summary'] ?? '');
@@ -2565,11 +2587,13 @@ class ProductService extends BaseClass
                     'product_label_mappings' => $createdProductLabelMappings,
                     'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
                     'preference_tag_codes' => $createdPreferenceTagCodes,
+                    'cd_sub_category_codes' => $createdSubCategoryCodes,
                 ]),
                 'diff_json' => array_merge($insertData, [
                     'product_label_mappings' => $createdProductLabelMappings,
                     'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
                     'preference_tag_codes' => $createdPreferenceTagCodes,
+                    'cd_sub_category_codes' => $createdSubCategoryCodes,
                 ]),
                 'action_url' => $actionUrl !== '' ? $actionUrl : null,
             ]);
@@ -4774,6 +4798,65 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 현재 1차 카테고리에 정의된 서브 카테고리 항목 코드만 허용한다.
+     * 그룹 코드는 UI용이며 저장하지 않는다.
+     *
+     * @param mixed $rawCodes
+     * @param string $kindCode
+     * @return array<int,string>
+     */
+    private function normalizeSubCategoryCodes($rawCodes, string $kindCode): array
+    {
+        if (is_string($rawCodes)) {
+            $decodedCodes = json_decode($rawCodes, true);
+            $rawCodes = is_array($decodedCodes) ? $decodedCodes : [$rawCodes];
+        }
+        if (!is_array($rawCodes)) {
+            return [];
+        }
+
+        $kindCode = trim($kindCode);
+        if ($kindCode === '') {
+            return [];
+        }
+
+        $configProduct = config('admin.product');
+        $groups = $configProduct['sub_categories_by_kind'][$kindCode] ?? [];
+        $validCodeMap = [];
+        if (is_array($groups)) {
+            foreach ($groups as $group) {
+                if (!is_array($group)) {
+                    continue;
+                }
+                $children = $group['children'] ?? [];
+                if (!is_array($children)) {
+                    continue;
+                }
+                foreach ($children as $child) {
+                    if (!is_array($child)) {
+                        continue;
+                    }
+                    $code = trim((string)($child['code'] ?? ''));
+                    if ($code !== '') {
+                        $validCodeMap[$code] = true;
+                    }
+                }
+            }
+        }
+
+        $normalizedCodes = [];
+        foreach ($rawCodes as $rawCode) {
+            $code = trim((string)$rawCode);
+            if ($code === '' || !isset($validCodeMap[$code]) || isset($normalizedCodes[$code])) {
+                continue;
+            }
+            $normalizedCodes[$code] = $code;
+        }
+
+        return array_values($normalizedCodes);
+    }
+
+    /**
      * 상품의 추가 카테고리 매핑을 현재 선택값으로 동기화한다.
      *
      * @param int $productIdx
@@ -5960,6 +6043,14 @@ class ProductService extends BaseClass
             'is_false' => false,
             'cd_kind_code' => trim((string)($product['CD_KIND_CODE'] ?? '')),
             'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
+            'cd_sub_category_codes' => $this->getProductCategoryMappingCodes(
+                (int)($product['CD_IDX'] ?? 0),
+                'sub'
+            ),
+            'preference_tag_codes' => $this->getProductCategoryMappingCodes(
+                (int)($product['CD_IDX'] ?? 0),
+                'hashtag'
+            ),
             'brand_name' => (string)($product['BD_NAME'] ?? ''),
             'name' => (string)($product['CD_NAME'] ?? ''),
             'name_og' => (string)($product['CD_NAME_OG'] ?? ''),

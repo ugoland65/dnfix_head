@@ -104,7 +104,13 @@ $options = (isset($specData['options']) && is_array($specData['options'])) ? $sp
 <script>
 $(function() {
     window.toggleSharedProductSpec = function(categoryCode, inputPrefix) {
-        var specType = /^0201\d{4}$/.test(String(categoryCode || '')) ? '02010000' : String(categoryCode || '');
+        var rawCode = String(categoryCode || '');
+        var specType = rawCode;
+        if (/^0201\d{4}$/.test(rawCode)) {
+            specType = '02010000';
+        } else if (/^01\d{6}$/.test(rawCode)) {
+            specType = '01000000';
+        }
         var $forms = $('.product-spec-forms[data-spec-input-prefix="' + inputPrefix + '"]');
         $forms.find('.product-spec-form').each(function() {
             var $section = $(this);

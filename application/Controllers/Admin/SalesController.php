@@ -132,24 +132,41 @@ class SalesController extends BaseClass
             $s_date = $requestData['s_date'] ?? date('Y-m-01');
             $e_date = $requestData['e_date'] ?? date('Y-m-d');
             $s_kind = trim((string)($requestData['s_kind'] ?? ''));
+            $s_kind_second = trim((string)($requestData['s_kind_second'] ?? ''));
+            $s_kind_third = trim((string)($requestData['s_kind_third'] ?? ''));
+            $s_kind_fourth = trim((string)($requestData['s_kind_fourth'] ?? ''));
 
             $salesService = new SaleService();
             $payload = [
                 's_date' => $s_date,
                 'e_date' => $e_date,
                 's_kind' => $s_kind,
+                's_kind_second' => $s_kind_second,
+                's_kind_third' => $s_kind_third,
+                's_kind_fourth' => $s_kind_fourth,
             ];
             $salesDaily = $salesService->getSalesRankingByPeriod($payload);
+            $soldQtyTotal = 0;
+            foreach ($salesDaily as $salesRow) {
+                $soldQtyTotal += (int)($salesRow['sold_qty'] ?? 0);
+            }
 
             $config_product = config('admin.product');
             $prd_kind_name = $config_product['prd_kind_name'] ?? [];
+            $categories = $config_product['categories'] ?? [];
 
             $data = [
                 's_date' => $s_date,
                 'e_date' => $e_date,
                 's_kind' => $s_kind,
+                's_kind_second' => $s_kind_second,
+                's_kind_third' => $s_kind_third,
+                's_kind_fourth' => $s_kind_fourth,
                 'prd_kind_name' => $prd_kind_name,
+                'categories' => $categories,
                 'salesDaily' => $salesDaily,
+                'sold_qty_total' => $soldQtyTotal,
+                'sales_row_count' => count($salesDaily),
             ];
 
             //dump($salesDaily);
