@@ -22,6 +22,20 @@
                 </button>
 
                 <div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
+
+                <?php
+                $lastSavedName = trim((string)($orderGroup['last_saved_admin_name'] ?? ''));
+                $lastSavedId = trim((string)($orderGroup['last_saved_admin_id'] ?? ''));
+                $lastSavedAt = trim((string)($orderGroup['last_saved_at'] ?? ''));
+                $lastSavedLabel = '-';
+                if ($lastSavedName !== '' || $lastSavedId !== '' || $lastSavedAt !== '') {
+                    $lastSavedWho = $lastSavedName !== '' ? $lastSavedName : $lastSavedId;
+                    $lastSavedLabel = trim($lastSavedWho . ($lastSavedAt !== '' ? ' ' . $lastSavedAt : ''));
+                }
+                ?>
+                <span id="group_last_saved" class="m-l-20">최종저장 : <b><?= htmlspecialchars($lastSavedLabel, ENT_QUOTES, 'UTF-8') ?></b></span> 
+
+
                 <!-- 
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheet.lastInfoReset(this, '<?= $oop_idx ?>')">정보갱신</button>
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-15" onclick="thisCateDel();"">이분류 상품 전부 삭제</button>
@@ -339,7 +353,11 @@
 
                     <!-- 주문메모 -->
                     <?php
-                        $_product_memo = (string)($item['product_memo'] ?? '');
+                        $_product_memo = html_entity_decode(
+                            (string)($item['product_memo'] ?? ''),
+                            ENT_QUOTES | ENT_HTML5,
+                            'UTF-8'
+                        );
                         $_product_memo_html = htmlspecialchars($_product_memo, ENT_QUOTES | ENT_SUBSTITUTE, 'UTF-8');
                         $_product_memo_empty = trim($_product_memo) === '';
                     ?>
@@ -1223,6 +1241,12 @@
                             $(this).data('saved-qty', savedQty);
                         });
                         $("#group_side_sum_qty_" + oop_idx).data('value', total_qty);
+                        var lastSavedWho = String(res.last_saved_admin_name || res.last_saved_admin_id || '').trim();
+                        var lastSavedAt = String(res.last_saved_at || '').trim();
+                        var lastSavedLabel = (lastSavedWho || lastSavedAt)
+                            ? $.trim(lastSavedWho + (lastSavedAt ? ' ' + lastSavedAt : ''))
+                            : '-';
+                        $("#group_last_saved").html('최종저장 : <b>' + $('<div>').text(lastSavedLabel).html() + '</b>');
 
                         $("#oprice_allsum").html(GC.comma(res.oo_sum_price ?? 0));
                         $("#oprice_sum_goods").html(GC.comma(res.oo_sum_goods ?? 0));
@@ -2088,9 +2112,18 @@
                 hideRowContextMenu();
             });
 
+        function decodeProductMemoEntities(memo) {
+            return String(memo === null || memo === undefined ? '' : memo)
+                .replace(/&gt;/gi, '>')
+                .replace(/&lt;/gi, '<')
+                .replace(/&quot;/gi, '"')
+                .replace(/&#0*39;/g, "'")
+                .replace(/&amp;/gi, '&');
+        }
+
         function renderProductMemo($cell, memo) {
             var $display = $cell.find('.order-product-memo-display').first();
-            var value = String(memo === null || memo === undefined ? '' : memo);
+            var value = decodeProductMemoEntities(memo);
             if ($.trim(value) === '') {
                 $display.addClass('is-empty').text('Add memo');
             } else {
@@ -2110,7 +2143,8 @@
             }
 
             if ($editor.data('persisted-value') === undefined) {
-                $editor.data('persisted-value', String($editor.val() || ''));
+                var initialMemo = decodeProductMemoEntities(String($editor.val() || ''));
+                $editor.val(initialMemo).data('persisted-value', initialMemo);
             }
             $editor.data('cancel-edit', false);
             $cell.addClass('is-editing');

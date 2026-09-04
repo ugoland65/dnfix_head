@@ -15,6 +15,7 @@ use App\Services\ProductPartnerService;
 use App\Services\ProductPartnerApiService;
 use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
+use App\Services\ProductStockService;
 use App\Services\GodoInspectionService;
 use App\Services\InspectionProcessLogService;
 use App\Services\CompetitorApiService;
@@ -520,6 +521,16 @@ class ProductController extends BaseClass
                                 $sourceImageUrls[] = $sourceUrl;
                             }
                         }
+                        $previousCollectionItem = ProductCollectionItemModel::query()
+                            ->where('matched_product_pk', '=', $prdIdx)
+                            ->where('source_type', '=', 'maker')
+                            ->where('source_site_code', '=', (string)$sourceItem['site_code'])
+                            ->where('source_product_pk', '=', $sourceProductIdentifier)
+                            ->orderBy('idx', 'DESC')
+                            ->first();
+                        $previousCollectionItem = $previousCollectionItem
+                            ? (is_array($previousCollectionItem) ? $previousCollectionItem : $previousCollectionItem->toArray())
+                            : [];
                         $collectionItemData = ProductCollectionItemModel::create([
                             'matched_product_pk' => $prdIdx,
                             'source_type' => 'maker',
@@ -532,6 +543,7 @@ class ProductController extends BaseClass
                             'image_total_count' => count($sourceImageUrls),
                             'image_success_count' => 0,
                             'image_failed_count' => 0,
+                            'translated_image_alts_json' => (string)($previousCollectionItem['translated_image_alts_json'] ?? ''),
                         ]);
                         $collectionItemData = is_array($collectionItemData) ? $collectionItemData : $collectionItemData->toArray();
                     }
@@ -602,55 +614,24 @@ class ProductController extends BaseClass
     {
         $requestData = $request->all();
         $imageUrl = trim((string)($requestData['url'] ?? ''));
-        $urlParts = parse_url($imageUrl);
-        $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
-        $host = strtolower((string)($urlParts['host'] ?? ''));
-        $normalizedHost = preg_replace('/^www\./', '', $host);
-
-        $imageSourceSites = [
-            'nipporigift.net' => 'http://www.nipporigift.net/',
-            'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
-            'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
-            'mzakka.com' => 'https://mzakka.com/',
-            'i.mzakka.com' => 'https://mzakka.com/',
-            'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
-            'e-nls.com' => 'https://www.e-nls.com/',
-            'image.e-nls.com' => 'https://www.e-nls.com/',
-        ];
-        if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$normalizedHost])) {
+        try {
+            $image = ProductImageHostingService::downloadCollectedSourceImage($imageUrl, 15);
+        } catch (\InvalidArgumentException $e) {
             http_response_code(400);
             return 'Invalid image source.';
-        }
-
-        $curl = curl_init($imageUrl);
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_CONNECTTIMEOUT => 5,
-            CURLOPT_TIMEOUT => 15,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
-            CURLOPT_REFERER => $imageSourceSites[$normalizedHost],
-        ]);
-        $imageBody = curl_exec($curl);
-        $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $contentType = (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE);
-        curl_close($curl);
-
-        $mimeType = strtolower(trim(explode(';', $contentType)[0]));
-        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
-        if (!is_string($imageBody) || $httpCode < 200 || $httpCode >= 300 || !in_array($mimeType, $allowedMimeTypes, true)) {
+        } catch (Throwable $e) {
             http_response_code(404);
             return 'Image unavailable.';
         }
 
-        header('Content-Type: ' . $mimeType);
+        header('Content-Type: ' . $image['content_type']);
         header('Cache-Control: private, max-age=3600');
         if (!empty($requestData['download'])) {
             $filename = basename((string)(parse_url($imageUrl, PHP_URL_PATH) ?? ''));
             $filename = preg_replace('/[^A-Za-z0-9._-]/', '_', $filename) ?: 'collected_image';
             header('Content-Disposition: attachment; filename="' . $filename . '"');
         }
-        return $imageBody;
+        return $image['body'];
     }
 
     /**
@@ -694,45 +675,19 @@ class ProductController extends BaseClass
             'image/gif' => 'gif',
             'image/webp' => 'webp',
         ];
-        $imageSourceSites = [
-            'nipporigift.net' => 'http://www.nipporigift.net/',
-            'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
-            'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
-            'mzakka.com' => 'https://mzakka.com/',
-            'i.mzakka.com' => 'https://mzakka.com/',
-            'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
-            'e-nls.com' => 'https://www.e-nls.com/',
-            'image.e-nls.com' => 'https://www.e-nls.com/',
-        ];
         $imageCount = 0;
         foreach (array_slice($imageSources, 0, 50) as $imageSource) {
             $imageUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
-            $urlParts = parse_url($imageUrl);
-            $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
-            $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
-            if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$host])) {
+            try {
+                $image = ProductImageHostingService::downloadCollectedSourceImage($imageUrl, 20);
+            } catch (Throwable $e) {
                 continue;
             }
-
-            $curl = curl_init($imageUrl);
-            curl_setopt_array($curl, [
-                CURLOPT_RETURNTRANSFER => true,
-                CURLOPT_FOLLOWLOCATION => false,
-                CURLOPT_CONNECTTIMEOUT => 5,
-                CURLOPT_TIMEOUT => 20,
-                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
-                CURLOPT_REFERER => $imageSourceSites[$host],
-            ]);
-            $imageBody = curl_exec($curl);
-            $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-            $contentType = strtolower(trim(explode(';', (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE))[0]));
-            curl_close($curl);
-
-            if (!is_string($imageBody) || $httpCode < 200 || $httpCode >= 300 || !isset($mimeExtensions[$contentType]) || strlen($imageBody) > 10 * 1024 * 1024) {
+            if (!isset($mimeExtensions[$image['content_type']])) {
                 continue;
             }
             $imageCount++;
-            $zip->addFromString(sprintf('collected_image_%02d.%s', $imageCount, $mimeExtensions[$contentType]), $imageBody);
+            $zip->addFromString(sprintf('collected_image_%02d.%s', $imageCount, $mimeExtensions[$image['content_type']]), $image['body']);
         }
         $zip->close();
 
@@ -1023,18 +978,31 @@ class ProductController extends BaseClass
             $collectionItemIdx = (int)($requestData['collection_item_idx'] ?? 0);
             $field = (string)($requestData['field'] ?? '');
             $translation = trim((string)($requestData['translation'] ?? ''));
+            $imageKey = trim((string)($requestData['image_key'] ?? ''));
+            $sourceAlt = trim((string)($requestData['source_alt'] ?? ''));
             $fieldMap = [
                 'accessories' => 'translated_accessories',
                 'maker_comment' => 'translated_maker_comment',
                 'seller_comment' => 'translated_seller_comment',
+                'image_alt' => 'translated_image_alts_json',
             ];
             $fieldLabels = [
                 'accessories' => '부속품',
                 'maker_comment' => '메이커 코멘트',
                 'seller_comment' => '판매사 코멘트',
+                'image_alt' => '이미지 설명',
             ];
             if ($prdIdx < 1 || $collectionItemIdx < 1 || !isset($fieldMap[$field])) {
                 throw new \InvalidArgumentException('번역 저장 요청이 올바르지 않습니다.');
+            }
+            if ($field === 'image_alt') {
+                $normalizedImageKey = ProductImageHostingService::collectedImageTranslationKey($imageKey);
+                if ($normalizedImageKey !== '') {
+                    $imageKey = $normalizedImageKey;
+                }
+            }
+            if ($field === 'image_alt' && $imageKey === '') {
+                throw new \InvalidArgumentException('이미지 번역 키가 없습니다.');
             }
             if ($translation === '') {
                 throw new \InvalidArgumentException('번역 내용을 입력해 주세요.');
@@ -1048,21 +1016,42 @@ class ProductController extends BaseClass
                 throw new \RuntimeException('매칭된 수집 데이터를 찾을 수 없습니다.');
             }
             $collectionItem = is_array($collectionItem) ? $collectionItem : $collectionItem->toArray();
-            ProductCollectionItemModel::update(['idx' => $collectionItemIdx], [
-                $fieldMap[$field] => $translation,
+
+            $updateData = [
                 'translation_updated_at' => date('Y-m-d H:i:s'),
-            ]);
+            ];
+            $beforeValue = $collectionItem[$fieldMap[$field]] ?? null;
+            $afterValue = $translation;
+            if ($field === 'image_alt') {
+                $imageAltMap = json_decode((string)($collectionItem['translated_image_alts_json'] ?? '{}'), true);
+                if (!is_array($imageAltMap)) {
+                    $imageAltMap = [];
+                }
+                $beforeEntry = $imageAltMap[$imageKey] ?? null;
+                $imageAltMap[$imageKey] = [
+                    'source_alt' => $sourceAlt,
+                    'translated_alt' => $translation,
+                ];
+                $updateData['translated_image_alts_json'] = json_encode($imageAltMap, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+                $beforeValue = $beforeEntry;
+                $afterValue = $imageAltMap[$imageKey];
+            } else {
+                $updateData[$fieldMap[$field]] = $translation;
+            }
+
+            ProductCollectionItemModel::update(['idx' => $collectionItemIdx], $updateData);
             (new AdminActionLogService())->log([
                 'target_type' => 'product_collection_item',
                 'target_table' => 'product_collection_item',
                 'target_pk' => (string)$collectionItemIdx,
                 'action_mode' => 'translation_' . $field,
                 'action_summary' => ($fieldLabels[$field] ?? $field) . ' 번역 저장',
-                'before_json' => [$fieldMap[$field] => $collectionItem[$fieldMap[$field]] ?? null],
-                'after_json' => [$fieldMap[$field] => $translation],
+                'before_json' => [$fieldMap[$field] => $beforeValue],
+                'after_json' => [$fieldMap[$field] => $afterValue],
                 'diff_json' => [$fieldMap[$field] => [
-                    'before' => $collectionItem[$fieldMap[$field]] ?? null,
-                    'after' => $translation,
+                    'before' => $beforeValue,
+                    'after' => $afterValue,
+                    'image_key' => $field === 'image_alt' ? $imageKey : null,
                 ]],
             ]);
 
@@ -1257,6 +1246,38 @@ class ProductController extends BaseClass
 
             return view('admin.product.prd_detail_sale_log', $data);
 
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+    /**
+     * 상품 디테일 (판매량/발주 요약)
+     */
+    public function prdDetailStockChartPage(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $psIdx = (int)($requestData['ps_idx'] ?? 0);
+            $showMode = trim((string)($requestData['show_mode'] ?? '연간통계'));
+
+            if ($prdIdx <= 0 || $psIdx <= 0) {
+                throw new Exception('상품 정보가 올바르지 않습니다.');
+            }
+
+            $productStockService = new ProductStockService();
+            $data = $productStockService->getStockChartPageData(
+                $prdIdx,
+                $psIdx,
+                $showMode,
+                $requestData['cur_y'] ?? null,
+                $requestData['cur_m'] ?? null
+            );
+
+            return view('admin.product.prd_detail_stock_chart', $data);
         } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),

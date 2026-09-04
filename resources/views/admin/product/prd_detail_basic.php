@@ -463,6 +463,43 @@
                 </td>
             </tr>
 
+            <!-- 브랜드 -->
+            <tr>
+                <th>브랜드</th>
+                <td>
+                    <select name="cd_brand_idx" class="dn-select2">
+                        <option value=''>브랜드 선택</option>
+                        <?php
+                        foreach ($brandForSelect as $brand) {
+                            if (!is_array($brand)) continue;
+                        ?>
+                            <option value='<?= $brand['BD_IDX'] ?? '' ?>' <?php if (($brand['BD_IDX'] ?? '') == ($productData['CD_BRAND_IDX'] ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?? '' ?></option>
+                        <?php } ?>
+                    </select>
+                    <select name="cd_brand2_idx" class="dn-select2">
+                        <option value=''>브랜드2 선택</option>
+                        <?php
+                        foreach ($brandForSelect as $brand) {
+                            if (!is_array($brand)) continue;
+                        ?>
+                            <option value='<?= $brand['BD_IDX'] ?? '' ?>' <?php if (($brand['BD_IDX'] ?? '') == ($productData['CD_BRAND2_IDX'] ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?? '' ?></option>
+                        <?php } ?>
+                    </select>
+                </td>
+            </tr>
+            <tr>
+                <th>상품명</th>
+                <td><input type='text' name='cd_name' size='40' value="<?= $productData['CD_NAME'] ?? '' ?>"></td>
+            </tr>
+            <tr>
+                <th>원 상품명</th>
+                <td><input type='text' name='cd_name_og' size='40' value="<?= $productData['CD_NAME_OG'] ?? '' ?>"></td>
+            </tr>
+            <tr>
+                <th>영문 상품명</th>
+                <td><input type='text' name='cd_name_en' size='40' value="<?= $productData['CD_NAME_EN'] ?? '' ?>"></td>
+            </tr>
+
             <!-- 상품 구분 -->
             <tr>
                 <th>상품 구분<br>(메인 카테고리)</th>
@@ -706,6 +743,46 @@
                 </td>
             </tr>
 
+            <!-- 추가 구분(전용홀) -->
+            <tr id="dedicated_hole_row" style="<?= ($selectedKindCode === 'ONAHOLE') ? '' : 'display:none;' ?>">
+                <th>추가구분(전용홀)</th>
+                <td>
+                    <?php
+                    $dedicatedHoleConfig = config('admin.product');
+                    $dedicatedHoleCategories = (isset($dedicatedHoleConfig['dedicated_hole_categories']) && is_array($dedicatedHoleConfig['dedicated_hole_categories']))
+                        ? $dedicatedHoleConfig['dedicated_hole_categories']
+                        : [];
+                    $selectedDedicatedHoleCode = trim((string)($productData['dedicated_hole_code'] ?? ''));
+                    ?>
+                    <div class="preference-tag-list">
+                        <label class="preference-tag-chip">
+                            <input type="radio" name="dedicated_hole_code" value="" <?= $selectedDedicatedHoleCode === '' ? 'checked' : '' ?>>
+                            <span>없음</span>
+                        </label>
+                        <?php foreach ($dedicatedHoleCategories as $dedicatedHole) {
+                            if (!is_array($dedicatedHole) || empty($dedicatedHole['is_active'])) {
+                                continue;
+                            }
+                            $dedicatedHoleCode = trim((string)($dedicatedHole['code'] ?? ''));
+                            $dedicatedHoleName = trim((string)($dedicatedHole['name'] ?? ''));
+                            if ($dedicatedHoleCode === '' || $dedicatedHoleName === '') {
+                                continue;
+                            }
+                        ?>
+                            <label class="preference-tag-chip">
+                                <input
+                                    type="radio"
+                                    name="dedicated_hole_code"
+                                    value="<?= htmlspecialchars($dedicatedHoleCode, ENT_QUOTES, 'UTF-8') ?>"
+                                    <?= $selectedDedicatedHoleCode === $dedicatedHoleCode ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($dedicatedHoleName, ENT_QUOTES, 'UTF-8') ?></span>
+                            </label>
+                        <?php } ?>
+                    </div>
+                    <p class="additional-category-help">오나홀일 때만 지정합니다. A10 전용홀과 핸디 슬리브는 하나만 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
             <!-- 서브 카테고리 -->
             <tr>
                 <th>서브 카테고리</th>
@@ -859,41 +936,7 @@
                 </td>
             </tr>
 
-            <tr>
-                <th>브랜드</th>
-                <td>
-                    <select name="cd_brand_idx" class="dn-select2">
-                        <option value=''>브랜드 선택</option>
-                        <?php
-                        foreach ($brandForSelect as $brand) {
-                            if (!is_array($brand)) continue;
-                        ?>
-                            <option value='<?= $brand['BD_IDX'] ?? '' ?>' <?php if (($brand['BD_IDX'] ?? '') == ($productData['CD_BRAND_IDX'] ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?? '' ?></option>
-                        <?php } ?>
-                    </select>
-                    <select name="cd_brand2_idx" class="dn-select2">
-                        <option value=''>브랜드2 선택</option>
-                        <?php
-                        foreach ($brandForSelect as $brand) {
-                            if (!is_array($brand)) continue;
-                        ?>
-                            <option value='<?= $brand['BD_IDX'] ?? '' ?>' <?php if (($brand['BD_IDX'] ?? '') == ($productData['CD_BRAND2_IDX'] ?? '')) echo "selected"; ?>><?= $brand['BD_NAME'] ?? '' ?></option>
-                        <?php } ?>
-                    </select>
-                </td>
-            </tr>
-            <tr>
-                <th>상품명</th>
-                <td><input type='text' name='cd_name' size='40' value="<?= $productData['CD_NAME'] ?? '' ?>"></td>
-            </tr>
-            <tr>
-                <th>원 상품명</th>
-                <td><input type='text' name='cd_name_og' size='40' value="<?= $productData['CD_NAME_OG'] ?? '' ?>"></td>
-            </tr>
-            <tr>
-                <th>영문 상품명</th>
-                <td><input type='text' name='cd_name_en' size='40' value="<?= $productData['CD_NAME_EN'] ?? '' ?>"></td>
-            </tr>
+
 
             <tr>
                 <th>운영 이미지</th>
@@ -2613,10 +2656,17 @@
             }
 
             const primaryKind = String($('select[name="cd_kind_code"]').val() || '').trim();
+            const secondKind = String($('#cd_kind_code_second').val() || '').trim();
             const $sections = $categoryGuideModal.find('.category-guide-accordion-section');
-            let $initialSection = $sections.filter(function() {
+            const $kindSections = $sections.filter(function() {
                 return String($(this).attr('data-category-kind') || '') === primaryKind;
+            });
+            let $initialSection = $kindSections.filter(function() {
+                return String($(this).attr('data-category-second') || '') === secondKind;
             }).first();
+            if (!$initialSection.length) {
+                $initialSection = $kindSections.first();
+            }
             if (!$initialSection.length) {
                 $initialSection = $sections.first();
             }
@@ -3178,9 +3228,18 @@
             updateCategoryCodeInput();
         }
 
+        function updateDedicatedHoleVisibility() {
+            const isOnahole = String($('select[name="cd_kind_code"]').val() || '').trim() === 'ONAHOLE';
+            $('#dedicated_hole_row').toggle(isOnahole);
+            if (!isOnahole) {
+                $('#dedicated_hole_row input[name="dedicated_hole_code"][value=""]').prop('checked', true);
+            }
+        }
+
         $('select[name="cd_kind_code"]').on('change', function() {
             renderSecondCategorySelect(true);
             renderSubCategoryList(false);
+            updateDedicatedHoleVisibility();
         });
         $('#cd_kind_code_second').on('change', function() {
             renderThirdCategorySelect(true);

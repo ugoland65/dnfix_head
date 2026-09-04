@@ -111,11 +111,9 @@ class ProductImageHostingService
         ];
     }
 
-    private function downloadSourceImage(string $sourceUrl): array
+    public static function getCollectedImageSourceSites(): array
     {
-        $urlParts = parse_url($sourceUrl);
-        $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
-        $imageSourceSites = [
+        return [
             'nipporigift.net' => 'http://www.nipporigift.net/',
             'tamatoys.tma.co.jp' => 'https://tamatoys.tma.co.jp/',
             'prod-tamatoys.s3.amazonaws.com' => 'https://tamatoys.tma.co.jp/',
@@ -124,33 +122,141 @@ class ProductImageHostingService
             'img07.shop-pro.jp' => 'https://www.nobunaga-toys.com/',
             'e-nls.com' => 'https://www.e-nls.com/',
             'image.e-nls.com' => 'https://www.e-nls.com/',
+            'msonline-g.com' => 'https://www.ms-online.co.jp/',
+            'ms-online.co.jp' => 'https://www.ms-online.co.jp/',
+            'go744sfa.user.webaccel.jp' => 'https://www.ms-online.co.jp/',
         ];
-        if (!isset($imageSourceSites[$host])) {
-            throw new \InvalidArgumentException('허용되지 않은 원본 이미지 도메인입니다.');
+    }
+
+    public static function resolveCollectedImageUrl(string $sourceUrl): string
+    {
+        $sourceUrl = trim($sourceUrl);
+        $urlParts = parse_url($sourceUrl);
+        $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
+        if ($host !== 'msonline-g.com') {
+            return $sourceUrl;
         }
 
-        $curl = curl_init($sourceUrl);
-        curl_setopt_array($curl, [
-            CURLOPT_RETURNTRANSFER => true,
-            CURLOPT_FOLLOWLOCATION => false,
-            CURLOPT_CONNECTTIMEOUT => 10,
-            CURLOPT_TIMEOUT => 30,
-            CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
-            CURLOPT_REFERER => $imageSourceSites[$host],
-        ]);
-        $body = curl_exec($curl);
-        $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
-        $contentType = strtolower(trim(explode(';', (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE))[0]));
-        curl_close($curl);
-
-        if (!is_string($body) || $httpCode < 200 || $httpCode >= 300) {
-            throw new \RuntimeException('원본 이미지를 다운로드하지 못했습니다.');
+        $path = (string)($urlParts['path'] ?? '/');
+        if ($path === '') {
+            $path = '/';
         }
-        if (!in_array($contentType, ['image/jpeg', 'image/png', 'image/gif', 'image/webp'], true) || strlen($body) > 10 * 1024 * 1024) {
-            throw new \RuntimeException('허용되지 않은 이미지 형식 또는 크기입니다.');
+        $query = isset($urlParts['query']) && $urlParts['query'] !== '' ? '?' . $urlParts['query'] : '';
+
+        return 'https://go744sfa.user.webaccel.jp' . $path . $query;
+    }
+
+    public static function collectedImageTranslationKey(string $sourceUrl): string
+    {
+        $resolvedUrl = self::resolveCollectedImageUrl($sourceUrl);
+        $path = trim((string)(parse_url($resolvedUrl, PHP_URL_PATH) ?? ''));
+        if ($path === '' || $path === '/') {
+            return '';
+        }
+        if ($path[0] !== '/') {
+            $path = '/' . $path;
+        }
+        return $path;
+    }
+
+    public static function collectedImageAltTranslation(array $translationMap, string $sourceUrl): string
+    {
+        $imageKey = self::collectedImageTranslationKey($sourceUrl);
+        if ($imageKey === '' || !isset($translationMap[$imageKey])) {
+            return '';
+        }
+        $entry = $translationMap[$imageKey];
+        if (is_array($entry)) {
+            return trim((string)($entry['translated_alt'] ?? ''));
+        }
+        return trim((string)$entry);
+    }
+
+    public static function downloadCollectedSourceImage(string $sourceUrl, int $timeout = 20): array
+    {
+        $imageSourceSites = self::getCollectedImageSourceSites();
+        $currentUrl = self::resolveCollectedImageUrl($sourceUrl);
+        $allowedMimeTypes = ['image/jpeg', 'image/png', 'image/gif', 'image/webp'];
+
+        for ($hop = 0; $hop < 5; $hop++) {
+            $urlParts = parse_url($currentUrl);
+            $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
+            $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
+            if (!in_array($scheme, ['http', 'https'], true) || !isset($imageSourceSites[$host])) {
+                throw new \InvalidArgumentException('허용되지 않은 원본 이미지 도메인입니다.');
+            }
+
+            $curl = curl_init($currentUrl);
+            curl_setopt_array($curl, [
+                CURLOPT_RETURNTRANSFER => true,
+                CURLOPT_FOLLOWLOCATION => false,
+                CURLOPT_HEADER => true,
+                CURLOPT_CONNECTTIMEOUT => 10,
+                CURLOPT_TIMEOUT => $timeout,
+                CURLOPT_USERAGENT => 'Mozilla/5.0 (compatible; A1ProductCollector/1.0)',
+                CURLOPT_REFERER => $imageSourceSites[$host],
+            ]);
+            $response = curl_exec($curl);
+            $httpCode = (int)curl_getinfo($curl, CURLINFO_HTTP_CODE);
+            $headerSize = (int)curl_getinfo($curl, CURLINFO_HEADER_SIZE);
+            $contentType = strtolower(trim(explode(';', (string)curl_getinfo($curl, CURLINFO_CONTENT_TYPE))[0]));
+            curl_close($curl);
+
+            if (!is_string($response)) {
+                throw new \RuntimeException('원본 이미지를 다운로드하지 못했습니다.');
+            }
+
+            $headers = substr($response, 0, $headerSize);
+            $body = substr($response, $headerSize);
+
+            if ($httpCode >= 300 && $httpCode < 400) {
+                if (!preg_match('/^location:\s*(.+)$/im', $headers, $locationMatch)) {
+                    throw new \RuntimeException('원본 이미지를 다운로드하지 못했습니다.');
+                }
+                $currentUrl = self::resolveCollectedImageRedirectUrl($currentUrl, trim($locationMatch[1]));
+                continue;
+            }
+
+            if ($httpCode < 200 || $httpCode >= 300) {
+                throw new \RuntimeException('원본 이미지를 다운로드하지 못했습니다.');
+            }
+            if (!in_array($contentType, $allowedMimeTypes, true) || strlen($body) > 10 * 1024 * 1024) {
+                throw new \RuntimeException('허용되지 않은 이미지 형식 또는 크기입니다.');
+            }
+
+            return ['body' => $body, 'content_type' => $contentType];
         }
 
-        return ['body' => $body, 'content_type' => $contentType];
+        throw new \RuntimeException('원본 이미지를 다운로드하지 못했습니다.');
+    }
+
+    private static function resolveCollectedImageRedirectUrl(string $currentUrl, string $location): string
+    {
+        $location = trim($location);
+        if (preg_match('#^https?://#i', $location)) {
+            return $location;
+        }
+
+        $parts = parse_url($currentUrl);
+        $base = strtolower((string)($parts['scheme'] ?? 'https')) . '://' . (string)($parts['host'] ?? '');
+        if (!empty($parts['port'])) {
+            $base .= ':' . $parts['port'];
+        }
+        if ($location === '') {
+            return $currentUrl;
+        }
+        if ($location[0] === '/') {
+            return $base . $location;
+        }
+
+        $path = (string)($parts['path'] ?? '/');
+        $dir = preg_replace('#/[^/]*$#', '/', $path) ?: '/';
+        return $base . $dir . $location;
+    }
+
+    private function downloadSourceImage(string $sourceUrl): array
+    {
+        return self::downloadCollectedSourceImage($sourceUrl, 30);
     }
 
     private function connect(array $config): array

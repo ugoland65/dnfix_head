@@ -716,6 +716,34 @@ $preferenceTags = [
         'godo_category_code' => '061003',
         'is_active' => true,
     ],
+    'INHUMAN' => [
+        'code' => 'INHUMAN',
+        'name' => '인외',
+        'description' => '인간 외 종족(수인, 몬스터, 엘프 등) 컨셉을 모티브로 한 제품입니다.',
+        'admin_description' => '수인·인외·이종족 컨셉·조형이 명시된 제품',
+        'group_codes' => [],
+        'operation_category_code' => null,
+        'godo_category_code' => '061004',
+        'is_active' => true,
+    ],
+];
+
+// 오나홀 추가 구분(전용홀) — 중복 선택 불가, 1개만
+$dedicatedHoleCategories = [
+    'A10_HOLE' => [
+        'code' => 'A10_HOLE',
+        'name' => 'A10 전용홀',
+        'godo_category_code' => '026009001',
+        'kind_codes' => ['ONAHOLE'],
+        'is_active' => true,
+    ],
+    'HANDY_SLEEVE' => [
+        'code' => 'HANDY_SLEEVE',
+        'name' => '핸디 슬리브',
+        'godo_category_code' => '026009002',
+        'kind_codes' => ['ONAHOLE'],
+        'is_active' => true,
+    ],
 ];
 
 
@@ -817,6 +845,7 @@ $data = [
     'categories' => $categories,
     'sub_categories_by_kind' => $subCategoriesByKind,
     'preference_tags' => $preferenceTags,
+    'dedicated_hole_categories' => $dedicatedHoleCategories,
     'importing_country' => $importing_country,
     'purchase_type_options' => $purchase_type_options,
     'sale_status_options' => $sale_status_options,

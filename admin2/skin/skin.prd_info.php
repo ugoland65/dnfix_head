@@ -1,6 +1,7 @@
 <?
 
 use App\Services\ProductPartnerService;
+use App\Services\ProductService;
 
 ini_set('display_errors', 1);
 error_reporting(E_ALL);
@@ -9,6 +10,7 @@ error_reporting(E_ALL);
 $_prd_idx = $_get1 ?? "";
 $prd_data = [];
 $img_path = "";
+$seriesNames = [];
 
 $prd_mode = $_GET['prd_mode'] ?? "basic";
 
@@ -98,6 +100,11 @@ if ($_prd_idx) {
 	}
 
 	$popup_browser_title = "(" . $prd_data['BD_NAME'] . ") " . $prd_data['CD_NAME'] ?? '';
+
+	$seriesNames = [];
+	if (!empty($prd_data['CD_IDX'])) {
+		$seriesNames = (new ProductService())->getProductSeriesNames((int)$prd_data['CD_IDX']);
+	}
 
 	if( !empty($prd_data['supplier_prd_idx']) ){
 		$supplier_prd_idx = $prd_data['supplier_prd_idx'];
@@ -231,6 +238,14 @@ include($docRoot . "/admin2/layout/header_popup.php");
 	.left-btn-wrap {
 		padding: 5px 15px 0 15px;
 	}
+	.prd-series {
+		margin-top: 8px;
+		color: #4b5563;
+		font-size: 12px;
+		line-height: 1.45;
+	}
+	.prd-series b { color: #111827; }
+	.prd-series-empty { color: #9ca3af; font-weight: 400; }
 </style>
 <div class="prd-quick-left">
 
@@ -310,6 +325,15 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			</ul>
 		<?php } ?>
 
+		<ul id="prd-header-series" class="prd-series">
+			시리즈 :
+			<?php if (!empty($seriesNames)) { ?>
+				<b><?= htmlspecialchars(implode(', ', $seriesNames), ENT_QUOTES, 'UTF-8') ?></b>
+			<?php } else { ?>
+				<span class="prd-series-empty">미설정</span>
+			<?php } ?>
+		</ul>
+
 		<?php 
 		/* if( !empty($prd_data['ps_idx']) ){ ?>
 			<ul class="prd-stock-code">
@@ -350,7 +374,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 
 		<?php if (!empty($prd_data['ps_idx'])) { ?>
-		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">재고/판매량 요약</ul>
+		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">판매량/발주 요약</ul>
 		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고 변경 이력</ul>
 		<?php } ?>
 
@@ -603,10 +627,10 @@ include($docRoot . "/admin2/layout/header_popup.php");
 						}
 					};
 					break;
-				case "stock_chart": // 재고 차트
+				case "stock_chart": // 판매량/발주 요약
 					requestConfig = {
-						method: "POST",
-						url: "/ad/ajax/prd_info_stock_chart",
+						method: "GET",
+						url: "/admin/product/detail_stock_chart",
 						data: {
 							prd_idx: prd_idx,
 							ps_idx: ps_idx
@@ -716,12 +740,36 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			onlyAD.prdGrouping('product_db', prd_idx);
 		}
 
+		function escapeSeriesHtml(value) {
+			return String(value || '')
+				.replace(/&/g, '&amp;')
+				.replace(/</g, '&lt;')
+				.replace(/>/g, '&gt;')
+				.replace(/"/g, '&quot;');
+		}
+
+		function updateSeriesLabel(seriesNames) {
+			var names = Array.isArray(seriesNames)
+				? seriesNames.map(function (name) { return String(name || '').trim(); }).filter(Boolean)
+				: [];
+			var $el = $('#prd-header-series');
+			if (!$el.length) {
+				return;
+			}
+			if (!names.length) {
+				$el.html('시리즈 : <span class="prd-series-empty">미설정</span>');
+				return;
+			}
+			$el.html('시리즈 : <b>' + names.map(escapeSeriesHtml).join(', ') + '</b>');
+		}
+
 		return {
 
 			mode,
 			restoreActiveMode: function() {
 				mode('', getSavedMode());
 			},
+			updateSeriesLabel,
 			prdGroupingAdd,
 			makePsIdx: function() {
 

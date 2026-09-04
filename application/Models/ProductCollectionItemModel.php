@@ -26,6 +26,7 @@ class ProductCollectionItemModel extends BaseModel
         'translated_accessories',
         'translated_maker_comment',
         'translated_seller_comment',
+        'translated_image_alts_json',
         'translation_updated_at',
     ];
 }

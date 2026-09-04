@@ -206,6 +206,8 @@ class ProductPartnerService extends BaseClass
         $result['additional_category_codes'] = $this->getCategoryMappingCodes((int)$prdIdx, 'additional');
         $result['cd_sub_category_codes'] = $this->getCategoryMappingCodes((int)$prdIdx, 'sub');
         $result['preference_tag_codes'] = $this->getCategoryMappingCodes((int)$prdIdx, 'hashtag');
+        $dedicatedHoleCodes = $this->getCategoryMappingCodes((int)$prdIdx, 'dedicated_hole');
+        $result['dedicated_hole_code'] = trim((string)($dedicatedHoleCodes[0] ?? ''));
         
         return $result;
 
@@ -329,6 +331,10 @@ class ProductPartnerService extends BaseClass
                 $categoryCode
             );
             $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
+            $dedicatedHoleCodes = $this->normalizeDedicatedHoleCodes(
+                $postData['dedicated_hole_code'] ?? '',
+                (string)$kindCode
+            );
             $subCategoryCodes = $this->normalizeSubCategoryCodes(
                 $postData['cd_sub_category_codes'] ?? [],
                 (string)$kindCode
@@ -523,6 +529,8 @@ class ProductPartnerService extends BaseClass
                 $beforeData['additional_category_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'additional');
                 $beforeData['cd_sub_category_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'sub');
                 $beforeData['preference_tag_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'hashtag');
+                $beforeDedicatedHoleCodes = $this->getCategoryMappingCodes((int)$targetPk, 'dedicated_hole');
+                $beforeData['dedicated_hole_code'] = trim((string)($beforeDedicatedHoleCodes[0] ?? ''));
                 // prd_idx가 있으면 기존 레코드 업데이트
                 $result = ProductPartnerModel::find($postData['prd_idx'])->update($updateData);
                 
@@ -537,6 +545,9 @@ class ProductPartnerService extends BaseClass
                 }
                 if (array_key_exists('preference_tag_codes', $postData)) {
                     $this->syncCategoryMappingCodes((int)$targetPk, 'hashtag', $preferenceTagCodes);
+                }
+                if (array_key_exists('dedicated_hole_code', $postData)) {
+                    $this->syncCategoryMappingCodes((int)$targetPk, 'dedicated_hole', $dedicatedHoleCodes);
                 }
 
                 $supplierDbActionMessage = null;
@@ -569,6 +580,8 @@ class ProductPartnerService extends BaseClass
                 $afterData['additional_category_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'additional');
                 $afterData['cd_sub_category_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'sub');
                 $afterData['preference_tag_codes'] = $this->getCategoryMappingCodes((int)$targetPk, 'hashtag');
+                $afterDedicatedHoleCodes = $this->getCategoryMappingCodes((int)$targetPk, 'dedicated_hole');
+                $afterData['dedicated_hole_code'] = trim((string)($afterDedicatedHoleCodes[0] ?? ''));
                 $adminActionLogService = new AdminActionLogService();
                 $diff = $adminActionLogService->buildDiff($beforeData, $afterData);
                 if ($supplierDbActionMessage !== null) {
@@ -1467,6 +1480,43 @@ class ProductPartnerService extends BaseClass
         return array_values($normalizedCodes);
     }
 
+    /**
+     * 오나홀 전용홀 코드. 중복 없이 1개만 허용한다.
+     *
+     * @param mixed $rawCode
+     * @return array<int,string>
+     */
+    private function normalizeDedicatedHoleCodes($rawCode, string $kindCode): array
+    {
+        if (trim($kindCode) !== 'ONAHOLE') {
+            return [];
+        }
+        if (is_array($rawCode)) {
+            $rawCode = $rawCode[0] ?? '';
+        }
+        $code = trim((string)$rawCode);
+        if ($code === '') {
+            return [];
+        }
+
+        $configProduct = config('admin.product');
+        $rows = $configProduct['dedicated_hole_categories'] ?? [];
+        $validCodeMap = [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (!is_array($row) || empty($row['is_active'])) {
+                    continue;
+                }
+                $rowCode = trim((string)($row['code'] ?? ''));
+                if ($rowCode !== '') {
+                    $validCodeMap[$rowCode] = true;
+                }
+            }
+        }
+
+        return isset($validCodeMap[$code]) ? [$code] : [];
+    }
+
     private function syncCategoryMappingCodes(int $productIdx, string $categoryType, array $categoryCodes): void
     {
         if ($productIdx <= 0 || $categoryType === '') {
@@ -1866,12 +1916,16 @@ class ProductPartnerService extends BaseClass
             'is_false' => false,
             'cd_kind_code' => $cdKindCode,
             'cd_category_code' => $cdCategoryCode,
+            'cd_additional_category_codes' => (isset($product['additional_category_codes']) && is_array($product['additional_category_codes']))
+                ? $product['additional_category_codes']
+                : [],
             'cd_sub_category_codes' => (isset($product['cd_sub_category_codes']) && is_array($product['cd_sub_category_codes']))
                 ? $product['cd_sub_category_codes']
                 : [],
             'preference_tag_codes' => (isset($product['preference_tag_codes']) && is_array($product['preference_tag_codes']))
                 ? $product['preference_tag_codes']
                 : [],
+            'dedicated_hole_code' => trim((string)($product['dedicated_hole_code'] ?? '')),
             'brand_name' => (string)($product['brand_name'] ?? ''),
             'name' => (string)($product['name'] ?? ''),
             'name_og' => (string)($product['name_ori'] ?? ''),

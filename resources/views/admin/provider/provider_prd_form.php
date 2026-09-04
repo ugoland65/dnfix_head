@@ -408,6 +408,45 @@
                 </td>
             </tr>
 
+            <tr id="provider_dedicated_hole_row" style="<?= ($selectedKindCode === 'ONAHOLE') ? '' : 'display:none;' ?>">
+                <th>추가구분(전용홀)</th>
+                <td>
+                    <?php
+                    $providerDedicatedHoleConfig = config('admin.product');
+                    $providerDedicatedHoleCategories = (isset($providerDedicatedHoleConfig['dedicated_hole_categories']) && is_array($providerDedicatedHoleConfig['dedicated_hole_categories']))
+                        ? $providerDedicatedHoleConfig['dedicated_hole_categories']
+                        : [];
+                    $selectedProviderDedicatedHoleCode = trim((string)($prd_data['dedicated_hole_code'] ?? ''));
+                    ?>
+                    <div class="preference-tag-list">
+                        <label class="preference-tag-chip">
+                            <input type="radio" name="dedicated_hole_code" value="" <?= $selectedProviderDedicatedHoleCode === '' ? 'checked' : '' ?>>
+                            <span>없음</span>
+                        </label>
+                        <?php foreach ($providerDedicatedHoleCategories as $dedicatedHole) {
+                            if (!is_array($dedicatedHole) || empty($dedicatedHole['is_active'])) {
+                                continue;
+                            }
+                            $dedicatedHoleCode = trim((string)($dedicatedHole['code'] ?? ''));
+                            $dedicatedHoleName = trim((string)($dedicatedHole['name'] ?? ''));
+                            if ($dedicatedHoleCode === '' || $dedicatedHoleName === '') {
+                                continue;
+                            }
+                        ?>
+                            <label class="preference-tag-chip">
+                                <input
+                                    type="radio"
+                                    name="dedicated_hole_code"
+                                    value="<?= htmlspecialchars($dedicatedHoleCode, ENT_QUOTES, 'UTF-8') ?>"
+                                    <?= $selectedProviderDedicatedHoleCode === $dedicatedHoleCode ? 'checked' : '' ?>>
+                                <span><?= htmlspecialchars($dedicatedHoleName, ENT_QUOTES, 'UTF-8') ?></span>
+                            </label>
+                        <?php } ?>
+                    </div>
+                    <p class="additional-category-help">오나홀일 때만 지정합니다. A10 전용홀과 핸디 슬리브는 하나만 선택할 수 있습니다.</p>
+                </td>
+            </tr>
+
             <tr>
                 <th>서브 카테고리</th>
                 <td>
@@ -1660,7 +1699,12 @@
             window.toggleSharedProductSpec(categoryCode, 'spec');
         }
         $('#provider-onahole-second-category-guide').toggle(primaryKind === 'ONAHOLE' && secondKind === '');
+        $('#provider-torso-second-category-guide').toggle(primaryKind === 'TORSO' && secondKind === '');
         $('#provider-torso-third-category-guide').toggle(primaryKind === 'TORSO' && secondKind === 'TORSO' && thirdKind === '');
+        $('#provider_dedicated_hole_row').toggle(primaryKind === 'ONAHOLE');
+        if (primaryKind !== 'ONAHOLE') {
+            $('#provider_dedicated_hole_row input[name="dedicated_hole_code"][value=""]').prop('checked', true);
+        }
         revalidateProviderAdditionalCategories();
     }
 

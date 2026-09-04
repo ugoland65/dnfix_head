@@ -321,12 +321,22 @@ class ProductSupplierPyApiService
                 'required_path' => '/',
                 'payload_key' => 'product_pk',
                 'payload_value_type' => 'int',
+                'path_error' => '노부나가 URL은 사이트 최상위 상품 페이지여야 합니다.',
+                'identifier_error' => '노부나가 URL에는 유효한 pid 값이 필요합니다.',
             ],
             'e-nls.com' => [
                 'endpoint' => '/maker-products/nls/crawl',
                 'identifier_type' => 'path_pict_numeric',
                 'payload_key' => 'product_pk',
                 'payload_value_type' => 'int',
+            ],
+            'ms-online.co.jp' => [
+                'endpoint' => '/maker-products/ms/crawl',
+                'identifier_type' => 'query_numeric',
+                'identifier_key' => 'pclass_id',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+                'identifier_error' => '엠즈 URL에는 유효한 pclass_id 값이 필요합니다.',
             ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
@@ -364,11 +374,11 @@ class ProductSupplierPyApiService
         } elseif ($collector['identifier_type'] === 'query_numeric') {
             parse_str((string)($urlParts['query'] ?? ''), $queryParams);
             $identifier = trim((string)($queryParams[$collector['identifier_key']] ?? ''));
-            if ($path !== (string)$collector['required_path']) {
-                throw new \InvalidArgumentException('노부나가 URL은 사이트 최상위 상품 페이지여야 합니다.');
+            if (isset($collector['required_path']) && $path !== (string)$collector['required_path']) {
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
             }
             if ($identifier === '' || !ctype_digit($identifier) || (int)$identifier < 1) {
-                throw new \InvalidArgumentException('노부나가 URL에는 유효한 pid 값이 필요합니다.');
+                throw new \InvalidArgumentException((string)($collector['identifier_error'] ?? '상품 식별 값이 올바르지 않습니다.'));
             }
         } elseif ($collector['identifier_type'] === 'path_pict_numeric') {
             if (!preg_match('#^/pict[0-9]+-([1-9][0-9]*)/?$#', $path, $nlsMatches)) {
@@ -391,6 +401,7 @@ class ProductSupplierPyApiService
             'matched_product_pk' => $matchedProductPk,
             'requester_user_pk' => $requesterUserPk,
             'requester_user_name' => $requesterUserName,
+            'source_url' => $collectionUrl,
             'requested_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Seoul')))->format(DATE_ATOM),
         ];
         $payload[$collector['payload_key']] = ($collector['payload_value_type'] ?? 'string') === 'int'

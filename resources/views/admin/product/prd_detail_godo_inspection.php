@@ -83,6 +83,32 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
 .inspection-value-grid td { border: 1px solid #e5e7eb; padding: 3px 5px; vertical-align: top; line-height: 1.4; }
 .inspection-value-grid th { width: 94px; background: #f9fafb; color: #374151; font-weight: 600; text-align: left; }
 .inspection-value-empty { color: #9ca3af; font-size: 11px; }
+.inspection-warning {
+    display: flex;
+    align-items: flex-start;
+    gap: 10px;
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid #f5c16c;
+    border-left: 4px solid #d97706;
+    border-radius: 6px;
+    background: #fff8e8;
+    color: #7c2d12;
+    line-height: 1.55;
+}
+.inspection-warning-badge {
+    flex: 0 0 auto;
+    padding: 2px 7px;
+    border-radius: 999px;
+    background: #d97706;
+    color: #fff;
+    font-size: 11px;
+    font-weight: 700;
+    line-height: 1.4;
+}
+.inspection-warning-body { min-width: 0; }
+.inspection-warning-body strong { display: block; margin-bottom: 3px; color: #9a3412; }
+.inspection-warning-body p { margin: 0; color: #7c2d12; }
 </style>
 
 <div class="inspection-wrap">
@@ -101,6 +127,14 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
         <?php if (!empty($godoInfoLoadedAt)) { ?>
             <div>고도몰 정보 조회시간: <b><?= htmlspecialchars((string)$godoInfoLoadedAt, ENT_QUOTES, 'UTF-8') ?></b> (로딩시간: <b><?= number_format((int)($godoInfoLoadMs ?? 0)) ?>ms</b>)</div>
         <?php } ?>
+    </div>
+
+    <div class="inspection-warning" role="alert">
+        <span class="inspection-warning-badge">주의</span>
+        <div class="inspection-warning-body">
+            <strong>고도몰 상품관리창을 열어 둔 상태로 [검수처리]하지 마세요.</strong>
+            <p>인트라넷 검수처리를 완료한 뒤 고도몰 상품관리창에서 저장하면 검수처리 내용이 덮어씌워집니다.</p>
+        </div>
     </div>
 
     <?php if (!empty($godoApiErrorMessage)) { ?>

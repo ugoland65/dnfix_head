@@ -546,7 +546,7 @@
 
                                         <p ><b><?=$product['CD_NAME']?></b></p>
                                         <div class="m-t-3 prd-memo-wrap" style="color:#ff0000;<?= empty($product['cd_memo2']) ? 'display:none;' : '' ?>">
-                                            <span class="prd-memo">- <?= htmlspecialchars((string)($product['cd_memo2'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                                            <span class="prd-memo">- <?=$product['cd_memo2']?></span>
                                         </div>
                                     </td>
                                     

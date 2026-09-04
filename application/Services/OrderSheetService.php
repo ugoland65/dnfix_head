@@ -644,11 +644,13 @@ class OrderSheetService
 
         $subCategoryCodesByProductIdx = [];
         $preferenceTagCodesByProductIdx = [];
+        $dedicatedHoleCodeByProductIdx = [];
+        $additionalCategoryCodesByProductIdx = [];
         if (!empty($pidxList)) {
             $mappingRows = ProductCategoryMappingModel::query()
                 ->select(['product_idx', 'category_code', 'category_type'])
                 ->where('product_type', '=', 'prdDB')
-                ->whereIn('category_type', ['sub', 'hashtag'])
+                ->whereIn('category_type', ['sub', 'hashtag', 'dedicated_hole', 'additional'])
                 ->whereIn('product_idx', $pidxList)
                 ->orderBy('display_order', 'ASC')
                 ->orderBy('idx', 'ASC')
@@ -667,6 +669,14 @@ class OrderSheetService
                 }
                 if ($categoryType === 'hashtag') {
                     $preferenceTagCodesByProductIdx[$productIdx][] = $categoryCode;
+                    continue;
+                }
+                if ($categoryType === 'additional') {
+                    $additionalCategoryCodesByProductIdx[$productIdx][] = $categoryCode;
+                    continue;
+                }
+                if ($categoryType === 'dedicated_hole' && !isset($dedicatedHoleCodeByProductIdx[$productIdx])) {
+                    $dedicatedHoleCodeByProductIdx[$productIdx] = $categoryCode;
                 }
             }
         }
@@ -901,8 +911,10 @@ class OrderSheetService
                 'is_false' => !empty($row['is_false']),
                 'cd_kind_code' => $cdKindCode,
                 'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
+                'cd_additional_category_codes' => $additionalCategoryCodesByProductIdx[$pidx] ?? [],
                 'cd_sub_category_codes' => $subCategoryCodesByProductIdx[$pidx] ?? [],
                 'preference_tag_codes' => $preferenceTagCodesByProductIdx[$pidx] ?? [],
+                'dedicated_hole_code' => $dedicatedHoleCodeByProductIdx[$pidx] ?? '',
                 'brand_name' => (string)($product['BD_NAME'] ?? ''),
                 'name' => (string)($product['CD_NAME'] ?? ''),
                 'name_og' => (string)($product['CD_NAME_OG'] ?? ''),
@@ -2626,10 +2638,11 @@ class OrderSheetService
 
             $memoPidx = (string)($memoItem['idx'] ?? '');
             if ($memoPidx !== '' && array_key_exists($memoPidx, $productMemoByPidx)) {
-                $memoItem['product_memo'] = $productMemoByPidx[$memoPidx];
+                $rawProductMemo = $productMemoByPidx[$memoPidx];
             } else {
-                $memoItem['product_memo'] = (string)($memoItem['selpd']['memo'] ?? '');
+                $rawProductMemo = (string)($memoItem['selpd']['memo'] ?? '');
             }
+            $memoItem['product_memo'] = html_entity_decode($rawProductMemo, ENT_QUOTES | ENT_HTML5, 'UTF-8');
         }
         unset($memoItem);
 
@@ -2861,7 +2874,7 @@ class OrderSheetService
             throw new Exception('메모 저장에 필요한 상품 정보가 누락되었습니다.');
         }
 
-        $memo = (string)($data['memo'] ?? '');
+        $memo = html_entity_decode((string)($data['memo'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         $memo = str_replace(["\r\n", "\r"], "\n", $memo);
         $memo = preg_replace('/[\x00-\x08\x0B\x0C\x0E-\x1F\x7F]/u', '', $memo) ?? '';
         $memoLength = function_exists('mb_strlen')
@@ -3069,6 +3082,11 @@ class OrderSheetService
             ];
         }
 
+        $sessionIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $sessionId = trim((string)(AuthAdmin::getSession('sess_id') ?? ''));
+        $sessionName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        $savedAt = date('Y-m-d H:i:s');
+
         $saveData = [
             'bidx' => $oopIdx,
             'item' => $item,
@@ -3077,6 +3095,10 @@ class OrderSheetService
             'weight' => $totalWeight,
             'cbm' => $totalCbm,
             'selpd' => $instSelpd,
+            'last_saved_admin_idx' => $sessionIdx,
+            'last_saved_admin_id' => $sessionId,
+            'last_saved_admin_name' => $sessionName,
+            'last_saved_at' => $savedAt,
         ];
 
         $ooSumGoods = 0;
@@ -3205,6 +3227,10 @@ class OrderSheetService
             'oo_sum_weight' => $ooSumWeight,
             'oo_sum_price' => $savedOoSumPrice,
             'oo_sum_cbm' => $ooSumCbm,
+            'last_saved_admin_idx' => $sessionIdx,
+            'last_saved_admin_id' => $sessionId,
+            'last_saved_admin_name' => $sessionName,
+            'last_saved_at' => $savedAt,
         ];
     }
 

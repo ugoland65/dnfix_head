@@ -25,6 +25,10 @@ $collectionItemIdx = (int)($collectionItemData['idx'] ?? 0);
 $translatedAccessories = trim((string)($collectionItemData['translated_accessories'] ?? ''));
 $translatedMakerComment = trim((string)($collectionItemData['translated_maker_comment'] ?? ''));
 $translatedSellerComment = trim((string)($collectionItemData['translated_seller_comment'] ?? ''));
+$translatedImageAlts = json_decode((string)($collectionItemData['translated_image_alts_json'] ?? '{}'), true);
+if (!is_array($translatedImageAlts)) {
+    $translatedImageAlts = [];
+}
 $collectionActionLogs = is_array($viewData['collectionActionLogs'] ?? null) ? $viewData['collectionActionLogs'] : [];
 $translationLogs = ['accessories' => null, 'maker_comment' => null, 'seller_comment' => null];
 $hostingUploadLog = null;
@@ -106,9 +110,13 @@ foreach ($imageSources as $imageSource) {
         $imageAlt = '';
     }
     if ($imageUrl !== '') {
+        $imageUrl = \App\Services\ProductImageHostingService::resolveCollectedImageUrl($imageUrl);
+        $imageKey = \App\Services\ProductImageHostingService::collectedImageTranslationKey($imageUrl);
         $collectedImages[] = [
             'url' => $imageUrl,
             'alt' => $imageAlt,
+            'key' => $imageKey,
+            'translated_alt' => \App\Services\ProductImageHostingService::collectedImageAltTranslation($translatedImageAlts, $imageUrl),
         ];
     }
 }
@@ -164,6 +172,7 @@ $siteCodeNames = [
     'mzakka' => '엠자카',
     'nobunaga' => '노부나가',
     'nls' => 'NLS 사이트',
+    'ms' => '엠즈',
 ];
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
@@ -207,7 +216,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     2) 타마토이즈 ex) <a href="https://tamatoys.tma.co.jp" target="_blank" rel="noopener noreferrer">https://tamatoys.tma.co.jp/item/detail/TMT-1716</a><br>
                     3) 엠자카 ex) <a href="https://mzakka.com" target="_blank" rel="noopener noreferrer">https://mzakka.com/pc/detail/item.php?item_id=M12488&amp;category=1789</a><br>
                     4) 노부나가 ex) <a href="https://www.nobunaga-toys.com" target="_blank" rel="noopener noreferrer">https://www.nobunaga-toys.com/?pid=193204770</a><br>
-                    5) NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a>
+                    5) NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a><br>
+                    6) 엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a>
                 </p>
                 <div id="collectionUrlValidation" class="product-info-collection-validation" hidden aria-live="polite"></div>
             </form>
@@ -377,7 +387,10 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                                 <?php } ?>
                             </div>
                             <?php if ($translatedAccessories !== '') { ?>
-                                <div class="collection-translation">번역: <?= htmlspecialchars($translatedAccessories, ENT_QUOTES, 'UTF-8') ?></div>
+                                <div class="collection-translation">
+                                    <span class="collection-translation-label">번역</span>
+                                    <div class="collection-translation-text"><?= htmlspecialchars($translatedAccessories, ENT_QUOTES, 'UTF-8') ?></div>
+                                </div>
                                 <?php if ($translationLogs['accessories'] !== null) { ?><div class="collection-action-log">번역 수정: <?= htmlspecialchars($formatActionLog($translationLogs['accessories']), ENT_QUOTES, 'UTF-8') ?></div><?php } ?>
                             <?php } ?>
                         </td>
@@ -393,7 +406,10 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                                 <?php } ?>
                             </div>
                             <?php if ($translatedMakerComment !== '') { ?>
-                                <div class="collection-translation">번역:<br><?= nl2br(htmlspecialchars(html_entity_decode($translatedMakerComment, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES, 'UTF-8')) ?></div>
+                                <div class="collection-translation">
+                                    <span class="collection-translation-label">번역</span>
+                                    <div class="collection-translation-text"><?= nl2br(htmlspecialchars(html_entity_decode($translatedMakerComment, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES, 'UTF-8')) ?></div>
+                                </div>
                                 <?php if ($translationLogs['maker_comment'] !== null) { ?><div class="collection-action-log">번역 수정: <?= htmlspecialchars($formatActionLog($translationLogs['maker_comment']), ENT_QUOTES, 'UTF-8') ?></div><?php } ?>
                             <?php } ?>
                         </td>
@@ -409,7 +425,10 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                                 <?php } ?>
                             </div>
                             <?php if ($translatedSellerComment !== '') { ?>
-                                <div class="collection-translation">번역:<br><?= nl2br(htmlspecialchars(html_entity_decode($translatedSellerComment, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES, 'UTF-8')) ?></div>
+                                <div class="collection-translation">
+                                    <span class="collection-translation-label">번역</span>
+                                    <div class="collection-translation-text"><?= nl2br(htmlspecialchars(html_entity_decode($translatedSellerComment, ENT_QUOTES | ENT_HTML5, 'UTF-8'), ENT_QUOTES, 'UTF-8')) ?></div>
+                                </div>
                                 <?php if ($translationLogs['seller_comment'] !== null) { ?><div class="collection-action-log">번역 수정: <?= htmlspecialchars($formatActionLog($translationLogs['seller_comment']), ENT_QUOTES, 'UTF-8') ?></div><?php } ?>
                             <?php } ?>
                         </td>
@@ -436,12 +455,35 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                             <?php
                             $imageUrl = (string)($collectedImage['url'] ?? '');
                             $imageAlt = trim((string)($collectedImage['alt'] ?? ''));
+                            $imageKey = trim((string)($collectedImage['key'] ?? ''));
+                            $translatedImageAlt = trim((string)($collectedImage['translated_alt'] ?? ''));
                             ?>
                             <div class="collected-product-image-item">
                                 <a class="collected-product-image-preview" href="<?= htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><img src="<?= htmlspecialchars($imageProxyUrl($imageUrl), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($imageAlt !== '' ? $imageAlt : '수집 상품 이미지', ENT_QUOTES, 'UTF-8') ?>" referrerpolicy="no-referrer" ></a>
                                 <a class="collected-product-image-download" href="<?= htmlspecialchars($imageProxyUrl($imageUrl) . '&download=1', ENT_QUOTES, 'UTF-8') ?>">이미지 다운로드</a>
-                                <?php if ($imageAlt !== '') { ?>
-                                    <p class="collected-product-image-alt"><?= htmlspecialchars($imageAlt, ENT_QUOTES, 'UTF-8') ?></p>
+                                <?php if ($imageAlt !== '' || $translatedImageAlt !== '') { ?>
+                                    <div class="collected-product-image-alt-wrap">
+                                        <?php if ($imageAlt !== '') { ?>
+                                            <p class="collected-product-image-alt"><?= htmlspecialchars($imageAlt, ENT_QUOTES, 'UTF-8') ?></p>
+                                        <?php } ?>
+                                        <?php if ($collectionItemIdx > 0 && $imageKey !== '') { ?>
+                                            <button
+                                                type="button"
+                                                class="btnstyle1 btnstyle1-xs collection-translation-button"
+                                                data-field="image_alt"
+                                                data-label="이미지 설명"
+                                                data-image-key="<?= htmlspecialchars($imageKey, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-source-alt="<?= htmlspecialchars($imageAlt, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-value="<?= htmlspecialchars($translatedImageAlt, ENT_QUOTES, 'UTF-8') ?>"
+                                            ><?= $translatedImageAlt === '' ? '번역데이터 입력' : '번역 수정' ?></button>
+                                        <?php } ?>
+                                        <?php if ($translatedImageAlt !== '') { ?>
+                                            <div class="collection-translation">
+                                                <span class="collection-translation-label">번역</span>
+                                                <div class="collection-translation-text"><?= htmlspecialchars($translatedImageAlt, ENT_QUOTES, 'UTF-8') ?></div>
+                                            </div>
+                                        <?php } ?>
+                                    </div>
                                 <?php } ?>
                             </div>
                         <?php } ?>
@@ -511,10 +553,16 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 .collection-record-button:disabled{cursor:wait;opacity:.65}
 @media(max-width:640px){.product-collection-layout{display:block}.collection-record-list{position:static;order:0;width:100%;max-width:220px;margin:20px 0 0 auto}}
 .collected-product-compare{display:block;width:max-content;max-width:100%;margin-top:6px;padding:3px 7px;border-radius:4px;font-size:11px;font-weight:600}.collected-product-compare-empty{color:#92400e;background:#fef3c7}.collected-product-compare-mismatch{color:#b91c1c;background:#fee2e2}
-.collection-translation{margin-top:8px;padding:8px 10px;border-left:3px solid #60a5fa;background:#eff6ff;color:#1e3a8a}.collection-translation-button{margin-top:8px}.collection-translation-modal{position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55)}.collection-translation-modal[hidden]{display:none}.collection-translation-modal-card{width:min(560px,calc(100% - 32px));padding:20px;border-radius:9px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}.collection-translation-modal-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.collection-translation-modal-heading h3{margin:0;font-size:16px}.collection-translation-modal-heading button{border:0;background:transparent;color:#64748b;font-size:24px;cursor:pointer}.collection-translation-modal textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:5px;resize:vertical;line-height:1.5}.collection-translation-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
+.collection-translation{margin-top:8px;padding:8px 10px;border:1px solid #e5e7eb;border-left:3px solid #6b7280;background:#f4f4f5;color:#1f2937}
+.collection-translation-button{margin-top:8px}
+.collection-translation-label{display:inline-block;margin:0 0 6px;padding:2px 8px;border-radius:999px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;line-height:1.3;letter-spacing:.02em}
+.collection-translation-text{display:block;color:#1f2937;line-height:1.55;word-break:break-word}.collection-translation-modal{position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55)}.collection-translation-modal[hidden]{display:none}.collection-translation-modal-card{width:min(560px,calc(100% - 32px));padding:20px;border-radius:9px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}.collection-translation-modal-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.collection-translation-modal-heading h3{margin:0;font-size:16px}.collection-translation-modal-heading button{border:0;background:transparent;color:#64748b;font-size:24px;cursor:pointer}.collection-translation-modal textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:5px;resize:vertical;line-height:1.5}.collection-translation-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 .collection-source-block{padding:9px 10px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;color:#334155}.collection-action-block{display:flex;gap:6px;margin-top:8px;padding:7px 8px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collection-action-block .collection-translation-button{margin-top:0}
 .collection-action-log{margin-top:6px;color:#64748b;font-size:11px}.hosted-action-log{margin:0 0 10px}
-.collected-product-image-item{overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list .collected-product-image-preview{display:block;border:0;border-radius:0}.collected-product-image-alt{margin:0;padding:7px 8px;background:#fff;border-top:1px solid #edf0f4;color:#475569;font-size:11px;line-height:1.45;word-break:break-word}.collected-product-image-download{display:block;padding:7px;text-align:center;background:#fff;color:#2563eb!important;font-size:11px;text-decoration:none}
+.collected-product-image-item{overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list .collected-product-image-preview{display:block;border:0;border-radius:0}.collected-product-image-alt-wrap{padding:8px;background:#fff;border-top:1px solid #edf0f4}
+.collected-product-image-alt{margin:0;color:#475569;font-size:11px;line-height:1.45;word-break:break-word}
+.collected-product-image-alt-wrap .collection-translation-button{margin:6px 0 0}
+.collected-product-image-alt-wrap .collection-translation{margin-top:6px}.collected-product-image-download{display:block;padding:7px;text-align:center;background:#fff;color:#2563eb!important;font-size:11px;text-decoration:none}
 .collected-product-upload-disabled{color:#92400e!important;background:#fef3c7!important}
 .hosted-product-images{
     max-width:900px;
@@ -557,6 +605,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var translationModalTitle = document.getElementById('collectionTranslationModalTitle');
     var translationInput = document.getElementById('collectionTranslationInput');
     var translationField = '';
+    var translationImageKey = '';
+    var translationSourceAlt = '';
 
     function showMessage(text, isSuccess) {
         message.textContent = text;
@@ -571,6 +621,38 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
         submitButton.textContent = isLoading ? '수집 중...' : '검수 후 수집 요청';
     }
 
+    function loadCollectionView(collectionIndex) {
+        var index = Number(collectionIndex);
+        if (!Number.isInteger(index) || index < 0) {
+            index = 0;
+        }
+        if (!window.jQuery) {
+            window.location.reload();
+            return;
+        }
+
+        loadingOverlay.querySelector('strong').textContent = '수집 상세정보를 불러오는 중입니다.';
+        loadingOverlay.querySelector('p').textContent = '잠시만 기다려주세요.';
+        loadingOverlay.hidden = false;
+
+        window.jQuery.ajax({
+            url: '/admin/product/info_collect',
+            type: 'GET',
+            dataType: 'text',
+            data: {
+                prd_idx: productIdx,
+                collection_index: index
+            },
+            success: function (html) {
+                window.jQuery('#crm_body').html(html);
+            },
+            error: function () {
+                loadingOverlay.hidden = true;
+                window.alert('수집 상세정보를 불러오지 못했습니다.');
+            }
+        });
+    }
+
     Array.prototype.forEach.call(collectionRecordButtons, function (button) {
         button.addEventListener('click', function () {
             var collectionIndex = Number(button.dataset.collectionIndex);
@@ -581,29 +663,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             Array.prototype.forEach.call(collectionRecordButtons, function (recordButton) {
                 recordButton.disabled = true;
             });
-            loadingOverlay.querySelector('strong').textContent = '수집 상세정보를 불러오는 중입니다.';
-            loadingOverlay.querySelector('p').textContent = '잠시만 기다려주세요.';
-            loadingOverlay.hidden = false;
-
-            window.jQuery.ajax({
-                url: '/admin/product/info_collect',
-                type: 'GET',
-                dataType: 'text',
-                data: {
-                    prd_idx: productIdx,
-                    collection_index: collectionIndex
-                },
-                success: function (html) {
-                    window.jQuery('#crm_body').html(html);
-                },
-                error: function () {
-                    loadingOverlay.hidden = true;
-                    Array.prototype.forEach.call(collectionRecordButtons, function (recordButton) {
-                        recordButton.disabled = false;
-                    });
-                    window.alert('수집 상세정보를 불러오지 못했습니다.');
-                }
-            });
+            loadCollectionView(collectionIndex);
         });
     });
 
@@ -625,6 +685,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     function closeTranslationModal() {
         translationModal.hidden = true;
         translationField = '';
+        translationImageKey = '';
+        translationSourceAlt = '';
         translationInput.value = '';
     }
 
@@ -658,6 +720,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     Array.prototype.forEach.call(document.querySelectorAll('.collection-translation-button'), function (button) {
         button.addEventListener('click', function () {
             translationField = button.dataset.field;
+            translationImageKey = button.dataset.imageKey || '';
+            translationSourceAlt = button.dataset.sourceAlt || '';
             translationModalTitle.textContent = button.dataset.label + ' 번역데이터';
             translationInput.value = button.dataset.value || '';
             translationModal.hidden = false;
@@ -681,7 +745,9 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                 prd_idx: productIdx,
                 collection_item_idx: collectionItemIdx,
                 field: translationField,
-                translation: translation
+                translation: translation,
+                image_key: translationImageKey,
+                source_alt: translationSourceAlt
             }).toString()
         })
         .then(function (response) { return response.json(); })
@@ -689,7 +755,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             if (!responseData.success) {
                 throw new Error(responseData.message || '번역 저장에 실패했습니다.');
             }
-            window.location.reload();
+            loadCollectionView(selectedCollectionIndex);
         })
         .catch(function (error) {
             window.alert(error.message || '번역 저장 중 오류가 발생했습니다.');
@@ -725,7 +791,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                 imageStorageMessage.hidden = false;
                 imageStorageInput.value = responseData.image_storage_path;
                 setTimeout(function () {
-                    window.location.reload();
+                    loadCollectionView(selectedCollectionIndex);
                 }, 400);
             })
             .catch(function (error) {
@@ -809,7 +875,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             })
             .catch(function (error) {
                 window.alert(error.message || '이미지 순서 저장 중 오류가 발생했습니다.');
-                window.location.reload();
+                loadCollectionView(selectedCollectionIndex);
             });
         }
 
@@ -871,7 +937,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     throw new Error(responseData.message || '이미지 호스팅 업로드에 실패했습니다.');
                 }
                 window.alert(responseData.message || '이미지 호스팅 업로드가 완료되었습니다.');
-                window.location.reload();
+                loadCollectionView(selectedCollectionIndex);
             })
             .catch(function (error) {
                 window.alert(error.message || '이미지 호스팅 업로드 중 오류가 발생했습니다.');
@@ -942,6 +1008,12 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             var nlsMatch = url.pathname.match(/^\/pict[0-9]+-([1-9][0-9]*)\/?$/);
             if (!nlsMatch) {
                 showMessage('NLS URL은 /pict1-상품번호 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'ms-online.co.jp') {
+            var msProductId = url.searchParams.get('pclass_id');
+            if (!msProductId || !/^[1-9][0-9]*$/.test(msProductId)) {
+                showMessage('엠즈 URL에는 유효한 pclass_id 값이 필요합니다.', false);
                 return;
             }
         } else {

@@ -166,6 +166,8 @@ class GodoInspectionService
         $cdCategoryCode = trim((string)($item['cd_category_code'] ?? ''));
         $cdSubCategoryCodes = $item['cd_sub_category_codes'] ?? [];
         $preferenceTagCodes = $item['preference_tag_codes'] ?? [];
+        $dedicatedHoleCode = trim((string)($item['dedicated_hole_code'] ?? ''));
+        $additionalCategoryCodes = $item['cd_additional_category_codes'] ?? $item['additional_category_codes'] ?? [];
         $godoStockFl = strtolower(trim((string)($item['godo_stock_fl'] ?? '')));
         $godoSoldOutFl = strtolower(trim((string)($item['godo_sold_out_fl'] ?? '')));
         $currentStockQty = (int)($item['stock_qty'] ?? 0);
@@ -197,6 +199,8 @@ class GodoInspectionService
         $onaholeFeatureCategoryMap = $this->buildCategoryMap(self::ONAHOLE_FEATURE_CATEGORIES);
         $preferenceTagCategories = $this->getPreferenceTagCategories();
         $preferenceTagCategoryMap = $this->buildCategoryMap($preferenceTagCategories);
+        $dedicatedHoleCategories = $this->getDedicatedHoleCategories();
+        $dedicatedHoleCategoryMap = $this->buildCategoryMap($dedicatedHoleCategories);
         $onaholeInnerLengthCategoryMap = $this->buildCategoryMap(self::ONAHOLE_INNER_LENGTH_CATEGORIES);
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
@@ -310,6 +314,7 @@ class GodoInspectionService
         $currentOnaholeTypeCategories = [];
         $currentOnaholeFeatureCategories = [];
         $currentPreferenceTagCategories = [];
+        $currentDedicatedHoleCategories = [];
         $currentOnaholeHbtiCategories = [];
         $currentOnaholeInnerLengthCategories = [];
         $currentMarginGradeCategories = [];
@@ -335,6 +340,9 @@ class GodoInspectionService
             if (strlen($cateCd) === 6 && strpos($cateCd, '061') === 0) {
                 $currentPreferenceTagCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
+            if (strlen($cateCd) === 9 && strpos($cateCd, '026009') === 0) {
+                $currentDedicatedHoleCategories[] = ['cateCd' => $cateCd, 'line' => $line];
+            }
             if (strlen($cateCd) === 9 && strpos($cateCd, '026010') === 0) {
                 $currentOnaholeHbtiCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
@@ -354,6 +362,7 @@ class GodoInspectionService
             self::ONAHOLE_TYPE_CATEGORIES,
             $cdCategoryCode
         );
+        $keptOnaholeTypeCateCdMap = $this->resolveOnaholeTypeCateCdsFromAdditionalCodes($additionalCategoryCodes);
         $targetOnaholeFeatureCategories = $this->findTargetCategoriesBySourceCategoryCodes(
             self::ONAHOLE_FEATURE_CATEGORIES,
             $cdSubCategoryCodes
@@ -361,6 +370,10 @@ class GodoInspectionService
         $targetPreferenceTagCategories = $this->findTargetCategoriesBySourceCategoryCodes(
             $preferenceTagCategories,
             $preferenceTagCodes
+        );
+        $targetDedicatedHoleCategory = $this->findTargetCategoryBySourceCategoryCode(
+            $dedicatedHoleCategories,
+            $dedicatedHoleCode
         );
         $targetOnaholeInnerLengthCategory = $this->findTargetCategoryByValue(self::ONAHOLE_INNER_LENGTH_CATEGORIES, $innerLengthNormalized);
         $targetMarginGradeCategory = $marginGradeCategoryMap[$marginGrade] ?? null;
@@ -463,7 +476,8 @@ class GodoInspectionService
                 '유형별 카테고리 오류',
                 "<span>오나홀 > 유형별 카테고리가 미지정되어 있습니다.</span>",
                 "<span>오나홀 > 유형별 카테고리 오분류</span>",
-                $onaholeTypeCategoryMap
+                $onaholeTypeCategoryMap,
+                $keptOnaholeTypeCateCdMap
             );
         }
 
@@ -482,6 +496,25 @@ class GodoInspectionService
                 '<span>오나홀 > 특징별 카테고리가 인트라넷 서브 카테고리와 일치하지 않습니다.</span>'
                     . "\n<span>서브 카테고리는 여러 개를 동시에 지정할 수 있으며, 선택한 항목은 유지하고 부족한 항목만 추가합니다.</span>",
                 $onaholeFeatureCategoryMap
+            );
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'ONAHOLE' && $targetDedicatedHoleCategory !== null) {
+            $this->appendCategoryMismatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentDedicatedHoleCategories,
+                (string)($targetDedicatedHoleCategory['cateCd'] ?? ''),
+                (string)($targetDedicatedHoleCategory['cateNm'] ?? ''),
+                '전용홀 카테고리 미지정',
+                '전용홀 카테고리 오류',
+                '<span>오나홀 > 전용홀 카테고리가 미지정되어 있습니다.</span>'
+                    . "\n<span>A10 전용홀과 핸디 슬리브는 하나만 지정할 수 있습니다.</span>",
+                '<span>오나홀 > 전용홀 카테고리가 인트라넷 선택값과 일치하지 않습니다.</span>'
+                    . "\n<span>전용홀은 중복되지 않으므로 선택한 1개만 유지합니다.</span>",
+                $dedicatedHoleCategoryMap
             );
         }
 
@@ -1144,6 +1177,55 @@ class GodoInspectionService
     }
 
     /**
+     * 추가 구분으로 지정된 인트라넷 카테고리를 오나홀 유형별 고도몰 코드로 변환한다.
+     * 대표 유형 외 추가 구분은 오분류 삭제 대상에서 제외한다.
+     *
+     * @param mixed $rawCodes
+     * @return array<string,bool>
+     */
+    private function resolveOnaholeTypeCateCdsFromAdditionalCodes($rawCodes): array
+    {
+        if (is_string($rawCodes)) {
+            $decoded = json_decode($rawCodes, true);
+            $rawCodes = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', $rawCodes, -1, PREG_SPLIT_NO_EMPTY);
+        }
+        if (!is_array($rawCodes)) {
+            return [];
+        }
+
+        $additionalCodes = [];
+        foreach ($rawCodes as $rawCode) {
+            $code = trim((string)$rawCode);
+            if ($code !== '') {
+                $additionalCodes[] = $code;
+            }
+        }
+        if ($additionalCodes === []) {
+            return [];
+        }
+
+        $keepCateCdMap = [];
+        foreach (self::ONAHOLE_TYPE_CATEGORIES as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $sourceCode = trim((string)($row['sourceCategoryCode'] ?? ''));
+            $cateCd = trim((string)($row['cateCd'] ?? ''));
+            if ($sourceCode === '' || $cateCd === '') {
+                continue;
+            }
+            foreach ($additionalCodes as $additionalCode) {
+                if ($additionalCode === $sourceCode || strpos($additionalCode, $sourceCode) === 0) {
+                    $keepCateCdMap[$cateCd] = true;
+                    break;
+                }
+            }
+        }
+
+        return $keepCateCdMap;
+    }
+
+    /**
      * 다중 선택 카테고리의 미지정/오분류를 판정하고 추가/삭제 큐를 갱신한다.
      *
      * @param array<int,array<string,mixed>> $inspectionIssues
@@ -1275,7 +1357,8 @@ class GodoInspectionService
         string $wrongIssueName,
         string $missingPrefixText,
         string $wrongPrefixText,
-        array $categoryNameMap
+        array $categoryNameMap,
+        array $keepCateCdMap = []
     ): void {
         if ($targetCateCd === '') {
             return;
@@ -1295,8 +1378,10 @@ class GodoInspectionService
         foreach ($currentCategories as $row) {
             $currentCateCd = (string)($row['cateCd'] ?? '');
             $currentLine = (string)($row['line'] ?? '');
-            if ($currentCateCd === $targetCateCd) {
-                $hasExpected = true;
+            if ($currentCateCd === $targetCateCd || isset($keepCateCdMap[$currentCateCd])) {
+                if ($currentCateCd === $targetCateCd) {
+                    $hasExpected = true;
+                }
                 continue;
             }
             $currentCateNm = (string)($categoryNameMap[$currentCateCd]['cateNm'] ?? '');
@@ -1358,6 +1443,45 @@ class GodoInspectionService
     }
 
     /**
+     * 오나홀 전용홀 → 고도몰 카테고리 목록
+     * config/admin/product.php 의 dedicated_hole_categories 를 기준으로 구성한다.
+     *
+     * @return array<int,array{sourceCategoryCode:string,cateNm:string,cateCd:string}>
+     */
+    private function getDedicatedHoleCategories(): array
+    {
+        static $rows = null;
+        if (is_array($rows)) {
+            return $rows;
+        }
+
+        $rows = [];
+        $productConfig = config('admin.product');
+        $dedicatedHoles = (isset($productConfig['dedicated_hole_categories']) && is_array($productConfig['dedicated_hole_categories']))
+            ? $productConfig['dedicated_hole_categories']
+            : [];
+
+        foreach ($dedicatedHoles as $dedicatedHole) {
+            if (!is_array($dedicatedHole) || empty($dedicatedHole['is_active'])) {
+                continue;
+            }
+            $code = trim((string)($dedicatedHole['code'] ?? ''));
+            $name = trim((string)($dedicatedHole['name'] ?? ''));
+            $cateCd = trim((string)($dedicatedHole['godo_category_code'] ?? ''));
+            if ($code === '' || $name === '' || $cateCd === '' || $cateCd === '0') {
+                continue;
+            }
+            $rows[] = [
+                'sourceCategoryCode' => $code,
+                'cateNm' => $name,
+                'cateCd' => $cateCd,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * 카테고리 코드로 기본 카테고리명을 조회한다.
      *
      * @param string $cateCd
@@ -1376,6 +1500,7 @@ class GodoInspectionService
             self::ONAHOLE_TYPE_CATEGORIES,
             self::ONAHOLE_FEATURE_CATEGORIES,
             $this->getPreferenceTagCategories(),
+            $this->getDedicatedHoleCategories(),
             self::ONAHOLE_HBTI_CATEGORIES,
             self::ONAHOLE_INNER_LENGTH_CATEGORIES,
             self::TORSO_CATEGORIES,

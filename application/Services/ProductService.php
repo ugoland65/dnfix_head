@@ -1456,6 +1456,9 @@ class ProductService extends BaseClass
                 (int)($productData['CD_IDX'] ?? 0),
                 'hashtag'
             );
+            $productData['dedicated_hole_code'] = $this->getDedicatedHoleCodeForProduct(
+                (int)($productData['CD_IDX'] ?? 0)
+            );
             $productData['cd_sub_category_codes'] = $this->getProductCategoryMappingCodes(
                 (int)($productData['CD_IDX'] ?? 0),
                 'sub'
@@ -1980,6 +1983,10 @@ class ProductService extends BaseClass
             $cdCategoryCode
         );
         $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
+        $dedicatedHoleCodes = $this->normalizeDedicatedHoleCodes(
+            $postData['dedicated_hole_code'] ?? '',
+            $cdKindCode
+        );
         $subCategoryCodes = $this->normalizeSubCategoryCodes(
             $postData['cd_sub_category_codes'] ?? [],
             $cdKindCode
@@ -2150,6 +2157,7 @@ class ProductService extends BaseClass
         $beforeProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $idx);
         $beforeAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
         $beforePreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
+        $beforeDedicatedHoleCode = $this->getDedicatedHoleCodeForProduct($idx);
         $beforeSubCategoryCodes = $this->getProductCategoryMappingCodes($idx, 'sub');
 
         $beforeStockData = [];
@@ -2186,6 +2194,7 @@ class ProductService extends BaseClass
         $beforeData['product_label_mappings'] = $beforeProductLabelMappings;
         $beforeData['cd_additional_category_codes'] = $beforeAdditionalCategoryCodes;
         $beforeData['preference_tag_codes'] = $beforePreferenceTagCodes;
+        $beforeData['dedicated_hole_code'] = $beforeDedicatedHoleCode;
         $beforeData['cd_sub_category_codes'] = $beforeSubCategoryCodes;
 
         $this->syncProductWorkChecks($idx, $cdKindCode, $workTaskCodes, $workTaskDoneMap, $auth);
@@ -2196,6 +2205,8 @@ class ProductService extends BaseClass
         $afterAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($idx);
         $this->syncProductCategoryMappingCodes($idx, 'hashtag', $preferenceTagCodes);
         $afterPreferenceTagCodes = $this->getProductCategoryMappingCodes($idx, 'hashtag');
+        $this->syncProductCategoryMappingCodes($idx, 'dedicated_hole', $dedicatedHoleCodes);
+        $afterDedicatedHoleCode = $this->getDedicatedHoleCodeForProduct($idx);
         $this->syncProductCategoryMappingCodes($idx, 'sub', $subCategoryCodes);
         $afterSubCategoryCodes = $this->getProductCategoryMappingCodes($idx, 'sub');
 
@@ -2216,6 +2227,7 @@ class ProductService extends BaseClass
         $afterData['product_label_mappings'] = $afterProductLabelMappings;
         $afterData['cd_additional_category_codes'] = $afterAdditionalCategoryCodes;
         $afterData['preference_tag_codes'] = $afterPreferenceTagCodes;
+        $afterData['dedicated_hole_code'] = $afterDedicatedHoleCode;
         $afterData['cd_sub_category_codes'] = $afterSubCategoryCodes;
 
         $adminActionLogService = new AdminActionLogService();
@@ -2366,6 +2378,10 @@ class ProductService extends BaseClass
             $cdCategoryCode
         );
         $preferenceTagCodes = $this->normalizePreferenceTagCodes($postData['preference_tag_codes'] ?? []);
+        $dedicatedHoleCodes = $this->normalizeDedicatedHoleCodes(
+            $postData['dedicated_hole_code'] ?? '',
+            $cdKindCode
+        );
         $subCategoryCodes = $this->normalizeSubCategoryCodes(
             $postData['cd_sub_category_codes'] ?? [],
             $cdKindCode
@@ -2563,10 +2579,12 @@ class ProductService extends BaseClass
         $this->syncProductLabelMappings($newIdx, 'prdDB', $productLabelIdxs);
         $this->syncAdditionalCategoryCodes($newIdx, $additionalCategoryCodes);
         $this->syncProductCategoryMappingCodes($newIdx, 'hashtag', $preferenceTagCodes);
+        $this->syncProductCategoryMappingCodes($newIdx, 'dedicated_hole', $dedicatedHoleCodes);
         $this->syncProductCategoryMappingCodes($newIdx, 'sub', $subCategoryCodes);
         $createdProductLabelMappings = $this->getProductLabelMappingsForProduct('prdDB', $newIdx);
         $createdAdditionalCategoryCodes = $this->getAdditionalCategoryCodesForProduct($newIdx);
         $createdPreferenceTagCodes = $this->getProductCategoryMappingCodes($newIdx, 'hashtag');
+        $createdDedicatedHoleCode = $this->getDedicatedHoleCodeForProduct($newIdx);
         $createdSubCategoryCodes = $this->getProductCategoryMappingCodes($newIdx, 'sub');
 
         $adminActionLogService = new AdminActionLogService();
@@ -2587,12 +2605,14 @@ class ProductService extends BaseClass
                     'product_label_mappings' => $createdProductLabelMappings,
                     'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
                     'preference_tag_codes' => $createdPreferenceTagCodes,
+                    'dedicated_hole_code' => $createdDedicatedHoleCode,
                     'cd_sub_category_codes' => $createdSubCategoryCodes,
                 ]),
                 'diff_json' => array_merge($insertData, [
                     'product_label_mappings' => $createdProductLabelMappings,
                     'cd_additional_category_codes' => $createdAdditionalCategoryCodes,
                     'preference_tag_codes' => $createdPreferenceTagCodes,
+                    'dedicated_hole_code' => $createdDedicatedHoleCode,
                     'cd_sub_category_codes' => $createdSubCategoryCodes,
                 ]),
                 'action_url' => $actionUrl !== '' ? $actionUrl : null,
@@ -3186,6 +3206,37 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 상품에 연결된 활성 시리즈 이름 목록.
+     */
+    public function getProductSeriesNames(int $prdIdx): array
+    {
+        if ($prdIdx < 1) {
+            return [];
+        }
+
+        $rows = ProductRelationGroupProductModel::query()
+            ->from('prd_relation_group_product as GP')
+            ->join('prd_relation_group as G', 'G.prg_idx', '=', 'GP.prgp_group_idx')
+            ->where('GP.prgp_prd_idx', '=', $prdIdx)
+            ->where('G.prg_mode', '=', 'series')
+            ->where('G.prg_use_yn', '=', 'Y')
+            ->select(['G.prg_name'])
+            ->orderBy('G.prg_name', 'ASC')
+            ->get()
+            ->toArray();
+
+        $names = [];
+        foreach ($rows as $row) {
+            $name = trim((string)($row['prg_name'] ?? ''));
+            if ($name !== '' && !in_array($name, $names, true)) {
+                $names[] = $name;
+            }
+        }
+
+        return $names;
+    }
+
+    /**
      * 새 시리즈/연관그룹을 생성하고 현재 상품을 포함한다.
      */
     public function createProductRelationGroup(array $postData): array
@@ -3239,6 +3290,7 @@ class ProductService extends BaseClass
             'success' => true,
             'message' => '새 시리즈/연관그룹을 만들고 상품을 포함했습니다.',
             'group_idx' => $groupIdx,
+            'series_names' => $this->getProductSeriesNames($prdIdx),
         ];
     }
 
@@ -3266,6 +3318,7 @@ class ProductService extends BaseClass
             'success' => true,
             'message' => '상품을 시리즈/연관그룹에 포함했습니다.',
             'group_idx' => $groupIdx,
+            'series_names' => $this->getProductSeriesNames($prdIdx),
         ];
     }
 
@@ -3305,6 +3358,7 @@ class ProductService extends BaseClass
             'success' => true,
             'message' => '상품을 시리즈/연관그룹에서 제외했습니다.',
             'group_idx' => $groupIdx,
+            'series_names' => $this->getProductSeriesNames($prdIdx),
         ];
     }
 
@@ -4798,6 +4852,53 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 오나홀 전용홀 코드. 중복 없이 1개만 허용한다.
+     *
+     * @param mixed $rawCode
+     * @return array<int,string>
+     */
+    private function normalizeDedicatedHoleCodes($rawCode, string $kindCode): array
+    {
+        if (trim($kindCode) !== 'ONAHOLE') {
+            return [];
+        }
+        if (is_array($rawCode)) {
+            $rawCode = $rawCode[0] ?? '';
+        }
+        $code = trim((string)$rawCode);
+        if ($code === '') {
+            return [];
+        }
+
+        $validCodeMap = [];
+        $configProduct = config('admin.product');
+        $rows = $configProduct['dedicated_hole_categories'] ?? [];
+        if (is_array($rows)) {
+            foreach ($rows as $row) {
+                if (!is_array($row) || empty($row['is_active'])) {
+                    continue;
+                }
+                $rowCode = trim((string)($row['code'] ?? ''));
+                $kindCodes = $row['kind_codes'] ?? ['ONAHOLE'];
+                if ($rowCode !== '' && is_array($kindCodes) && in_array('ONAHOLE', $kindCodes, true)) {
+                    $validCodeMap[$rowCode] = true;
+                }
+            }
+        }
+
+        return isset($validCodeMap[$code]) ? [$code] : [];
+    }
+
+    /**
+     * 상품에 저장된 전용홀 코드 1개.
+     */
+    private function getDedicatedHoleCodeForProduct(int $productIdx, string $productType = 'prdDB'): string
+    {
+        $codes = $this->getProductCategoryMappingCodes($productIdx, 'dedicated_hole', $productType);
+        return trim((string)($codes[0] ?? ''));
+    }
+
+    /**
      * 현재 1차 카테고리에 정의된 서브 카테고리 항목 코드만 허용한다.
      * 그룹 코드는 UI용이며 저장하지 않는다.
      *
@@ -6043,6 +6144,9 @@ class ProductService extends BaseClass
             'is_false' => false,
             'cd_kind_code' => trim((string)($product['CD_KIND_CODE'] ?? '')),
             'cd_category_code' => trim((string)($product['CD_CATEGORY_CODE'] ?? '')),
+            'cd_additional_category_codes' => $this->getAdditionalCategoryCodesForProduct(
+                (int)($product['CD_IDX'] ?? 0)
+            ),
             'cd_sub_category_codes' => $this->getProductCategoryMappingCodes(
                 (int)($product['CD_IDX'] ?? 0),
                 'sub'
@@ -6050,6 +6154,9 @@ class ProductService extends BaseClass
             'preference_tag_codes' => $this->getProductCategoryMappingCodes(
                 (int)($product['CD_IDX'] ?? 0),
                 'hashtag'
+            ),
+            'dedicated_hole_code' => $this->getDedicatedHoleCodeForProduct(
+                (int)($product['CD_IDX'] ?? 0)
             ),
             'brand_name' => (string)($product['BD_NAME'] ?? ''),
             'name' => (string)($product['CD_NAME'] ?? ''),

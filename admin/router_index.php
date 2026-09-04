@@ -91,6 +91,7 @@ try {
     $router->post('/product/info_collect/request', ProductController::class, 'requestProductInfoCollection'); //상품 정보수집 요청
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
+    $router->get('/product/detail_stock_chart', ProductController::class, 'prdDetailStockChartPage'); //상품 디테일 (판매량/발주 요약)
     $router->get('/product/detail_competitor_product', ProductController::class, 'prdDetailCompetitorProductPage'); //상품 디테일 (경쟁사 판매현황)
     $router->get('/product/detail_relation_group', ProductController::class, 'prdDetailRelationGroupPage'); //상품 디테일 (시리즈/연관그룹)
     $router->get('/product/relation_group_management', ProductController::class, 'relationGroupManagementList'); //시리즈/연관그룹 관리

@@ -189,6 +189,9 @@ $modeLabels = [
                 if (successMessage) {
                     alert(res.message || successMessage);
                 }
+                if (typeof prdInfo !== 'undefined' && prdInfo && typeof prdInfo.updateSeriesLabel === 'function') {
+                    prdInfo.updateSeriesLabel((res.data && res.data.series_names) ? res.data.series_names : []);
+                }
                 reloadRelationGroupPanel();
             })
             .fail(function (xhr) {
