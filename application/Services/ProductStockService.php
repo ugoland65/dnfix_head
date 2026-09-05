@@ -876,6 +876,7 @@ class ProductStockService extends BaseClass
                 'U.bidx',
                 'U.pidx',
                 'U.order_qty',
+                'U.is_order_failed',
                 'O.oo_name',
                 'O.oo_in_date',
                 'O.oo_date_data',
@@ -884,6 +885,8 @@ class ProductStockService extends BaseClass
                 'M.memo as product_memo',
             ])
             ->where('U.pidx', '=', $prdIdx)
+            ->where('U.order_qty', '>', 0)
+            ->where('U.is_order_failed', '=', 0)
             ->orderBy('U.idx', 'DESC')
             ->limit($limit)
             ->get()
@@ -895,20 +898,47 @@ class ProductStockService extends BaseClass
 
         $result = [];
         foreach ($rows as $row) {
+            if (!empty($row['is_order_failed'])) {
+                continue;
+            }
+
             $orderIdx = (int)($row['order_idx'] ?? 0);
             $orderName = trim((string)($row['oo_name'] ?? ''));
             if ($orderName === '') {
                 $orderName = trim((string)($row['oop_name'] ?? ''));
             }
 
+            $stateChanged = $this->extractLatestStateChange(
+                $row['oo_date_data'] ?? null,
+                (int)($row['oo_state'] ?? 0)
+            );
+            $bidx = (int)($row['bidx'] ?? 0);
+            $pidx = (int)($row['pidx'] ?? 0);
+            $orderUrl = '';
+            if ($orderIdx > 0) {
+                $orderUrl = '/admin/order/sheet?idx=' . $orderIdx;
+                if ($bidx > 0) {
+                    $orderUrl .= '&bidx=' . $bidx;
+                }
+                if ($pidx > 0) {
+                    $orderUrl .= '&pidx=' . $pidx;
+                }
+            }
+
             $result[] = [
                 'order_idx' => $orderIdx,
                 'order_name' => $orderName,
+                'order_state' => (int)($row['oo_state'] ?? 0),
+                'order_state_text' => $this->getOrderSheetStateText((int)($row['oo_state'] ?? 0)),
+                'state_changed_at' => $stateChanged['date'],
+                'state_changed_name' => $stateChanged['name'],
+                'bidx' => $bidx,
+                'pidx' => $pidx,
                 'in_date' => $this->formatOrderDate((string)($row['oo_in_date'] ?? '')),
                 'end_date' => $this->extractOrderEndDate($row['oo_date_data'] ?? null),
                 'order_qty' => (int)($row['order_qty'] ?? 0),
                 'order_memo' => html_entity_decode(trim((string)($row['product_memo'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
-                'order_url' => $orderIdx > 0 ? '/admin/order/sheet?idx=' . $orderIdx : '',
+                'order_url' => $orderUrl,
                 'inbound_gap_days' => 0,
             ];
         }
@@ -923,6 +953,68 @@ class ProductStockService extends BaseClass
         }
 
         return $result;
+    }
+
+    /**
+     * 주문서 상태 표시명
+     *
+     * @param int $state
+     * @return string
+     */
+    private function getOrderSheetStateText(int $state): string
+    {
+        $map = [
+            1 => '작성중',
+            2 => '주문전송',
+            4 => '입금완료',
+            5 => '입고완료',
+            7 => '주문종료',
+        ];
+
+        return $map[$state] ?? '';
+    }
+
+    /**
+     * 현재 상태의 마지막 변경 이력
+     *
+     * @param mixed $dateData
+     * @param int $currentState
+     * @return array{date:string,name:string}
+     */
+    private function extractLatestStateChange($dateData, int $currentState): array
+    {
+        if (is_string($dateData) && $dateData !== '') {
+            $dateData = json_decode($dateData, true);
+        }
+        if (!is_array($dateData)) {
+            return ['date' => '', 'name' => ''];
+        }
+
+        $states = $dateData['state'] ?? [];
+        if (!is_array($states)) {
+            return ['date' => '', 'name' => ''];
+        }
+
+        for ($i = count($states) - 1; $i >= 0; $i--) {
+            $stateLog = $states[$i] ?? [];
+            if (!is_array($stateLog)) {
+                continue;
+            }
+            if ((int)($stateLog['state_after'] ?? 0) !== $currentState) {
+                continue;
+            }
+
+            $rawDate = trim((string)($stateLog['date'] ?? ''));
+            $timestamp = $rawDate !== '' ? strtotime($rawDate) : false;
+            $dateText = ($timestamp !== false) ? date('y.m.d H:i', $timestamp) : $rawDate;
+
+            return [
+                'date' => $dateText,
+                'name' => trim((string)($stateLog['name'] ?? '')),
+            ];
+        }
+
+        return ['date' => '', 'name' => ''];
     }
 
     /**
@@ -1367,6 +1459,7 @@ class ProductStockService extends BaseClass
      * 월평균 기준 판매/발주 요약과 품절 예상
      * - 품절월(입고 없이 한 달 품절)은 평균·미판매에서 제외
      * - 리드: 주문서 작성 1주 + 입고 1주
+     * - 급판매 권장발주는 최근 신규입고 수량(중앙값)을 넘지 않음
      *
      * @param int $psIdx
      * @param array $inboundRows
@@ -1419,6 +1512,8 @@ class ProductStockService extends BaseClass
         $daily28 = $inStockDays28 > 0 ? round($sales28 / $inStockDays28, 2) : 0.0;
         $isSurge = $dailyMonth > 0 && $daily28 >= ($dailyMonth * 1.5);
         $useDaily = $isSurge && $daily28 > 0 ? $daily28 : $dailyMonth;
+        $horizonDays = $cycleDays + $leadDays + $safetyDays;
+        $typicalInbound = $this->getTypicalInboundQty($inboundRows);
 
         $coverDays = null;
         $soldOutAt = '';
@@ -1430,15 +1525,21 @@ class ProductStockService extends BaseClass
         } else {
             $coverDays = (int)floor($currentStock / $useDaily);
             $soldOutAt = date('Y-m-d', strtotime('+' . $coverDays . ' days'));
-            $forecastText = '현재고 ' . $currentStock . '개가 월평균 일판매 ' . $useDaily . '개 기준으로 약 ' . $coverDays . '일 후 품절 예정입니다.';
+            $dailyLabel = $isSurge ? '최근 ' . $recentDays . '일 일판매' : '월평균 일판매';
+            $forecastText = '현재고 ' . $currentStock . '개가 ' . $dailyLabel . ' ' . $useDaily . '개 기준으로 약 ' . $coverDays . '일 후 품절 예정입니다.';
         }
 
-        $recommended = 0;
-        if ($useDaily > 0) {
-            $recommended = (int)ceil(($useDaily * ($cycleDays + $leadDays + $safetyDays)) - $currentStock);
-            if ($recommended < 0) {
-                $recommended = 0;
-            }
+        $baseRecommended = $this->calcRecommendedQty($dailyMonth, $horizonDays, $currentStock);
+        $surgeRecommended = $this->calcRecommendedQty($daily28, $horizonDays, $currentStock);
+        $systemRecommended = ($isSurge && $surgeRecommended > 0) ? $surgeRecommended : $baseRecommended;
+        $recommended = $baseRecommended;
+        $recommendedCapped = false;
+        if ($isSurge && $surgeRecommended > $baseRecommended) {
+            $cap = $typicalInbound > 0
+                ? $typicalInbound
+                : ($baseRecommended > 0 ? $baseRecommended * 3 : $surgeRecommended);
+            $recommended = max($baseRecommended, min($surgeRecommended, $cap));
+            $recommendedCapped = $recommended < $surgeRecommended;
         }
 
         $needOrderSoon = $coverDays !== null && $coverDays <= $leadDays;
@@ -1458,12 +1559,60 @@ class ProductStockService extends BaseClass
             'lead_days' => $leadDays,
             'cycle_days' => $cycleDays,
             'safety_days' => $safetyDays,
+            'typical_inbound' => $typicalInbound,
             'recommended_qty' => $recommended,
+            'system_recommended_qty' => $systemRecommended,
+            'recommended_capped' => $recommendedCapped,
             'cover_days' => $coverDays,
             'soldout_at' => $soldOutAt,
             'forecast_text' => $forecastText,
             'need_order_soon' => $needOrderSoon,
         ];
+    }
+
+    /**
+     * 일판매 × 커버일수 − 현재고
+     *
+     * @param float $dailySale
+     * @param int $horizonDays
+     * @param int $currentStock
+     * @return int
+     */
+    private function calcRecommendedQty(float $dailySale, int $horizonDays, int $currentStock): int
+    {
+        if ($dailySale <= 0) {
+            return 0;
+        }
+
+        $recommended = (int)ceil(($dailySale * $horizonDays) - $currentStock);
+        return $recommended > 0 ? $recommended : 0;
+    }
+
+    /**
+     * 최근 신규입고 수량의 중앙값
+     *
+     * @param array $inboundRows
+     * @return int
+     */
+    private function getTypicalInboundQty(array $inboundRows): int
+    {
+        $qtys = [];
+        foreach ($inboundRows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $qty = (int)($row['psu_qry'] ?? 0);
+            if ($qty > 0) {
+                $qtys[] = $qty;
+            }
+        }
+
+        if (empty($qtys)) {
+            return 0;
+        }
+
+        sort($qtys);
+        return (int)$qtys[(int)floor((count($qtys) - 1) / 2)];
     }
 
     /**

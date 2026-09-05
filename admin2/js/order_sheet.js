@@ -367,12 +367,16 @@ var orderSheet = function () {
 		 * 디테일
 		 * @param {number} idx
 		 * @param {number} oop_idx
+		 * @param {string} form_view
+		 * @param {number|string} pidx
 		 */
-		Detail: function (idx, oop_idx, form_view) {
+		Detail: function (idx, oop_idx, form_view, pidx) {
+			$("#contents_bottom").prop("hidden", true);
+			$("#osCheckedGroupMovePanel").attr("hidden", true).empty();
 
 			$.ajax({
 				url: "/admin/order/sheet/detail",
-				data: { "idx": idx, "open_oop_idx": oop_idx, "form_view": form_view },
+				data: { "idx": idx, "open_oop_idx": oop_idx, "form_view": form_view, "open_pidx": pidx || '' },
 				type: "POST",
 				dataType: "html",
 				success: function (html) {

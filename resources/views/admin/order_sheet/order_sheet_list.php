@@ -44,6 +44,22 @@
 			.order-sheet-summary .summary-split-value { color:#1d2939; }
 			.order-sheet-summary .summary-split-clickable { cursor:pointer; border-radius:4px; padding:2px 4px; margin:0 -4px; }
 			.order-sheet-summary .summary-split-clickable:hover { background:#eef2f8; }
+			.os-state-label {
+				display:inline-block;
+				min-width:64px;
+				padding:2px 8px;
+				border-radius:999px;
+				font-size:11px;
+				font-weight:700;
+				line-height:1.4;
+				text-align:center;
+				border:1px solid transparent;
+			}
+			.os-state-label-1 { background:#f2f4f7; color:#475467; border-color:#d0d5dd; }
+			.os-state-label-2 { background:#e7f1ff; color:#155eef; border-color:#b2ddff; }
+			.os-state-label-4 { background:#fff4e5; color:#b54708; border-color:#ffd59a; }
+			.os-state-label-5 { background:#edf9f0; color:#1f7a35; border-color:#b8e7c2; }
+			.os-state-label-7 { background:#eef2f6; color:#667085; border-color:#d0d5dd; }
 		</style>
 
 		<div class="order-sheet-summary">
@@ -142,6 +158,7 @@
 								<th class="list-idx">고유번호</th>
 								<th>수입구분</th>
 								<th>상태</th>
+								<th>상태 변경일</th>
 								<th>이름</th>
 								<th>주문금액</th>
 								<th>예상금액</th>
@@ -195,11 +212,42 @@
 									<td><input type="checkbox" name="order_sheet_idx[]" value="<?= $orderSheet['oo_idx'] ?>"></td>
 									<td class="text-center"><?= $orderSheet['oo_idx'] ?></td>
 									<td class="text-center"><?= $orderSheet['oo_import'] ?></td>
-									<td><?= $orderSheet['oo_state_text'] ?></td>
+									<td class="text-center">
+										<?php
+											$stateCode = (string)($orderSheet['oo_state'] ?? '');
+											$stateText = trim((string)($orderSheet['oo_state_text'] ?? ''));
+											$stateClass = in_array($stateCode, ['1', '2', '4', '5', '7'], true)
+												? 'os-state-label-' . $stateCode
+												: '';
+										?>
+										<?php if ($stateText !== '') { ?>
+											<span class="os-state-label <?= $stateClass ?>"><?= htmlspecialchars($stateText, ENT_QUOTES, 'UTF-8') ?></span>
+										<?php } else { ?>
+											-
+										<?php } ?>
+									</td>
+									
+									<!-- 상태 변경일 -->
+									<td class="text-center">
+										<?php
+											$stateChangedAt = trim((string)($orderSheet['state_changed_at'] ?? ''));
+											$stateChangedName = trim((string)($orderSheet['state_changed_name'] ?? ''));
+										?>
+										<?php if ($stateChangedAt !== '') { ?>
+											<?= date('y.m.d H:i', strtotime($stateChangedAt)) ?><br>
+											( <?= htmlspecialchars($stateChangedName, ENT_QUOTES, 'UTF-8') ?> )
+										<?php } else { ?>
+											-
+										<?php } ?>
+									</td>
+
 									<td><a href="/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>"><b><?= $orderSheet['oo_name'] ?></b></a></td>
 									<td class="text-right"><?= number_format($orderAmount) ?> <?= $orderAmountCurrency ?></td>
 									<td class="text-right"><?= $expectedAmountText ?></td>
-									<td class="text-right"><?= ((float)($orderSheet['oo_price_kr'] ?? 0) > 0) ? number_format((float)$orderSheet['oo_price_kr']) . ' 원' : '-' ?></td>
+									
+									<td class="text-right">
+										<?= ((float)($orderSheet['oo_price_kr'] ?? 0) > 0) ? '<b>' . number_format((float)$orderSheet['oo_price_kr']) . '</b> 원' : '-' ?>
+									</td>
 									<td class="text-center"><a href="/admin/order/sheet/list?oo_state=all&oo_form_idx=<?= $orderSheet['oo_form_idx'] ?>"><?= $orderSheet['oog_name'] ?></a></td>
 									<td class="text-center">
 										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $orderSheet['oo_idx'] ?>','main')">상세내용</button>

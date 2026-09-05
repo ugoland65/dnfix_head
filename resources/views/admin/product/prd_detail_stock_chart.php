@@ -64,12 +64,21 @@
             <?= $insightSoldOutAt !== '' ? htmlspecialchars($insightSoldOutAt, ENT_QUOTES, 'UTF-8') : '-' ?>
         </td>
         <td class="text-center"><?= number_format((int)($insight['lost_sale_90'] ?? 0)) ?> 개</td>
-        <td class="text-center"><b><?= number_format((int)($insight['recommended_qty'] ?? 0)) ?></b> 개</td>
+        <td class="text-center">
+            <b><?= number_format((int)($insight['recommended_qty'] ?? 0)) ?></b> 개
+            <?php if (!empty($insight['recommended_capped'])) { ?>
+                <?php if ((int)($insight['typical_inbound'] ?? 0) > 0) { ?>
+                    <div class="">최근 입고 상한 : <b><?= (int)$insight['typical_inbound'] ?>개</b></div>
+                <?php } ?>
+                <div class="">급판매 추정치 : <b><?= number_format((int)($insight['system_recommended_qty'] ?? 0)) ?>개</b></div>
+            <?php } ?>
+        </td>
     </tr>
 </table>
 <div class="admin-guide-text m-t-6">
     <?= htmlspecialchars((string)($insight['forecast_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     권장발주 = 월평균 일판매 × (발주주기 <?= (int)($insight['cycle_days'] ?? 30) ?>일 + 입고리드 <?= (int)($insight['lead_days'] ?? 14) ?>일) − 현재고.
+    급판매여도 최근 신규입고 수량(중앙값)을 넘지 않습니다. 입고 이력이 없으면 월평균 권장의 3배로 제한합니다.
     입고리드는 주문서 작성 1주 + 입고 1주(14일)로 고정합니다. 입고가 없던 품절월은 평균·미판매에서 제외합니다.
     <?php if (!empty($insight['need_order_soon'])) { ?>
         <b style="color:#d4380d;">재고 지속일이 리드일보다 짧아 이번 주기 발주가 필요합니다.</b>
@@ -161,10 +170,12 @@
 <?php } ?>
 
 <div class="stock-chart-section">
-<div class="stock-chart-section-title">최근 주문(발주) 이력 (최근 5건) - 주문서에서 입금완료 처리되야 나옵니다.</div>
+<div class="stock-chart-section-title">최근 주문(발주) 이력 (최근 5건) - 그룹상품 저장 또는 입금완료 시 반영됩니다.</div>
 <table class="table-style">
     <tr>
         <th>주문서이름</th>
+        <th>상태</th>
+        <th>상태변경일</th>
         <th>입고일</th>
         <th>주문종료일</th>
         <th>주문수량</th>
@@ -176,6 +187,19 @@
         <?php foreach ($order_rows as $row) { ?>
             <tr>
                 <td><?= htmlspecialchars((string)($row['order_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                <td class="text-center"><?= htmlspecialchars((string)($row['order_state_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '-' ?></td>
+                <td class="text-center">
+                    <?php
+                        $stateChangedAt = trim((string)($row['state_changed_at'] ?? ''));
+                        $stateChangedName = trim((string)($row['state_changed_name'] ?? ''));
+                    ?>
+                    <?php if ($stateChangedAt !== '') { ?>
+                        <?= htmlspecialchars($stateChangedAt, ENT_QUOTES, 'UTF-8') ?><br>
+                        ( <?= htmlspecialchars($stateChangedName, ENT_QUOTES, 'UTF-8') ?> )
+                    <?php } else { ?>
+                        -
+                    <?php } ?>
+                </td>
                 <td class="text-center"><?= htmlspecialchars((string)($row['in_date'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '-' ?></td>
                 <td class="text-center"><?= htmlspecialchars((string)($row['end_date'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '-' ?></td>
                 <td class="text-right"><?= number_format((int)($row['order_qty'] ?? 0)) ?></td>
@@ -192,7 +216,7 @@
         <?php } ?>
     <?php } else { ?>
         <tr>
-            <td colspan="7" class="text-center" style="padding:20px;">발주 이력이 없습니다.</td>
+            <td colspan="9" class="text-center" style="padding:20px;">발주 이력이 없습니다.</td>
         </tr>
     <?php } ?>
 </table>

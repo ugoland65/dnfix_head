@@ -243,6 +243,7 @@ class OrderSheetService
         return [
             'idx' => $idx,
             'open_oop_idx' => (string)($data['open_oop_idx'] ?? ''),
+            'open_pidx' => (string)($data['open_pidx'] ?? ''),
             'form_view' => $formView,
             'orderSheetMain' => $orderSheet,
             'groupSideRows' => $groupSideRows,
@@ -419,6 +420,32 @@ class OrderSheetService
                 $row['tr_class'] = 'tr-normal';
             }
             $row['oo_state_text'] = $stateTextMap[$state] ?? '';
+
+            $dateData = json_decode($row['oo_date_data'] ?? '{}', true);
+            if (!is_array($dateData)) {
+                $dateData = [];
+            }
+            $stateLogs = $dateData['state'] ?? [];
+            if (!is_array($stateLogs)) {
+                $stateLogs = [];
+            }
+
+            $stateChangedAt = '';
+            $stateChangedName = '';
+            for ($i = count($stateLogs) - 1; $i >= 0; $i--) {
+                $stateLog = $stateLogs[$i] ?? [];
+                if (!is_array($stateLog)) {
+                    continue;
+                }
+                if ((int)($stateLog['state_after'] ?? 0) !== $state) {
+                    continue;
+                }
+                $stateChangedAt = trim((string)($stateLog['date'] ?? ''));
+                $stateChangedName = trim((string)($stateLog['name'] ?? ''));
+                break;
+            }
+            $row['state_changed_at'] = $stateChangedAt;
+            $row['state_changed_name'] = $stateChangedName;
         }
         unset($row);
 
@@ -2667,6 +2694,7 @@ class OrderSheetService
                     'A.is_discontinued',
                     'A.is_handling_stopped',
                     'A.cd_godo_code',
+                    'A.target_month',
                     'A.cd_restock_alert_qty',
                     'A.cd_restock_alert_collected_at',
                     'B.is_sale_month',
@@ -3192,19 +3220,43 @@ class OrderSheetService
             $savedOoSumPrice = round($ooSumPrice / $prdToPayExchangeRate, 2);
         }
 
+        $unitProducts = [];
+        foreach ($instSelpd as $selectedProduct) {
+            $unitProducts[] = [
+                'pidx' => (int)($selectedProduct['pidx'] ?? 0),
+                'price' => $selectedProduct['price'] ?? 0,
+                'qty' => (int)($selectedProduct['qty'] ?? 0),
+            ];
+        }
+
         $beforeData = $this->getOrderSheetForLog($ooIdx);
-        
-        OrderSheetModel::query()
-            ->where('oo_idx', '=', $ooIdx)
-            ->update([
-                'oo_json' => $encodedOoJson,
-                'oo_price_data' => $encodedOoPriceData,
-                'oo_sum_goods' => $ooSumGoods,
-                'oo_sum_qty' => $ooSumQty,
-                'oo_sum_weight' => $ooSumWeight,
-                'oo_sum_price' => $savedOoSumPrice,
-                'oo_sum_cbm' => $ooSumCbm,
-            ]);
+
+        DB::transaction(function () use (
+            $ooIdx,
+            $oopIdx,
+            $encodedOoJson,
+            $encodedOoPriceData,
+            $ooSumGoods,
+            $ooSumQty,
+            $ooSumWeight,
+            $savedOoSumPrice,
+            $ooSumCbm,
+            $unitProducts
+        ) {
+            OrderSheetModel::query()
+                ->where('oo_idx', '=', $ooIdx)
+                ->update([
+                    'oo_json' => $encodedOoJson,
+                    'oo_price_data' => $encodedOoPriceData,
+                    'oo_sum_goods' => $ooSumGoods,
+                    'oo_sum_qty' => $ooSumQty,
+                    'oo_sum_weight' => $ooSumWeight,
+                    'oo_sum_price' => $savedOoSumPrice,
+                    'oo_sum_cbm' => $ooSumCbm,
+                ]);
+
+            (new OrderPrdUnitService())->syncUnitsForSavedGroup((int)$ooIdx, (int)$oopIdx, $unitProducts);
+        });
 
         $afterData = $this->getOrderSheetForLog($ooIdx);
         $this->writeOrderSheetActionLog(
@@ -3417,6 +3469,12 @@ class OrderSheetService
                 'oo_sum_weight' => $ooSumWeight,
                 'oo_sum_price' => $ooSumPrice,
             ]);
+        (new OrderPrdUnitService())->markUnitFailed(
+            (int)$ooIdx,
+            (int)$oopIdx,
+            (int)$pidx,
+            $unitFalseMode === 'out'
+        );
         $afterData = $this->getOrderSheetForLog($ooIdx);
         $this->writeOrderSheetActionLog(
             $ooIdx,

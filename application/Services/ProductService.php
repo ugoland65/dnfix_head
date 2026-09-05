@@ -2003,6 +2003,7 @@ class ProductService extends BaseClass
         $cdMemo3 = (string)($postData['cd_memo3'] ?? '');
         $cdSearchTerm = (string)($postData['cd_search_term'] ?? '');
         $cdReleaseDate = !empty($postData['cd_release_date']) ? (string)$postData['cd_release_date'] : '0000-00-00';
+        $targetMonth = $this->normalizeTargetMonth($postData['target_month'] ?? '', $cdReleaseDate);
         $cdSizeW = (string)($postData['cd_size_w'] ?? '');
         $cdSizeH = (string)($postData['cd_size_h'] ?? '');
         $cdSizeD = (string)($postData['cd_size_d'] ?? '');
@@ -2126,6 +2127,7 @@ class ProductService extends BaseClass
             'cd_memo3' => $cdMemo3,
             'CD_SEARCH_TERM' => $cdSearchTerm,
             'CD_RELEASE_DATE' => $cdReleaseDate,
+            'target_month' => $targetMonth,
             'img_mode' => $imgMode,
             'CD_IMG' => $imgName,
             'CD_IMG2' => $imgName2,
@@ -2281,6 +2283,28 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 출시년월 그룹. 값이 없고 출시일만 있으면 출시일에서 채운다.
+     *
+     * @param mixed $targetMonth
+     * @param string $releaseDate
+     * @return string|null
+     */
+    private function normalizeTargetMonth($targetMonth, string $releaseDate): ?string
+    {
+        $targetMonth = trim((string)$targetMonth);
+        if (preg_match('/^\d{4}-(0[1-9]|1[0-2])$/', $targetMonth)) {
+            return $targetMonth;
+        }
+
+        $releaseDate = trim($releaseDate);
+        if ($releaseDate !== '' && $releaseDate !== '0000-00-00' && preg_match('/^(\d{4})-(0[1-9]|1[0-2])/', $releaseDate, $matches)) {
+            return $matches[1] . '-' . $matches[2];
+        }
+
+        return null;
+    }
+
+    /**
      * 상품 신규 생성
      *
      * @param array $postData
@@ -2401,6 +2425,7 @@ class ProductService extends BaseClass
         $cdMemo3 = (string)($postData['cd_memo3'] ?? '');
         $cdSearchTerm = (string)($postData['cd_search_term'] ?? '');
         $cdReleaseDate = !empty($postData['cd_release_date']) ? (string)$postData['cd_release_date'] : '0000-00-00';
+        $targetMonth = $this->normalizeTargetMonth($postData['target_month'] ?? '', $cdReleaseDate);
         $cdSizeW = (string)($postData['cd_size_w'] ?? '');
         $cdSizeH = (string)($postData['cd_size_h'] ?? '');
         $cdSizeD = (string)($postData['cd_size_d'] ?? '');
@@ -2519,6 +2544,7 @@ class ProductService extends BaseClass
             'cd_memo3' => $cdMemo3,
             'CD_SEARCH_TERM' => $cdSearchTerm,
             'CD_RELEASE_DATE' => $cdReleaseDate,
+            'target_month' => $targetMonth,
             'img_mode' => $imgMode,
             'CD_IMG' => $imgName,
             'CD_IMG2' => $imgName2,

@@ -1668,9 +1668,49 @@
             <tr>
                 <th>출시일</th>
                 <td>
-                    <div class="calendar-input">
-                        <input type='text' name='cd_release_date' value="<?= $productData['CD_RELEASE_DATE'] ?? '' ?>">
+                    <?php
+                        $releaseDateValue = trim((string)($productData['CD_RELEASE_DATE'] ?? ''));
+                        $targetMonthValue = trim((string)($productData['target_month'] ?? ''));
+                        if ($targetMonthValue === '' && $releaseDateValue !== '' && $releaseDateValue !== '0000-00-00' && preg_match('/^(\d{4})-(0[1-9]|1[0-2])/', $releaseDateValue, $targetMonthMatch)) {
+                            $targetMonthValue = $targetMonthMatch[1] . '-' . $targetMonthMatch[2];
+                        }
+                        $targetMonthYear = '';
+                        $targetMonthNum = 0;
+                        if (preg_match('/^(\d{4})-(\d{2})$/', $targetMonthValue, $targetMonthParts)) {
+                            $targetMonthYear = $targetMonthParts[1];
+                            $targetMonthNum = (int)$targetMonthParts[2];
+                        }
+                        $targetMonthYearStart = 2000;
+                        $targetMonthYearEnd = (int)date('Y') + 3;
+                    ?>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <div class="calendar-input">
+                            <input type="text" name="cd_release_date" id="cd_release_date" value="<?= htmlspecialchars($releaseDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                        </div>
+                        <div>
+                            <span class="m-r-3">입고 등록월</span>
+                            <input type="hidden" name="target_month" id="target_month" value="<?= htmlspecialchars($targetMonthValue, ENT_QUOTES, 'UTF-8') ?>">
+                            <select name="target_month_y" id="target_month_y">
+                                <option value="">년</option>
+                                <?php for ($targetYear = $targetMonthYearEnd; $targetYear >= $targetMonthYearStart; $targetYear--) { ?>
+                                    <option value="<?= $targetYear ?>" <?= $targetMonthYear === (string)$targetYear ? 'selected' : '' ?>><?= $targetYear ?>년</option>
+                                <?php } ?>
+                            </select>
+                            <select name="target_month_m" id="target_month_m">
+                                <option value="">월</option>
+                                <?php for ($targetMonthOption = 1; $targetMonthOption <= 12; $targetMonthOption++) { ?>
+                                    <option value="<?= $targetMonthOption ?>" <?= $targetMonthNum === $targetMonthOption ? 'selected' : '' ?>><?= $targetMonthOption ?>월</option>
+                                <?php } ?>
+                            </select>
+
+                        </div>
                     </div>
+
+                    <div class="admin-guide-text">
+                        - 입고 등록월 쑈당몰에서 언제부터 판매했는지를 빠르게 파악하기 위한 데이터<br>
+                        - 예) 출시일이 26년 7월 17일 쑈당몰 판매 시작일이 26년 8월일경우 다르게 설정
+                    </div>
+
                 </td>
             </tr>
 
@@ -3349,6 +3389,37 @@
         if ($(".calendar-input input").length) {
             $(".calendar-input input").datepicker(clareCalendar);
         }
+        $('input[name="cd_release_date"]').datepicker('option', 'onSelect', function() {
+            $(this).trigger('change');
+        });
+
+        var syncTargetMonthHidden = function() {
+            var year = String($('#target_month_y').val() || '');
+            var month = String($('#target_month_m').val() || '');
+            if (year && month) {
+                $('#target_month').val(year + '-' + String(month).padStart(2, '0'));
+                return;
+            }
+            $('#target_month').val('');
+        };
+
+        var fillTargetMonthFromReleaseDate = function() {
+            if ($('#target_month').val()) {
+                return;
+            }
+            var releaseDate = String($('input[name="cd_release_date"]').val() || '');
+            var match = releaseDate.match(/^(\d{4})-(\d{2})/);
+            if (!match || releaseDate.indexOf('0000-00-00') === 0) {
+                return;
+            }
+            $('#target_month_y').val(match[1]);
+            $('#target_month_m').val(String(parseInt(match[2], 10)));
+            syncTargetMonthHidden();
+        };
+
+        $('#target_month_y, #target_month_m').on('change', syncTargetMonthHidden);
+        $('input[name="cd_release_date"]').on('change blur', fillTargetMonthFromReleaseDate);
+        fillTargetMonthFromReleaseDate();
 
         const $kindCodeSelect = $('select[name="cd_kind_code"]');
         const $hbtiSectionTitle = $('#hbti-section-title');

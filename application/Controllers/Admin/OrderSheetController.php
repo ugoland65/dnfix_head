@@ -166,9 +166,13 @@ class OrderSheetController extends BaseClass
             $orderSheetService = new OrderSheetService();
             $pageData = $orderSheetService->getOrderSheetMainPageData($idx);
 
+            $openOopIdx = (string)($requestData['bidx'] ?? ($requestData['oop_idx'] ?? ''));
+            $openPidx = (string)($requestData['pidx'] ?? '');
+
             return view('admin.order_sheet.order_sheet', [
                 'idx' => $idx,
-                'oop_idx' => (string)($requestData['oop_idx'] ?? ''),
+                'oop_idx' => $openOopIdx,
+                'pidx' => $openPidx,
                 'form_view' => (string)($requestData['form_view'] ?? ''),
                 'orderSheetMain' => $pageData['orderSheetMain'] ?? [],
                 'orderSheetStockState' => $pageData['orderSheetStockState'] ?? [],
@@ -201,6 +205,7 @@ class OrderSheetController extends BaseClass
             $detailData = $orderSheetService->getOrderSheetDetailData([
                 'idx' => $idx,
                 'open_oop_idx' => (string)($requestData['open_oop_idx'] ?? ''),
+                'open_pidx' => (string)($requestData['open_pidx'] ?? ''),
                 'form_view' => (string)($requestData['form_view'] ?? 'show'),
             ]);
 

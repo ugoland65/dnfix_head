@@ -1,0 +1,14 @@
+---
+description: "#주문서체크박스수정 구현됨. 주문 포함은 수량, 체크는 일괄작업 선택."
+globs: resources/views/admin/order_sheet/order_sheet_detail*.php
+alwaysApply: false
+---
+
+# #주문서체크박스수정
+
+상태: 구현됨 (2026-09-04)
+
+- 주문 포함: `unit_qty_*` 수량 > 0. `groupSave` / `groupSum`은 `.qty-input` 기준
+- 체크박스: `.os-prd-check` 일괄작업 선택. 수량 변경으로 체크하지 않음
+- 우클릭 그룹이동: 우클릭 행이 체크되어 있으면 체크된 행 전부 이동. 수량 있으면 이동 불가
+- 전역 `.checkSelect`를 쓰지 말 것

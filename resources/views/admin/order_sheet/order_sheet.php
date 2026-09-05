@@ -4,6 +4,7 @@ $orderSheetStockState = (isset($orderSheetStockState) && is_array($orderSheetSto
 $orderSheetStateTextMap = (isset($orderSheetStateTextMap) && is_array($orderSheetStateTextMap)) ? $orderSheetStateTextMap : [];
 $idx = isset($idx) ? (int)$idx : 0;
 $oop_idx = isset($oop_idx) ? (string)$oop_idx : '';
+$pidx = isset($pidx) ? (string)$pidx : '';
 $form_view = isset($form_view) ? (string)$form_view : '';
 $oo_state = (int)($orderSheetMain['oo_state'] ?? 0);
 $oo_form_idx = (string)($orderSheetMain['oo_form_idx'] ?? '');
@@ -162,12 +163,19 @@ $convertedKrw = $displayExchangeRate > 0
     </div>
 </div>
 
+<div id="contents_bottom" hidden>
+    <div class="os-checked-group-move">
+        <button type="button" id="osCheckedGroupMoveBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm">선택상품 그룹이동</button>
+        <div id="osCheckedGroupMovePanel" class="os-checked-group-move-panel" hidden></div>
+    </div>
+</div>
+
 <link href="https://cdn.jsdelivr.net/npm/x-editable-bs5@1.5.8/dist/bootstrap5-editable/css/bootstrap-editable.css" rel="stylesheet">
 <script src="https://cdn.jsdelivr.net/npm/x-editable-bs5@1.5.8/dist/bootstrap5-editable/js/bootstrap-editable.min.js"></script>
 
 <script src="/admin2/js/order_sheet.js?ver=<?= time() ?>"></script>
 <script type="text/javascript">
 <?php if ($idx > 0) { ?>
-orderSheet.Detail('<?= $idx ?>', '<?= $oop_idx ?>', '<?= $form_view ?>');
+orderSheet.Detail('<?= $idx ?>', '<?= $oop_idx ?>', '<?= $form_view ?>', '<?= $pidx ?>');
 <?php } ?>
 </script>

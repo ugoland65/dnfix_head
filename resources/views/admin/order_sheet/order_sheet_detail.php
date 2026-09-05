@@ -3,6 +3,7 @@ $orderSheetMain = (isset($orderSheetMain) && is_array($orderSheetMain)) ? $order
 $groupSideRows = (isset($groupSideRows) && is_array($groupSideRows)) ? $groupSideRows : [];
 $idx = isset($idx) ? (int)$idx : 0;
 $open_oop_idx = isset($open_oop_idx) ? (string)$open_oop_idx : '';
+$open_pidx = isset($open_pidx) ? (string)$open_pidx : '';
 $form_view = isset($form_view) ? (string)$form_view : 'show';
 ?>
 
@@ -634,16 +635,22 @@ var orderSheetDetail = function() {
 	var productListLoadingTimer = null;
 
 	var ckTr = function( id, mode ) {
-
+		var $tr = $("#tr_"+ id);
 		if( mode == "on" ){
-			$("#tr_"+ id +" td").css({'background':'#ffcbcb' }); 
-			$("#checkbox_"+ id).prop("checked", true);
+			$tr.removeClass("status_clx").addClass("red");
+			$tr.find("td").css({'background':'#ffcbcb' });
 		}else{
-			var beforetrcolor = $("#tr_"+ id).attr("bgcolor");
-			$("#tr_"+ id +" td").css({'background':beforetrcolor }); 
-			$("#checkbox_"+ id).prop("checked", false);
+			$tr.removeClass("red");
+			var beforetrcolor = $tr.attr("bgcolor");
+			if (beforetrcolor) {
+				$tr.find("td").css({'background':beforetrcolor });
+			} else {
+				$tr.find("td").css({'background':'' });
+			}
+			if (String($tr.attr("data-stock-zero") || '0') === '1') {
+				$tr.addClass("status_clx");
+			}
 		}
-
 	};
 
 	//열려있는 그룹 합 재계산
@@ -670,21 +677,23 @@ var orderSheetDetail = function() {
 				return parts.length > 1 ? parts[0] + '.' + parts[1] : parts[0];
 			};
 
-		$(".checkSelect:checked").each(function(){
-
-			var checkbox_id = $(this).val();
-
-			if( $("#unit_qty_" + checkbox_id).val() == "" ){
-				var plus_oprice_sum_qty = 1;
-			}else{
-				var plus_oprice_sum_qty = toNumber($("#unit_qty_" + checkbox_id).val());
+		$(".ospl-prd-wrap .qty-input").each(function(){
+			if (String($(this).data('is-false') || '0') === '1') {
+				return;
+			}
+			var plus_oprice_sum_qty = toNumber($(this).val());
+			if (plus_oprice_sum_qty <= 0) {
+				return;
+			}
+			var rowId = String($(this).attr('id') || '').replace('unit_qty_', '');
+			if (rowId === '') {
+				return;
 			}
 
-			oprice_allsum = oprice_allsum + toNumber($("#unit_price_sum_" + checkbox_id).val());
+			oprice_allsum = oprice_allsum + toNumber($("#unit_price_sum_" + rowId).val());
 			oprice_sum_goods++;
 			oprice_sum_qty = oprice_sum_qty + plus_oprice_sum_qty;
-			oprice_sum_weight = oprice_sum_weight + (toNumber($("#weight_"+checkbox_id).data('weight')) * plus_oprice_sum_qty);
-
+			oprice_sum_weight = oprice_sum_weight + (toNumber($("#weight_"+rowId).data('weight')) * plus_oprice_sum_qty);
 		});
 
 
@@ -834,12 +843,51 @@ var orderSheetDetail = function() {
 	}
 
 
+	var closeCheckedGroupMovePanel = function () {
+		$("#osCheckedGroupMovePanel").attr("hidden", true).empty();
+	};
+
+	var setCheckedGroupMoveBarVisible = function (visible) {
+		$("#contents_bottom").prop("hidden", !visible);
+		if (!visible) {
+			closeCheckedGroupMovePanel();
+		}
+	};
+
+	var pendingFocusPidx = "<?= htmlspecialchars($open_pidx, ENT_QUOTES, 'UTF-8') ?>";
+
+	var focusOrderProduct = function (pidx) {
+		if (!pidx) {
+			return false;
+		}
+		var $row = $("#tr_" + pidx);
+		if (!$row.length) {
+			return false;
+		}
+		$(".ospl-prd-wrap tr.os-prd-focus").removeClass("os-prd-focus");
+		$row.addClass("os-prd-focus");
+		var $wrap = $(".ospl-prd-wrap").first();
+		if ($wrap.length) {
+			var rowTop = $row.position().top + $wrap.scrollTop();
+			$wrap.scrollTop(Math.max(0, rowTop - 80));
+		} else if ($row[0] && typeof $row[0].scrollIntoView === "function") {
+			$row[0].scrollIntoView({ block: "center" });
+		}
+		return true;
+	};
+
 	var showPrdList = function ( oo_idx, oop_idx, form_view, preserveScroll ) {
 
 		if( !form_view ) form_view = normalFormView;
 
 		$(".ost-big").removeClass('active');
-		$("#group_side_" + oop_idx).addClass('active');
+		var $activeGroup = $("#group_side_" + oop_idx);
+		$activeGroup.addClass('active');
+		if ($activeGroup.length && $activeGroup[0] && typeof $activeGroup[0].scrollIntoView === "function") {
+			$activeGroup[0].scrollIntoView({ block: "nearest" });
+		}
+		setCheckedGroupMoveBarVisible(!!oop_idx);
+		closeCheckedGroupMovePanel();
 		if (
 			window.orderSheetRealtime
 			&& typeof window.orderSheetRealtime.setActiveFormGroup === "function"
@@ -882,6 +930,13 @@ var orderSheetDetail = function() {
 			success: function(html){
 				if (requestSeq === productListRequestSeq) {
 					$("#order_sheet_detail_prd_content").html(html);
+					if (pendingFocusPidx) {
+						if (!focusOrderProduct(pendingFocusPidx) && form_view === "hidden") {
+							showPrdList(oo_idx, oop_idx, "show", false);
+							return;
+						}
+						pendingFocusPidx = "";
+					}
 					if (preserveScroll) {
 						var restoreProductListScroll = function() {
 							var $newPrdWrap = $('.ospl-prd-wrap').first();
@@ -1036,6 +1091,12 @@ var orderSheetDetail = function() {
 			}
 
 			if(v=="") v=0;
+			if (v > 0) {
+				ckTr(id,"on");
+			} else {
+				ckTr(id,"off");
+			}
+
 			if( oprice > 0 && v > 0 ) {	
 				var oprice_sum = Math.round(((oprice * v) + Number.EPSILON) * 100) / 100;
 				if( oprice_sum > 0 ){
@@ -1061,8 +1122,6 @@ var orderSheetDetail = function() {
 							$sumWonEl.html("");
 						}
 					}
-
-					ckTr(id,"on");
 				}
 			}else{
 				$("#unit_price_sum_"+ id).val("");
@@ -1071,7 +1130,6 @@ var orderSheetDetail = function() {
 				if ($sumWonEl.length > 0) {
 					$sumWonEl.html("");
 				}
-				ckTr(id,"off");
 			}
 
 			if ($("#weight_sum_" + id).length > 0 || $("#weight_sum_kg_" + id).length > 0) {

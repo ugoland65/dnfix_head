@@ -12,10 +12,10 @@ use App\Models\ProductModel;
 class OrderPrdUnitService
 {
     /**
-     * 입금완료 시점의 주문 상품 JSON을 order_prd_unit 스냅샷으로 생성한다.
+     * 입금완료 시점의 주문 상품 JSON을 order_prd_unit에 보충한다.
      *
-     * 이미 한 건이라도 생성된 주문서는 재생성하지 않는다. 이후 입고 검사
-     * 데이터가 수정될 수 있으므로 기존 행을 oo_json 값으로 덮어쓰지 않는다.
+     * 그룹저장에서 이미 만들어진 행은 검수 데이터를 유지한 채 그대로 두고,
+     * 아직 없는 상품만 추가한다.
      */
     public function createUnitsForPaidOrder(int $orderIdx): array
     {
@@ -24,16 +24,22 @@ class OrderPrdUnitService
         }
 
         $existingRows = OrderPrdUnitModel::query()
-            ->select(['idx'])
+            ->select(['idx', 'bidx', 'pidx'])
             ->where('order_idx', '=', $orderIdx)
             ->get()
             ->toArray();
 
-        if (!empty($existingRows)) {
-            return [
-                'created' => false,
-                'count' => count($existingRows),
-            ];
+        $existingByKey = [];
+        foreach ($existingRows as $existingRow) {
+            if (!is_array($existingRow)) {
+                continue;
+            }
+            $existingBidx = (int)($existingRow['bidx'] ?? 0);
+            $existingPidx = (int)($existingRow['pidx'] ?? 0);
+            if ($existingBidx <= 0 || $existingPidx <= 0) {
+                continue;
+            }
+            $existingByKey[$existingBidx . ':' . $existingPidx] = $existingRow;
         }
 
         $orderSheet = OrderSheetModel::query()
@@ -75,7 +81,13 @@ class OrderPrdUnitService
                 }
 
                 $pidx = (int)($productRow['pidx'] ?? 0);
-                if ($pidx <= 0) {
+                $qty = max(0, (int)($productRow['qty'] ?? 0));
+                if ($pidx <= 0 || $qty <= 0) {
+                    continue;
+                }
+
+                $unitKey = $bidx . ':' . $pidx;
+                if (isset($existingByKey[$unitKey])) {
                     continue;
                 }
 
@@ -84,7 +96,7 @@ class OrderPrdUnitService
                     'bidx' => $bidx,
                     'pidx' => $pidx,
                     'order_unit_price' => $this->toFloat($productRow['price'] ?? 0),
-                    'order_qty' => max(0, (int)($productRow['qty'] ?? 0)),
+                    'order_qty' => $qty,
                     'is_order_failed' => $this->toBool($productRow['false'] ?? false)
                         || isset($failedPidxMap[(string)$pidx]),
                     'stock_inspection_data' => [],
@@ -95,9 +107,159 @@ class OrderPrdUnitService
         }
 
         return [
-            'created' => true,
-            'count' => $createdCount,
+            'created' => $createdCount > 0,
+            'count' => count($existingByKey) + $createdCount,
         ];
+    }
+
+    /**
+     * 그룹상품 저장 결과를 해당 그룹의 order_prd_unit에 맞춘다.
+     * 수량 0(주문 제외)은 삭제하고, 결품·검수 이력이 있는 행은 유지한다.
+     *
+     * @param int $orderIdx
+     * @param int $bidx
+     * @param array $products [['pidx'=>int,'qty'=>int,'price'=>float], ...]
+     * @return array
+     */
+    public function syncUnitsForSavedGroup(int $orderIdx, int $bidx, array $products): array
+    {
+        if ($orderIdx <= 0 || $bidx <= 0) {
+            throw new InvalidArgumentException('주문서/그룹 번호가 필요합니다.');
+        }
+
+        $orderSheet = OrderSheetModel::query()
+            ->select(['oo_idx', 'oo_false'])
+            ->where('oo_idx', '=', $orderIdx)
+            ->first();
+        $orderSheet = $orderSheet ? $orderSheet->toArray() : [];
+        if (empty($orderSheet)) {
+            throw new Exception('주문서를 찾을 수 없습니다.');
+        }
+
+        $failedPidxMap = $this->getFailedPidxMap((string)($orderSheet['oo_false'] ?? ''));
+        $keepByPidx = [];
+        foreach ($products as $product) {
+            if (!is_array($product)) {
+                continue;
+            }
+            $pidx = (int)($product['pidx'] ?? 0);
+            $qty = (int)($product['qty'] ?? 0);
+            if ($pidx <= 0 || $qty <= 0) {
+                continue;
+            }
+            $keepByPidx[$pidx] = [
+                'pidx' => $pidx,
+                'qty' => $qty,
+                'price' => $this->toFloat($product['price'] ?? 0),
+                'is_order_failed' => isset($failedPidxMap[(string)$pidx]),
+            ];
+        }
+
+        $existingRows = OrderPrdUnitModel::query()
+            ->where('order_idx', '=', $orderIdx)
+            ->where('bidx', '=', $bidx)
+            ->get()
+            ->toArray();
+
+        $existingByPidx = [];
+        $existingIdxList = [];
+        foreach ($existingRows as $existingRow) {
+            if (!is_array($existingRow)) {
+                continue;
+            }
+            $pidx = (int)($existingRow['pidx'] ?? 0);
+            if ($pidx <= 0) {
+                continue;
+            }
+            $existingByPidx[$pidx] = $existingRow;
+            $existingIdxList[] = (int)($existingRow['idx'] ?? 0);
+        }
+
+        $checkedByUnitIdx = $this->getCheckedQtyByUnitIdx($existingIdxList);
+        $created = 0;
+        $updated = 0;
+        $deleted = 0;
+
+        foreach ($keepByPidx as $pidx => $product) {
+            $existing = $existingByPidx[$pidx] ?? null;
+            if (!$existing) {
+                OrderPrdUnitModel::create([
+                    'order_idx' => $orderIdx,
+                    'bidx' => $bidx,
+                    'pidx' => $pidx,
+                    'order_unit_price' => $product['price'],
+                    'order_qty' => $product['qty'],
+                    'is_order_failed' => $product['is_order_failed'],
+                    'stock_inspection_data' => [],
+                    'stock_inspection_memo' => '',
+                ]);
+                $created++;
+                continue;
+            }
+
+            $unitIdx = (int)($existing['idx'] ?? 0);
+            $checkedQty = (int)($checkedByUnitIdx[$unitIdx] ?? 0);
+            if ($checkedQty > 0 && $product['qty'] < $checkedQty) {
+                throw new Exception('검수된 수량보다 적게 줄일 수 없습니다. (상품 ' . $pidx . ')');
+            }
+
+            OrderPrdUnitModel::update(
+                ['idx' => $unitIdx],
+                [
+                    'order_unit_price' => $product['price'],
+                    'order_qty' => $product['qty'],
+                    'is_order_failed' => $product['is_order_failed'],
+                ]
+            );
+            $updated++;
+            unset($existingByPidx[$pidx]);
+        }
+
+        foreach ($existingByPidx as $pidx => $existing) {
+            $isFailed = $this->toBool($existing['is_order_failed'] ?? false)
+                || isset($failedPidxMap[(string)$pidx]);
+            if ($isFailed) {
+                if (!$this->toBool($existing['is_order_failed'] ?? false)) {
+                    OrderPrdUnitModel::update(
+                        ['idx' => (int)($existing['idx'] ?? 0)],
+                        ['is_order_failed' => true]
+                    );
+                }
+                continue;
+            }
+
+            $unitIdx = (int)($existing['idx'] ?? 0);
+            if ($this->unitHasInspection($existing, (int)($checkedByUnitIdx[$unitIdx] ?? 0))) {
+                throw new Exception('입고 검수 이력이 있는 상품은 주문에서 제외할 수 없습니다. (상품 ' . $pidx . ')');
+            }
+
+            OrderPrdUnitModel::query()
+                ->where('idx', '=', $unitIdx)
+                ->delete();
+            $deleted++;
+        }
+
+        return [
+            'created' => $created,
+            'updated' => $updated,
+            'deleted' => $deleted,
+        ];
+    }
+
+    /**
+     * 결품/복원 시 기존 unit 플래그만 맞춘다. 행이 없으면 만들지 않는다.
+     */
+    public function markUnitFailed(int $orderIdx, int $bidx, int $pidx, bool $isFailed): void
+    {
+        $unit = $this->findOrderPrdUnit($orderIdx, $bidx, $pidx);
+        if (!$unit) {
+            return;
+        }
+
+        OrderPrdUnitModel::update(
+            ['idx' => (int)($unit['idx'] ?? 0)],
+            ['is_order_failed' => $isFailed]
+        );
     }
 
     /**
@@ -472,6 +634,56 @@ class OrderPrdUnitService
             ->first();
 
         return $unit ? $unit->toArray() : [];
+    }
+
+    /**
+     * @param array $unitIdxList
+     * @return array<int,int>
+     */
+    private function getCheckedQtyByUnitIdx(array $unitIdxList): array
+    {
+        $unitIdxList = array_values(array_filter(array_map('intval', $unitIdxList)));
+        if (empty($unitIdxList)) {
+            return [];
+        }
+
+        $rows = OrderPrdUnitInspectionModel::query()
+            ->select(['order_prd_unit_idx', 'checked_qty'])
+            ->whereIn('order_prd_unit_idx', $unitIdxList)
+            ->get()
+            ->toArray();
+
+        $checkedByUnitIdx = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $unitIdx = (int)($row['order_prd_unit_idx'] ?? 0);
+            if ($unitIdx <= 0) {
+                continue;
+            }
+            $checkedByUnitIdx[$unitIdx] = ($checkedByUnitIdx[$unitIdx] ?? 0)
+                + (int)($row['checked_qty'] ?? 0);
+        }
+
+        return $checkedByUnitIdx;
+    }
+
+    private function unitHasInspection(array $unit, int $checkedQty): bool
+    {
+        if ($checkedQty > 0) {
+            return true;
+        }
+
+        $inspectionData = $unit['stock_inspection_data'] ?? [];
+        if (is_string($inspectionData)) {
+            $inspectionData = json_decode($inspectionData, true);
+        }
+        if (is_array($inspectionData) && !empty($inspectionData)) {
+            return true;
+        }
+
+        return trim((string)($unit['stock_inspection_memo'] ?? '')) !== '';
     }
 
     private function assertRecordOwner(array $record, int $currentAdminIdx): void

@@ -128,7 +128,9 @@
         <thead>
             <tr>
                 <th style="width:40px;"></th>
-                <th style="width:40px;"></th>
+                <th style="width:40px;">
+                    <input type="checkbox" class="os-prd-check-all" title="일괄작업 전체선택">
+                </th>
                 <th style="width:60px;">IDX<br>재고코드</th>
                 <th style="width:86px;">주문코드</th>
                 <th>바코드</th>
@@ -242,13 +244,9 @@
                         </span>
                     </td>
 
-                    <!-- 체크 -->
-                    <td id="checkbox_td_<?= $item['idx'] ?? '' ?>">
-                        <input type="checkbox" name="key_check[]" id="checkbox_<?= $item['idx'] ?? '' ?>" class="checkSelect" value="<?= $item['idx'] ?? '' ?>" 
-                        <?php if (!empty($item['selpd']) && $item['selpd']['qty'] > 0) { ?>
-                            checked
-                        <?php } ?>
-                        style="<?php if (isset($item['is_false']) && $item['is_false'] == "ok") { ?>display:none;<?php } ?>">
+                    <!-- 체크: 일괄작업 선택. 주문 포함은 수량 -->
+                    <td id="checkbox_td_<?= $item['idx'] ?? '' ?>" class="os-prd-check-cell">
+                        <input type="checkbox" name="os_prd_check[]" id="checkbox_<?= $item['idx'] ?? '' ?>" class="os-prd-check" value="<?= $item['idx'] ?? '' ?>" title="일괄작업 선택" style="<?php if (isset($item['is_false']) && $item['is_false'] == "ok") { ?>display:none;<?php } ?>">
                     </td>
 
                     <!-- 상품 고유번호 -->
@@ -320,6 +318,7 @@
                             <?php if ($labelName === '') { continue; } ?>
                             <label class="on_sale_label xs <?= htmlspecialchars($labelClassCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($labelName, ENT_QUOTES, 'UTF-8') ?></label>
                         <?php } ?>
+                       
                         <div class="p-t-5" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" style="cursor:pointer;">
                             <?php /*
                             <button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">보기</button> 
@@ -622,6 +621,8 @@
                         <?php if ($item['product']['ps_last_date'] && $item['product']['ps_last_date'] !== '0000-00-00 00:00:00') { ?>
                             <div>출고 : <?= date("y.m.d", strtotime($item['product']['ps_last_date'])) ?></div>
                         <?php } ?>
+
+                        <div class="m-t-3">첫입고 : <b><?= $item['product']['target_month'] ?? '' ?></b></div>
                     </td>
 
                     <!-- 마지막 입고일 -->
@@ -1177,7 +1178,6 @@
                 return isFinite(parsed) ? parsed : fallback;
             }
 
-            var item = $(".checkSelect:checked").length;
             var send_idx = [];
             var send_price = [];
             var send_qty = [];
@@ -1187,22 +1187,30 @@
             var total_weight = 0;
             var total_cbm = 0;
 
-            $(".checkSelect:checked").each(function() {
-                var checkbox_id = $(this).val();
+            $(".ospl-prd-wrap .qty-input").each(function() {
+                if (String($(this).data('is-false') || '0') === '1') {
+                    return;
+                }
+                var rowId = String($(this).attr('id') || '').replace('unit_qty_', '');
+                if (rowId === '') {
+                    return;
+                }
+                var unitQty = toNumber($(this).val(), 0);
+                if (unitQty <= 0) {
+                    return;
+                }
 
-                send_idx.push(checkbox_id);
-                send_price.push($("#unit_price_" + checkbox_id).val());
-                send_qty.push($("#unit_qty_" + checkbox_id).val());
-
-                var unitQtyRaw = $("#unit_qty_" + checkbox_id).val();
-                var unitQty = toNumber(unitQtyRaw, 0);
-                var plus_qty = (String(unitQtyRaw || '').trim() === '') ? 1 : unitQty;
+                send_idx.push(rowId);
+                send_price.push($("#unit_price_" + rowId).val());
+                send_qty.push($(this).val());
 
                 total_qty += unitQty;
-                total_price += toNumber($("#unit_price_sum_" + checkbox_id).val(), 0);
-                total_weight += toNumber($("#weight_" + checkbox_id).data('weight'), 0) * plus_qty;
-                total_cbm += toNumber($("#cbm_" + checkbox_id).data('cbm'), 0) * plus_qty;
+                total_price += toNumber($("#unit_price_sum_" + rowId).val(), 0);
+                total_weight += toNumber($("#weight_" + rowId).data('weight'), 0) * unitQty;
+                total_cbm += toNumber($("#cbm_" + rowId).data('cbm'), 0) * unitQty;
             });
+
+            var item = send_idx.length;
 
             $.ajax({
                 url: "/admin/order/sheet/save_group_product",
@@ -1394,6 +1402,7 @@
         var rowSortableInitScheduled = false;
         var rowSortableInitialized = false;
         var rowOrderLastSavedKey = '';
+        var bulkMovePidxs = [];
 
         function refreshRowSortable() {
             if (!$prdTableBody.length || typeof $prdTableBody.sortable !== 'function') {
@@ -1498,25 +1507,126 @@
             return trId.replace(/^tr_/, '').trim();
         }
 
-        function hasCurrentRowOrderQty() {
-            if (!$contextTargetRow.length) {
-                return false;
+        function getVisibleProductChecks() {
+            return $('.ospl-prd-wrap .os-prd-check').filter(function() {
+                return $(this).css('display') !== 'none';
+            });
+        }
+
+        function getCheckedPidxs() {
+            var pidxs = [];
+            getVisibleProductChecks().filter(':checked').each(function() {
+                var pidx = String($(this).val() || '').trim();
+                if (pidx !== '') {
+                    pidxs.push(pidx);
+                }
+            });
+            return pidxs;
+        }
+
+        function getActionTargetPidxs() {
+            var current = getCurrentRowPidx();
+            var checked = getCheckedPidxs();
+            if (current !== '' && checked.indexOf(current) !== -1) {
+                return checked;
             }
-            var qtyText = String($contextTargetRow.find('.qty-input').first().val() || '0').replace(/,/g, '');
-            var qty = parseFloat(qtyText);
+            return current !== '' ? [current] : [];
+        }
+
+        function syncCheckedGroupMoveButton() {
+            var count = getCheckedPidxs().length;
+            var $btn = $('#osCheckedGroupMoveBtn');
+            if (!$btn.length) {
+                return;
+            }
+            if (count > 0) {
+                $btn.text('선택상품 (' + count + '개) 그룹이동');
+            } else {
+                $btn.text('선택상품 그룹이동');
+            }
+        }
+
+        function syncProductCheckAll() {
+            var $visible = getVisibleProductChecks();
+            var allChecked = $visible.length > 0 && $visible.filter(':checked').length === $visible.length;
+            $('.os-prd-check-all').prop('checked', allChecked);
+            syncCheckedGroupMoveButton();
+        }
+
+        function rowHasOrderQty(pidx) {
+            var qty = parseFloat(String($('#unit_qty_' + pidx).val() || '0').replace(/,/g, ''));
             return isFinite(qty) && qty > 0;
         }
 
-        function hasCurrentRowUnsavedQtyChange() {
-            if (!$contextTargetRow.length) {
-                return false;
-            }
-            var $qtyInput = $contextTargetRow.find('.qty-input').first();
+        function rowHasUnsavedQtyChange(pidx) {
+            var $qtyInput = $('#unit_qty_' + pidx);
             var currentQty = parseFloat(String($qtyInput.val() || '0').replace(/,/g, ''));
             var savedQty = parseFloat(String($qtyInput.data('saved-qty') || '0').replace(/,/g, ''));
             currentQty = isFinite(currentQty) ? currentQty : 0;
             savedQty = isFinite(savedQty) ? savedQty : 0;
             return currentQty !== savedQty;
+        }
+
+        function actionTargetsHaveOrderQty(pidxs) {
+            for (var i = 0; i < pidxs.length; i++) {
+                if (rowHasOrderQty(pidxs[i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function actionTargetsHaveUnsavedQty(pidxs) {
+            for (var i = 0; i < pidxs.length; i++) {
+                if (rowHasUnsavedQtyChange(pidxs[i])) {
+                    return true;
+                }
+            }
+            return false;
+        }
+
+        function closeCheckedGroupMovePanel() {
+            bulkMovePidxs = [];
+            $('#osCheckedGroupMovePanel').attr('hidden', true).empty();
+        }
+
+        function openCheckedGroupMovePanel() {
+            var pidxs = getCheckedPidxs();
+            if (!pidxs.length) {
+                closeCheckedGroupMovePanel();
+                showAlert("Info", "이동할 상품을 선택해주세요.", "alert2");
+                return;
+            }
+            if (actionTargetsHaveOrderQty(pidxs)) {
+                closeCheckedGroupMovePanel();
+                showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
+                return;
+            }
+            if (actionTargetsHaveUnsavedQty(pidxs)) {
+                closeCheckedGroupMovePanel();
+                showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
+                return;
+            }
+
+            var targetGroups = getMovableGroupTargets();
+            if (!targetGroups.length) {
+                closeCheckedGroupMovePanel();
+                showAlert("Info", "이동 가능한 다른 그룹이 없습니다.", "alert2");
+                return;
+            }
+
+            var $panel = $('#osCheckedGroupMovePanel');
+            if ($panel.length && !$panel.is('[hidden]') && $panel.children().length) {
+                closeCheckedGroupMovePanel();
+                return;
+            }
+
+            bulkMovePidxs = pidxs.slice();
+            var listHtml = '';
+            for (var i = 0; i < targetGroups.length; i++) {
+                listHtml += '<button type="button" data-bulk-group-move-target="' + targetGroups[i].oop_idx + '">' + targetGroups[i].name + '</button>';
+            }
+            $panel.html(listHtml).removeAttr('hidden');
         }
 
         function getMovableGroupTargets() {
@@ -1567,53 +1677,82 @@
                 || action === 'group-move-go';
         }
 
-        function moveCurrentRowToGroup(targetOopIdx, pidx, stayOnCurrentPage) {
-            pidx = String(pidx || getCurrentRowPidx()).trim();
-            if (!targetOopIdx || !pidx) {
+        function moveRowsToGroup(targetOopIdx, pidxs, stayOnCurrentPage) {
+            if (!Array.isArray(pidxs)) {
+                pidxs = [String(pidxs || '').trim()];
+            }
+            pidxs = pidxs.map(function(v) {
+                return String(v || '').trim();
+            }).filter(function(v) {
+                return v !== '';
+            });
+            if (!targetOopIdx || !pidxs.length) {
                 showAlert("Error", "이동할 상품 정보가 없습니다.", "alert2");
                 return;
             }
 
-            $.ajax({
-                url: "/admin/order/sheet/action",
-                type: "POST",
-                dataType: "json",
-                data: {
-                    action_mode: "orderSheetProductMoveGroup",
-                    oo_idx: "<?= $oo_idx ?? '' ?>",
-                    oop_idx: "<?= $oop_idx ?? '' ?>",
-                    to_oop_idx: targetOopIdx,
-                    pidx: pidx
-                },
-                success: function(res) {
-                    if (res && res.success === true) {
-                        showToast("상품이 그룹으로 이동되었습니다.", new Date().toLocaleTimeString());
-                        if (window.orderSheetDetail && typeof window.orderSheetDetail.updateGroupProductCount === 'function') {
-                            if (res.from_oop_idx !== undefined && res.from_total_count !== undefined) {
-                                window.orderSheetDetail.updateGroupProductCount(res.from_oop_idx, res.from_total_count);
-                            }
-                            if (res.to_oop_idx !== undefined && res.to_total_count !== undefined) {
-                                window.orderSheetDetail.updateGroupProductCount(res.to_oop_idx, res.to_total_count);
-                            }
-                        }
-                        if (stayOnCurrentPage) {
-                            if (window.orderSheetDetail && typeof window.orderSheetDetail.PrdListReload === 'function') {
-                                window.orderSheetDetail.PrdListReload(true);
-                            } else {
-                                orderSheet.Detail("<?= $oo_idx ?? '' ?>", "<?= $oop_idx ?? '' ?>", "<?= $form_view ?? '' ?>");
-                            }
-                        } else {
-                            orderSheet.Detail("<?= $oo_idx ?? '' ?>", targetOopIdx, "<?= $form_view ?? '' ?>");
-                        }
-                    } else {
-                        showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "그룹 이동 중 오류가 발생했습니다.", "alert2");
+            var moveQueue = pidxs.slice();
+
+            function applyMoveResult(res) {
+                if (window.orderSheetDetail && typeof window.orderSheetDetail.updateGroupProductCount === 'function') {
+                    if (res.from_oop_idx !== undefined && res.from_total_count !== undefined) {
+                        window.orderSheetDetail.updateGroupProductCount(res.from_oop_idx, res.from_total_count);
                     }
-                },
-                error: function(request, status, error) {
-                    console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
-                    showAlert("Error", "그룹 이동 중 오류가 발생했습니다.", "alert2");
+                    if (res.to_oop_idx !== undefined && res.to_total_count !== undefined) {
+                        window.orderSheetDetail.updateGroupProductCount(res.to_oop_idx, res.to_total_count);
+                    }
                 }
-            });
+            }
+
+            function finishOk() {
+                showToast(
+                    pidxs.length > 1 ? "선택한 상품이 그룹으로 이동되었습니다." : "상품이 그룹으로 이동되었습니다.",
+                    new Date().toLocaleTimeString()
+                );
+                if (stayOnCurrentPage) {
+                    if (window.orderSheetDetail && typeof window.orderSheetDetail.PrdListReload === 'function') {
+                        window.orderSheetDetail.PrdListReload(true);
+                    } else {
+                        orderSheet.Detail("<?= $oo_idx ?? '' ?>", "<?= $oop_idx ?? '' ?>", "<?= $form_view ?? '' ?>");
+                    }
+                } else {
+                    orderSheet.Detail("<?= $oo_idx ?? '' ?>", targetOopIdx, "<?= $form_view ?? '' ?>");
+                }
+            }
+
+            function moveNext() {
+                if (!moveQueue.length) {
+                    finishOk();
+                    return;
+                }
+                var nextPidx = moveQueue.shift();
+                $.ajax({
+                    url: "/admin/order/sheet/action",
+                    type: "POST",
+                    dataType: "json",
+                    data: {
+                        action_mode: "orderSheetProductMoveGroup",
+                        oo_idx: "<?= $oo_idx ?? '' ?>",
+                        oop_idx: "<?= $oop_idx ?? '' ?>",
+                        to_oop_idx: targetOopIdx,
+                        pidx: nextPidx
+                    },
+                    success: function(res) {
+                        if (res && res.success === true) {
+                            applyMoveResult(res);
+                            moveNext();
+                        } else {
+                            showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "그룹 이동 중 오류가 발생했습니다.", "alert2");
+                        }
+                    },
+                    error: function(request, status, error) {
+                        console.log("code:" + request.status + "\n" + "message:" + request.responseText + "\n" + "error:" + error);
+                        showAlert("Error", "그룹 이동 중 오류가 발생했습니다.", "alert2");
+                    }
+                });
+            }
+
+            moveNext();
         }
 
         function closeOtherFormModal() {
@@ -1911,8 +2050,86 @@
         }
 
         scheduleRowSortableInit();
+        syncCheckedGroupMoveButton();
 
         $(document)
+            .off('click.osCheckedGroupMove', '#osCheckedGroupMoveBtn')
+            .on('click.osCheckedGroupMove', '#osCheckedGroupMoveBtn', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                openCheckedGroupMovePanel();
+            })
+            .off('click.osBulkGroupMoveTarget', '#osCheckedGroupMovePanel [data-bulk-group-move-target]')
+            .on('click.osBulkGroupMoveTarget', '#osCheckedGroupMovePanel [data-bulk-group-move-target]', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var $targetBtn = $(this);
+                if ($targetBtn.hasClass('active') && $targetBtn.next('.row-context-group-move-choice').length) {
+                    $targetBtn.removeClass('active');
+                    $targetBtn.next('.row-context-group-move-choice').remove();
+                    return;
+                }
+
+                var targetOopIdx = String($targetBtn.data('bulk-group-move-target') || '').trim();
+                var $panel = $('#osCheckedGroupMovePanel');
+                $panel.find('[data-bulk-group-move-target]').removeClass('active');
+                $panel.find('.row-context-group-move-choice').remove();
+                $targetBtn.addClass('active');
+                $targetBtn.after(
+                    '<div class="row-context-group-move-choice">' +
+                        '<button type="button" class="row-context-group-move-btn stay" data-bulk-group-move-action="stay" data-target-oopidx="' + targetOopIdx + '">완료 유지</button>' +
+                        '<button type="button" class="row-context-group-move-btn go" data-bulk-group-move-action="go" data-target-oopidx="' + targetOopIdx + '">완료 이동</button>' +
+                    '</div>'
+                );
+            })
+            .off('click.osBulkGroupMoveGo', '#osCheckedGroupMovePanel [data-bulk-group-move-action]')
+            .on('click.osBulkGroupMoveGo', '#osCheckedGroupMovePanel [data-bulk-group-move-action]', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var action = String($(this).data('bulk-group-move-action') || '');
+                var targetOopIdx = String($(this).data('target-oopidx') || '').trim();
+                var pidxs = bulkMovePidxs.slice();
+                if (actionTargetsHaveOrderQty(pidxs)) {
+                    showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
+                    closeCheckedGroupMovePanel();
+                    return;
+                }
+                if (actionTargetsHaveUnsavedQty(pidxs)) {
+                    showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
+                    closeCheckedGroupMovePanel();
+                    return;
+                }
+                closeCheckedGroupMovePanel();
+                moveRowsToGroup(targetOopIdx, pidxs, action === 'stay');
+            })
+            .off('click.osBulkGroupMoveOutside')
+            .on('click.osBulkGroupMoveOutside', function(e) {
+                if ($(e.target).closest('#contents_bottom').length) {
+                    return;
+                }
+                closeCheckedGroupMovePanel();
+            })
+            .off('click.osPrdCheckAll', '.os-prd-check-all')
+            .on('click.osPrdCheckAll', '.os-prd-check-all', function() {
+                var checked = $(this).is(':checked');
+                getVisibleProductChecks().prop('checked', checked);
+                syncProductCheckAll();
+            })
+            .off('click.osPrdCheckCell', '.ospl-prd-wrap .os-prd-check-cell')
+            .on('click.osPrdCheckCell', '.ospl-prd-wrap .os-prd-check-cell', function(e) {
+                if ($(e.target).is('.os-prd-check')) {
+                    return;
+                }
+                var $checkbox = $(this).find('.os-prd-check').first();
+                if (!$checkbox.length || $checkbox.css('display') === 'none' || $checkbox.prop('disabled')) {
+                    return;
+                }
+                $checkbox.prop('checked', !$checkbox.prop('checked')).trigger('change');
+            })
+            .off('change.osPrdCheck', '.ospl-prd-wrap .os-prd-check')
+            .on('change.osPrdCheck', '.ospl-prd-wrap .os-prd-check', function() {
+                syncProductCheckAll();
+            })
             .off('mouseover.orderSheetInitSortable', '.row-order-handle')
             .on('mouseover.orderSheetInitSortable', '.row-order-handle', function() {
                 initRowSortableIfNeeded();
@@ -1950,12 +2167,13 @@
                     movePrdWrapScroll('bottom');
                     saveChangedRowOrder();
                 } else if (action === 'group-move') {
-                    if (hasCurrentRowOrderQty()) {
+                    var movePidxs = getActionTargetPidxs();
+                    if (actionTargetsHaveOrderQty(movePidxs)) {
                         showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
                         hideRowContextMenu();
                         return;
                     }
-                    if (hasCurrentRowUnsavedQtyChange()) {
+                    if (actionTargetsHaveUnsavedQty(movePidxs)) {
                         showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
                         hideRowContextMenu();
                         return;
@@ -1995,12 +2213,13 @@
             .on('click.orderSheetRowGroupMoveTarget', '#orderSheetRowContextMenu [data-row-action="group-move-target"], #orderSheetRowContextMenu [data-row-action="group-move-stay"], #orderSheetRowContextMenu [data-row-action="group-move-go"]', function(e) {
                 e.preventDefault();
                 var action = String($(this).data('row-action') || '');
-                if (hasCurrentRowOrderQty()) {
+                var movePidxs = getActionTargetPidxs();
+                if (actionTargetsHaveOrderQty(movePidxs)) {
                     showAlert("Info", "주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다", "alert2");
                     hideRowContextMenu();
                     return;
                 }
-                if (hasCurrentRowUnsavedQtyChange()) {
+                if (actionTargetsHaveUnsavedQty(movePidxs)) {
                     showAlert("Info", "주문수량 변경사항이 저장되지 않았습니다. 그룹상품저장 후 이동해주세요.", "alert2");
                     hideRowContextMenu();
                     return;
@@ -2034,9 +2253,8 @@
                 }
 
                 var moveTargetOopIdx = String($(this).data('target-oopidx') || '').trim();
-                var pidx = getCurrentRowPidx();
                 hideRowContextMenu();
-                moveCurrentRowToGroup(moveTargetOopIdx, pidx, action === 'group-move-stay');
+                moveRowsToGroup(moveTargetOopIdx, movePidxs, action === 'group-move-stay');
             })
             .off('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]')
             .on('click.orderSheetOtherFormAction', '#orderSheetOtherFormModal [data-other-form-action]', function(e) {

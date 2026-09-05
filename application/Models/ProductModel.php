@@ -25,6 +25,7 @@ class ProductModel extends BaseModel
 		'cd_reference_links',
 		'CD_SEARCH_TERM',
 		'CD_RELEASE_DATE',
+		'target_month',
 		'img_mode',
 		'CD_IMG',
 		'CD_IMG2',
