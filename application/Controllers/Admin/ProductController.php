@@ -22,6 +22,7 @@ use App\Services\CompetitorApiService;
 use App\Services\ProductSupplierPyApiService;
 use App\Services\ProductImageHostingService;
 use App\Services\AdminActionLogService;
+use App\Services\OrderGroupService;
 use App\Models\ProductModel;
 use App\Models\ProductCollectionItemModel;
 use App\Utils\Pagination;
@@ -368,6 +369,7 @@ class ProductController extends BaseClass
                 'hbti_target' => 'Y',
                 'cd_site_show' => 'N',
                 'cd_reference_links' => [],
+                'cd_code_fn' => [],
                 'work_check_list' => [],
                 'product_label_options' => $this->productService->getActiveProductLabelOptions(),
                 'selected_product_label_idxs' => [],
@@ -385,6 +387,7 @@ class ProductController extends BaseClass
                 'categories' => $categories,
                 'brandForSelect' => $brandForSelect,
                 'sale_status_options' => $saleStatusOptions,
+                'orderGroupCodeOptions' => (new OrderGroupService())->getOrderGroupCodeOptions(),
             ];
 
             return view('admin.product.prd_db_create', $data)
@@ -444,6 +447,7 @@ class ProductController extends BaseClass
                 'sale_status_options' => $saleStatusOptions,
                 'godoDiscontinuedLog' => $godoDiscontinuedLog,
                 'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
+                'orderGroupCodeOptions' => (new OrderGroupService())->getOrderGroupCodeOptions(),
             ];
 
             return view('admin.product.prd_detail_basic', $data);
@@ -1663,6 +1667,10 @@ class ProductController extends BaseClass
 
                 case 'create_product_relation_group':
                     $result = $this->productService->createProductRelationGroup($requestData);
+                    break;
+
+                case 'bulk_create_product_series':
+                    $result = $this->productService->bulkCreateProductSeries($requestData);
                     break;
 
                 case 'add_product_to_relation_group':

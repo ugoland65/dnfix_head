@@ -33,9 +33,17 @@
 				return response; // 성공 결과 반환
 			})
 			.catch((jqXHR, textStatus, errorThrown) => {
-				// 실패 처리
-				console.error('Ajax 요청 실패:', textStatus, errorThrown);
-				throw new Error(`Ajax 요청 실패: ${textStatus}`);
+				var responseJson = (jqXHR && jqXHR.responseJSON) ? jqXHR.responseJSON : null;
+				var serverMessage = '';
+				if (responseJson) {
+					serverMessage = String(responseJson.message || responseJson.msg || '').trim();
+				}
+				if (!serverMessage && jqXHR && typeof jqXHR.message === 'string' && !jqXHR.status) {
+					serverMessage = jqXHR.message.trim();
+				}
+				var statusText = textStatus || errorThrown || (jqXHR && jqXHR.statusText) || 'error';
+				console.error('Ajax 요청 실패:', statusText, errorThrown, serverMessage);
+				throw new Error(serverMessage || ('Ajax 요청 실패: ' + statusText));
 			});
 	};
 

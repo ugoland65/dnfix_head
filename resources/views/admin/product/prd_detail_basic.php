@@ -280,6 +280,14 @@
         overflow-y: auto;
         overscroll-behavior: contain;
     }
+    .order-code-row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+        margin-bottom: 6px;
+    }
+    .order-code-text { font-weight: 600; }
+
     .preference-tag-list { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
     .preference-tag-item { display: inline-flex; align-items: center; gap: 3px; }
     .preference-tag-chip {
@@ -2150,6 +2158,102 @@
                 </td>
             </tr>
 
+            <tr>
+                <th>발주서 주문코드</th>
+                <td>
+                    <?php
+                        $hiddenOrderCodeKeys = ['jan' => true, 'pcode' => true, 'code3' => true];
+                        $orderGroupCodeOptions = (isset($orderGroupCodeOptions) && is_array($orderGroupCodeOptions))
+                            ? $orderGroupCodeOptions
+                            : [];
+                        $orderGroupNameByCode = [];
+                        foreach ($orderGroupCodeOptions as $orderGroupOption) {
+                            $optionCode = trim((string)($orderGroupOption['oog_code'] ?? ''));
+                            if ($optionCode === '') {
+                                continue;
+                            }
+                            $orderGroupNameByCode[$optionCode] = trim((string)($orderGroupOption['oog_name'] ?? ''));
+                        }
+                        $cdCodeFn = $productData['cd_code_fn'] ?? [];
+                        if (!is_array($cdCodeFn)) {
+                            $cdCodeFn = [];
+                        }
+                        $buildOrderCodeSelectOptions = static function (array $options, string $selectedCode, array $nameByCode): string {
+                            $html = '<option value="">발주사이트 선택</option>';
+                            $selectedFound = false;
+                            foreach ($options as $orderGroupOption) {
+                                $optionCode = trim((string)($orderGroupOption['oog_code'] ?? ''));
+                                $optionName = trim((string)($orderGroupOption['oog_name'] ?? ''));
+                                if ($optionCode === '') {
+                                    continue;
+                                }
+                                $optionLabel = $optionName !== '' ? $optionName . ' (' . $optionCode . ')' : $optionCode;
+                                $selected = $optionCode === $selectedCode ? ' selected' : '';
+                                if ($optionCode === $selectedCode) {
+                                    $selectedFound = true;
+                                }
+                                $html .= '<option value="' . htmlspecialchars($optionCode, ENT_QUOTES, 'UTF-8') . '"' . $selected . '>'
+                                    . htmlspecialchars($optionLabel, ENT_QUOTES, 'UTF-8')
+                                    . '</option>';
+                            }
+                            if ($selectedCode !== '' && !$selectedFound) {
+                                $fallbackName = trim((string)($nameByCode[$selectedCode] ?? ''));
+                                $fallbackLabel = $fallbackName !== '' ? $fallbackName . ' (' . $selectedCode . ')' : $selectedCode;
+                                $html .= '<option value="' . htmlspecialchars($selectedCode, ENT_QUOTES, 'UTF-8') . '" selected>'
+                                    . htmlspecialchars($fallbackLabel, ENT_QUOTES, 'UTF-8')
+                                    . '</option>';
+                            }
+                            return $html;
+                        };
+                    ?>
+                    <div id="order_code_list">
+                        <?php
+                            $visibleOrderCodeCount = 0;
+                            foreach ($cdCodeFn as $orderCodeKey => $orderCodeValue) {
+                                $orderCodeKey = trim((string)$orderCodeKey);
+                                $orderCodeValue = trim((string)$orderCodeValue);
+                                if ($orderCodeKey === '' || $orderCodeValue === '' || isset($hiddenOrderCodeKeys[$orderCodeKey])) {
+                                    continue;
+                                }
+                                $visibleOrderCodeCount++;
+                        ?>
+                            <div class="order-code-row" data-code="<?= htmlspecialchars($orderCodeKey, ENT_QUOTES, 'UTF-8') ?>">
+                                <select name="cd_code_fn_key[]" class="order-code-key" style="min-width:220px; height:30px;">
+                                    <?= $buildOrderCodeSelectOptions($orderGroupCodeOptions, $orderCodeKey, $orderGroupNameByCode) ?>
+                                </select>
+                                <input type="text" name="cd_code_fn_value[]" class="order-code-value" value="<?= htmlspecialchars($orderCodeValue, ENT_QUOTES, 'UTF-8') ?>" placeholder="주문코드" style="width:180px; height:30px;">
+                                <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-order-code-btn">삭제</button>
+                            </div>
+                        <?php } ?>
+                    </div>
+                    <div id="order_code_empty" class="m-t-3" style="color:#6b7280; <?= $visibleOrderCodeCount > 0 ? 'display:none;' : '' ?>">
+                        등록된 발주서 주문코드가 없습니다.
+                    </div>
+                    <div class="m-t-8" style="display:flex; gap:8px; align-items:center; flex-wrap:wrap;">
+                        <select id="order_code_add_key" name="cd_code_fn_new_key" style="min-width:220px; height:30px;">
+                            <option value="">발주사이트 선택</option>
+                            <?php foreach ($orderGroupCodeOptions as $orderGroupOption) { ?>
+                                <?php
+                                    $optionCode = trim((string)($orderGroupOption['oog_code'] ?? ''));
+                                    $optionName = trim((string)($orderGroupOption['oog_name'] ?? ''));
+                                    if ($optionCode === '') {
+                                        continue;
+                                    }
+                                ?>
+                                <option value="<?= htmlspecialchars($optionCode, ENT_QUOTES, 'UTF-8') ?>">
+                                    <?= htmlspecialchars($optionName !== '' ? $optionName . ' (' . $optionCode . ')' : $optionCode, ENT_QUOTES, 'UTF-8') ?>
+                                </option>
+                            <?php } ?>
+                        </select>
+                        <input type="text" id="order_code_add_value" name="cd_code_fn_new_value" placeholder="주문코드" style="width:180px; height:30px;">
+                        <button type="button" class="btnstyle1 btnstyle1-sm" id="order_code_add_btn">추가</button>
+                    </div>
+                    <div class="admin-guide-text">
+                        - 각 발주사이트에서 사용되는 주문코드 입니다.
+                    </div>
+                </td>
+            </tr>
+
             <?php if ($productData['ps_idx'] ?? '') { ?>
                 <tr>
                     <th>재고</th>
@@ -2409,12 +2513,18 @@
                         alert(res.message || '처리가 완료되었습니다.');
                         location.reload();
                     } else {
-                        alert(res && res.message ? res.message : '처리 실패');
+                        alert('처리실패\n' + ((res && res.message) ? res.message : '고도몰 단종처리에 실패했습니다.'));
                         location.reload();
                     }
                 })
                 .fail(function(res) {
-                    alert(res && res.message ? res.message : '에러');
+                    var reason = '';
+                    if (res && res.responseJSON && res.responseJSON.message) {
+                        reason = String(res.responseJSON.message).trim();
+                    } else if (res && res.message) {
+                        reason = String(res.message).trim();
+                    }
+                    alert('처리실패\n' + (reason || '고도몰 단종처리에 실패했습니다.'));
                     location.reload();
                 });
         }
@@ -2613,7 +2723,19 @@
                 }
             }
 
+            const pendingOrderCodeKey = String((form.querySelector('#order_code_add_key') || {}).value || '').trim();
+            const pendingOrderCodeValue = String((form.querySelector('#order_code_add_value') || {}).value || '').trim();
             const formData = new FormData(form);
+            if (
+                pendingOrderCodeKey
+                && pendingOrderCodeValue
+                && pendingOrderCodeKey !== 'jan'
+                && pendingOrderCodeKey !== 'pcode'
+                && pendingOrderCodeKey !== 'code3'
+            ) {
+                formData.append('cd_code_fn_key[]', pendingOrderCodeKey);
+                formData.append('cd_code_fn_value[]', pendingOrderCodeValue);
+            }
             fetch('/admin/product/saveProduct', {
                     method: 'POST',
                     body: formData,
@@ -3515,6 +3637,132 @@
         });
         toggleHbtiSectionByKind();
         toggleHbtiConfigRow();
+
+        var hiddenOrderCodeKeys = { jan: true, pcode: true, code3: true };
+        var orderGroupCodeOptions = <?= json_encode($orderGroupCodeOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+        var orderGroupNameByCode = <?= json_encode($orderGroupNameByCode ?? [], JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT) ?>;
+
+        function escapeOrderCodeHtml(raw) {
+            return String(raw || '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;')
+                .replace(/'/g, '&#039;');
+        }
+
+        function getOrderCodeLabel(code) {
+            var name = String(orderGroupNameByCode[code] || '').trim();
+            return name ? (name + ' (' + code + ')') : code;
+        }
+
+        function buildOrderCodeSelectHtml(selectedCode) {
+            var html = '<option value="">발주사이트 선택</option>';
+            var selectedFound = false;
+            $.each(orderGroupCodeOptions, function(_, option) {
+                var optionCode = String((option && option.oog_code) || '').trim();
+                var optionName = String((option && option.oog_name) || '').trim();
+                if (!optionCode) {
+                    return;
+                }
+                var selected = optionCode === selectedCode ? ' selected' : '';
+                if (optionCode === selectedCode) {
+                    selectedFound = true;
+                }
+                html += '<option value="' + escapeOrderCodeHtml(optionCode) + '"' + selected + '>'
+                    + escapeOrderCodeHtml(optionName ? (optionName + ' (' + optionCode + ')') : optionCode)
+                    + '</option>';
+            });
+            if (selectedCode && !selectedFound) {
+                html += '<option value="' + escapeOrderCodeHtml(selectedCode) + '" selected>'
+                    + escapeOrderCodeHtml(getOrderCodeLabel(selectedCode))
+                    + '</option>';
+            }
+            return html;
+        }
+
+        function syncOrderCodeEmptyState() {
+            $('#order_code_empty').toggle($('#order_code_list .order-code-row').length === 0);
+        }
+
+        function findOrderCodeRowByCode(code) {
+            return $('#order_code_list .order-code-row').filter(function() {
+                return String($(this).find('.order-code-key').val() || $(this).attr('data-code') || '') === code;
+            });
+        }
+
+        function upsertOrderCodeRow(code, value) {
+            var $existing = findOrderCodeRowByCode(code);
+            if ($existing.length) {
+                $existing.attr('data-code', code);
+                $existing.find('.order-code-key').val(code);
+                $existing.find('.order-code-value').val(value);
+                return;
+            }
+            $('#order_code_list').append(
+                '<div class="order-code-row" data-code="' + escapeOrderCodeHtml(code) + '">' +
+                    '<select name="cd_code_fn_key[]" class="order-code-key" style="min-width:220px; height:30px;">'
+                        + buildOrderCodeSelectHtml(code) +
+                    '</select>' +
+                    '<input type="text" name="cd_code_fn_value[]" class="order-code-value" value="' + escapeOrderCodeHtml(value) + '" placeholder="주문코드" style="width:180px; height:30px;">' +
+                    '<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-order-code-btn">삭제</button>' +
+                '</div>'
+            );
+            syncOrderCodeEmptyState();
+        }
+
+        $('#order_code_add_btn').on('click', function() {
+            var code = String($('#order_code_add_key').val() || '').trim();
+            var value = String($('#order_code_add_value').val() || '').trim();
+            if (!code) {
+                alert('발주사이트를 선택해주세요.');
+                $('#order_code_add_key').focus();
+                return;
+            }
+            if (hiddenOrderCodeKeys[code]) {
+                alert('이 코드는 발주서 주문코드로 등록할 수 없습니다.');
+                return;
+            }
+            if (!value) {
+                alert('주문코드를 입력해주세요.');
+                $('#order_code_add_value').focus();
+                return;
+            }
+            upsertOrderCodeRow(code, value);
+            $('#order_code_add_value').val('');
+            $('#order_code_add_key').val('');
+        });
+
+        $('#order_code_add_value').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#order_code_add_btn').trigger('click');
+            }
+        });
+
+        $(document).off('change.prdDetailBasicOrderCode', '.order-code-key')
+            .on('change.prdDetailBasicOrderCode', '.order-code-key', function() {
+                var $row = $(this).closest('.order-code-row');
+                var nextCode = String($(this).val() || '').trim();
+                var prevCode = String($row.attr('data-code') || '');
+                if (hiddenOrderCodeKeys[nextCode]) {
+                    alert('이 코드는 발주서 주문코드로 등록할 수 없습니다.');
+                    $(this).val(prevCode);
+                    return;
+                }
+                if (nextCode && findOrderCodeRowByCode(nextCode).not($row).length) {
+                    alert('이미 등록된 발주사이트입니다.');
+                    $(this).val(prevCode);
+                    return;
+                }
+                $row.attr('data-code', nextCode);
+            });
+
+        $(document).off('click.prdDetailBasicOrderCode', '.remove-order-code-btn')
+            .on('click.prdDetailBasicOrderCode', '.remove-order-code-btn', function() {
+                $(this).closest('.order-code-row').remove();
+                syncOrderCodeEmptyState();
+            });
 
         $('#add_reference_link_btn').on('click', function() {
             $('#reference_links_tbody').append(buildReferenceLinkRow('', ''));

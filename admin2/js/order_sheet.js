@@ -570,7 +570,7 @@ var orderSheetForm = function () {
 				content: function () {
 					var self = this;
 					return $.ajax({
-						url: '/ad/ajax/order_sheet_form_group_info',
+						url: '/admin/order/group/form_group_product',
 						data: { "idx": idx },
 						dataType: 'html',
 						method: 'POST'
@@ -596,7 +596,7 @@ var orderSheetForm = function () {
 		groupViewReset: function (idx) {
 
 			$.ajax({
-				url: '/ad/ajax/order_sheet_form_group_info',
+				url: '/admin/order/group/form_group_product',
 				data: { "idx": idx },
 				type: "POST",
 				dataType: "html",

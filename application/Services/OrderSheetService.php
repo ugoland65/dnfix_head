@@ -1491,13 +1491,27 @@ class OrderSheetService
             if ($psIdx <= 0 || $stockProcessToken === '') {
                 throw new Exception('재고 반영에 필요한 주문서 또는 재고코드 정보가 없습니다.');
             }
+
+            $orderSheetName = '';
+            if ($orderSheetIdx > 0) {
+                $orderSheetRow = OrderSheetModel::query()
+                    ->select(['oo_name'])
+                    ->where('oo_idx', '=', $orderSheetIdx)
+                    ->first();
+                $orderSheetRow = $orderSheetRow ? $orderSheetRow->toArray() : [];
+                $orderSheetName = trim((string)($orderSheetRow['oo_name'] ?? ''));
+            }
+            $stockMemo = $orderSheetName !== ''
+                ? ($orderSheetName . ' - 고도몰 재고+검수 처리')
+                : '고도몰 재고+검수 처리';
+
             $stockChangeResult = $productStockService->registerStockChange([
                 'ps_idx' => $psIdx,
                 'stock_mode' => 'plus',
                 'stock_kind' => '신규입고',
                 'stock_qty' => $stockInputQty,
                 'stock_day' => date('Y-m-d'),
-                'stock_memo' => '주문서 고도몰 재고+검수 처리',
+                'stock_memo' => $stockMemo,
                 'psu_token' => $stockProcessToken,
             ]);
         }
@@ -2684,6 +2698,7 @@ class OrderSheetService
                     'A.CD_CODE',
                     'A.CD_CODE2',
                     'A.CD_CODE3',
+                    'A.cd_code_fn',
                     'A.CD_NAME',
                     'A.CD_IMG',
                     'A.img_mode',
@@ -2800,6 +2815,17 @@ class OrderSheetService
             if (is_string($product['cd_price_fn'])) {
                 $product['cd_price_fn'] = json_decode($product['cd_price_fn'], true);
             }
+
+            if (is_string($product['cd_code_fn'] ?? null)) {
+                $product['cd_code_fn'] = json_decode($product['cd_code_fn'], true);
+            }
+            if (!is_array($product['cd_code_fn'] ?? null)) {
+                $product['cd_code_fn'] = [];
+            }
+            $formCodeKey = trim((string)($orderGroupProduct['oop_code'] ?? ''));
+            $product['order_form_code'] = ($formCodeKey !== '')
+                ? trim((string)($product['cd_code_fn'][$formCodeKey] ?? ''))
+                : '';
 
             $product['weight'] = $product['cd_weight_fn']['3'] ?? 0;
             if ($product['weight'] == 0) {

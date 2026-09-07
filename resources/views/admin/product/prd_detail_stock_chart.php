@@ -78,7 +78,7 @@
 <div class="admin-guide-text m-t-6">
     <?= htmlspecialchars((string)($insight['forecast_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     권장발주 = 월평균 일판매 × (발주주기 <?= (int)($insight['cycle_days'] ?? 30) ?>일 + 입고리드 <?= (int)($insight['lead_days'] ?? 14) ?>일) − 현재고.
-    급판매여도 최근 신규입고 수량(중앙값)을 넘지 않습니다. 입고 이력이 없으면 월평균 권장의 3배로 제한합니다.
+    급판매여도 최근 신규입고 수량(중앙값)을 넘지 않습니다. 현재고가 1개 이하이면 급판매로 보지 않습니다. 입고 이력이 없으면 월평균 권장의 3배로 제한합니다.
     입고리드는 주문서 작성 1주 + 입고 1주(14일)로 고정합니다. 입고가 없던 품절월은 평균·미판매에서 제외합니다.
     <?php if (!empty($insight['need_order_soon'])) { ?>
         <b style="color:#d4380d;">재고 지속일이 리드일보다 짧아 이번 주기 발주가 필요합니다.</b>

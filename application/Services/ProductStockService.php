@@ -1460,6 +1460,7 @@ class ProductStockService extends BaseClass
      * - 품절월(입고 없이 한 달 품절)은 평균·미판매에서 제외
      * - 리드: 주문서 작성 1주 + 입고 1주
      * - 급판매 권장발주는 최근 신규입고 수량(중앙값)을 넘지 않음
+     * - 현재고가 1개 이하이면 급판매로 보지 않음 (잔여 1개 판매로 일판매가 과장되는 것 방지)
      *
      * @param int $psIdx
      * @param array $inboundRows
@@ -1510,7 +1511,7 @@ class ProductStockService extends BaseClass
         }
 
         $daily28 = $inStockDays28 > 0 ? round($sales28 / $inStockDays28, 2) : 0.0;
-        $isSurge = $dailyMonth > 0 && $daily28 >= ($dailyMonth * 1.5);
+        $isSurge = $currentStock > 1 && $dailyMonth > 0 && $daily28 >= ($dailyMonth * 1.5);
         $useDaily = $isSurge && $daily28 > 0 ? $daily28 : $dailyMonth;
         $horizonDays = $cycleDays + $leadDays + $safetyDays;
         $typicalInbound = $this->getTypicalInboundQty($inboundRows);

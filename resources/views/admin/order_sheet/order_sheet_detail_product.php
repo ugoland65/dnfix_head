@@ -132,7 +132,7 @@
                     <input type="checkbox" class="os-prd-check-all" title="일괄작업 전체선택">
                 </th>
                 <th style="width:60px;">IDX<br>재고코드</th>
-                <th style="width:86px;">주문코드</th>
+                <th style="width:86px;">품번<br>주문코드</th>
                 <th>바코드</th>
                 <th>이미지</th>
                 <th>상품명</th>
@@ -261,6 +261,12 @@
                     <td class="text-center">
                         <b><?= $item['product']['CD_CODE2'] ?? '' ?></b>
                         <?php if (!empty($item['product']['CD_CODE3'])) { ?><br><?= $item['product']['CD_CODE3'] ?><?php } ?>
+                        <?php
+                            $orderFormCode = trim((string)($item['product']['order_form_code'] ?? ''));
+                        ?>
+                        <?php if ($orderFormCode !== '') { ?>
+                            <div class="m-t-3"><?= htmlspecialchars($orderFormCode, ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php } ?>
 
                         <?php if (($orderSheet['oo_state'] ?? 0) > 1 && ($item['selpd']['qty'] ?? 0) > 1) { ?>
                             <div class="m-t-5">

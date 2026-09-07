@@ -17,6 +17,7 @@ use App\Models\ProductCategoryMappingModel;
 use App\Auth\AdminAuth;
 use App\Core\AuthAdmin;
 use App\Classes\ImageStorage;
+use App\Classes\DB;
 use App\Services\AdminActionLogService;
 use Exception;
 
@@ -2052,9 +2053,14 @@ class ProductService extends BaseClass
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
         $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
 
-        $cdCodeData['jan'] = $cdCode;
-        $cdCodeData['pcode'] = $cdCode2;
-        $cdCodeData['code3'] = $cdCode3;
+        $cdCodeData = $this->applyOrderSheetCodesToCdCodeData($cdCodeData, $postData);
+        $cdCodeData['jan'] = $cdCode !== '' ? $cdCode : (string)($cdCodeData['jan'] ?? '');
+        $cdCodeData['pcode'] = $cdCode2 !== '' ? $cdCode2 : (string)($cdCodeData['pcode'] ?? '');
+        if ($cdCode3 !== '') {
+            $cdCodeData['code3'] = $cdCode3;
+        } elseif (!array_key_exists('code3', $cdCodeData)) {
+            $cdCodeData['code3'] = '';
+        }
 
         $cdSizeData = ['W' => $cdSizeW, 'H' => $cdSizeH, 'D' => $cdSizeD];
         $cdSize = json_encode($cdSizeData);
@@ -2466,11 +2472,11 @@ class ProductService extends BaseClass
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
         $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
 
-        $cdCodeData = [
+        $cdCodeData = $this->applyOrderSheetCodesToCdCodeData([
             'jan' => $cdCode,
             'pcode' => $cdCode2,
             'code3' => $cdCode3,
-        ];
+        ], $postData);
         $cdSizeData = ['W' => $cdSizeW, 'H' => $cdSizeH, 'D' => $cdSizeD];
         $cdSize = json_encode($cdSizeData);
 
@@ -3277,6 +3283,7 @@ class ProductService extends BaseClass
         if (!in_array($mode, ['series', 'custom_group'], true)) {
             throw new Exception('그룹 구분값이 올바르지 않습니다.');
         }
+        $this->assertUniqueProductRelationGroupName($groupName, $mode);
         $this->assertProductRelationGroupBrand($prdIdx, $brandIdx);
 
         $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
@@ -3317,6 +3324,385 @@ class ProductService extends BaseClass
             'message' => '새 시리즈/연관그룹을 만들고 상품을 포함했습니다.',
             'group_idx' => $groupIdx,
             'series_names' => $this->getProductSeriesNames($prdIdx),
+        ];
+    }
+
+    /**
+     * 상품 DB에서 선택한 상품으로 시리즈를 일괄 생성하거나 기존 시리즈에 추가한다.
+     *
+     * 같은 브랜드만 허용하고, 이미 대상 시리즈에 포함된 상품은 제외한 뒤 안내한다.
+     */
+    public function bulkCreateProductSeries(array $postData): array
+    {
+        $seriesMode = trim((string)($postData['series_mode'] ?? 'create'));
+        if (!in_array($seriesMode, ['create', 'existing'], true)) {
+            throw new Exception('시리즈 처리 방식이 올바르지 않습니다.');
+        }
+
+        $prepared = $this->prepareBulkSeriesTargetProducts($postData);
+        if ($seriesMode === 'existing') {
+            return $this->bulkAttachProductsToExistingSeries($postData, $prepared);
+        }
+
+        return $this->bulkCreateNewProductSeries($postData, $prepared);
+    }
+
+    private function prepareBulkSeriesTargetProducts(array $postData): array
+    {
+        $rawPks = $postData['pks'] ?? [];
+        if (!is_array($rawPks)) {
+            $rawPks = explode(',', (string)$rawPks);
+        }
+        $pks = array_values(array_unique(array_filter(array_map(function ($value) {
+            return (int)$value;
+        }, $rawPks), function (int $value): bool {
+            return $value > 0;
+        })));
+
+        if (empty($pks)) {
+            throw new Exception('시리즈로 등록할 상품을 선택해주세요.');
+        }
+
+        $productRows = ProductModel::query()
+            ->select(['CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'CD_BRAND2_IDX'])
+            ->whereIn('CD_IDX', $pks)
+            ->where('CD_DELETED_YN', '=', 'N')
+            ->get()
+            ->toArray();
+        $productByIdx = [];
+        foreach ($productRows as $productRow) {
+            $product = is_array($productRow) ? $productRow : (array)$productRow;
+            $prdIdx = (int)($product['CD_IDX'] ?? 0);
+            if ($prdIdx > 0) {
+                $productByIdx[$prdIdx] = $product;
+            }
+        }
+
+        $missingIdxs = array_values(array_filter($pks, function (int $prdIdx) use ($productByIdx): bool {
+            return !isset($productByIdx[$prdIdx]);
+        }));
+        if (!empty($missingIdxs)) {
+            throw new Exception('삭제되었거나 찾을 수 없는 상품이 포함되어 있습니다. 상품번호: ' . implode(', ', $missingIdxs));
+        }
+
+        $commonBrandIdxs = null;
+        $selectedBrandNames = [];
+        foreach ($pks as $prdIdx) {
+            $product = $productByIdx[$prdIdx];
+            $brandIdxs = $this->getProductRelationGroupBrandIdxs($product);
+            if (empty($brandIdxs)) {
+                $productName = trim((string)($product['CD_NAME'] ?? ''));
+                throw new Exception(
+                    '브랜드가 없는 상품은 시리즈에 등록할 수 없습니다.'
+                    . ($productName !== '' ? ' (' . $productName . ')' : '')
+                );
+            }
+            $commonBrandIdxs = $commonBrandIdxs === null
+                ? $brandIdxs
+                : array_values(array_intersect($commonBrandIdxs, $brandIdxs));
+        }
+
+        $brandNameByIdx = $this->getBrandNameMapByIdxs(array_values(array_unique(array_merge(
+            ...array_map(function (int $prdIdx) use ($productByIdx): array {
+                return $this->getProductRelationGroupBrandIdxs($productByIdx[$prdIdx]);
+            }, $pks)
+        ))));
+        foreach ($pks as $prdIdx) {
+            foreach ($this->getProductRelationGroupBrandIdxs($productByIdx[$prdIdx]) as $brandIdx) {
+                $brandName = trim((string)($brandNameByIdx[$brandIdx] ?? ''));
+                if ($brandName !== '' && !in_array($brandName, $selectedBrandNames, true)) {
+                    $selectedBrandNames[] = $brandName;
+                }
+            }
+        }
+
+        if (empty($commonBrandIdxs)) {
+            throw new Exception(
+                '시리즈는 같은 브랜드 상품만 등록할 수 있습니다.'
+                . (!empty($selectedBrandNames) ? ' 선택된 상품 브랜드: ' . implode(', ', $selectedBrandNames) : '')
+            );
+        }
+
+        $primaryBrandIdxs = array_values(array_unique(array_filter(array_map(function (int $prdIdx) use ($productByIdx): int {
+            return (int)($productByIdx[$prdIdx]['CD_BRAND_IDX'] ?? 0);
+        }, $pks), function (int $brandIdx): bool {
+            return $brandIdx > 0;
+        })));
+        if (count($primaryBrandIdxs) === 1 && in_array($primaryBrandIdxs[0], $commonBrandIdxs, true)) {
+            $seriesBrandIdx = $primaryBrandIdxs[0];
+        } else {
+            $seriesBrandIdx = (int)$commonBrandIdxs[0];
+        }
+
+        return [
+            'pks' => $pks,
+            'productByIdx' => $productByIdx,
+            'commonBrandIdxs' => $commonBrandIdxs,
+            'seriesBrandIdx' => $seriesBrandIdx,
+            'brandNameByIdx' => $brandNameByIdx,
+        ];
+    }
+
+    private function bulkCreateNewProductSeries(array $postData, array $prepared): array
+    {
+        $pks = $prepared['pks'];
+        $productByIdx = $prepared['productByIdx'];
+        $seriesBrandIdx = (int)$prepared['seriesBrandIdx'];
+        $brandNameByIdx = $prepared['brandNameByIdx'];
+        $groupName = trim((string)($postData['prg_name'] ?? ''));
+        $memo = trim((string)($postData['prg_memo'] ?? ''));
+
+        if ($groupName === '') {
+            throw new Exception('시리즈 이름을 입력해주세요.');
+        }
+        $this->assertUniqueProductRelationGroupName($groupName, 'series');
+
+        $split = $this->splitBulkSeriesEligibleProducts(
+            $pks,
+            $productByIdx,
+            $this->getAttachedSeriesNamesByProductIdxs($pks)
+        );
+        if (empty($split['eligible_idxs'])) {
+            throw new Exception(
+                "선택한 상품이 모두 이미 시리즈에 등록되어 있어 새 시리즈를 만들 수 없습니다.\n" . $split['excluded_text']
+            );
+        }
+
+        $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        $now = date('Y-m-d H:i:s');
+        $eligibleIdxs = $split['eligible_idxs'];
+        $excludedItems = $split['excluded_items'];
+
+        $groupIdx = (int)DB::transaction(function () use (
+            $seriesBrandIdx,
+            $groupName,
+            $memo,
+            $adminIdx,
+            $adminName,
+            $now,
+            $eligibleIdxs
+        ) {
+            $group = ProductRelationGroupModel::create([
+                'prg_mode' => 'series',
+                'prg_brand_idx' => $seriesBrandIdx,
+                'prg_name' => $groupName,
+                'prg_memo' => $memo,
+                'prg_use_yn' => 'Y',
+                'prg_reg_admin_idx' => $adminIdx > 0 ? $adminIdx : null,
+                'prg_reg_admin_name' => $adminName !== '' ? $adminName : null,
+                'prg_reg_at' => $now,
+                'prg_updated_at' => $now,
+            ]);
+            $groupData = is_array($group) ? $group : $group->toArray();
+            $createdGroupIdx = (int)($groupData['prg_idx'] ?? 0);
+            if ($createdGroupIdx <= 0) {
+                throw new Exception('시리즈 생성에 실패했습니다.');
+            }
+
+            foreach ($eligibleIdxs as $prdIdx) {
+                $this->addProductToRelationGroup($prdIdx, $createdGroupIdx, $adminIdx, $adminName);
+            }
+
+            return $createdGroupIdx;
+        });
+
+        $this->logRelationGroupAction(
+            'bulk_create',
+            '선택상품 시리즈 일괄 생성',
+            'product_relation_group',
+            $groupIdx,
+            [],
+            [
+                'group_idx' => $groupIdx,
+                'prg_name' => $groupName,
+                'prg_brand_idx' => $seriesBrandIdx,
+                'attached_product_idxs' => $eligibleIdxs,
+                'excluded_products' => $excludedItems,
+            ]
+        );
+
+        return $this->buildBulkSeriesResultMessage(
+            "시리즈 '{$groupName}'을(를) 생성하고 상품 " . number_format(count($eligibleIdxs)) . '건을 포함했습니다.',
+            $groupIdx,
+            $seriesBrandIdx,
+            $brandNameByIdx,
+            $eligibleIdxs,
+            $excludedItems,
+            $split['excluded_text']
+        );
+    }
+
+    private function bulkAttachProductsToExistingSeries(array $postData, array $prepared): array
+    {
+        $pks = $prepared['pks'];
+        $productByIdx = $prepared['productByIdx'];
+        $commonBrandIdxs = $prepared['commonBrandIdxs'];
+        $brandNameByIdx = $prepared['brandNameByIdx'];
+        $groupIdx = (int)($postData['prg_idx'] ?? 0);
+        if ($groupIdx <= 0) {
+            throw new Exception('추가할 시리즈를 선택해주세요.');
+        }
+
+        $groupRow = ProductRelationGroupModel::query()
+            ->select(['prg_idx', 'prg_mode', 'prg_brand_idx', 'prg_name', 'prg_use_yn'])
+            ->where('prg_idx', '=', $groupIdx)
+            ->first();
+        if (empty($groupRow)) {
+            throw new Exception('시리즈를 찾을 수 없습니다.');
+        }
+        $group = is_array($groupRow) ? $groupRow : $groupRow->toArray();
+        if (($group['prg_mode'] ?? '') !== 'series') {
+            throw new Exception('시리즈만 일괄 추가할 수 있습니다.');
+        }
+        if (($group['prg_use_yn'] ?? 'N') !== 'Y') {
+            throw new Exception('사용 중지된 시리즈입니다.');
+        }
+
+        $seriesBrandIdx = (int)($group['prg_brand_idx'] ?? 0);
+        if ($seriesBrandIdx <= 0 || !in_array($seriesBrandIdx, $commonBrandIdxs, true)) {
+            throw new Exception('선택한 상품과 같은 브랜드의 시리즈만 추가할 수 있습니다.');
+        }
+
+        $groupName = trim((string)($group['prg_name'] ?? ''));
+        $split = $this->splitBulkSeriesEligibleProducts(
+            $pks,
+            $productByIdx,
+            $this->getAttachedSeriesNamesByProductIdxs($pks, $groupIdx)
+        );
+        if (empty($split['eligible_idxs'])) {
+            throw new Exception(
+                "선택한 상품이 모두 이미 시리즈 '{$groupName}'에 등록되어 있습니다.\n" . $split['excluded_text']
+            );
+        }
+
+        $adminIdx = (int)(AuthAdmin::getSession('sess_idx') ?? 0);
+        $adminName = trim((string)(AuthAdmin::getSession('sess_name') ?? ''));
+        $eligibleIdxs = $split['eligible_idxs'];
+        $excludedItems = $split['excluded_items'];
+
+        DB::transaction(function () use ($eligibleIdxs, $groupIdx, $adminIdx, $adminName) {
+            foreach ($eligibleIdxs as $prdIdx) {
+                $this->addProductToRelationGroup($prdIdx, $groupIdx, $adminIdx, $adminName);
+            }
+        });
+
+        $this->logRelationGroupAction(
+            'bulk_attach',
+            '선택상품 기존 시리즈 일괄 추가',
+            'product_relation_group',
+            $groupIdx,
+            [],
+            [
+                'group_idx' => $groupIdx,
+                'prg_name' => $groupName,
+                'prg_brand_idx' => $seriesBrandIdx,
+                'attached_product_idxs' => $eligibleIdxs,
+                'excluded_products' => $excludedItems,
+            ]
+        );
+
+        return $this->buildBulkSeriesResultMessage(
+            "시리즈 '{$groupName}'에 상품 " . number_format(count($eligibleIdxs)) . '건을 추가했습니다.',
+            $groupIdx,
+            $seriesBrandIdx,
+            $brandNameByIdx,
+            $eligibleIdxs,
+            $excludedItems,
+            $split['excluded_text']
+        );
+    }
+
+    private function getAttachedSeriesNamesByProductIdxs(array $pks, int $onlyGroupIdx = 0): array
+    {
+        $query = ProductRelationGroupProductModel::query()
+            ->from('prd_relation_group_product as GP')
+            ->join('prd_relation_group as G', 'G.prg_idx', '=', 'GP.prgp_group_idx')
+            ->whereIn('GP.prgp_prd_idx', $pks)
+            ->where('G.prg_mode', '=', 'series')
+            ->select(['GP.prgp_prd_idx', 'G.prg_name']);
+        if ($onlyGroupIdx > 0) {
+            $query->where('GP.prgp_group_idx', '=', $onlyGroupIdx);
+        }
+
+        $attachedRows = $query
+            ->orderBy('G.prg_name', 'ASC')
+            ->get()
+            ->toArray();
+
+        $excludedSeriesNamesByPrdIdx = [];
+        foreach ($attachedRows as $attachedRow) {
+            $prdIdx = (int)($attachedRow['prgp_prd_idx'] ?? 0);
+            $seriesName = trim((string)($attachedRow['prg_name'] ?? ''));
+            if ($prdIdx <= 0) {
+                continue;
+            }
+            if (!isset($excludedSeriesNamesByPrdIdx[$prdIdx])) {
+                $excludedSeriesNamesByPrdIdx[$prdIdx] = [];
+            }
+            if ($seriesName !== '' && !in_array($seriesName, $excludedSeriesNamesByPrdIdx[$prdIdx], true)) {
+                $excludedSeriesNamesByPrdIdx[$prdIdx][] = $seriesName;
+            }
+        }
+
+        return $excludedSeriesNamesByPrdIdx;
+    }
+
+    private function splitBulkSeriesEligibleProducts(array $pks, array $productByIdx, array $excludedSeriesNamesByPrdIdx): array
+    {
+        $eligibleIdxs = [];
+        $excludedItems = [];
+        foreach ($pks as $prdIdx) {
+            if (isset($excludedSeriesNamesByPrdIdx[$prdIdx])) {
+                $excludedItems[] = [
+                    'prd_idx' => $prdIdx,
+                    'prd_name' => trim((string)($productByIdx[$prdIdx]['CD_NAME'] ?? '')),
+                    'series_names' => $excludedSeriesNamesByPrdIdx[$prdIdx],
+                ];
+                continue;
+            }
+            $eligibleIdxs[] = $prdIdx;
+        }
+
+        $excludedLines = array_map(function (array $item): string {
+            $productName = $item['prd_name'] !== '' ? $item['prd_name'] : ('상품 #' . $item['prd_idx']);
+            $seriesLabel = !empty($item['series_names']) ? implode(', ', $item['series_names']) : '기존 시리즈';
+            return '- ' . $productName . ' (기존 시리즈: ' . $seriesLabel . ')';
+        }, $excludedItems);
+
+        return [
+            'eligible_idxs' => $eligibleIdxs,
+            'excluded_items' => $excludedItems,
+            'excluded_text' => implode("\n", $excludedLines),
+        ];
+    }
+
+    private function buildBulkSeriesResultMessage(
+        string $summary,
+        int $groupIdx,
+        int $seriesBrandIdx,
+        array $brandNameByIdx,
+        array $eligibleIdxs,
+        array $excludedItems,
+        string $excludedText
+    ): array {
+        $brandName = trim((string)($brandNameByIdx[$seriesBrandIdx] ?? ''));
+        $message = $summary;
+        if ($brandName !== '') {
+            $message .= "\n브랜드: " . $brandName;
+        }
+        if (!empty($excludedItems)) {
+            $message .= "\n\n이미 시리즈에 등록되어 제외된 상품 " . number_format(count($excludedItems)) . "건:\n" . $excludedText;
+        }
+
+        return [
+            'success' => true,
+            'message' => $message,
+            'group_idx' => $groupIdx,
+            'brand_idx' => $seriesBrandIdx,
+            'attached_count' => count($eligibleIdxs),
+            'excluded_count' => count($excludedItems),
+            'excluded_products' => $excludedItems,
         ];
     }
 
@@ -3431,6 +3817,49 @@ class ProductService extends BaseClass
             'prgp_reg_admin_name' => $adminName !== '' ? $adminName : null,
             'prgp_reg_at' => date('Y-m-d H:i:s'),
         ]);
+    }
+
+    private function assertUniqueProductRelationGroupName(string $groupName, string $mode, int $excludeGroupIdx = 0): void
+    {
+        if ($mode !== 'series') {
+            return;
+        }
+
+        $query = ProductRelationGroupModel::query()
+            ->where('prg_mode', '=', 'series')
+            ->where('prg_name', '=', $groupName);
+        if ($excludeGroupIdx > 0) {
+            $query->where('prg_idx', '<>', $excludeGroupIdx);
+        }
+        if ($query->exists()) {
+            throw new Exception('동일한 이름의 시리즈가 이미 있습니다.');
+        }
+    }
+
+    private function getBrandNameMapByIdxs(array $brandIdxs): array
+    {
+        $brandIdxs = array_values(array_unique(array_filter(array_map('intval', $brandIdxs), function (int $brandIdx): bool {
+            return $brandIdx > 0;
+        })));
+        if (empty($brandIdxs)) {
+            return [];
+        }
+
+        $brandRows = BrandModel::query()
+            ->select(['BD_IDX', 'BD_NAME'])
+            ->whereIn('BD_IDX', $brandIdxs)
+            ->get()
+            ->toArray();
+
+        $brandNameByIdx = [];
+        foreach ($brandRows as $brandRow) {
+            $brandIdx = (int)($brandRow['BD_IDX'] ?? 0);
+            if ($brandIdx > 0) {
+                $brandNameByIdx[$brandIdx] = (string)($brandRow['BD_NAME'] ?? '');
+            }
+        }
+
+        return $brandNameByIdx;
     }
 
     private function assertProductRelationGroupBrand(int $prdIdx, int $brandIdx): void
@@ -3586,6 +4015,7 @@ class ProductService extends BaseClass
         if (!in_array($useYn, ['Y', 'N'], true)) {
             throw new Exception('사용 여부 값이 올바르지 않습니다.');
         }
+        $this->assertUniqueProductRelationGroupName($groupName, $mode, $groupIdx);
 
         $now = date('Y-m-d H:i:s');
         $payload = [
@@ -5584,6 +6014,59 @@ class ProductService extends BaseClass
         }
 
         return $rows;
+    }
+
+    /**
+     * 발주서 주문코드를 cd_code_fn에 반영한다.
+     * jan, pcode, code3는 상품코드 필드에서 관리하므로 여기서 바꾸지 않는다.
+     */
+    private function applyOrderSheetCodesToCdCodeData(array $cdCodeData, array $postData): array
+    {
+        $hiddenKeys = ['jan', 'pcode', 'code3'];
+        foreach (array_keys($cdCodeData) as $key) {
+            if (!in_array((string)$key, $hiddenKeys, true)) {
+                unset($cdCodeData[$key]);
+            }
+        }
+
+        $postedCodes = $this->extractPostedOrderSheetCodes($postData);
+        foreach ($postedCodes as $key => $value) {
+            $cdCodeData[$key] = $value;
+        }
+
+        return $cdCodeData;
+    }
+
+    private function extractPostedOrderSheetCodes(array $postData): array
+    {
+        $hiddenKeys = ['jan', 'pcode', 'code3'];
+        $keys = $postData['cd_code_fn_key'] ?? ($_POST['cd_code_fn_key'] ?? []);
+        $values = $postData['cd_code_fn_value'] ?? ($_POST['cd_code_fn_value'] ?? []);
+        if (!is_array($keys)) {
+            $keys = [$keys];
+        }
+        if (!is_array($values)) {
+            $values = [$values];
+        }
+
+        $codes = [];
+        $max = max(count($keys), count($values));
+        for ($i = 0; $i < $max; $i++) {
+            $key = trim((string)($keys[$i] ?? ''));
+            $value = trim((string)($values[$i] ?? ''));
+            if ($key === '' || $value === '' || in_array($key, $hiddenKeys, true)) {
+                continue;
+            }
+            $codes[$key] = $value;
+        }
+
+        $newKey = trim((string)($postData['cd_code_fn_new_key'] ?? ($_POST['cd_code_fn_new_key'] ?? '')));
+        $newValue = trim((string)($postData['cd_code_fn_new_value'] ?? ($_POST['cd_code_fn_new_value'] ?? '')));
+        if ($newKey !== '' && $newValue !== '' && !in_array($newKey, $hiddenKeys, true)) {
+            $codes[$newKey] = $newValue;
+        }
+
+        return $codes;
     }
 
     /**

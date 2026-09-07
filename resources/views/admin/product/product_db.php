@@ -477,7 +477,13 @@
                                     }
                             ?>
                                 <tr>
-                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"></td>
+                                    <td><input type="checkbox" name="check_idx[]" value="<?=$product['CD_IDX']?>"
+                                        data-brand-idx="<?= (int)($product['CD_BRAND_IDX'] ?? 0) ?>"
+                                        data-brand2-idx="<?= (int)($product['CD_BRAND2_IDX'] ?? 0) ?>"
+                                        data-brand-name="<?= htmlspecialchars((string)($product['brand_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-brand2-name="<?= htmlspecialchars((string)($product['brand2_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                        data-prd-name="<?= htmlspecialchars((string)($product['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                                    ></td>
                                     <td class="text-center"><?=$product['CD_IDX']?></td>
                                     <td class="text-center product-sale-status-cell"
                                         data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
@@ -671,8 +677,10 @@
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="workRequestBtn">선택상품 업무요청</button>
 		<button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="groupingBtn">선택상품 그룹핑</button>
         <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="productUpdateBtn">선택상품 일괄수정</button>
+        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" id="seriesCreateBtn">선택상품 시리즈 생성</button>
 	</div>
 </div>
+
 <div id="productCategoryContextLayer" class="product-kind-context-layer" aria-hidden="true">
     <div style="font-weight:700; margin-bottom:8px;">상품 분류 수정</div>
     <div style="margin-bottom:8px;">
@@ -690,6 +698,7 @@
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_category_save_btn">저장</button>
     </div>
 </div>
+
 <div id="productMemoContextLayer" class="product-kind-context-layer" aria-hidden="true">
     <div style="font-weight:700; margin-bottom:8px;">리스트 메모 수정</div>
     <div style="margin-bottom:10px;">
@@ -700,6 +709,7 @@
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_memo2_save_btn">저장</button>
     </div>
 </div>
+
 <div id="productSaleStatusContextLayer" class="product-kind-context-layer" aria-hidden="true">
     <div style="font-weight:700; margin-bottom:8px;">상품상태 수정</div>
     <div style="margin-bottom:10px;">
@@ -717,6 +727,7 @@
         <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="quick_sale_status_save_btn">저장</button>
     </div>
 </div>
+
 <div id="productBulkUpdateModal" class="bulk-update-modal">
     <div class="bulk-update-modal-content">
         <div class="bulk-update-modal-title">선택상품 일괄수정</div>
@@ -754,6 +765,61 @@
         </div>
     </div>
 </div>
+
+<div id="productSeriesCreateModal" class="bulk-update-modal">
+    <div class="bulk-update-modal-content">
+        <div class="bulk-update-modal-title">선택상품 시리즈</div>
+        <div class="bulk-update-row">
+            <label>대상 상품 수</label>
+            <div><b id="seriesCreateSelectedCount">0</b>건</div>
+        </div>
+        <div class="bulk-update-row">
+            <label>대상 브랜드</label>
+            <div id="seriesCreateBrandName">-</div>
+        </div>
+        <div class="bulk-update-row">
+            <label>처리 방식</label>
+            <div style="display:flex; gap:16px; flex-wrap:wrap;">
+                <label style="font-weight:400;">
+                    <input type="radio" name="seriesCreateMode" value="create" checked> 새 시리즈 생성
+                </label>
+                <label style="font-weight:400;">
+                    <input type="radio" name="seriesCreateMode" value="existing"> 기존 시리즈에 추가
+                </label>
+            </div>
+        </div>
+        <div id="seriesCreateNewWrap">
+            <div class="bulk-update-row">
+                <label for="seriesCreateName">시리즈 이름</label>
+                <input type="text" id="seriesCreateName" maxlength="255" placeholder="시리즈 이름" style="width:100%;">
+            </div>
+            <div class="bulk-update-row">
+                <label for="seriesCreateMemo">관리 메모 (선택)</label>
+                <input type="text" id="seriesCreateMemo" maxlength="1000" placeholder="관리 메모" style="width:100%;">
+            </div>
+        </div>
+        <div id="seriesCreateExistingWrap" style="display:none;">
+            <div class="bulk-update-row">
+                <label for="seriesCreateExistingIdx">기존 시리즈</label>
+                <select id="seriesCreateExistingIdx" style="width:100%;">
+                    <option value="">시리즈 선택</option>
+                </select>
+            </div>
+            <div id="seriesCreateExistingEmpty" style="display:none; color:#dc2626; font-size:12px; margin-bottom:14px;">
+                같은 브랜드의 기존 시리즈가 없습니다. 새 시리즈를 생성해주세요.
+            </div>
+        </div>
+        <div class="bulk-update-row" style="color:#6b7280; font-size:12px; line-height:1.5;" id="seriesCreateHelpText">
+            같은 브랜드 상품만 시리즈로 등록할 수 있습니다.<br>
+            이미 시리즈에 등록된 상품은 제외되고 결과에 안내됩니다.
+        </div>
+        <div class="bulk-update-actions">
+            <button type="button" class="btnstyle1 btnstyle1-sm" id="seriesCreateCancelBtn">닫기</button>
+            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="seriesCreateApplyBtn">생성</button>
+        </div>
+    </div>
+</div>
+
 <script type="text/javascript">
 const PRODUCT_CATEGORY_PRIMARY_OPTIONS = <?= json_encode($categoryPrimaryOptions ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
 const PRODUCT_CATEGORY_CHILDREN_BY_PRIMARY = <?= json_encode($categoryChildrenByPrimary ?? [], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
@@ -1126,6 +1192,124 @@ function select_all() {
                 selectedItems.push(Number($(this).val() || 0));
             });
             return selectedItems.filter(function(v) { return v > 0; });
+        }
+
+        function getSelectedSeriesCreateContext() {
+            var items = [];
+            $('input[name="check_idx[]"]:checked').each(function() {
+                var $el = $(this);
+                items.push({
+                    idx: Number($el.val() || 0),
+                    brandIdx: Number($el.data('brand-idx') || 0),
+                    brand2Idx: Number($el.data('brand2-idx') || 0),
+                    brandName: String($el.data('brand-name') || ''),
+                    brand2Name: String($el.data('brand2-name') || ''),
+                    name: String($el.data('prd-name') || '')
+                });
+            });
+            items = items.filter(function(item) {
+                return item.idx > 0;
+            });
+
+            var commonBrandIdxs = null;
+            items.forEach(function(item) {
+                var brandIdxs = [];
+                if (item.brandIdx > 0) {
+                    brandIdxs.push(item.brandIdx);
+                }
+                if (item.brand2Idx > 0 && brandIdxs.indexOf(item.brand2Idx) === -1) {
+                    brandIdxs.push(item.brand2Idx);
+                }
+                if (commonBrandIdxs === null) {
+                    commonBrandIdxs = brandIdxs;
+                    return;
+                }
+                commonBrandIdxs = commonBrandIdxs.filter(function(brandIdx) {
+                    return brandIdxs.indexOf(brandIdx) !== -1;
+                });
+            });
+            if (!commonBrandIdxs) {
+                commonBrandIdxs = [];
+            }
+
+            var brandIdx = 0;
+            var brandName = '';
+            var primaryBrandIdxs = [];
+            items.forEach(function(item) {
+                if (item.brandIdx > 0 && primaryBrandIdxs.indexOf(item.brandIdx) === -1) {
+                    primaryBrandIdxs.push(item.brandIdx);
+                }
+            });
+            if (primaryBrandIdxs.length === 1 && commonBrandIdxs.indexOf(primaryBrandIdxs[0]) !== -1) {
+                brandIdx = primaryBrandIdxs[0];
+            } else if (commonBrandIdxs.length > 0) {
+                brandIdx = commonBrandIdxs[0];
+            }
+            items.forEach(function(item) {
+                if (item.brandIdx === brandIdx && item.brandName) {
+                    brandName = item.brandName;
+                } else if (item.brand2Idx === brandIdx && item.brand2Name && !brandName) {
+                    brandName = item.brand2Name;
+                }
+            });
+
+            return {
+                items: items,
+                brandIdx: brandIdx,
+                brandName: brandName,
+                commonBrandIdxs: commonBrandIdxs
+            };
+        }
+
+        function getSeriesCreateMode() {
+            return String($('input[name="seriesCreateMode"]:checked').val() || 'create');
+        }
+
+        function fillSeriesExistingSelect(commonBrandIdxs) {
+            var $select = $('#seriesCreateExistingIdx');
+            var brandIdxSet = {};
+            (commonBrandIdxs || []).forEach(function(brandIdx) {
+                brandIdxSet[String(brandIdx)] = true;
+            });
+
+            $select.empty().append($('<option>', {
+                value: '',
+                text: '시리즈 선택'
+            }));
+
+            var count = 0;
+            $.each(relationGroupSeriesOptions, function(_, series) {
+                if (!brandIdxSet[String(series.prg_brand_idx || '')]) {
+                    return;
+                }
+                $select.append($('<option>', {
+                    value: series.prg_idx,
+                    text: series.prg_name
+                }));
+                count += 1;
+            });
+
+            $('#seriesCreateExistingEmpty').toggle(count === 0);
+            $select.prop('disabled', count === 0);
+            return count;
+        }
+
+        function syncSeriesCreateModeUi(commonBrandIdxs) {
+            var mode = getSeriesCreateMode();
+            var isExisting = mode === 'existing';
+            $('#seriesCreateNewWrap').toggle(!isExisting);
+            $('#seriesCreateExistingWrap').toggle(isExisting);
+            $('#seriesCreateApplyBtn').text(isExisting ? '추가' : '생성');
+            if (isExisting) {
+                fillSeriesExistingSelect(commonBrandIdxs || []);
+                $('#seriesCreateHelpText').html(
+                    '같은 브랜드의 기존 시리즈에만 추가할 수 있습니다.<br>이미 해당 시리즈에 등록된 상품은 제외되고 결과에 안내됩니다.'
+                );
+            } else {
+                $('#seriesCreateHelpText').html(
+                    '같은 브랜드 상품만 시리즈로 등록할 수 있습니다.<br>이미 시리즈에 등록된 상품은 제외되고 결과에 안내됩니다.'
+                );
+            }
         }
 
         function openCategoryLayer($cell, clientX, clientY) {
@@ -1507,6 +1691,7 @@ function select_all() {
                 closeCategoryLayer();
                 closeMemoLayer();
                 closeSaleStatusLayer();
+                $('#productSeriesCreateModal').removeClass('active');
             }
         });
 
@@ -1545,6 +1730,117 @@ function select_all() {
 			onlyAD.prdGrouping('product_db', selectedItems);
 			
 		});
+
+        $("#seriesCreateBtn").on('click', function() {
+            var context = getSelectedSeriesCreateContext();
+            if (context.items.length === 0) {
+                alert('시리즈로 등록할 상품을 선택해주세요.');
+                return;
+            }
+            if (!context.commonBrandIdxs.length) {
+                alert('시리즈는 같은 브랜드 상품만 등록할 수 있습니다.');
+                return;
+            }
+
+            $('#seriesCreateSelectedCount').text(context.items.length);
+            $('#seriesCreateBrandName').text(context.brandName || ('브랜드 #' + context.brandIdx));
+            $('#seriesCreateName').val('');
+            $('#seriesCreateMemo').val('');
+            $('input[name="seriesCreateMode"][value="create"]').prop('checked', true);
+            syncSeriesCreateModeUi(context.commonBrandIdxs);
+            $('#productSeriesCreateModal').addClass('active');
+            $('#seriesCreateName').focus();
+        });
+
+        $('input[name="seriesCreateMode"]').on('change', function() {
+            var context = getSelectedSeriesCreateContext();
+            syncSeriesCreateModeUi(context.commonBrandIdxs);
+            if (getSeriesCreateMode() === 'existing') {
+                $('#seriesCreateExistingIdx').focus();
+            } else {
+                $('#seriesCreateName').focus();
+            }
+        });
+
+        $('#seriesCreateCancelBtn').on('click', function() {
+            $('#productSeriesCreateModal').removeClass('active');
+        });
+
+        $('#seriesCreateApplyBtn').on('click', function() {
+            var context = getSelectedSeriesCreateContext();
+            var seriesMode = getSeriesCreateMode();
+            var seriesName = String($('#seriesCreateName').val() || '').trim();
+            var seriesMemo = String($('#seriesCreateMemo').val() || '').trim();
+            var existingSeriesIdx = Number($('#seriesCreateExistingIdx').val() || 0);
+            var existingSeriesName = String($('#seriesCreateExistingIdx option:selected').text() || '').trim();
+            var $applyBtn = $(this);
+            var payload = {
+                action_mode: 'bulk_create_product_series',
+                series_mode: seriesMode,
+                pks: context.items.map(function(item) { return item.idx; })
+            };
+            var confirmMessage = '';
+
+            if (context.items.length === 0) {
+                alert('선택된 상품이 없습니다. 다시 선택해주세요.');
+                $('#productSeriesCreateModal').removeClass('active');
+                return;
+            }
+            if (!context.commonBrandIdxs.length) {
+                alert('시리즈는 같은 브랜드 상품만 등록할 수 있습니다.');
+                return;
+            }
+
+            if (seriesMode === 'existing') {
+                if (existingSeriesIdx <= 0) {
+                    alert('추가할 시리즈를 선택해주세요.');
+                    $('#seriesCreateExistingIdx').focus();
+                    return;
+                }
+                payload.prg_idx = existingSeriesIdx;
+                confirmMessage = context.items.length + "개 상품을 시리즈 '" + existingSeriesName + "'에 추가할까요?\n이미 해당 시리즈에 등록된 상품은 제외됩니다.";
+            } else {
+                if (!seriesName) {
+                    alert('시리즈 이름을 입력해주세요.');
+                    $('#seriesCreateName').focus();
+                    return;
+                }
+                payload.prg_name = seriesName;
+                payload.prg_memo = seriesMemo;
+                confirmMessage = context.items.length + "개 상품으로 시리즈 '" + seriesName + "'을(를) 생성할까요?\n이미 시리즈에 등록된 상품은 제외됩니다.";
+            }
+
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            $applyBtn.prop('disabled', true);
+            ajaxRequest('/admin/product/action', payload)
+                .done(function(res) {
+                    if (!(res && res.success)) {
+                        alert(res && res.message ? res.message : '시리즈 처리에 실패했습니다.');
+                        return;
+                    }
+                    alert(res && res.message ? res.message : '시리즈 처리를 완료했습니다.');
+                    location.reload();
+                })
+                .fail(function(xhr) {
+                    var message = xhr && xhr.responseJSON && xhr.responseJSON.message
+                        ? xhr.responseJSON.message
+                        : '서버 통신에 실패했습니다.';
+                    alert(message);
+                })
+                .always(function() {
+                    $applyBtn.prop('disabled', false);
+                });
+        });
+
+        $('#seriesCreateName, #seriesCreateExistingIdx').on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                $('#seriesCreateApplyBtn').trigger('click');
+            }
+        });
 
         $("#productUpdateBtn").on('click', function() {
             var selectedItems = getSelectedItems();

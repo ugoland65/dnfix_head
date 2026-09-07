@@ -172,6 +172,9 @@ try {
     $router->post('/order/group/update', OrderGroupController::class, 'updateOrderGroup'); //주문서 폼 수정
     $router->post('/order/group/update_group', OrderGroupController::class, 'updateOrderGroupGroup'); //주문서 폼 그룹 수정
     $router->post('/order/group/sync_restock_alert_counts', OrderGroupController::class, 'syncOrderGroupRestockAlertCounts'); //폼그룹 재입고 알림 수량 수집
+    $router->post('/order/group/form_group_product', OrderGroupController::class, 'formGroupProductPage'); //주문서폼 그룹 상품관리 화면
+    $router->post('/order/group/form_group_product/save', OrderGroupController::class, 'saveFormGroupProducts'); //주문서폼 그룹 상품 저장
+    $router->post('/order/group/form_group_product/search', OrderGroupController::class, 'searchFormGroupProducts'); //주문서폼 그룹 상품 검색
 
     $router->get('/order/godo_order', OrderController::class, 'getGodoOrderList'); //고도몰 주문내역 가져오기(상품준비중)
     $router->get('/order/godo_order_list', GodoApiController::class, 'godoOrderList'); //고도몰 주문서 조회 (디테일)

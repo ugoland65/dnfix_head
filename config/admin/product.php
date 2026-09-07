@@ -726,6 +726,16 @@ $preferenceTags = [
         'godo_category_code' => '061004',
         'is_active' => true,
     ],
+    'COLLAB' => [
+        'code' => 'COLLAB',
+        'name' => '콜라보',
+        'description' => '애니메이션이나 게임을 모티브로 한 콜라보레이션 상품입니다.',
+        'admin_description' => '애니·게임 콜라보레이션이 명시된 제품',
+        'group_codes' => [],
+        'operation_category_code' => null,
+        'godo_category_code' => '061005',
+        'is_active' => true,
+    ],
 ];
 
 // 오나홀 추가 구분(전용홀) — 중복 선택 불가, 1개만
