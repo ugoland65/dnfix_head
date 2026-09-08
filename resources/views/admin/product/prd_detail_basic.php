@@ -280,6 +280,44 @@
         overflow-y: auto;
         overscroll-behavior: contain;
     }
+    .prd-process-fail-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10040;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, .72);
+    }
+    .prd-process-fail-modal.is-open { display: flex; }
+    .prd-process-fail-modal__panel {
+        width: min(480px, 100%);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, .32);
+        overflow: hidden;
+    }
+    .prd-process-fail-modal__header {
+        padding: 14px 18px;
+        background: #dc2626;
+        color: #fff;
+        font-size: 17px;
+        font-weight: 700;
+    }
+    .prd-process-fail-modal__body {
+        padding: 18px;
+        color: #7f1d1d;
+        font-size: 14px;
+        line-height: 1.6;
+        white-space: pre-wrap;
+        word-break: break-word;
+    }
+    .prd-process-fail-modal__footer {
+        display: flex;
+        justify-content: flex-end;
+        padding: 0 18px 16px;
+    }
     .order-code-row {
         display: flex;
         align-items: center;
@@ -497,15 +535,15 @@
             </tr>
             <tr>
                 <th>상품명</th>
-                <td><input type='text' name='cd_name' size='40' value="<?= $productData['CD_NAME'] ?? '' ?>"></td>
+                <td><input type='text' name='cd_name' size='40' value="<?= htmlspecialchars((string)($productData['CD_NAME'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></td>
             </tr>
             <tr>
                 <th>원 상품명</th>
-                <td><input type='text' name='cd_name_og' size='40' value="<?= $productData['CD_NAME_OG'] ?? '' ?>"></td>
+                <td><input type='text' name='cd_name_og' size='40' value="<?= htmlspecialchars((string)($productData['CD_NAME_OG'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></td>
             </tr>
             <tr>
                 <th>영문 상품명</th>
-                <td><input type='text' name='cd_name_en' size='40' value="<?= $productData['CD_NAME_EN'] ?? '' ?>"></td>
+                <td><input type='text' name='cd_name_en' size='40' value="<?= htmlspecialchars((string)($productData['CD_NAME_EN'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></td>
             </tr>
 
             <!-- 상품 구분 -->
@@ -2389,8 +2427,51 @@
     </div>
 </div>
 
+<div id="prd_process_fail_modal" class="prd-process-fail-modal" aria-hidden="true">
+    <div class="prd-process-fail-modal__panel" role="alertdialog" aria-modal="true" aria-labelledby="prd_process_fail_modal_title" aria-describedby="prd_process_fail_modal_message">
+        <div id="prd_process_fail_modal_title" class="prd-process-fail-modal__header">처리 실패</div>
+        <div id="prd_process_fail_modal_message" class="prd-process-fail-modal__body"></div>
+        <div class="prd-process-fail-modal__footer">
+            <button type="button" id="prd_process_fail_modal_confirm" class="btnstyle1 btnstyle1-danger btnstyle1-md">확인했습니다</button>
+        </div>
+    </div>
+</div>
+
 <script>
     var prdDetailBasicForm = function() {
+
+        function getFailMessage(res, fallbackMessage) {
+            if (res && res.responseJSON && res.responseJSON.message) {
+                return String(res.responseJSON.message).trim();
+            }
+            if (res && res.message) {
+                return String(res.message).trim();
+            }
+            return fallbackMessage;
+        }
+
+        function showProcessFailModal(title, message, onClose) {
+            var $modal = $('#prd_process_fail_modal');
+            if (!$modal.length) {
+                alert((title ? title + '\n' : '') + (message || '처리에 실패했습니다.'));
+                if (typeof onClose === 'function') {
+                    onClose();
+                }
+                return;
+            }
+
+            $modal.find('#prd_process_fail_modal_title').text(title || '처리 실패');
+            $modal.find('#prd_process_fail_modal_message').text(message || '처리에 실패했습니다.');
+            $modal.addClass('is-open').attr('aria-hidden', 'false');
+            $('#prd_process_fail_modal_confirm').trigger('focus');
+
+            $('#prd_process_fail_modal_confirm').off('click.prdProcessFail').on('click.prdProcessFail', function() {
+                $modal.removeClass('is-open').attr('aria-hidden', 'true');
+                if (typeof onClose === 'function') {
+                    onClose();
+                }
+            });
+        }
 
         /**
          * 상품 세일 설정
@@ -2513,19 +2594,19 @@
                         alert(res.message || '처리가 완료되었습니다.');
                         location.reload();
                     } else {
-                        alert('처리실패\n' + ((res && res.message) ? res.message : '고도몰 단종처리에 실패했습니다.'));
-                        location.reload();
+                        showProcessFailModal(
+                            '고도몰 단종처리 실패',
+                            getFailMessage(res, '고도몰 단종처리에 실패했습니다.'),
+                            function() { location.reload(); }
+                        );
                     }
                 })
                 .fail(function(res) {
-                    var reason = '';
-                    if (res && res.responseJSON && res.responseJSON.message) {
-                        reason = String(res.responseJSON.message).trim();
-                    } else if (res && res.message) {
-                        reason = String(res.message).trim();
-                    }
-                    alert('처리실패\n' + (reason || '고도몰 단종처리에 실패했습니다.'));
-                    location.reload();
+                    showProcessFailModal(
+                        '고도몰 단종처리 실패',
+                        getFailMessage(res, '고도몰 단종처리에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
                 });
         }
 
@@ -2561,13 +2642,19 @@
                         alert(res.message || '처리가 완료되었습니다.');
                         location.reload();
                     } else {
-                        alert(res && res.message ? res.message : '처리 실패');
-                        location.reload();
+                        showProcessFailModal(
+                            '고도몰 취급중단처리 실패',
+                            getFailMessage(res, '고도몰 취급중단처리에 실패했습니다.'),
+                            function() { location.reload(); }
+                        );
                     }
                 })
                 .fail(function(res) {
-                    alert(res && res.message ? res.message : '에러');
-                    location.reload();
+                    showProcessFailModal(
+                        '고도몰 취급중단처리 실패',
+                        getFailMessage(res, '고도몰 취급중단처리에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
                 });
         }
 

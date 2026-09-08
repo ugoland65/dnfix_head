@@ -382,6 +382,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_godo_inspection" class="" onclick="prdInfo.mode('', 'godo_inspection')">고도몰 검수 처리</ul>
 		<ul id="crm_menu_relation_group" class="" onclick="prdInfo.mode('', 'relation_group')">시리즈/연관그룹 관리</ul>
 		<ul id="crm_menu_info_collection" class="" onclick="prdInfo.mode('', 'info_collection')">상품 정보수집</ul>
+		<ul id="crm_menu_spec_info" class="" onclick="prdInfo.mode('', 'spec_info')">상품 스팩정보</ul>
 		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
 		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
@@ -678,6 +679,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 					requestConfig = {
 						method: "GET",
 						url: "/admin/product/info_collect",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "spec_info": // 상품 스펙정보
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_spec_info",
 						data: { prd_idx: prd_idx }
 					};
 					break;

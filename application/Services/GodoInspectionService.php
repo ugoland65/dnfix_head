@@ -4,7 +4,7 @@ namespace App\Services;
 
 class GodoInspectionService
 {
-    public const INSPECTION_VERSION = '20260901_v2';
+    public const INSPECTION_VERSION = '20260907_v1';
     public const CONTEXT_PRODUCT_SINGLE = 'product_single';
     public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
     public const CONTEXT_PROVIDER_PRODUCT = 'provider_product';
@@ -155,10 +155,10 @@ class GodoInspectionService
         $goodsWeightRaw = (string)($item['goods_weight'] ?? '');
         $innerLengthRaw = (string)($item['inner_length'] ?? '');
         $intranetBarcode = trim((string)($item['barcode'] ?? ''));
-        $intranetGoodsName = trim((string)($item['name'] ?? ''));
-        $intranetPurchaseGoodsName = trim((string)($item['name_og'] ?? ''));
-        $godoGoodsName = trim((string)($item['godo_goods_name'] ?? ''));
-        $godoPurchaseGoodsName = trim((string)($item['godo_purchase_goods_name'] ?? ''));
+        $intranetGoodsName = $this->decodeHtmlText((string)($item['name'] ?? ''));
+        $intranetPurchaseGoodsName = $this->decodeHtmlText((string)($item['name_og'] ?? ''));
+        $godoGoodsName = $this->decodeHtmlText((string)($item['godo_goods_name'] ?? ''));
+        $godoPurchaseGoodsName = $this->decodeHtmlText((string)($item['godo_purchase_goods_name'] ?? ''));
         $godoCategoryLines = (isset($item['godo_category_lines']) && is_array($item['godo_category_lines'])) ? $item['godo_category_lines'] : [];
         $marginGrade = strtoupper(trim((string)($item['margin_grade'] ?? '')));
         $cdHbti = strtoupper(trim((string)($item['cd_hbti'] ?? '')));
@@ -1534,6 +1534,16 @@ class GodoInspectionService
     public function getInspectionVersion(): string
     {
         return self::INSPECTION_VERSION;
+    }
+
+    /**
+     * 상품명 비교/표시용 HTML 엔티티를 실제 문자로 되돌린다.
+     * 예: &times; → ×
+     */
+    public function decodeHtmlText(string $value): string
+    {
+        $decoded = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return is_string($decoded) ? $decoded : '';
     }
 }
 

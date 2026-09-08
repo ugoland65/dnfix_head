@@ -1352,6 +1352,9 @@ class ProductService extends BaseClass
             return [];
         }
         $productData = is_array($productData) ? $productData : $productData->toArray();
+        $productData['CD_NAME'] = $this->decodeHtmlText((string)($productData['CD_NAME'] ?? ''));
+        $productData['CD_NAME_OG'] = $this->decodeHtmlText((string)($productData['CD_NAME_OG'] ?? ''));
+        $productData['CD_NAME_EN'] = $this->decodeHtmlText((string)($productData['CD_NAME_EN'] ?? ''));
 
 
         // JSON 데이터 디코딩 처리
@@ -1995,9 +1998,9 @@ class ProductService extends BaseClass
         $saleStatus = trim((string)($postData['sale_status'] ?? ''));
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
-        $cdName = trim((string)($postData['cd_name'] ?? ''));
-        $cdNameOg = trim((string)($postData['cd_name_og'] ?? ''));
-        $cdNameEn = trim((string)($postData['cd_name_en'] ?? ''));
+        $cdName = $this->decodeHtmlText((string)($postData['cd_name'] ?? ''));
+        $cdNameOg = $this->decodeHtmlText((string)($postData['cd_name_og'] ?? ''));
+        $cdNameEn = $this->decodeHtmlText((string)($postData['cd_name_en'] ?? ''));
         $cdCont = (string)($postData['cd_cont'] ?? '');
         $cdMemo = (string)($postData['cd_memo'] ?? '');
         $cdMemo2 = (string)($postData['cd_memo2'] ?? '');
@@ -2311,6 +2314,16 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 상품명에 들어간 HTML 엔티티를 실제 문자로 되돌린다.
+     * 예: &times; → ×
+     */
+    private function decodeHtmlText(string $value): string
+    {
+        $decoded = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        return is_string($decoded) ? $decoded : '';
+    }
+
+    /**
      * 상품 신규 생성
      *
      * @param array $postData
@@ -2422,9 +2435,9 @@ class ProductService extends BaseClass
         }
         $cdBrandIdx = !empty($postData['cd_brand_idx']) ? (int)$postData['cd_brand_idx'] : 0;
         $cdBrand2Idx = !empty($postData['cd_brand2_idx']) ? (int)$postData['cd_brand2_idx'] : 0;
-        $cdName = trim((string)($postData['cd_name'] ?? ''));
-        $cdNameOg = trim((string)($postData['cd_name_og'] ?? ''));
-        $cdNameEn = trim((string)($postData['cd_name_en'] ?? ''));
+        $cdName = $this->decodeHtmlText((string)($postData['cd_name'] ?? ''));
+        $cdNameOg = $this->decodeHtmlText((string)($postData['cd_name_og'] ?? ''));
+        $cdNameEn = $this->decodeHtmlText((string)($postData['cd_name_en'] ?? ''));
         $cdCont = (string)($postData['cd_cont'] ?? '');
         $cdMemo = (string)($postData['cd_memo'] ?? '');
         $cdMemo2 = (string)($postData['cd_memo2'] ?? '');
@@ -6668,8 +6681,8 @@ class ProductService extends BaseClass
                 (int)($product['CD_IDX'] ?? 0)
             ),
             'brand_name' => (string)($product['BD_NAME'] ?? ''),
-            'name' => (string)($product['CD_NAME'] ?? ''),
-            'name_og' => (string)($product['CD_NAME_OG'] ?? ''),
+            'name' => $this->decodeHtmlText((string)($product['CD_NAME'] ?? '')),
+            'name_og' => $this->decodeHtmlText((string)($product['CD_NAME_OG'] ?? '')),
             'barcode' => (string)($product['CD_CODE'] ?? ''),
             'cd_hbti' => (string)($product['cd_hbti'] ?? ''),
             'goods_price' => (string)($product['cd_sale_price'] ?? ''),

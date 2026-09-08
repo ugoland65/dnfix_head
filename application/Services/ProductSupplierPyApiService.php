@@ -305,6 +305,8 @@ class ProductSupplierPyApiService
                 'required_path_prefix' => '/item/detail/',
                 'payload_key' => 'product_pk',
                 'payload_value_type' => 'string',
+                'path_error' => '타마토이즈 URL은 /item/detail/상품코드 형식이어야 합니다.',
+                'identifier_error' => '타마토이즈 상품 코드가 올바르지 않습니다.',
             ],
             'mzakka.com' => [
                 'endpoint' => '/maker-products/mzakka/crawl',
@@ -338,6 +340,15 @@ class ProductSupplierPyApiService
                 'payload_value_type' => 'string',
                 'identifier_error' => '엠즈 URL에는 유효한 pclass_id 값이 필요합니다.',
             ],
+            'bb-order.com' => [
+                'endpoint' => '/maker-products/tis/crawl',
+                'identifier_type' => 'path_code',
+                'required_path_prefix' => '/tisgoods_kr/shop/detail/',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+                'path_error' => 'TIS URL은 /tisgoods_kr/shop/detail/상품코드 형식이어야 합니다.',
+                'identifier_error' => 'TIS 상품 코드가 올바르지 않습니다.',
+            ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
         if ($collector === null) {
@@ -356,11 +367,11 @@ class ProductSupplierPyApiService
         } elseif ($collector['identifier_type'] === 'path_code') {
             $pathPrefix = (string)$collector['required_path_prefix'];
             if (strpos($path, $pathPrefix) !== 0) {
-                throw new \InvalidArgumentException('타마토이즈 URL은 /item/detail/상품코드 형식이어야 합니다.');
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
             }
             $identifier = trim((string)basename($path));
             if ($identifier === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
-                throw new \InvalidArgumentException('타마토이즈 상품 코드가 올바르지 않습니다.');
+                throw new \InvalidArgumentException((string)($collector['identifier_error'] ?? '상품 코드가 올바르지 않습니다.'));
             }
         } elseif ($collector['identifier_type'] === 'query_code') {
             parse_str((string)($urlParts['query'] ?? ''), $queryParams);
@@ -412,7 +423,8 @@ class ProductSupplierPyApiService
             'Accept: application/json',
             'X-API-KEY: ' . $this->apiKey,
         ];
-        $httpResult = HttpClient::postDataWithMeta($this->domain . $collector['endpoint'], $payload, $headers);
+        $timeout = $host === 'bb-order.com' ? 120 : 90;
+        $httpResult = HttpClient::postDataWithMeta($this->domain . $collector['endpoint'], $payload, $headers, $timeout);
         $response = (string)($httpResult['response'] ?? '');
         $responseData = json_decode($response, true);
         if (!is_array($responseData)) {
@@ -425,7 +437,11 @@ class ProductSupplierPyApiService
             } else {
                 $detail = substr($detail, 0, 3000);
             }
-            throw new \RuntimeException('정보수집 API 응답을 읽을 수 없습니다. HTTP ' . $httpCode . ($detail !== '' ? ' | 원문: ' . $detail : ''));
+            throw new \RuntimeException(
+                '정보수집 API 응답을 읽을 수 없습니다. HTTP ' . $httpCode
+                . ' (timeout=' . $timeout . 's)'
+                . ($detail !== '' ? ' | 원문: ' . $detail : '')
+            );
         }
         if (isset($responseData['success']) && !$responseData['success']) {
             $rawResponse = json_encode($responseData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);

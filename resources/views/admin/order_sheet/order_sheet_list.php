@@ -60,6 +60,10 @@
 			.os-state-label-4 { background:#fff4e5; color:#b54708; border-color:#ffd59a; }
 			.os-state-label-5 { background:#edf9f0; color:#1f7a35; border-color:#b8e7c2; }
 			.os-state-label-7 { background:#eef2f6; color:#667085; border-color:#d0d5dd; }
+			.os-list-link { color:#333; text-decoration:none; }
+			.os-list-link:hover,
+			.os-list-link:focus,
+			.os-list-link:visited { color:#333; text-decoration:none; }
 		</style>
 
 		<div class="order-sheet-summary">
@@ -159,11 +163,12 @@
 								<th>수입구분</th>
 								<th>상태</th>
 								<th>상태 변경일</th>
+								<th>주문서폼</th>
 								<th>이름</th>
 								<th>주문금액</th>
 								<th>예상금액</th>
 								<th>결제금액</th>
-								<th>주문서폼</th>
+								
 								<th>관리</th>
 								<th>등록일</th>
 								<th>입고처리</th>
@@ -241,14 +246,20 @@
 										<?php } ?>
 									</td>
 
-									<td><a href="/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>"><b><?= $orderSheet['oo_name'] ?></b></a></td>
+									<!-- 주문서폼 -->
+									<td class="text-center"><a class="os-list-link" href="/admin/order/sheet/list?oo_state=all&oo_form_idx=<?= $orderSheet['oo_form_idx'] ?>"><?= $orderSheet['oog_name'] ?></a></td>
+									
+									<!-- 이름 -->
+									<td><a class="os-list-link" href="/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>"><b><?= $orderSheet['oo_name'] ?></b></a></td>
+
+
 									<td class="text-right"><?= number_format($orderAmount) ?> <?= $orderAmountCurrency ?></td>
 									<td class="text-right"><?= $expectedAmountText ?></td>
 									
 									<td class="text-right">
 										<?= ((float)($orderSheet['oo_price_kr'] ?? 0) > 0) ? '<b>' . number_format((float)$orderSheet['oo_price_kr']) . '</b> 원' : '-' ?>
 									</td>
-									<td class="text-center"><a href="/admin/order/sheet/list?oo_state=all&oo_form_idx=<?= $orderSheet['oo_form_idx'] ?>"><?= $orderSheet['oog_name'] ?></a></td>
+									
 									<td class="text-center">
 										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheet.osView(this, '<?= $orderSheet['oo_idx'] ?>','main')">상세내용</button>
 										<button type="button" class="btnstyle1 btnstyle1-sm" onclick="location.href='/admin/order/sheet?idx=<?= $orderSheet['oo_idx'] ?>'">주문상품</button>

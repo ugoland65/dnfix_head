@@ -17,9 +17,9 @@ class HttpClient
     }
 
     // POST 요청 상세 결과 반환
-    public static function postDataWithMeta($url, $data, $header = '')
+    public static function postDataWithMeta($url, $data, $header = '', $timeout = 90)
     {
-        return self::sendRequestWithMeta($url, 'POST', $data, $header);
+        return self::sendRequestWithMeta($url, 'POST', $data, $header, $timeout);
     }
 
     // GET 요청
@@ -90,7 +90,7 @@ class HttpClient
     }
 
     // 공통 요청 처리 (메타정보 포함)
-    private static function sendRequestWithMeta($url, $method, $data = null, $header = '')
+    private static function sendRequestWithMeta($url, $method, $data = null, $header = '', $timeout = 30)
     {
         $result = [
             'response' => '',
@@ -122,7 +122,7 @@ class HttpClient
             curl_setopt($ch, CURLOPT_URL, $url);
             curl_setopt($ch, CURLOPT_RETURNTRANSFER, true);
             curl_setopt($ch, CURLOPT_FOLLOWLOCATION, true);
-            curl_setopt($ch, CURLOPT_TIMEOUT, 30);
+            curl_setopt($ch, CURLOPT_TIMEOUT, max(1, (int)$timeout));
             curl_setopt($ch, CURLOPT_CONNECTTIMEOUT, 10);
             if ($method === 'POST') {
                 curl_setopt($ch, CURLOPT_POST, true);

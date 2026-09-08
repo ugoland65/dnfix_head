@@ -176,7 +176,8 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
                 $isAutoProcessable = ($actionState === '자동처리 가능');
                 $required = (string)($issueRow['required'] ?? '필수');
                 $requiredClass = ($required === '참고') ? 'inspection-checklist-required-ref' : 'inspection-checklist-required-required';
-                $solutionEscaped = htmlspecialchars((string)($issueRow['solution'] ?? ''), ENT_QUOTES, 'UTF-8');
+                $solutionText = html_entity_decode((string)($issueRow['solution'] ?? ''), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                $solutionEscaped = htmlspecialchars($solutionText, ENT_QUOTES, 'UTF-8');
                 $solutionEscaped = str_replace(
                     ['&lt;b&gt;', '&lt;/b&gt;', '&lt;span&gt;', '&lt;/span&gt;'],
                     ['<b>', '</b>', '<span>', '</span>'],

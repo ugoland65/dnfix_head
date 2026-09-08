@@ -125,6 +125,7 @@ class ProductImageHostingService
             'msonline-g.com' => 'https://www.ms-online.co.jp/',
             'ms-online.co.jp' => 'https://www.ms-online.co.jp/',
             'go744sfa.user.webaccel.jp' => 'https://www.ms-online.co.jp/',
+            'bb-order.com' => 'https://bb-order.com/',
         ];
     }
 

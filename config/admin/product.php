@@ -648,7 +648,7 @@ $subCategoriesByKind = [
                 [
                     'code' => 'ONAHOLE_FEATURE_FOLD',
                     'name' => '주름형(히다계)',
-                    'description' => '일정한 간격으로 주름 기믹이 있는 경우',
+                    'description' => '일정한 간격으로 주름 기믹이 있는 경우<br>메인특징이 촘촘한 주름으로만 이루어진 경우 (주름이 약간있다고 하여 히다계로 분류하면 전상품 다 대상이 될 수 있음)',
                     'image' => '',
                 ],
                 [

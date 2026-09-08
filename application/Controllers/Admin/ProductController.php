@@ -23,6 +23,7 @@ use App\Services\ProductSupplierPyApiService;
 use App\Services\ProductImageHostingService;
 use App\Services\AdminActionLogService;
 use App\Services\OrderGroupService;
+use App\Services\ProductSpecInfoService;
 use App\Models\ProductModel;
 use App\Models\ProductCollectionItemModel;
 use App\Utils\Pagination;
@@ -589,6 +590,8 @@ class ProductController extends BaseClass
     public function requestProductInfoCollection(Request $request)
     {
         try {
+            set_time_limit(180);
+            ini_set('max_execution_time', '180');
             $requestData = $request->all();
             $result = (new ProductSupplierPyApiService())->requestProductInfoCollection([
                 'collection_url' => $requestData['collection_url'] ?? '',
@@ -1166,6 +1169,126 @@ class ProductController extends BaseClass
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
+        }
+    }
+
+
+    /**
+     * 상품 디테일 (상품 스펙정보)
+     */
+    public function prdDetailSpecInfoPage(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            $pageData = (new ProductSpecInfoService())->getPageData($prdIdx);
+
+            return view('admin.product.prd_detail_spec_info', $pageData);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 상품 스펙정보 단면도 업로드
+     */
+    public function uploadProductSpecInfoImage(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            if (!$request->hasFile('spec_image')) {
+                throw new Exception('이미지 파일이 없습니다.');
+            }
+
+            $spec = (new ProductSpecInfoService())->uploadImage(
+                $prdIdx,
+                $request->file('spec_image'),
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => '단면도를 업로드했습니다.',
+                'data' => $spec,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 상품 스펙정보 외부 이미지 미리보기 (서버 저장 없음)
+     */
+    public function previewProductSpecInfoImage(Request $request)
+    {
+        try {
+            $imageUrl = trim((string)($_GET['url'] ?? ''));
+            if ($imageUrl === '') {
+                $imageUrl = html_entity_decode((string)($request->input('url') ?? ''), ENT_QUOTES, 'UTF-8');
+            }
+
+            $image = (new ProductSpecInfoService())->previewRemoteImage($imageUrl);
+            header('Content-Type: ' . $image['content_type']);
+            header('Cache-Control: private, max-age=300');
+            return $image['body'];
+        } catch (Throwable $e) {
+            http_response_code(400);
+            return $e->getMessage();
+        }
+    }
+
+
+    /**
+     * 상품 스펙정보 측정값 저장
+     */
+    public function saveProductSpecInfo(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            $itemsRaw = $_POST['psi_items'] ?? '';
+            $items = is_array($itemsRaw) ? $itemsRaw : json_decode((string)$itemsRaw, true);
+            if (!is_array($items)) {
+                $items = json_decode(html_entity_decode((string)$itemsRaw, ENT_QUOTES, 'UTF-8'), true);
+            }
+
+            $imageUrl = trim((string)($_POST['image_url'] ?? ''));
+            if ($imageUrl === '') {
+                $imageUrl = html_entity_decode((string)($request->input('image_url') ?? ''), ENT_QUOTES, 'UTF-8');
+            }
+
+            $spec = (new ProductSpecInfoService())->save(
+                $prdIdx,
+                [
+                    'psi_total_length_cm' => $_POST['psi_total_length_cm'] ?? $request->input('psi_total_length_cm'),
+                    'psi_items' => is_array($items) ? $items : [],
+                    'image_url' => $imageUrl,
+                    'rotated_file' => $request->hasFile('rotated_image') ? $request->file('rotated_image') : [],
+                ],
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => '측정값을 저장했습니다.',
+                'data' => $spec,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

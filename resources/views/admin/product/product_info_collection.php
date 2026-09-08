@@ -173,6 +173,7 @@ $siteCodeNames = [
     'nobunaga' => '노부나가',
     'nls' => 'NLS 사이트',
     'ms' => '엠즈',
+    'tis' => 'TIS',
 ];
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
@@ -217,7 +218,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     3) 엠자카 ex) <a href="https://mzakka.com" target="_blank" rel="noopener noreferrer">https://mzakka.com/pc/detail/item.php?item_id=M12488&amp;category=1789</a><br>
                     4) 노부나가 ex) <a href="https://www.nobunaga-toys.com" target="_blank" rel="noopener noreferrer">https://www.nobunaga-toys.com/?pid=193204770</a><br>
                     5) NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a><br>
-                    6) 엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a>
+                    6) 엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a><br>
+                    7) TIS ex) <a href="https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261" target="_blank" rel="noopener noreferrer">https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261</a>
                 </p>
                 <div id="collectionUrlValidation" class="product-info-collection-validation" hidden aria-live="polite"></div>
             </form>
@@ -1014,6 +1016,12 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             var msProductId = url.searchParams.get('pclass_id');
             if (!msProductId || !/^[1-9][0-9]*$/.test(msProductId)) {
                 showMessage('엠즈 URL에는 유효한 pclass_id 값이 필요합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'bb-order.com') {
+            var tisMatch = url.pathname.match(/^\/tisgoods_kr\/shop\/detail\/([A-Za-z0-9_-]+)\/?$/);
+            if (!tisMatch) {
+                showMessage('TIS URL은 /tisgoods_kr/shop/detail/상품코드 형식이어야 합니다.', false);
                 return;
             }
         } else {

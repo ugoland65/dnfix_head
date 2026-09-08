@@ -311,9 +311,9 @@ class ProductPartnerService extends BaseClass
 
             $price_data = json_encode($price_data, JSON_UNESCAPED_UNICODE);
 
-            $name = $postData['name'] ?? '';
+            $name = html_entity_decode(trim((string)($postData['name'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $short_desc = trim((string)($postData['short_desc'] ?? ''));
-            $name_ori = $postData['name_ori'] ?? '';
+            $name_ori = html_entity_decode(trim((string)($postData['name_ori'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
             $name_p = $postData['name_p'] ?? '';
             $kindInput = (string)($postData['kind'] ?? '');
             $kindCode = $this->normalizeKindCode($kindInput);
@@ -1261,8 +1261,8 @@ class ProductPartnerService extends BaseClass
             $supplier_option_data = [];
         }
 
-        $baseName = (string)($productPartner['name'] ?? '');
-        $baseOriginalName = trim((string)($productPartner['name_ori'] ?? ''));
+        $baseName = html_entity_decode(trim((string)($productPartner['name'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $baseOriginalName = html_entity_decode(trim((string)($productPartner['name_ori'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
         if ($baseOriginalName === '') {
             $baseOriginalName = $baseName;
         }
@@ -1927,8 +1927,8 @@ class ProductPartnerService extends BaseClass
                 : [],
             'dedicated_hole_code' => trim((string)($product['dedicated_hole_code'] ?? '')),
             'brand_name' => (string)($product['brand_name'] ?? ''),
-            'name' => (string)($product['name'] ?? ''),
-            'name_og' => (string)($product['name_ori'] ?? ''),
+            'name' => html_entity_decode(trim((string)($product['name'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
+            'name_og' => html_entity_decode(trim((string)($product['name_ori'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8'),
             'barcode' => (string)($product['code'] ?? ''),
             'cd_hbti' => strtoupper(trim((string)($product['hbti_type'] ?? ''))),
             'goods_price' => (string)($product['sale_price'] ?? ''),
