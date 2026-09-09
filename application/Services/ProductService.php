@@ -6361,6 +6361,307 @@ class ProductService extends BaseClass
 
 
     /**
+     * 고도몰 특가할인 설정
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoProductSpecialDiscount(array $postData): array
+    {
+        $postData['ac_mode'] = 'set';
+        return $this->applyGodoProductSpecialDiscount($postData);
+    }
+
+    /**
+     * 고도몰 특가할인 해제
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function unsetGodoProductSpecialDiscount(array $postData): array
+    {
+        $postData['ac_mode'] = 'unset';
+        return $this->applyGodoProductSpecialDiscount($postData);
+    }
+
+    /**
+     * 고도몰 특가할인 설정/해제 공통 처리
+     *
+     * @param array $postData
+     * @return array
+     */
+    private function applyGodoProductSpecialDiscount(array $postData): array
+    {
+        $acMode = strtolower(trim((string)($postData['ac_mode'] ?? '')));
+        if ($acMode !== 'set' && $acMode !== 'unset') {
+            throw new Exception('acMode는 set 또는 unset만 가능합니다.');
+        }
+
+        $isSet = ($acMode === 'set');
+        $label = $isSet ? '특가설정' : '특가해제';
+        $actionMode = $isSet ? 'set_godo_product_special_discount' : 'unset_godo_product_special_discount';
+
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code', 'cd_fixed_price', 'cd_sale_price', 'cd_sale_price_change_meta')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $fixedPrice = $this->normalizeGodoSpecialDiscountPrice($postData['fixed_price'] ?? ($postData['fixedPrice'] ?? ($product['cd_fixed_price'] ?? 0)));
+        $goodsPrice = $this->normalizeGodoSpecialDiscountPrice($postData['goods_price'] ?? ($postData['goodsPrice'] ?? ($postData['sale_price'] ?? ($product['cd_sale_price'] ?? 0))));
+        if ($isSet) {
+            if ($fixedPrice <= 0) {
+                throw new Exception('정가는 반드시 필요합니다.');
+            }
+            if ($goodsPrice <= 0) {
+                throw new Exception('판매가는 반드시 필요합니다.');
+            }
+        }
+
+        $stock = ProductStockModel::query()
+            ->select(['ps_idx', 'ps_prd_idx', 'is_sale_special', 'is_sale_month'])
+            ->where('ps_prd_idx', '=', $idx)
+            ->first();
+        if (empty($stock)) {
+            throw new Exception('상품 재고 정보가 없어 인트라넷 특가할인을 처리할 수 없습니다.');
+        }
+        $stock = is_array($stock) ? $stock : $stock->toArray();
+        $psIdx = (int)($stock['ps_idx'] ?? 0);
+        if ($psIdx <= 0) {
+            throw new Exception('상품 재고 정보가 없어 인트라넷 특가할인을 처리할 수 없습니다.');
+        }
+
+        $intranetAlreadySpecial = ((int)($stock['is_sale_special'] ?? 0) === 1);
+        $intranetApplied = false;
+        $intranetSaleMessage = '';
+        $productStockService = new ProductStockService();
+        $intranetSalePayload = [
+            'prd_idx' => $idx,
+            'ps_idx' => $psIdx,
+            'mode' => 'special',
+            'action_url' => (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? '')),
+        ];
+        if ($isSet && !$intranetAlreadySpecial) {
+            $intranetSaleResult = $productStockService->setProductSale($intranetSalePayload);
+            $intranetApplied = !empty($intranetSaleResult['success']);
+            $intranetSaleMessage = trim((string)($intranetSaleResult['message'] ?? ''));
+            if (!$intranetApplied) {
+                throw new Exception($intranetSaleMessage !== '' ? $intranetSaleMessage : '인트라넷 특가할인 지정에 실패했습니다.');
+            }
+        } elseif (!$isSet && $intranetAlreadySpecial) {
+            $intranetSaleResult = $productStockService->unsetProductSale($intranetSalePayload);
+            $intranetApplied = !empty($intranetSaleResult['success']);
+            $intranetSaleMessage = trim((string)($intranetSaleResult['message'] ?? ''));
+            if (!$intranetApplied) {
+                throw new Exception($intranetSaleMessage !== '' ? $intranetSaleMessage : '인트라넷 특가할인 해제에 실패했습니다.');
+            }
+        }
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->applyGodoSpecialDiscount($goodsNo, $acMode, $fixedPrice, $goodsPrice);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 ' . $label . ' 처리에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $appliedFixedPrice = $fixedPrice;
+        $appliedGoodsPrice = $goodsPrice;
+        if (isset($godoResponse['updated']) && is_array($godoResponse['updated'])) {
+            if (array_key_exists('fixedPrice', $godoResponse['updated'])) {
+                $appliedFixedPrice = $this->normalizeGodoSpecialDiscountPrice($godoResponse['updated']['fixedPrice']);
+            }
+            if (array_key_exists('goodsPrice', $godoResponse['updated'])) {
+                $appliedGoodsPrice = $this->normalizeGodoSpecialDiscountPrice($godoResponse['updated']['goodsPrice']);
+            }
+        }
+
+        $currentFixedPrice = (int)($product['cd_fixed_price'] ?? 0);
+        $currentSalePrice = (int)($product['cd_sale_price'] ?? 0);
+        $intranetPriceUpdated = false;
+        if ($godoSuccess && ($appliedFixedPrice !== $currentFixedPrice || $appliedGoodsPrice !== $currentSalePrice)) {
+            $this->updateIntranetPricesFromSpecialDiscount($idx, $product, $appliedFixedPrice, $appliedGoodsPrice);
+            $intranetPriceUpdated = true;
+        }
+
+        $successMessage = $isSet ? '고도몰 특가설정이 완료되었습니다.' : '고도몰 특가해제가 완료되었습니다.';
+        if ($intranetApplied) {
+            $successMessage = $isSet
+                ? '인트라넷 특가할인 지정과 고도몰 특가설정을 완료했습니다.'
+                : '인트라넷 특가할인 해제와 고도몰 특가해제를 완료했습니다.';
+        } elseif ($isSet && $intranetAlreadySpecial) {
+            $successMessage = '인트라넷은 이미 특가할인 지정 상태입니다. 고도몰 특가설정을 완료했습니다.';
+        } elseif (!$isSet && !$intranetAlreadySpecial) {
+            $successMessage = '인트라넷은 이미 특가할인 해제 상태입니다. 고도몰 특가해제를 완료했습니다.';
+        }
+        if ($intranetPriceUpdated) {
+            $successMessage .= ' 정가/판매가도 함께 저장했습니다.';
+        }
+        $resultContent = [
+            'success' => $godoSuccess,
+            'status' => $godoSuccess ? '처리완료' : '실패',
+            'message' => $godoSuccess ? $successMessage : $godoError,
+            'ac_mode' => $acMode,
+            'fixed_price' => $appliedFixedPrice,
+            'goods_price' => $appliedGoodsPrice,
+            'intranet_already_special' => $intranetAlreadySpecial,
+            'intranet_applied' => $intranetApplied,
+            'intranet_price_updated' => $intranetPriceUpdated,
+            'godo_response' => $godoResponse,
+        ];
+
+        $inspectionProcessLogService = new InspectionProcessLogService();
+        $inspectionPayload = [
+            'prd_idx' => $idx,
+            'ps_idx' => $psIdx,
+            'godo_goods_no' => $goodsNo,
+            'process_content' => [
+                'ac_mode' => $acMode,
+                'fixed_price' => $appliedFixedPrice,
+                'goods_price' => $appliedGoodsPrice,
+                'before_fixed_price' => $currentFixedPrice,
+                'before_sale_price' => $currentSalePrice,
+                'intranet_already_special' => $intranetAlreadySpecial,
+                'intranet_applied' => $intranetApplied,
+                'intranet_price_updated' => $intranetPriceUpdated,
+            ],
+            'result_content' => $resultContent,
+        ];
+        try {
+            $inspectionProcessLogService->logProductGodoSpecialDiscount($inspectionPayload);
+        } catch (\Throwable $e) {
+            // 검수 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'cd_fixed_price' => (int)($product['cd_fixed_price'] ?? 0),
+            'cd_sale_price' => (int)($product['cd_sale_price'] ?? 0),
+            'is_sale_special' => $intranetAlreadySpecial ? 1 : 0,
+            'godo_special_discount' => 0,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'cd_fixed_price' => $appliedFixedPrice,
+            'cd_sale_price' => $appliedGoodsPrice,
+            'intranet_price_updated' => $intranetPriceUpdated,
+            'is_sale_special' => $isSet ? 1 : 0,
+            'godo_special_discount' => $godoSuccess ? ($isSet ? 1 : 0) : 0,
+            'ac_mode' => $acMode,
+            'intranet_applied' => $intranetApplied,
+            'intranet_sale_message' => $intranetSaleMessage,
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => $actionMode,
+                'action_summary' => $godoSuccess ? ('고도몰 ' . $label) : ('고도몰 ' . $label . ' 실패'),
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            $prefix = $intranetApplied
+                ? ($isSet ? '인트라넷 특가할인 지정은 완료되었습니다. ' : '인트라넷 특가할인 해제는 완료되었습니다. ')
+                : '';
+            throw new Exception($prefix . '고도몰 ' . $label . ' 처리 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $successMessage,
+            'msg' => '완료',
+            'idx' => $idx,
+            'ac_mode' => $acMode,
+            'intranet_applied' => $intranetApplied,
+            'intranet_price_updated' => $intranetPriceUpdated,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+    /**
+     * 특가 설정/해제 시 인트라넷 정가/판매가를 함께 저장한다.
+     *
+     * @param int $idx
+     * @param array $product
+     * @param int $fixedPrice
+     * @param int $salePrice
+     * @return void
+     */
+    private function updateIntranetPricesFromSpecialDiscount(int $idx, array $product, int $fixedPrice, int $salePrice): void
+    {
+        $updateData = array_merge([
+            'cd_fixed_price' => $fixedPrice,
+            'cd_sale_price' => $salePrice,
+        ], $this->buildSalePriceChangeData($product, $salePrice));
+
+        $updated = ProductModel::query()
+            ->where('CD_IDX', '=', $idx)
+            ->update($updateData);
+        if (!$updated) {
+            throw new Exception('인트라넷 정가/판매가 저장에 실패했습니다.');
+        }
+    }
+
+    /**
+     * 특가할인 가격 입력을 정수로 정규화한다.
+     *
+     * @param mixed $value
+     * @return int
+     */
+    private function normalizeGodoSpecialDiscountPrice($value): int
+    {
+        if (is_int($value)) {
+            return max(0, $value);
+        }
+        $normalized = preg_replace('/[^0-9]/', '', (string)$value);
+        if ($normalized === '') {
+            return 0;
+        }
+        return (int)$normalized;
+    }
+
+
+    /**
      * 상품 단종 해제
      * @param array $postData 파라미터
      * @return array

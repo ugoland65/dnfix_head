@@ -554,13 +554,30 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		var stockModifyWindow;
 		var activeModeStorageKey = 'prd_info_active_mode:' + prd_idx + ':' + ps_idx;
 
+		function resolveMode(modeKey) {
+			modeKey = String(modeKey || '').trim();
+			return modeKey && $("#crm_menu_" + modeKey).length ? modeKey : '';
+		}
+
+		function getQueryVmode() {
+			try {
+				var params = new URLSearchParams(window.location.search);
+				return String(params.get('vmode') || '').trim();
+			} catch (e) {
+				return '';
+			}
+		}
+
 		function getSavedMode() {
 			try {
-				var savedMode = window.sessionStorage.getItem(activeModeStorageKey);
-				return savedMode && $("#crm_menu_" + savedMode).length ? savedMode : 'info';
+				return resolveMode(window.sessionStorage.getItem(activeModeStorageKey)) || 'info';
 			} catch (e) {
 				return 'info';
 			}
+		}
+
+		function getInitialMode() {
+			return resolveMode(getQueryVmode()) || getSavedMode();
 		}
 
 		/**
@@ -775,7 +792,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 			mode,
 			restoreActiveMode: function() {
-				mode('', getSavedMode());
+				mode('', getInitialMode());
 			},
 			updateSeriesLabel,
 			prdGroupingAdd,

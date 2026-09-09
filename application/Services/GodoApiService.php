@@ -1794,6 +1794,60 @@ class GodoApiService extends BaseClass {
 
 
     /**
+     * 고도몰 특가할인 설정/해제
+     *
+     * @param string|int $goodsNo
+     * @param string $acMode set|unset
+     * @param int $fixedPrice 정가
+     * @param int $goodsPrice 판매가
+     * @return array
+     */
+    public function applyGodoSpecialDiscount($goodsNo, $acMode, $fixedPrice = 0, $goodsPrice = 0)
+    {
+        $goodsNo = trim((string)$goodsNo);
+        if ($goodsNo === '' || !preg_match('/^\d+$/', $goodsNo)) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $acMode = strtolower(trim((string)$acMode));
+        if ($acMode !== 'set' && $acMode !== 'unset') {
+            throw new \Exception('acMode는 set 또는 unset만 가능합니다.');
+        }
+
+        $fixedPrice = (int)$fixedPrice;
+        $goodsPrice = (int)$goodsPrice;
+        if ($acMode === 'set') {
+            if ($fixedPrice <= 0) {
+                throw new \Exception('정가는 반드시 필요합니다.');
+            }
+            if ($goodsPrice <= 0) {
+                throw new \Exception('판매가는 반드시 필요합니다.');
+            }
+        }
+        if ($fixedPrice < 0) {
+            $fixedPrice = 0;
+        }
+        if ($goodsPrice < 0) {
+            $goodsPrice = 0;
+        }
+
+        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=specialDiscountApply'
+            . '&goodsNo=' . urlencode($goodsNo)
+            . '&acMode=' . urlencode($acMode)
+            . '&fixedPrice=' . urlencode((string)$fixedPrice)
+            . '&goodsPrice=' . urlencode((string)$goodsPrice);
+
+        $response = HttpClient::getData($apiUrl);
+        $responseData = json_decode($response, true);
+        if (!is_array($responseData)) {
+            throw new \Exception('고도몰 API 응답 파싱 실패');
+        }
+
+        return $responseData;
+    }
+
+
+    /**
      * 고도몰 자동재고등록 및 검수 사항 자동적용
      *
      * 고도몰 API(mode=autoRestockWithCheck)로 전달되는 파라미터 정리

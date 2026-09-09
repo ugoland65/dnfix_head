@@ -352,7 +352,74 @@ $categories = [
         'code' => '09000000',
         'key' => 'CONDOM',
         'name' => '콘돔',
-        'children' => []
+        'children' => [
+            [
+                'code' => '09010000',
+                'key' => 'CONDOM_REGULAR',
+                'name' => '일반형 콘돔',
+                'children' => []
+            ],
+            [
+                'code' => '09020000',
+                'key' => 'CONDOM_DELAY',
+                'name' => '사정지연',
+                'children' => []
+            ],
+            [
+                'code' => '09030000',
+                'key' => 'CONDOM_THIN',
+                'name' => '얇은/극초박',
+                'children' => []
+            ],
+            [
+                'code' => '09040000',
+                'key' => 'CONDOM_RIBBED',
+                'name' => '돌출/굴곡',
+                'children' => []
+            ],
+            [
+                'code' => '09050000',
+                'key' => 'CONDOM_SCENTED_WARMING',
+                'name' => '향기/발열',
+                'children' => []
+            ],
+            [
+                'code' => '09060000',
+                'key' => 'CONDOM_FINGER',
+                'name' => '손가락',
+                'children' => []
+            ],
+            [
+                'code' => '09070000',
+                'key' => 'CONDOM_NEW_MATERIAL',
+                'name' => '신소재',
+                'children' => []
+            ],
+            [
+                'code' => '09080000',
+                'key' => 'CONDOM_BULK',
+                'name' => '대용량',
+                'children' => []
+            ],
+            [
+                'code' => '09090000',
+                'key' => 'CONDOM_NO_TIP',
+                'name' => '무꼭지',
+                'children' => []
+            ],
+            [
+                'code' => '09100000',
+                'key' => 'CONDOM_FEMIDOM',
+                'name' => '페미돔형',
+                'children' => []
+            ],
+            [
+                'code' => '09110000',
+                'key' => 'CONDOM_GLOW_FANCY',
+                'name' => '야광/팬시',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '10000000',

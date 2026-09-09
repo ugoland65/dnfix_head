@@ -1,6 +1,8 @@
 <style>
 .stock-chart-section { margin-top: 28px; }
 .stock-chart-section-title { font-size: 16px; font-weight: 700; margin: 0 0 10px; }
+.stock-chart-stock-applied { margin-top: 4px; font-size: 11px; color: #1769d2; font-weight: 700; }
+.stock-chart-stock-applied-calc { margin-top: 2px; font-size: 11px; color: #5a6a85; font-weight: 400; }
 </style>
 <form id="form_prd_info_stock_chart">
     <input type="hidden" name="prd_idx" value="<?= (int)($prd_idx ?? 0) ?>">
@@ -31,7 +33,7 @@
     $insightSoldOutAt = (string)($insight['soldout_at'] ?? '');
 ?>
 <div class="stock-chart-section">
-<div class="stock-chart-section-title">판매/발주 요약 (품절월 제외 월평균 <?= (int)($insight['sample_months'] ?? 0) ?>개월)</div>
+<div class="stock-chart-section-title">판매/발주 요약 (품절월·입고전 제외 월평균 <?= (int)($insight['sample_months'] ?? 0) ?>개월)</div>
 <table class="table-style">
     <tr>
         <th>현재고</th>
@@ -66,6 +68,13 @@
         <td class="text-center"><?= number_format((int)($insight['lost_sale_90'] ?? 0)) ?> 개</td>
         <td class="text-center">
             <b><?= number_format((int)($insight['recommended_qty'] ?? 0)) ?></b> 개
+            <?php if (!empty($insight['stock_applied'])) { ?>
+                <div class="stock-chart-stock-applied">현재고 반영</div>
+                <div class="stock-chart-stock-applied-calc">
+                    필요 <?= number_format((int)($insight['demand_qty'] ?? 0)) ?>
+                    − 현재고 <?= number_format((int)($insight['current_stock'] ?? 0)) ?>
+                </div>
+            <?php } ?>
             <?php if (!empty($insight['recommended_capped'])) { ?>
                 <?php if ((int)($insight['typical_inbound'] ?? 0) > 0) { ?>
                     <div class="">최근 입고 상한 : <b><?= (int)$insight['typical_inbound'] ?>개</b></div>
@@ -79,7 +88,7 @@
     <?= htmlspecialchars((string)($insight['forecast_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     권장발주 = 월평균 일판매 × (발주주기 <?= (int)($insight['cycle_days'] ?? 30) ?>일 + 입고리드 <?= (int)($insight['lead_days'] ?? 14) ?>일) − 현재고.
     급판매여도 최근 신규입고 수량(중앙값)을 넘지 않습니다. 현재고가 1개 이하이면 급판매로 보지 않습니다. 입고 이력이 없으면 월평균 권장의 3배로 제한합니다.
-    입고리드는 주문서 작성 1주 + 입고 1주(14일)로 고정합니다. 입고가 없던 품절월은 평균·미판매에서 제외합니다.
+    입고리드는 주문서 작성 1주 + 입고 1주(14일)로 고정합니다. 입고가 없던 품절월과 최초입고 이전 월은 평균·미판매에서 제외합니다.
     <?php if (!empty($insight['need_order_soon'])) { ?>
         <b style="color:#d4380d;">재고 지속일이 리드일보다 짧아 이번 주기 발주가 필요합니다.</b>
     <?php } ?>
@@ -104,7 +113,9 @@
             <tr>
                 <td>
                     <?= (int)($row['year'] ?? 0) ?>년 <?= (int)($row['month'] ?? 0) ?>월
-                    <?php if (!empty($row['is_soldout_month'])) { ?>
+                    <?php if (!empty($row['is_pre_inbound_month'])) { ?>
+                        <b style="color:#888;">[입고전]</b>
+                    <?php } elseif (!empty($row['is_soldout_month'])) { ?>
                         <b style="color:#d4380d;">[품절월]</b>
                     <?php } ?>
                 </td>
@@ -122,7 +133,13 @@
         월평균 : <b><?= $avg_all ?? 0 ?></b> 건
         &nbsp;/&nbsp;
         이번달(<?= (int)($current_month ?? date('n')) ?>월) 제외 월평균 : <b><?= $avg_exclude_current ?? 0 ?></b> 건
-        <div class="admin-guide-text">품절월은 월평균·추정미판매에서 제외합니다. 추정미판매는 월평균 일판매 × 해당월 품절일수입니다.</div>
+        <div class="admin-guide-text">
+            품절월·최초입고 이전 월은 월평균·추정미판매에서 제외합니다.
+            <?php if (!empty($first_inbound_day)) { ?>
+                최초입고 <?= htmlspecialchars((string)$first_inbound_day, ENT_QUOTES, 'UTF-8') ?> 이전 월은 아직 취급하지 않은 기간입니다.
+            <?php } ?>
+            추정미판매는 월평균 일판매 × 해당월 품절일수입니다.
+        </div>
     </div>
 </div>
 <?php } elseif (($show_mode ?? '') === '월간통계') { ?>

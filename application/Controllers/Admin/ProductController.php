@@ -437,6 +437,10 @@ class ProductController extends BaseClass
                 (int)$prdIdx,
                 InspectionProcessLogService::LOCATION_PRODUCT_GODO_HANDLING_STOPPED
             );
+            $godoSpecialDiscountLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prdIdx,
+                InspectionProcessLogService::LOCATION_PRODUCT_GODO_SPECIAL_DISCOUNT
+            );
 
             $data = [
                 'mode' => 'edit',
@@ -448,6 +452,7 @@ class ProductController extends BaseClass
                 'sale_status_options' => $saleStatusOptions,
                 'godoDiscontinuedLog' => $godoDiscontinuedLog,
                 'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
+                'godoSpecialDiscountLog' => $godoSpecialDiscountLog,
                 'orderGroupCodeOptions' => (new OrderGroupService())->getOrderGroupCodeOptions(),
             ];
 
@@ -1733,6 +1738,14 @@ class ProductController extends BaseClass
 
                 case 'set_godo_product_handling_stopped':
                     $result = $this->productService->setGodoProductHandlingStopped($requestData);
+                    break;
+
+                case 'set_godo_product_special_discount':
+                    $result = $this->productService->setGodoProductSpecialDiscount($requestData);
+                    break;
+
+                case 'unset_godo_product_special_discount':
+                    $result = $this->productService->unsetGodoProductSpecialDiscount($requestData);
                     break;
 
                 case 'unset_product_discontinued':

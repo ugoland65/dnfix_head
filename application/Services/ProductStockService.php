@@ -674,6 +674,7 @@ class ProductStockService extends BaseClass
         $weeklyRows = [];
         $avgAll = 0;
         $avgExcludeCurrent = 0;
+        $firstInboundDay = $this->getFirstInboundDay($psIdx);
         $monthSoldOutInfo = [
             'is_soldout_month' => false,
             'soldout_date_text' => '',
@@ -733,15 +734,17 @@ class ProductStockService extends BaseClass
                     $soldOutPeriods,
                     $timelineEndDay
                 );
+                $isPreInboundMonth = $this->isMonthBeforeFirstInbound($year, $thisMonth, $firstInboundDay);
                 $yearlyRows[] = array_merge([
                     'year' => $year,
                     'month' => $thisMonth,
                     'in_stock_count' => $row['in_stock_count'],
                     'in_stock' => $row['in_stock'],
                     'sale_stock' => $row['sale_stock'],
+                    'is_pre_inbound_month' => $isPreInboundMonth,
                 ], $soldOutInfo);
 
-                if (!empty($soldOutInfo['is_soldout_month'])) {
+                if ($isPreInboundMonth || !empty($soldOutInfo['is_soldout_month'])) {
                     continue;
                 }
 
@@ -835,6 +838,7 @@ class ProductStockService extends BaseClass
             'cur_y' => $year,
             'cur_m' => $month,
             'current_month' => $nowM,
+            'first_inbound_day' => $firstInboundDay,
             'yearly_rows' => $yearlyRows,
             'weekly_rows' => $weeklyRows,
             'month_soldout_info' => $monthSoldOutInfo,
@@ -842,7 +846,7 @@ class ProductStockService extends BaseClass
             'avg_exclude_current' => $avgExcludeCurrent,
             'order_rows' => $orderRows,
             'inbound_rows' => $inboundRows,
-            'insight' => $this->buildStockChartInsight($psIdx, $inboundRows, $orderRows),
+            'insight' => $this->buildStockChartInsight($psIdx, $inboundRows, $orderRows, $firstInboundDay),
         ];
     }
 
@@ -1410,7 +1414,11 @@ class ProductStockService extends BaseClass
 
         $normalSales = [];
         foreach ($yearlyRows as $row) {
-            if (!empty($row['is_soldout_month']) || !empty($row['is_current_month'])) {
+            if (
+                !empty($row['is_soldout_month'])
+                || !empty($row['is_pre_inbound_month'])
+                || !empty($row['is_current_month'])
+            ) {
                 continue;
             }
             $normalSales[] = (int)($row['sale_stock'] ?? 0);
@@ -1419,7 +1427,7 @@ class ProductStockService extends BaseClass
         $baselineDaily = $monthlyAvg > 0 ? round($monthlyAvg / 30, 2) : 0.0;
 
         foreach ($yearlyRows as &$row) {
-            if (!empty($row['is_soldout_month'])) {
+            if (!empty($row['is_soldout_month']) || !empty($row['is_pre_inbound_month'])) {
                 $row['lost_sale'] = 0;
                 continue;
             }
@@ -1465,9 +1473,10 @@ class ProductStockService extends BaseClass
      * @param int $psIdx
      * @param array $inboundRows
      * @param array $orderRows
+     * @param string $firstInboundDay
      * @return array
      */
-    private function buildStockChartInsight(int $psIdx, array $inboundRows, array $orderRows): array
+    private function buildStockChartInsight(int $psIdx, array $inboundRows, array $orderRows, string $firstInboundDay = ''): array
     {
         $today = date('Y-m-d');
         $recentDays = 28;
@@ -1486,7 +1495,7 @@ class ProductStockService extends BaseClass
             $currentStock = (int)($stockData['ps_stock'] ?? 0);
         }
 
-        $monthStats = $this->getNormalMonthSaleStats($psIdx, 12);
+        $monthStats = $this->getNormalMonthSaleStats($psIdx, 12, $firstInboundDay);
         $monthlyAvg = (float)($monthStats['monthly_avg'] ?? 0);
         $dailyMonth = $monthlyAvg > 0 ? round($monthlyAvg / 30, 2) : 0.0;
         $sampleMonths = (int)($monthStats['sample_months'] ?? 0);
@@ -1535,13 +1544,17 @@ class ProductStockService extends BaseClass
         $systemRecommended = ($isSurge && $surgeRecommended > 0) ? $surgeRecommended : $baseRecommended;
         $recommended = $baseRecommended;
         $recommendedCapped = false;
+        $recommendDaily = $dailyMonth;
         if ($isSurge && $surgeRecommended > $baseRecommended) {
             $cap = $typicalInbound > 0
                 ? $typicalInbound
                 : ($baseRecommended > 0 ? $baseRecommended * 3 : $surgeRecommended);
             $recommended = max($baseRecommended, min($surgeRecommended, $cap));
             $recommendedCapped = $recommended < $surgeRecommended;
+            $recommendDaily = $daily28;
         }
+        $demandQty = $this->calcDemandQty($recommendDaily, $horizonDays);
+        $stockApplied = $currentStock > 0 && $demandQty > 0;
 
         $needOrderSoon = $coverDays !== null && $coverDays <= $leadDays;
 
@@ -1561,6 +1574,8 @@ class ProductStockService extends BaseClass
             'cycle_days' => $cycleDays,
             'safety_days' => $safetyDays,
             'typical_inbound' => $typicalInbound,
+            'demand_qty' => $demandQty,
+            'stock_applied' => $stockApplied,
             'recommended_qty' => $recommended,
             'system_recommended_qty' => $systemRecommended,
             'recommended_capped' => $recommendedCapped,
@@ -1569,6 +1584,22 @@ class ProductStockService extends BaseClass
             'forecast_text' => $forecastText,
             'need_order_soon' => $needOrderSoon,
         ];
+    }
+
+    /**
+     * 일판매 × 커버일수
+     *
+     * @param float $dailySale
+     * @param int $horizonDays
+     * @return int
+     */
+    private function calcDemandQty(float $dailySale, int $horizonDays): int
+    {
+        if ($dailySale <= 0 || $horizonDays <= 0) {
+            return 0;
+        }
+
+        return (int)ceil($dailySale * $horizonDays);
     }
 
     /**
@@ -1621,9 +1652,10 @@ class ProductStockService extends BaseClass
      *
      * @param int $psIdx
      * @param int $monthCount
+     * @param string $firstInboundDay
      * @return array
      */
-    private function getNormalMonthSaleStats(int $psIdx, int $monthCount = 12): array
+    private function getNormalMonthSaleStats(int $psIdx, int $monthCount = 12, string $firstInboundDay = ''): array
     {
         $nowY = (int)date('Y');
         $nowM = (int)date('n');
@@ -1674,6 +1706,9 @@ class ProductStockService extends BaseClass
             }
 
             $soldOutInfo = $this->buildMonthSoldOutInfo($year, $month, $inStockQty, $periods, $monthEnd);
+            if ($this->isMonthBeforeFirstInbound($year, $month, $firstInboundDay)) {
+                continue;
+            }
             if (!empty($soldOutInfo['is_soldout_month'])) {
                 continue;
             }
@@ -1750,6 +1785,57 @@ class ProductStockService extends BaseClass
         }
 
         return $leadDays;
+    }
+
+    /**
+     * 최초 신규입고일
+     *
+     * @param int $psIdx
+     * @return string Y-m-d or empty
+     */
+    private function getFirstInboundDay(int $psIdx): string
+    {
+        if ($psIdx <= 0) {
+            return '';
+        }
+
+        $row = ProductStockUnitModel::query()
+            ->select(['psu_day'])
+            ->where('psu_stock_idx', '=', $psIdx)
+            ->where('psu_kind', '=', '신규입고')
+            ->where('psu_mode', '=', 'plus')
+            ->orderBy('psu_day', 'ASC')
+            ->orderBy('psu_idx', 'ASC')
+            ->first();
+
+        if (!$row) {
+            return '';
+        }
+
+        $data = method_exists($row, 'toArray') ? $row->toArray() : (array)$row;
+        return trim((string)($data['psu_day'] ?? ''));
+    }
+
+    /**
+     * 해당 월이 최초 입고일보다 이전에 끝났는지
+     *
+     * @param int $year
+     * @param int $month
+     * @param string $firstInboundDay
+     * @return bool
+     */
+    private function isMonthBeforeFirstInbound(int $year, int $month, string $firstInboundDay): bool
+    {
+        $firstInboundDay = trim($firstInboundDay);
+        if ($firstInboundDay === '') {
+            return false;
+        }
+
+        $monthStart = sprintf('%04d-%02d-01', $year, $month);
+        $monthLastDay = (int)date('t', strtotime($monthStart));
+        $monthEnd = sprintf('%04d-%02d-%02d', $year, $month, $monthLastDay);
+
+        return $monthEnd < $firstInboundDay;
     }
 
     /**

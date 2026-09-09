@@ -325,7 +325,10 @@
                             <label class="on_sale_label xs <?= htmlspecialchars($labelClassCode, ENT_QUOTES, 'UTF-8') ?>"><?= htmlspecialchars($labelName, ENT_QUOTES, 'UTF-8') ?></label>
                         <?php } ?>
                        
-                        <div class="p-t-5" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');" style="cursor:pointer;">
+                        <div class="p-t-5 os-prd-name-link"
+                             data-prd-idx="<?= htmlspecialchars((string)($item['idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                             data-ps-idx="<?= htmlspecialchars((string)($item['product']['ps_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"
+                             style="cursor:pointer;">
                             <?php /*
                             <button type="button" id="aa" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="onlyAD.prdView('<?= $item['idx'] ?? '' ?>','info');">보기</button> 
                             <?php */ ?>
@@ -786,6 +789,11 @@
     <button type="button" data-row-action="group-move"><span class="row-context-menu-icon">⇄</span>그룹이동</button>
     <div id="orderSheetRowMoveGroupList"></div>
     <button type="button" data-row-action="other-form-register"><span class="row-context-menu-icon">＋</span>다른 주문서 폼 등록</button>
+</div>
+
+<div id="orderSheetPrdViewMenu" class="row-context-menu" hidden>
+    <button type="button" data-prd-view-mode="info"><span class="row-context-menu-icon">ℹ</span>상품정보</button>
+    <button type="button" data-prd-view-mode="stock_chart"><span class="row-context-menu-icon">▣</span>판매량/발주 요약</button>
 </div>
 
 <div id="orderSheetOtherFormModal" class="other-form-register-modal" hidden>
@@ -1387,6 +1395,7 @@
         var $prdTableBody = $('.ospl-prd-wrap .table-st1 tbody');
         var $prdWrap = $('.ospl-prd-wrap').first();
         var $rowContextMenu = $('#orderSheetRowContextMenu');
+        var $prdViewMenu = $('#orderSheetPrdViewMenu');
         var $rowMoveGroupList = $('#orderSheetRowMoveGroupList');
         var $otherFormModal = $('#orderSheetOtherFormModal');
         var $otherFormStepForms = $('#orderSheetOtherFormStepForms');
@@ -1492,6 +1501,55 @@
                 $contextTargetRow.removeClass('row-context-selected');
             }
             $contextTargetRow = $();
+        }
+
+        function hidePrdViewMenu() {
+            $prdViewMenu.attr('hidden', true).css({ left: '', top: '' }).removeData('prd-idx');
+        }
+
+        function placeFixedMenu($menu, clientX, clientY) {
+            var menuWidth = $menu.outerWidth() || 150;
+            var menuHeight = $menu.outerHeight() || 120;
+            var viewportWidth = window.innerWidth || $(window).width();
+            var viewportHeight = window.innerHeight || $(window).height();
+            var maxLeft = viewportWidth - menuWidth - 8;
+            var maxTop = viewportHeight - menuHeight - 8;
+            var left = Math.min(clientX, maxLeft);
+            var top = Math.min(clientY, maxTop);
+
+            if (!isFinite(left)) {
+                left = clientX;
+            }
+            if (!isFinite(top)) {
+                top = clientY;
+            }
+
+            $menu.css({
+                left: Math.max(8, left),
+                top: Math.max(8, top)
+            });
+        }
+
+        function showPrdViewMenu($trigger, clientX, clientY) {
+            if (!$prdViewMenu.length) {
+                return;
+            }
+            var prdIdx = String($trigger.data('prd-idx') || '').trim();
+            if (!prdIdx) {
+                return;
+            }
+            if (!$prdViewMenu.is('[hidden]') && String($prdViewMenu.data('prd-idx') || '') === prdIdx) {
+                hidePrdViewMenu();
+                return;
+            }
+            hideRowContextMenu();
+            if (!$prdViewMenu.parent().is('body')) {
+                $prdViewMenu.appendTo('body');
+            }
+            var hasPsIdx = String($trigger.data('ps-idx') || '').trim() !== '';
+            $prdViewMenu.find('[data-prd-view-mode="stock_chart"]').css('display', hasPsIdx ? 'flex' : 'none');
+            $prdViewMenu.data('prd-idx', prdIdx).removeAttr('hidden');
+            placeFixedMenu($prdViewMenu, clientX, clientY);
         }
 
         function movePrdWrapScroll(edge) {
@@ -2023,6 +2081,7 @@
             if (!$rowContextMenu.length) {
                 return;
             }
+            hidePrdViewMenu();
             if (!$rowContextMenu.parent().is('body')) {
                 $rowContextMenu.appendTo('body');
             }
@@ -2032,27 +2091,7 @@
             $contextTargetRow = $row;
             $contextTargetRow.addClass('row-context-selected');
             $rowContextMenu.removeAttr('hidden');
-
-            var menuWidth = $rowContextMenu.outerWidth() || 150;
-            var menuHeight = $rowContextMenu.outerHeight() || 120;
-            var viewportWidth = window.innerWidth || $(window).width();
-            var viewportHeight = window.innerHeight || $(window).height();
-            var maxLeft = viewportWidth - menuWidth - 8;
-            var maxTop = viewportHeight - menuHeight - 8;
-            var left = Math.min(clientX, maxLeft);
-            var top = Math.min(clientY, maxTop);
-
-            if (!isFinite(left)) {
-                left = clientX;
-            }
-            if (!isFinite(top)) {
-                top = clientY;
-            }
-
-            $rowContextMenu.css({
-                left: Math.max(8, left),
-                top: Math.max(8, top)
-            });
+            placeFixedMenu($rowContextMenu, clientX, clientY);
         }
 
         scheduleRowSortableInit();
@@ -2144,6 +2183,26 @@
             .on('contextmenu.orderSheetRowMenu', '.ospl-prd-wrap .table-st1 tbody > tr', function(e) {
                 e.preventDefault();
                 showRowContextMenu($(this), e.clientX, e.clientY);
+            })
+            .off('click.orderSheetPrdViewMenu', '.os-prd-name-link')
+            .on('click.orderSheetPrdViewMenu', '.os-prd-name-link', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                showPrdViewMenu($(this), e.clientX, e.clientY);
+            })
+            .off('click.orderSheetPrdViewMenuAction', '#orderSheetPrdViewMenu [data-prd-view-mode]')
+            .on('click.orderSheetPrdViewMenuAction', '#orderSheetPrdViewMenu [data-prd-view-mode]', function(e) {
+                e.preventDefault();
+                e.stopPropagation();
+                var prdIdx = String($prdViewMenu.data('prd-idx') || '').trim();
+                var vmode = String($(this).data('prd-view-mode') || 'info').trim() || 'info';
+                hidePrdViewMenu();
+                if (!prdIdx) {
+                    return;
+                }
+                if (typeof onlyAD !== 'undefined' && onlyAD && typeof onlyAD.prdView === 'function') {
+                    onlyAD.prdView(prdIdx, vmode);
+                }
             })
             .off('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]')
             .on('click.orderSheetRowMenuAction', '#orderSheetRowContextMenu [data-row-action]', function(e) {
@@ -2315,8 +2374,11 @@
                 if (
                     !$(e.target).closest('#orderSheetRowContextMenu').length
                     && !$(e.target).closest('#orderSheetOtherFormModal').length
+                    && !$(e.target).closest('#orderSheetPrdViewMenu').length
+                    && !$(e.target).closest('.os-prd-name-link').length
                 ) {
                     hideRowContextMenu();
+                    hidePrdViewMenu();
                 }
             })
             .off('keydown.orderSheetRowMenuHide')
@@ -2326,6 +2388,7 @@
                         closeOtherFormModal();
                     } else {
                         hideRowContextMenu();
+                        hidePrdViewMenu();
                     }
                 }
             });
@@ -2334,6 +2397,7 @@
             .off('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide')
             .on('scroll.orderSheetRowMenuHide resize.orderSheetRowMenuHide', function() {
                 hideRowContextMenu();
+                hidePrdViewMenu();
             });
 
         function decodeProductMemoEntities(memo) {

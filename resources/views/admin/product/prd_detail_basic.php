@@ -318,6 +318,80 @@
         justify-content: flex-end;
         padding: 0 18px 16px;
     }
+    .prd-godo-special-modal {
+        position: fixed;
+        inset: 0;
+        z-index: 10030;
+        display: none;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(15, 23, 42, .62);
+    }
+    .prd-godo-special-modal.is-open { display: flex; }
+    .prd-godo-special-modal__panel {
+        width: min(420px, 100%);
+        border-radius: 10px;
+        background: #fff;
+        box-shadow: 0 20px 50px rgba(15, 23, 42, .28);
+        overflow: hidden;
+    }
+    .prd-godo-special-modal__header {
+        display: flex;
+        align-items: center;
+        justify-content: space-between;
+        gap: 12px;
+        padding: 14px 18px;
+        border-bottom: 1px solid #e5e7eb;
+    }
+    .prd-godo-special-modal__header h2 {
+        margin: 0;
+        color: #1f2937;
+        font-size: 17px;
+    }
+    .prd-godo-special-modal__close {
+        padding: 4px 8px;
+        border: 0;
+        background: transparent;
+        color: #64748b;
+        font-size: 24px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .prd-godo-special-modal__body {
+        display: grid;
+        gap: 12px;
+        padding: 18px;
+    }
+    .prd-godo-special-modal__row {
+        display: flex;
+        align-items: center;
+        gap: 10px;
+    }
+    .prd-godo-special-modal__row label {
+        width: 72px;
+        color: #334155;
+        font-size: 13px;
+        font-weight: 700;
+    }
+    .prd-godo-special-modal__row input {
+        width: 140px;
+        padding: 6px 8px;
+        border: 1px solid #cbd5e1;
+        border-radius: 5px;
+    }
+    .prd-godo-special-modal__help {
+        margin: 0;
+        color: #64748b;
+        font-size: 12px;
+        line-height: 1.5;
+    }
+    .prd-godo-special-modal__footer {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        padding: 0 18px 16px;
+    }
     .order-code-row {
         display: flex;
         align-items: center;
@@ -1276,23 +1350,94 @@
 
             <?php if (!empty($productData['ps_idx'])) { ?>
                 <tr>
-                    <th>할인중 설정</th>
+                    <th>할인 설정</th>
                     <td>
-                        <?php if ($productData['is_sale_month']) { ?>
-                            <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdDetailBasicForm.unsetProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'monthly')">월간할인 해제</button>
-                        <?php } else { ?>
-                            <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'monthly')">월간할인 지정</button>
-                        <?php } ?>
+                        <div>
+                            할인대상 :
+                            <label><input type="radio" name="ps_discount_target_yn" value="Y" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'Y') echo "checked"; ?>> 해당대상</label>
+                            <label><input type="radio" name="ps_discount_target_yn" value="N" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'N') echo "checked"; ?>> 할인대상 제외</label>
+                        </div>
+                        <div class="admin-guide-text">
+                            - 일일할인 대상에 포함되지 말지 설정합니다.
+                        </div>
 
-                        <?php if ($productData['is_sale_special']) { ?>
-                            <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdDetailBasicForm.unsetProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'special')">특가할인 해제</button>
-                        <?php } else { ?>
-                            <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'special')">특가할인 지정</button>
-                        <?php } ?>
+                        <div class="m-t-8">
+                            <?php if ($productData['is_sale_month']) { ?>
+                                <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdDetailBasicForm.unsetProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'monthly')">월간할인 해제</button>
+                            <?php } else { ?>
+                                <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'monthly')">월간할인 지정</button>
+                            <?php } ?>
 
-                        할인대상 :
-                        <label><input type="radio" name="ps_discount_target_yn" value="Y" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'Y') echo "checked"; ?>> 해당대상</label>
-                        <label><input type="radio" name="ps_discount_target_yn" value="N" <?php if (($productData['ps_discount_target_yn'] ?? 'Y') === 'N') echo "checked"; ?>> 할인대상 제외</label>
+                            <?php if ($productData['is_sale_special']) { ?>
+                                <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm " onclick="prdDetailBasicForm.unsetProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'special')">특가할인 해제</button>
+                            <?php } else { ?>
+                                <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductSale('<?= $productData['CD_IDX'] ?? '' ?>','<?= $productData['ps_idx'] ?? '' ?>', 'special')">특가할인 지정</button>
+                            <?php } ?>
+                        </div>
+
+                        <div class="m-t-8">
+                            <?php
+                                $hasGodoCodeForSpecial = (trim((string)($productData['cd_godo_code'] ?? '')) !== '' && trim((string)($productData['cd_godo_code'] ?? '')) !== '0');
+                                $godoSpecialDiscountLog = (isset($godoSpecialDiscountLog) && is_array($godoSpecialDiscountLog)) ? $godoSpecialDiscountLog : [];
+                                $godoSpecialDiscountProcess = (isset($godoSpecialDiscountLog['process_content']) && is_array($godoSpecialDiscountLog['process_content']))
+                                    ? $godoSpecialDiscountLog['process_content']
+                                    : [];
+                                $godoSpecialDiscountResult = (isset($godoSpecialDiscountLog['result_content']) && is_array($godoSpecialDiscountLog['result_content']))
+                                    ? $godoSpecialDiscountLog['result_content']
+                                    : [];
+                                $godoSpecialDiscountSuccess = !empty($godoSpecialDiscountResult['success']);
+                                $godoSpecialDiscountMode = strtolower(trim((string)($godoSpecialDiscountResult['ac_mode'] ?? ($godoSpecialDiscountProcess['ac_mode'] ?? ''))));
+                                $godoSpecialDiscountStatus = trim((string)($godoSpecialDiscountResult['status'] ?? ''));
+                                if ($godoSpecialDiscountStatus === '') {
+                                    $godoSpecialDiscountStatus = !empty($godoSpecialDiscountLog) ? ($godoSpecialDiscountSuccess ? '처리완료' : '실패') : '미처리';
+                                }
+                                $godoSpecialDiscountBy = trim((string)($godoSpecialDiscountLog['executor_admin_name'] ?? ''));
+                                if ($godoSpecialDiscountBy === '') {
+                                    $godoSpecialDiscountBy = trim((string)($godoSpecialDiscountLog['executor_admin_id'] ?? ''));
+                                }
+                                $godoSpecialDiscountAt = trim((string)($godoSpecialDiscountLog['executed_at'] ?? ''));
+                                $godoSpecialDiscountLabel = ($godoSpecialDiscountMode === 'unset') ? '특가해제' : (($godoSpecialDiscountMode === 'set') ? '특가설정' : '미처리');
+                                $showGodoSpecialSet = empty($godoSpecialDiscountLog) || $godoSpecialDiscountMode !== 'set';
+                                $showGodoSpecialUnset = empty($godoSpecialDiscountLog) || $godoSpecialDiscountMode !== 'unset';
+                            ?>
+                            <?php if ($hasGodoCodeForSpecial) { ?>
+                                <?php if ($showGodoSpecialSet) { ?>
+                                    <button
+                                        type="button"
+                                        class="btnstyle1 <?= ($godoSpecialDiscountSuccess && $godoSpecialDiscountMode === 'set') ? 'btnstyle1-info' : '' ?> btnstyle1-sm"
+                                        onclick="prdDetailBasicForm.openGodoSpecialDiscountModal('set')"
+                                    >고도몰 특가설정</button>
+                                <?php } ?>
+                                <?php if ($showGodoSpecialUnset) { ?>
+                                    <button
+                                        type="button"
+                                        class="btnstyle1 <?= ($godoSpecialDiscountSuccess && $godoSpecialDiscountMode === 'unset') ? 'btnstyle1-info' : '' ?> btnstyle1-sm"
+                                        onclick="prdDetailBasicForm.openGodoSpecialDiscountModal('unset')"
+                                    >고도몰 특가해제</button>
+                                <?php } ?>
+                            <?php } else { ?>
+                                <button type="button" class="btnstyle1 btnstyle1-sm" disabled>고도몰 특가설정</button>
+                                <button type="button" class="btnstyle1 btnstyle1-sm" disabled>고도몰 특가해제</button>
+                            <?php } ?>
+                            <div class="m-t-4" style="font-size:12px; line-height:1.5; color:<?= $godoSpecialDiscountSuccess ? '#15803d' : (!empty($godoSpecialDiscountLog) ? '#dc3545' : '#6b7280') ?>;">
+                                고도몰 특가: <b><?= htmlspecialchars($godoSpecialDiscountLabel, ENT_QUOTES, 'UTF-8') ?></b>
+                                <?php if ($godoSpecialDiscountStatus !== '' && !empty($godoSpecialDiscountLog)) { ?>
+                                    <span>(<?= htmlspecialchars($godoSpecialDiscountStatus, ENT_QUOTES, 'UTF-8') ?>)</span>
+                                <?php } ?>
+                                <?php if ($godoSpecialDiscountAt !== '') { ?>
+                                    <span><?= htmlspecialchars($godoSpecialDiscountAt, ENT_QUOTES, 'UTF-8') ?><?= $godoSpecialDiscountBy !== '' ? ' · ' . htmlspecialchars($godoSpecialDiscountBy, ENT_QUOTES, 'UTF-8') : '' ?></span>
+                                <?php } ?>
+                                <?php if (!$hasGodoCodeForSpecial) { ?>
+                                    <div>고도몰 상품번호가 없어 처리할 수 없습니다.</div>
+                                <?php } ?>
+                            </div>
+                            <div class="admin-guide-text">
+                                - 고도몰 특가설정: 인트라넷 특가할인 지정 + 정가/판매가 반영 + 특가할인 카테고리/아이콘 적용
+                                <br>- 고도몰 특가해제: 인트라넷 특가할인 해제 + 특가할인 카테고리/아이콘 제거
+                                <br>- 고도몰 상품명에 [특가할인] 문구가 추가 또는 제거됩니다.
+                                <br>- 정가/판매가 기본값은 매입정보 값을 사용하며, 모달에서 수정하면 매입정보에도 함께 저장됩니다.
+                            </div>
+
 
 
                     </td>
@@ -2437,6 +2582,31 @@
     </div>
 </div>
 
+<div id="prd_godo_special_modal" class="prd-godo-special-modal" aria-hidden="true">
+    <div class="prd-godo-special-modal__panel" role="dialog" aria-modal="true" aria-labelledby="prd_godo_special_modal_title">
+        <div class="prd-godo-special-modal__header">
+            <h2 id="prd_godo_special_modal_title">고도몰 특가설정</h2>
+            <button type="button" class="prd-godo-special-modal__close" aria-label="닫기">&times;</button>
+        </div>
+        <div class="prd-godo-special-modal__body">
+            <input type="hidden" id="prd_godo_special_ac_mode" value="set">
+            <div class="prd-godo-special-modal__row">
+                <label for="prd_godo_special_fixed_price">정가</label>
+                <input type="text" id="prd_godo_special_fixed_price" inputmode="numeric"> 원
+            </div>
+            <div class="prd-godo-special-modal__row">
+                <label for="prd_godo_special_sale_price">판매가</label>
+                <input type="text" id="prd_godo_special_sale_price" inputmode="numeric"> 원
+            </div>
+            <p id="prd_godo_special_modal_help" class="prd-godo-special-modal__help">매입정보의 정가/판매가를 기본값으로 넣었습니다. 수정 후 적용할 수 있습니다.</p>
+        </div>
+        <div class="prd-godo-special-modal__footer">
+            <button type="button" id="prd_godo_special_modal_cancel" class="btnstyle1 btnstyle1-sm">취소</button>
+            <button type="button" id="prd_godo_special_modal_submit" class="btnstyle1 btnstyle1-primary btnstyle1-sm">적용</button>
+        </div>
+    </div>
+</div>
+
 <script>
     var prdDetailBasicForm = function() {
 
@@ -2471,6 +2641,146 @@
                     onClose();
                 }
             });
+        }
+
+        var godoSpecialDiscountState = {
+            prdIdx: '<?= $productData['CD_IDX'] ?? '' ?>',
+            defaultFixedPrice: <?= (int)($productData['cd_fixed_price'] ?? 0) ?>,
+            defaultSalePrice: <?= (int)($productData['cd_sale_price'] ?? 0) ?>,
+            submitting: false
+        };
+
+        function formatGodoSpecialPrice(value) {
+            var digits = String(value == null ? '' : value).replace(/[^\d]/g, '');
+            if (digits === '') {
+                return '';
+            }
+            return digits.replace(/\B(?=(\d{3})+(?!\d))/g, ',');
+        }
+
+        function parseGodoSpecialPrice(value) {
+            var digits = String(value == null ? '' : value).replace(/[^\d]/g, '');
+            if (digits === '') {
+                return 0;
+            }
+            return parseInt(digits, 10) || 0;
+        }
+
+        function closeGodoSpecialDiscountModal() {
+            $('#prd_godo_special_modal').removeClass('is-open').attr('aria-hidden', 'true');
+        }
+
+        function openGodoSpecialDiscountModal(acMode) {
+            var mode = (acMode === 'unset') ? 'unset' : 'set';
+            var isSet = (mode === 'set');
+            var $modal = $('#prd_godo_special_modal');
+            $('#prd_godo_special_ac_mode').val(mode);
+            $('#prd_godo_special_modal_title').text(isSet ? '고도몰 특가설정' : '고도몰 특가해제');
+            $('#prd_godo_special_modal_help').text(
+                isSet
+                    ? '매입정보의 정가/판매가를 기본값으로 넣었습니다. 수정 후 적용할 수 있습니다.'
+                    : '해제 시 판매가는 현재 정가로 복원하고 정가는 0으로 둘 수 있습니다. 값을 바꿔서 해제할 수도 있습니다.'
+            );
+            $('#prd_godo_special_fixed_price').val(formatGodoSpecialPrice(godoSpecialDiscountState.defaultFixedPrice));
+            $('#prd_godo_special_sale_price').val(formatGodoSpecialPrice(godoSpecialDiscountState.defaultSalePrice));
+            $modal.addClass('is-open').attr('aria-hidden', 'false');
+            $('#prd_godo_special_fixed_price').trigger('focus');
+        }
+
+        function bindGodoSpecialDiscountModal() {
+            var $modal = $('#prd_godo_special_modal');
+            if (!$modal.length) {
+                return;
+            }
+
+            $modal.on('click', '.prd-godo-special-modal__close, #prd_godo_special_modal_cancel', function() {
+                closeGodoSpecialDiscountModal();
+            });
+            $modal.on('click', function(e) {
+                if (e.target === this) {
+                    closeGodoSpecialDiscountModal();
+                }
+            });
+            $modal.on('keyup', '#prd_godo_special_fixed_price, #prd_godo_special_sale_price', function() {
+                if (typeof GC !== 'undefined' && typeof GC.commaInput === 'function') {
+                    GC.commaInput(this.value, this);
+                    return;
+                }
+                this.value = formatGodoSpecialPrice(this.value);
+            });
+            $('#prd_godo_special_modal_submit').on('click', function() {
+                submitGodoSpecialDiscount();
+            });
+        }
+
+        function submitGodoSpecialDiscount() {
+            if (godoSpecialDiscountState.submitting) {
+                return;
+            }
+
+            var acMode = $('#prd_godo_special_ac_mode').val() === 'unset' ? 'unset' : 'set';
+            var prdIdx = godoSpecialDiscountState.prdIdx;
+            var fixedPrice = parseGodoSpecialPrice($('#prd_godo_special_fixed_price').val());
+            var salePrice = parseGodoSpecialPrice($('#prd_godo_special_sale_price').val());
+            var label = (acMode === 'set') ? '고도몰 특가설정' : '고도몰 특가해제';
+
+            if (!prdIdx) {
+                alert('상품번호가 없습니다.');
+                return;
+            }
+            if (acMode === 'set' && fixedPrice <= 0) {
+                alert('정가는 반드시 필요합니다.');
+                $('#prd_godo_special_fixed_price').trigger('focus');
+                return;
+            }
+            if (acMode === 'set' && salePrice <= 0) {
+                alert('판매가는 반드시 필요합니다.');
+                $('#prd_godo_special_sale_price').trigger('focus');
+                return;
+            }
+
+            var confirmMessage = (acMode === 'set')
+                ? '고도몰 특가설정을 진행할까요?\n정가: ' + formatGodoSpecialPrice(fixedPrice) + '원\n판매가: ' + formatGodoSpecialPrice(salePrice) + '원'
+                : '고도몰 특가해제를 진행할까요?';
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            var $submit = $('#prd_godo_special_modal_submit');
+            var originalText = $submit.text();
+            godoSpecialDiscountState.submitting = true;
+            $submit.prop('disabled', true).text('처리중...');
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: (acMode === 'set') ? 'set_godo_product_special_discount' : 'unset_godo_product_special_discount',
+                prd_idx: prdIdx,
+                fixed_price: fixedPrice,
+                goods_price: salePrice,
+                action_url: window.location.pathname + window.location.search
+            })
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '처리가 완료되었습니다.');
+                        location.reload();
+                        return;
+                    }
+                    showProcessFailModal(
+                        label + ' 실패',
+                        getFailMessage(res, label + '에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
+                })
+                .fail(function(res) {
+                    showProcessFailModal(
+                        label + ' 실패',
+                        getFailMessage(res, label + '에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
+                })
+                .always(function() {
+                    godoSpecialDiscountState.submitting = false;
+                    $submit.prop('disabled', false).text(originalText);
+                });
         }
 
         /**
@@ -2856,6 +3166,8 @@
                 });
         }
 
+        bindGodoSpecialDiscountModal();
+
         return {
             save,
             setProductSale,
@@ -2863,6 +3175,7 @@
             setProductDiscontinued,
             setGodoProductDiscontinued,
             setGodoProductHandlingStopped,
+            openGodoSpecialDiscountModal,
             unsetProductDiscontinued,
             setProductHandlingStopped,
             unsetProductHandlingStopped,

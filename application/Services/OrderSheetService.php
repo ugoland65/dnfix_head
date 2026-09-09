@@ -2714,6 +2714,7 @@ class OrderSheetService
                     'A.cd_restock_alert_collected_at',
                     'B.is_sale_month',
                     'B.is_sale_special',
+                    'B.ps_idx',
                     'B.ps_stock',
                     'B.ps_in_date',
                     'B.ps_last_date',

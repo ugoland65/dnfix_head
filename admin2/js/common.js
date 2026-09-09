@@ -84,11 +84,12 @@ var onlyAD = function () {
 	 */
 	function prdView(idx, vmode = 'info', prd_mode = "basic") {
 
-		var url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode;
+		vmode = String(vmode || 'info').trim() || 'info';
+		var url = "/ad/ajax/prd_info/" + idx + "?vmode=" + encodeURIComponent(vmode);
 		if (prd_mode == "stock") {
-			url = "/ad/ajax/prd_info/" + idx + "?vmode=" + vmode + "&prd_mode=stock";
+			url += "&prd_mode=stock";
 		}
-		window.open(url, "prd_quick_" + idx, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
+		window.open(url, "prd_quick_" + idx + "_" + vmode, "width=1400,height=900,toolbar=no,location=no,directories=no,status=no,menubar=no,scrollbars=auto,resizable=no");
 	}
 
 	/**

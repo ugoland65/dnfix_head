@@ -13,6 +13,7 @@ class InspectionProcessLogService
     public const LOCATION_ORDER_SHEET_STOCK_SINGLE = 'order_sheet_stock_single';
     public const LOCATION_PRODUCT_GODO_DISCONTINUED = 'product_godo_discontinued';
     public const LOCATION_PRODUCT_GODO_HANDLING_STOPPED = 'product_godo_handling_stopped';
+    public const LOCATION_PRODUCT_GODO_SPECIAL_DISCOUNT = 'product_godo_special_discount';
 
     /**
      * 재고 일괄등록 로그 저장
@@ -53,6 +54,21 @@ class InspectionProcessLogService
     {
         return $this->write(array_merge($payload, [
             'location_code' => self::LOCATION_PRODUCT_GODO_HANDLING_STOPPED,
+            'prd_idx' => (int)($payload['prd_idx'] ?? 0),
+            'godo_goods_no' => trim((string)($payload['godo_goods_no'] ?? '')),
+        ]));
+    }
+
+    /**
+     * 고도몰 특가할인 설정/해제 로그 저장
+     *
+     * @param array $payload
+     * @return int
+     */
+    public function logProductGodoSpecialDiscount(array $payload): int
+    {
+        return $this->write(array_merge($payload, [
+            'location_code' => self::LOCATION_PRODUCT_GODO_SPECIAL_DISCOUNT,
             'prd_idx' => (int)($payload['prd_idx'] ?? 0),
             'godo_goods_no' => trim((string)($payload['godo_goods_no'] ?? '')),
         ]));
