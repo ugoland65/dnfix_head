@@ -894,8 +894,8 @@ class GodoApiService extends BaseClass {
                     }
                     */ 
 
-                    // 옵션이 실제로 있는가? (빈 배열 [] 은 옵션 없음으로 본다)
-                    if (!empty($goods['optionInfo']) && is_array($goods['optionInfo'])) {
+                    // 옵션이 실제로 있는가? (빈 배열 [] 은 옵션 없음으로 본다) && goodsType != 'addGoods' 추가 상품은 옵션 처리 안함
+                    if (!empty($goods['optionInfo']) && is_array($goods['optionInfo']) && $goods['goodsType'] != 'addGoods') {
                         
                         $order_info['item_type'] = "option";
                         $hasMatchedOption = false;

@@ -123,8 +123,9 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
         <tr>
             <th>수입형태</th>
             <td>
-                <label><input type="radio" name="oo_import" value="국내" <?php if (empty($orderSheetInfo['oo_import']) || ($orderSheetInfo['oo_import'] ?? '') == "국내") echo "checked"; ?>> 국내 주문</label>
-                <label><input type="radio" name="oo_import" value="수입" <?php if (($orderSheetInfo['oo_import'] ?? '') == "수입") echo "checked"; ?>> 수입 주문</label>
+                <label><input type="radio" name="oo_import" value="국내" <?php if (empty($orderSheetInfo['oo_import']) || ($orderSheetInfo['oo_import'] ?? '') == "국내") echo "checked"; ?>> 국내발주</label>
+                <label><input type="radio" name="oo_import" value="수입" <?php if (($orderSheetInfo['oo_import'] ?? '') == "수입") echo "checked"; ?>> 직수입</label>
+                <label><input type="radio" name="oo_import" value="수입대행" <?php if (($orderSheetInfo['oo_import'] ?? '') == "수입대행") echo "checked"; ?>> 수입대행</label>
                 <label><input type="radio" name="oo_import" value="구매대행" <?php if (($orderSheetInfo['oo_import'] ?? '') == "구매대행") echo "checked"; ?>> 구매대행</label>
             </td>
         </tr>

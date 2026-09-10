@@ -580,6 +580,19 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			return resolveMode(getQueryVmode()) || getSavedMode();
 		}
 
+		function syncUrlVmode(modeKey) {
+			try {
+				var url = new URL(window.location.href);
+				if (url.searchParams.get('vmode') === modeKey) {
+					return;
+				}
+				url.searchParams.set('vmode', modeKey);
+				window.history.replaceState(null, '', url.pathname + url.search + url.hash);
+			} catch (e) {
+				// history API를 쓸 수 없으면 현재 URL을 유지한다.
+			}
+		}
+
 		/**
 		 * 메뉴 클릭
 		 */
@@ -592,6 +605,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			} catch (e) {
 				// sessionStorage를 사용할 수 없는 환경에서는 기본 탭으로 동작한다.
 			}
+			syncUrlVmode(modeKey);
 
 			var searchDateStart = "";
 			var searchDateEnd = "";
