@@ -1,45 +1,54 @@
 <?php
-$prdPk = (int)($prd_pk ?? 0);
-$content = (isset($content) && is_array($content)) ? $content : [];
-$summaryPoints = (isset($content['summary_points']) && is_array($content['summary_points'])) ? $content['summary_points'] : [];
-$specs = (isset($content['specs']) && is_array($content['specs'])) ? $content['specs'] : [];
-$specs = array_values(array_filter($specs, static function ($spec): bool {
-    return is_array($spec) && trim((string)($spec['value'] ?? '')) !== '';
-}));
-if (empty($summaryPoints)) {
-    $summaryPoints = [['text' => '']];
-}
-if (empty($specs)) {
-    $specs = [['code' => '', 'name' => '', 'value' => '']];
-}
-$updatedAt = trim((string)($content['updated_at'] ?? ''));
-$adminName = trim((string)($content['admin_name'] ?? ''));
-$deployVersion = (int)($content['deploy_version'] ?? 0);
-$deployVersionCode = trim((string)($content['deploy_version_code'] ?? ''));
-$specsSaved = !empty($content['specs_saved']);
-$specsIsRecommended = !empty($content['specs_is_recommended']);
-$canRecommendSpecs = !empty($can_recommend_specs);
-$canDeploy = !empty($can_deploy);
-$godoContent = (isset($godo_content) && is_array($godo_content)) ? $godo_content : [];
-$godoHasCode = !empty($godoContent['has_godo_code']);
-$godoRegistered = !empty($godoContent['registered']);
-$godoDeployVersion = (int)($godoContent['deploy_version'] ?? 0);
-$godoDeployVersionCode = trim((string)($godoContent['deploy_version_code'] ?? ''));
-$godoMatchesLocal = !empty($godoContent['matches_local']);
-$godoError = trim((string)($godoContent['error'] ?? ''));
-$godoFound = !empty($godoContent['found']);
+    $prdPk = (int)($prd_pk ?? 0);
+    $content = (isset($content) && is_array($content)) ? $content : [];
+    $summaryPoints = (isset($content['summary_points']) && is_array($content['summary_points'])) ? $content['summary_points'] : [];
+    $specs = (isset($content['specs']) && is_array($content['specs'])) ? $content['specs'] : [];
+    $specs = array_values(array_filter($specs, static function ($spec): bool {
+        return is_array($spec) && trim((string)($spec['value'] ?? '')) !== '';
+    }));
+    if (empty($summaryPoints)) {
+        $summaryPoints = [['text' => '']];
+    }
+    if (empty($specs)) {
+        $specs = [['code' => '', 'name' => '', 'value' => '']];
+    }
+    $updatedAt = trim((string)($content['updated_at'] ?? ''));
+    $adminName = trim((string)($content['admin_name'] ?? ''));
+    $deployVersion = (int)($content['deploy_version'] ?? 0);
+    $deployVersionCode = trim((string)($content['deploy_version_code'] ?? ''));
+    $specsSaved = !empty($content['specs_saved']);
+    $specsIsRecommended = !empty($content['specs_is_recommended']);
+    $canRecommendSpecs = !empty($can_recommend_specs);
+    $canDeploy = !empty($can_deploy);
+    $godoContent = (isset($godo_content) && is_array($godo_content)) ? $godo_content : [];
+    $godoHasCode = !empty($godoContent['has_godo_code']);
+    $godoRegistered = !empty($godoContent['registered']);
+    $godoDeployVersion = (int)($godoContent['deploy_version'] ?? 0);
+    $godoDeployVersionCode = trim((string)($godoContent['deploy_version_code'] ?? ''));
+    $godoMatchesLocal = !empty($godoContent['matches_local']);
+    $godoError = trim((string)($godoContent['error'] ?? ''));
+    $godoFound = !empty($godoContent['found']);
+    $productImage = trim((string)($product_image ?? ''));
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&family=Noto+Sans+KR:wght@400;600;700&display=swap');
 
 .prd-content-layout { display: flex; gap: 16px; align-items: flex-start; }
 .prd-content-editor { flex: 1; min-width: 0; }
-.prd-content-preview-col { width: 550px; flex-shrink: 0; position: sticky; top: 80px; }
+.section-title-name{ font-size: 15px; font-weight: 600; color: #111827; margin-bottom:5px; }
+.prd-content-preview-col { width: 550px; flex-shrink: 0; position: sticky; top: 80px; display: flex; flex-direction: column; gap: 12px; }
 .prd-content-section-title { font-weight: 700; margin-bottom: 6px; color: #111827; }
-.prd-content-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+.prd-preview-panel { border: 1px solid #e5e7eb; border-radius: 9px; background: #fff; overflow: hidden; }
+.prd-content-preview-head { display: flex; align-items: center; justify-content: space-between; gap: 8px; flex-wrap: wrap; margin: 0; padding: 8px 10px; background: #f8fafc; border-bottom: 1px solid #e5e7eb; }
+.prd-preview-panel.is-collapsed .prd-content-preview-head { border-bottom: 0; }
+.prd-preview-toggle { display: inline-flex; align-items: center; gap: 6px; margin: 0; padding: 0; border: 0; background: none; font-weight: 700; color: #111827; cursor: pointer; line-height: 1.4; }
+.prd-preview-toggle::before { content: "▼"; font-size: 10px; color: #6b7280; }
+.prd-preview-panel.is-collapsed .prd-preview-toggle::before { content: "▶"; }
+.prd-preview-panel-body { padding: 10px; }
+.prd-preview-panel.is-collapsed .prd-preview-panel-body { display: none; }
 .prd-content-preview-label { margin: 0; font-weight: 700; color: #111827; }
 .prd-content-preview-actions { display: flex; gap: 6px; flex-wrap: wrap; }
-.prd-content-preview-scaler { width: 100%; overflow: hidden; background: #101113; border-radius: 9px; }
+.prd-content-preview-scaler { width: 100%; overflow: hidden; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 9px; }
 .prd-content-preview-inner { width: 1000px; transform-origin: top left; }
 .prd-content-real-preview { position: fixed; inset: 0; z-index: 12000; display: flex; flex-direction: column; }
 .prd-content-real-preview[hidden] { display: none; }
@@ -48,10 +57,10 @@ $godoFound = !empty($godoContent['found']);
 .prd-content-real-preview__bar { display: flex; align-items: center; justify-content: space-between; gap: 10px; padding: 10px 16px; background: #111827; color: #fff; }
 .prd-content-real-preview__bar strong { font-size: 14px; }
 .prd-content-real-preview__stage { flex: 1; overflow: auto; padding: 20px; }
-.prd-content-real-preview__device { margin: 0 auto; background: #101113; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); }
+.prd-content-real-preview__device { margin: 0 auto; background: #ffffff; box-shadow: 0 16px 40px rgba(0, 0, 0, .35); }
 .prd-content-real-preview.is-pc .prd-content-real-preview__device { width: 1000px; }
 .prd-content-real-preview.is-mobile .prd-content-real-preview__device { width: 390px; border: 10px solid #1f2937; border-radius: 28px; overflow: hidden; }
-.prd-content-real-preview .new-goods2-wrap { width: 100%; }
+.prd-content-real-preview .dnfix-goods-contents { width: 100%; }
 
 .prd-content-repeat { width: 100%; border-collapse: collapse; }
 .prd-content-repeat th,
@@ -78,56 +87,150 @@ $godoFound = !empty($godoContent['found']);
 .prd-content-version.is-diff { background: #c2410c; }
 .prd-content-version.is-error { background: #b91c1c; }
 .prd-content-version-code { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 6px; background: #f3f4f6; color: #111827; font-size: 12px; font-weight: 600; font-family: Consolas, Monaco, monospace; user-select: all; }
-.prd-content-meta { margin-top: 8px; color: #6b7280; font-size: 12px; }
+.prd-content-meta { margin-top: 12px; color: #6b7280; font-size: 12px; }
 .prd-content-meta code { font-family: Consolas, Monaco, monospace; color: #111827; }
+.button-wrap .btnstyle1 { margin: 0 4px; vertical-align: middle; }
 .prd-content-spec-notice { margin: 0 0 8px; padding: 8px 10px; border: 1px solid #fde68a; background: #fffbeb; border-radius: 6px; color: #92400e; font-size: 13px; line-height: 1.5; }
 .prd-content-spec-notice p { margin: 0; }
 .prd-content-spec-notice p + p { margin-top: 3px; }
 
-.new-goods2-wrap { width: 1000px; margin: 0; background: #101113; border: 1px solid #000; border-top-left-radius: 9px; border-top-right-radius: 9px; padding: 30px 64px; box-sizing: border-box; overflow: hidden; }
-.new-goods2-wrap .g2-name-en { text-align: left; font-size: 16px; line-height: 120%; padding: 0 0 10px !important; color: #999; font-family: 'Nanum Gothic', sans-serif; }
-.new-goods2-wrap .g2-name { text-align: left; font-size: 28px; color: #eee; font-weight: 600; }
-.new-goods2-wrap .g2-explanation { color: #eee; margin-top: 20px; font-size: 15px; line-height: 150%; text-align: left; padding-left: 5px; box-sizing: border-box; }
-.new-goods2-wrap .g2-explanation p.highlight { display: inline-block; font-weight: 600; font-size: 17px; color: #ff6e6e; margin-top: 20px; }
-.new-goods2-wrap .g2-explanation .maker-comment { margin: 20px 0 20px; }
-.new-goods2-wrap .g2-point-title,
-.new-goods2-wrap .g2-spec-title { display: inline-block; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 600; border-radius: 4px; padding: 1px 10px; box-sizing: border-box; }
-.new-goods2-wrap .g2-point { margin-top: 30px; }
-.new-goods2-wrap .g2-point-title-ul { text-align: left; }
-.new-goods2-wrap .g2-point-title { background-color: #ffc300; color: #000; }
-.new-goods2-wrap .g2-point-box { margin-top: 10px; }
-.new-goods2-wrap .g2-point-box li { color: #ffc424; text-align: left; font-size: 15px; height: 28px; line-height: 25px; padding-left: 28px; background-image: url("https://showdang.co.kr/data/dg_image/site/g2_point_icon.png"); background-size: 19px 18px; background-repeat: no-repeat; box-sizing: border-box; background-position: 0 3px; margin-bottom: 2px; }
-.new-goods2-wrap .g2-spec { margin-top: 30px; box-sizing: border-box; }
-.new-goods2-wrap .g2-spec-title-ul { margin-bottom: 10px; text-align: left; }
-.new-goods2-wrap .g2-spec-title { background-color: #444; color: #fff; }
-.new-goods2-wrap .g2-spec ul li { text-align: left; line-height: 24px; margin-bottom: 2px; font-size: 14px; color: #eee; padding-left: 3px; box-sizing: border-box; }
-.new-goods2-wrap .g2-spec ul li::before { content: "●"; font-size: 9px; line-height: 24px; color: #eee; }
-.new-goods2-wrap .g2-spec ul li label { color: #ccc; display: inline-block; margin-right: 4px; }
+.dnfix-goods-contents { width: 1000px; margin: 0; background: #ffffff; text-align: left; box-sizing: border-box; padding: 30px 64px; overflow: hidden; color: #111; }
+.dnfix-goods-contents h2,
+.dnfix-goods-contents h4,
+.dnfix-goods-contents p,
+.dnfix-goods-contents ul,
+.dnfix-goods-contents dl,
+.dnfix-goods-contents dt,
+.dnfix-goods-contents dd { margin: 0; padding: 0; }
+.dnfix-goods-contents ul { list-style: none; }
+.dnfix-goods-contents .g3-name-en { font-size: 16px; line-height: 120%; color: #999; font-family: 'Nanum Gothic', sans-serif; padding: 0 0 7px !important; }
+.dnfix-goods-contents .g3-name { font-size: 28px; color: #111; font-weight: 600; }
+.dnfix-goods-contents .g3-explanation { margin-top: 20px; font-size: 14px; line-height: 150%; }
+.dnfix-goods-contents .g3-explanation .highlight { display: inline-block; font-weight: 600; font-size: 18px; color: #ff2928; }
+.dnfix-goods-contents .g3-explanation .maker-comment { margin: 20px 0; }
+.dnfix-goods-contents .g3-explanation .md-comment { margin: 20px 0; }
+.dnfix-goods-contents .g3-explanation .maker-comment-title,
+.dnfix-goods-contents .g3-explanation .md-comment-title { font-size: inherit; font-weight: 600; line-height: inherit; }
+.dnfix-goods-contents .g3-point { margin-top: 30px; }
+.dnfix-goods-contents .g3-point-title,
+.dnfix-goods-contents .g3-spec-title { display: inline-block; font-family: 'Noto Sans KR', sans-serif; font-size: 13px; font-weight: 600; border-radius: 4px; padding: 1px 10px; box-sizing: border-box; }
+.dnfix-goods-contents .g3-point-title { background-color: #ff2928; color: #fff; }
+.dnfix-goods-contents .g3-spec-title { background-color: #444; color: #fff; }
+.dnfix-goods-contents .g3-point-list { margin-top: 10px; display: flex; flex-direction: column; gap: 5px; }
+.dnfix-goods-contents .g3-point-list > li { color: #ff2928; font-size: 15px; height: 20px; line-height: 120%; padding-left: 25px; background-image: url("https://showdang.co.kr/data/dg_image/site/g2_point_icon.png"); background-size: 19px 18px; background-repeat: no-repeat; box-sizing: border-box; }
+.dnfix-goods-contents .g3-spec { margin-top: 30px; }
+.dnfix-goods-contents .g3-spec-list { margin-top: 10px; display: flex; flex-direction: column; gap: 6px; }
+.dnfix-goods-contents .g3-spec-list .g3-spec-row { display: flex; gap: 6px; font-size: 14px; }
+.dnfix-goods-contents .g3-spec-list .g3-spec-row dt { color: #777; }
+.dnfix-goods-contents .g3-spec-list .g3-spec-row dt::before { content: "●"; font-size: 9px; color: #777; margin-right: 4px; }
+.dnfix-goods-contents .g3-spec-note { margin: 12px 0 0; font-size: 12px; line-height: 1.5; font-weight: 400; color: #999; word-break: keep-all; }
 
-.prd-content-real-preview.is-mobile .new-goods2-wrap { background-color: #161719; border: 0; border-radius: 0; padding: 0 0 20px; }
-.prd-content-real-preview.is-mobile .g2-name-en { margin: 20px 0 0; padding: 0 10px; font-size: 0.9em; color: #aaa; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; line-height: 1.3; }
-.prd-content-real-preview.is-mobile .g2-name { margin: 7px 0 0; padding: 0 10px; text-align: left; font-size: 1.3em; line-height: 1.35; font-weight: 600; color: #eee; }
-.prd-content-real-preview.is-mobile .g2-explanation { margin-top: 8px; padding: 0 10px; font-size: 1em; line-height: 140%; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; text-align: left; box-sizing: border-box; color: #eee; }
-.prd-content-real-preview.is-mobile .g2-explanation p.highlight { display: inline-block; font-family: 'Noto Sans KR', sans-serif; font-weight: 500; font-size: 1.3em; line-height: 140%; color: #ffbb00; margin: 15px 0; }
-.prd-content-real-preview.is-mobile .g2-explanation .maker-comment { margin: 12px 0; }
-.prd-content-real-preview.is-mobile .g2-point { margin-top: 20px; padding: 0 10px; }
-.prd-content-real-preview.is-mobile .g2-point-title,
-.prd-content-real-preview.is-mobile .g2-spec-title { color: #fff; width: 60px; height: 20px; text-align: center; line-height: 20px; padding: 0 5px; border-radius: 3px; box-sizing: border-box; font-size: 11px; }
-.prd-content-real-preview.is-mobile .g2-point-title { background-color: #ffc300; color: #000; }
-.prd-content-real-preview.is-mobile .g2-spec-title { background-color: #444; color: #fff; }
-.prd-content-real-preview.is-mobile .g2-point-box { margin-top: 10px; }
-.prd-content-real-preview.is-mobile .g2-point-box li { font-size: 1em; line-height: 140%; margin-bottom: 6px; color: #ffc424; height: auto; background-image: url('https://showdang.co.kr/data/dg_image/site/g2_point_icon.png'); background-size: 17px 16px; background-repeat: no-repeat; background-position: 0 2px; padding-left: 22px; box-sizing: border-box; }
-.prd-content-real-preview.is-mobile .g2-spec { margin: 30px 0 20px; padding: 0 10px; box-sizing: border-box; }
-.prd-content-real-preview.is-mobile .g2-spec-title-ul { padding-bottom: 10px; margin-bottom: 0; }
-.prd-content-real-preview.is-mobile .g2-spec ul { box-sizing: border-box; }
-.prd-content-real-preview.is-mobile .g2-spec ul li { font-size: 1em; line-height: 140%; box-sizing: border-box; position: relative; padding: 0 0 0 10px; margin-bottom: 5px; font-family: 'Noto Sans KR', sans-serif; vertical-align: top; display: flex; gap: 4px; color: #eee; }
-.prd-content-real-preview.is-mobile .g2-spec ul li::before { top: 7px; left: 0; width: 4px; height: 4px; content: ""; display: block; position: absolute; border-radius: 50%; background-color: rgba(196, 196, 198, 1); font-size: 0; line-height: 0; color: transparent; }
-.prd-content-real-preview.is-mobile .g2-spec ul li label { display: inline-block; font-size: 1em; color: #aaa; font-weight: 600; width: auto !important; box-sizing: border-box; margin: 0 !important; padding: 0 !important; }
-.prd-content-real-preview.is-mobile { font-size: 14px; }
+.prd-content-real-preview.is-mobile .dnfix-goods-contents { background: #ffffff; border: 0; border-radius: 0; padding: 20px 16px; }
+.prd-content-real-preview.is-mobile .g3-name-en { font-size: 13px; line-height: 130%; padding: 0 0 5px !important; }
+.prd-content-real-preview.is-mobile .g3-name { font-size: 20px; line-height: 135%; }
+.prd-content-real-preview.is-mobile .g3-explanation { margin-top: 12px; font-size: 14px; line-height: 150%; }
+.prd-content-real-preview.is-mobile .g3-explanation .highlight { font-size: 16px; }
+.prd-content-real-preview.is-mobile .g3-explanation .maker-comment,
+.prd-content-real-preview.is-mobile .g3-explanation .md-comment { margin: 12px 0; }
+.prd-content-real-preview.is-mobile .g3-point { margin-top: 20px; }
+.prd-content-real-preview.is-mobile .g3-point-title,
+.prd-content-real-preview.is-mobile .g3-spec-title { font-size: 11px; border-radius: 3px; padding: 0 8px; height: 20px; line-height: 20px; }
+.prd-content-real-preview.is-mobile .g3-point-list { gap: 6px; }
+.prd-content-real-preview.is-mobile .g3-point-list > li { height: auto; font-size: 14px; line-height: 140%; background-size: 17px 16px; background-position: 0 2px; padding-left: 22px; }
+.prd-content-real-preview.is-mobile .g3-spec { margin: 20px 0 0; }
+.prd-content-real-preview.is-mobile .g3-spec-list { gap: 5px; }
+.prd-content-real-preview.is-mobile .g3-spec-list .g3-spec-row { gap: 4px; font-size: 14px; line-height: 140%; flex-wrap: wrap; }
+.prd-content-real-preview.is-mobile .g3-spec-list .g3-spec-row dt::before { font-size: 8px; }
+.prd-content-real-preview.is-mobile .g3-spec-note { margin: 10px 0 0; font-size: 11px; }
 
 @media (max-width: 1280px) {
     .prd-content-layout { flex-direction: column; }
     .prd-content-preview-col { width: 100%; position: static; }
+}
+
+.preview-list-wrap{
+    background: #1e1f21;
+    padding: 20px;
+    .prdImg {
+        width: 200px;
+        height: 200px;
+        overflow: hidden;
+        margin: 0 auto;
+        background-color: #fff;
+        border: 1px solid #fff;
+        box-sizing: border-box;
+        border-radius: 8px;
+        padding: 11px;
+    }
+    .prdImg img {
+        width: 100%;
+        height: 100%;
+        object-fit: contain;
+        display: block;
+    }
+
+    .prdList-info{
+        width: 185px;
+        margin: 0 auto;
+        padding: 10px 0 0 0;
+    }
+
+    .prdList-info .prdList-brand-wrap {
+        display: flex;
+        align-items: center;
+        gap: 5px;
+        line-height: 100%;
+        padding: 0;
+        color: #bfbfbf;
+    }
+
+    .prdList-info .prdList-brand-wrap .prdList-brand {
+        display: inline-block;
+        font-size: 12px;
+        background-color: #333;
+        color: #bfbfbf;
+        border-radius: 3px;
+        margin-left: -5px !important;
+        cursor: pointer;
+        padding: 5px 6px;
+        line-height: 130%;
+    }
+
+    .prdList-info .prdList-name {
+        line-height: 120%;
+        font-size: 14px;
+        font-weight: 400;
+        color: #fff;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 2;
+        -webkit-box-orient: vertical;
+        word-wrap: break-word;
+        margin: 5px 0;
+    }
+
+    .prdList-info .prdList-summary {
+        font-size: 12px;
+        color: #bbb;
+        margin-bottom: 5px;
+        line-height: 120%;
+        overflow: hidden;
+        text-overflow: ellipsis;
+        display: -webkit-box;
+        -webkit-line-clamp: 1;
+        -webkit-box-orient: vertical;
+        word-wrap: break-word;
+    }
+
+    .prdList-info .prdList-price {
+        padding-top: 6px;
+    }
+    .prdList-info .prdList-price strong.goods-price {
+        font-size: 16px;
+        font-weight: 600;
+        color: #fff;
+    }
 }
 </style>
 
@@ -138,6 +241,7 @@ $godoFound = !empty($godoContent['found']);
 
             <table class="table-style">
                 <tbody>
+
                     <tr>
                         <td class="none-bg title">
                             <div class="prd-content-title-row">
@@ -172,6 +276,28 @@ $godoFound = !empty($godoContent['found']);
                                     </button>
                                 <?php } ?>
                             </div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="none-bg ">
+                            <h2 class="section-title-name">상품 리스트</h2>
+                        </td>
+                    </tr>
+                    <tr>
+                        <td>
+                            <div class="prd-content-section-title">간략설명</div>
+                            <input type="text" name="list_summary" maxlength="255" value="<?= htmlspecialchars((string)($content['list_summary'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="간략설명">
+                            <div class="admin-guide-text">- 상품목록에 노출할 간략설명입니다.</div>
+                        </td>
+                    </tr>
+
+                    <tr>
+                        <td class="none-bg" style="height: 15px;"></td>
+                    </tr>
+                    <tr>
+                        <td class="none-bg ">
+                            <h2 class="section-title-name">상품 상세페이지</h2>
                         </td>
                     </tr>
                     <tr>
@@ -238,6 +364,7 @@ $godoFound = !empty($godoContent['found']);
                         </td>
                     </tr>
 
+                    <!-- 스펙 -->
                     <tr>
                         <td>
                             <div class="prd-content-section-title">스펙</div>
@@ -287,48 +414,86 @@ $godoFound = !empty($godoContent['found']);
             </table>
         </form>
 
-        <div class="text-center m-t-10">
-            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-lg" id="prd_content_save_btn">
-                <i class="far fa-check-circle"></i> 저장
-            </button>
-            <?php if ($deployVersion > 0 || $updatedAt !== '' || $adminName !== '') { ?>
-                <div class="prd-content-meta">
-                    <?php if ($deployVersion > 0) { ?>배포버전 v<?= $deployVersion ?><?php } ?>
-                    <?php if ($deployVersionCode !== '') { ?><?= $deployVersion > 0 ? ' · ' : '' ?><code><?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?></code><?php } ?>
-                    <?php if ($updatedAt !== '' || $adminName !== '') { ?>
-                        <?= ($deployVersion > 0 || $deployVersionCode !== '') ? ' · ' : '' ?>최근 저장<?= $adminName !== '' ? ': ' . htmlspecialchars($adminName, ENT_QUOTES, 'UTF-8') : '' ?><?= $updatedAt !== '' ? ' · ' . htmlspecialchars($updatedAt, ENT_QUOTES, 'UTF-8') : '' ?>
+        <?php if ($deployVersion > 0 || $updatedAt !== '' || $adminName !== '') { ?>
+            <div class="prd-content-meta">
+                <?php if ($deployVersion > 0) { ?>배포버전 v<?= $deployVersion ?><?php } ?>
+                <?php if ($deployVersionCode !== '') { ?><?= $deployVersion > 0 ? ' · ' : '' ?><code><?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?></code><?php } ?>
+                <?php if ($updatedAt !== '' || $adminName !== '') { ?>
+                    <?= ($deployVersion > 0 || $deployVersionCode !== '') ? ' · ' : '' ?>최근 저장<?= $adminName !== '' ? ': ' . htmlspecialchars($adminName, ENT_QUOTES, 'UTF-8') : '' ?><?= $updatedAt !== '' ? ' · ' . htmlspecialchars($updatedAt, ENT_QUOTES, 'UTF-8') : '' ?>
+                <?php } ?>
+                <?php if ($godoHasCode) { ?>
+                    · 고도몰
+                    <?php if ($godoError !== '') { ?>
+                        조회 실패
+                    <?php } elseif (!$godoFound) { ?>
+                        상품 없음
+                    <?php } elseif (!$godoRegistered) { ?>
+                        미배포
+                    <?php } else { ?>
+                        <?= $godoDeployVersion > 0 ? 'v' . $godoDeployVersion : '배포됨' ?><?= $godoMatchesLocal ? ' 동기화' : ' 다름' ?>
                     <?php } ?>
-                    <?php if ($godoHasCode) { ?>
-                        · 고도몰
-                        <?php if ($godoError !== '') { ?>
-                            조회 실패
-                        <?php } elseif (!$godoFound) { ?>
-                            상품 없음
-                        <?php } elseif (!$godoRegistered) { ?>
-                            미배포
-                        <?php } else { ?>
-                            <?= $godoDeployVersion > 0 ? 'v' . $godoDeployVersion : '배포됨' ?><?= $godoMatchesLocal ? ' 동기화' : ' 다름' ?>
-                        <?php } ?>
-                    <?php } ?>
-                </div>
-            <?php } ?>
-        </div>
+                <?php } ?>
+            </div>
+        <?php } ?>
+        <div class="admin-guide-text m-t-8">- 임시저장은 배포버전을 유지합니다. 저장은 새 배포버전을 만들고, 이후 고도몰 배포가 가능합니다.</div>
     </div>
 
     <div class="prd-content-preview-col">
-        <div class="prd-content-preview-head">
-            <div class="prd-content-preview-label">미리보기</div>
-            <div class="prd-content-preview-actions">
-                <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="pc">PC버전 실사이즈</button>
-                <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="mobile">모바일화면보기</button>
+        <section class="prd-preview-panel" data-preview-panel="detail">
+            <div class="prd-content-preview-head">
+                <button type="button" class="prd-preview-toggle" data-preview-toggle="detail" aria-expanded="true">디테일 미리보기</button>
+                <div class="prd-content-preview-actions">
+                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="pc">PC버전 실사이즈</button>
+                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="mobile">모바일화면보기</button>
+                </div>
             </div>
-        </div>
-        <div id="prd_content_preview_scaler" class="prd-content-preview-scaler">
-            <div id="prd_content_preview_inner" class="prd-content-preview-inner">
-                <div id="prd_content_preview" class="new-goods2-wrap" data-pdc-version="<?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?>"></div>
+            <div class="prd-preview-panel-body">
+                <div id="prd_content_preview_scaler" class="prd-content-preview-scaler">
+                    <div id="prd_content_preview_inner" class="prd-content-preview-inner">
+                        <div id="prd_content_preview" class="dnfix-goods-contents" data-pdc-version="<?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?>"></div>
+                    </div>
+                </div>
             </div>
-        </div>
+        </section>
+
+        <section class="prd-preview-panel" data-preview-panel="list">
+            <div class="prd-content-preview-head">
+                <button type="button" class="prd-preview-toggle" data-preview-toggle="list" aria-expanded="true">리스트 미리보기</button>
+            </div>
+            <div class="prd-preview-panel-body">
+                <div class="preview-list-wrap">
+                    <?php if ($productImage !== '') { ?>
+                    <div class="prdImg">
+                        <img src="<?= htmlspecialchars($productImage, ENT_QUOTES, 'UTF-8') ?>">
+                    </div>
+                    <?php } ?>
+                    <div class="prdList-info">
+                        <ul class="prdList-brand-wrap">
+                            <span class="prdList-brand">브랜드명</span>
+                        </ul>
+                        <ul class="prdList-name" id="prd_content_list_name"><?= htmlspecialchars((string)($content['korean_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></ul>
+                        <ul class="prdList-summary" id="prd_content_list_summary"><?= htmlspecialchars((string)($content['list_summary'] ?? ''), ENT_QUOTES, 'UTF-8') ?></ul>
+                        <ul class="prdList-price">
+                            <div class="">
+                                <ul>
+                                    <strong class="goods-price">99,999</strong>
+                                </ul>
+                            </div>
+                        </ul>
+                    </div>
+                </div>
+            </div>
+        </section>
     </div>
+    
+</div>
+
+<div class="button-wrap-back"></div>
+<div class="button-wrap">
+    <button type="button" class="btnstyle1 btnstyle1-lg" id="prd_content_draft_btn" title="배포버전을 유지하고 저장합니다">임시저장</button>
+    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-lg" id="prd_content_save_btn" title="새 배포버전을 만들고 저장합니다">
+        <i class="far fa-check-circle"></i> 저장
+    </button>
 </div>
 
 <div id="prd_content_real_preview" class="prd-content-real-preview" hidden>
@@ -340,7 +505,7 @@ $godoFound = !empty($godoContent['found']);
         </div>
         <div class="prd-content-real-preview__stage">
             <div class="prd-content-real-preview__device">
-                <div id="prd_content_real_preview_body" class="new-goods2-wrap"></div>
+                <div id="prd_content_real_preview_body" class="dnfix-goods-contents"></div>
             </div>
         </div>
     </div>
@@ -500,6 +665,9 @@ $godoFound = !empty($godoContent['found']);
         if (!scaler || !inner) {
             return;
         }
+        if ($('[data-preview-panel="detail"]').hasClass('is-collapsed')) {
+            return;
+        }
         var scale = scaler.clientWidth / 1000;
         if (!(scale > 0)) {
             scale = 1;
@@ -520,51 +688,63 @@ $godoFound = !empty($godoContent['found']);
 
         var html = '';
         if (deployVersionCode) {
-            html += '<div class="g2-pdc-version" data-pdc-version="' + escapeHtml(deployVersionCode) + '" hidden></div>';
+            html += '<div class="g3-pdc-version" data-pdc-version="' + escapeHtml(deployVersionCode) + '" hidden></div>';
         }
-        html += '<div class="g2-name-en">' + escapeHtml(originalName) + '</div>';
-        html += '<div class="g2-name">' + escapeHtml(koreanName) + '</div>';
+
+        if (originalName !== '' || koreanName !== '') {
+            html += '<header class="g3-header">';
+            if (originalName !== '') {
+                html += '<p class="g3-name-en">' + escapeHtml(originalName) + '</p>';
+            }
+            if (koreanName !== '') {
+                html += '<h2 class="g3-name">' + escapeHtml(koreanName) + '</h2>';
+            }
+            html += '</header>';
+        }
 
         var explanation = '';
         if (title !== '') {
             explanation += '<p class="highlight">' + escapeHtml(title) + '</p>';
         }
         if (makerComment !== '') {
-            explanation += '<div class="maker-comment">[메이커 코멘트]<br>' + nl2br(makerComment) + '</div>';
+            explanation += '<div class="maker-comment">';
+            explanation += '<h4 class="maker-comment-title">[메이커 코멘트]</h4>';
+            explanation += nl2br(makerComment);
+            explanation += '</div>';
         }
         if (mdComment !== '') {
-            explanation += '<div class="maker-comment">[MD 코멘트]<br>' + nl2br(mdComment) + '</div>';
+            explanation += '<div class="md-comment">';
+            explanation += '<h4 class="md-comment-title">[MD 코멘트]</h4>';
+            explanation += nl2br(mdComment);
+            explanation += '</div>';
         }
         if (explanation !== '') {
-            html += '<div class="g2-explanation">' + explanation + '</div>';
+            html += '<section class="g3-explanation">' + explanation + '</section>';
         }
 
         if (points.length) {
-            html += '<div class="g2-point">';
-            html += '  <ul class="g2-point-title-ul"><div class="g2-point-title">POINT</div></ul>';
-            html += '  <ul class="g2-point-box">';
+            html += '<section class="g3-point">';
+            html += '<h4 class="g3-point-title">POINT</h4>';
+            html += '<ul class="g3-point-list">';
             for (var i = 0; i < points.length; i++) {
                 html += '<li>' + escapeHtml(points[i].text) + '</li>';
             }
-            html += '  </ul>';
-            html += '</div>';
+            html += '</ul></section>';
         }
 
         if (specs.length) {
-            html += '<div class="g2-spec">';
-            html += '  <ul class="g2-spec-title-ul"><div class="g2-spec-title">SPEC</div></ul>';
-            html += '  <ul>';
+            html += '<section class="g3-spec">';
+            html += '<h4 class="g3-spec-title">SPEC</h4>';
+            html += '<dl class="g3-spec-list">';
             for (var j = 0; j < specs.length; j++) {
-                var specName = specs[j].name ? escapeHtml(specs[j].name) + ' :' : '';
-                html += '<li>';
-                if (specName !== '') {
-                    html += '<label>' + specName + '</label>';
-                }
-                html += ' ' + escapeHtml(specs[j].value);
-                html += '</li>';
+                html += '<div class="g3-spec-row">';
+                html += '<dt>' + escapeHtml(specs[j].name) + ' :</dt>';
+                html += '<dd>' + escapeHtml(specs[j].value) + '</dd>';
+                html += '</div>';
             }
-            html += '  </ul>';
-            html += '</div>';
+            html += '</dl>';
+            html += '<p class="g3-spec-note">※ 사이즈, 중량정보는 브랜드(메이커)에서 제공하는 정보를 기준으로 합니다. 개체별, 측정기구에 따라 차이가 있을 수 있습니다.</p>';
+            html += '</section>';
         }
 
         return html;
@@ -599,6 +779,8 @@ $godoFound = !empty($godoContent['found']);
 
     function renderPreview() {
         $('#prd_content_preview').html(buildPreviewHtml());
+        $('#prd_content_list_name').text($.trim($('#prd_detail_content_form input[name="korean_name"]').val() || ''));
+        $('#prd_content_list_summary').text($.trim($('#prd_detail_content_form input[name="list_summary"]').val() || ''));
         fitPreview();
         syncRealPreview();
     }
@@ -702,19 +884,25 @@ $godoFound = !empty($godoContent['found']);
         });
     });
 
-    $('#prd_content_save_btn').on('click', function() {
-        var $btn = $(this);
-        $btn.prop('disabled', true);
-        ajaxRequest('/admin/product/detail_content/save', {
+    function collectSavePayload(saveMode) {
+        return {
             prd_pk: prdPk,
+            save_mode: saveMode,
             original_name: $.trim($('#prd_detail_content_form input[name="original_name"]').val() || ''),
             korean_name: $.trim($('#prd_detail_content_form input[name="korean_name"]').val() || ''),
+            list_summary: $.trim($('#prd_detail_content_form input[name="list_summary"]').val() || ''),
             title: $.trim($('#prd_detail_content_form input[name="title"]').val() || ''),
             maker_comment: $('#prd_detail_content_form textarea[name="maker_comment"]').val() || '',
             md_comment: $('#prd_detail_content_form textarea[name="md_comment"]').val() || '',
             summary_points: JSON.stringify(collectSummaryPoints()),
             specs: JSON.stringify(collectSpecs())
-        }).done(function(res) {
+        };
+    }
+
+    function saveContent(saveMode, $btn) {
+        var $buttons = $('#prd_content_draft_btn, #prd_content_save_btn');
+        $buttons.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/save', collectSavePayload(saveMode)).done(function(res) {
             if (res && res.success) {
                 toast2('success', '상품 컨텐츠', res.message || '저장했습니다.');
                 if (typeof prdInfo === 'object' && typeof prdInfo.mode === 'function') {
@@ -726,10 +914,66 @@ $godoFound = !empty($godoContent['found']);
         }).fail(function(err) {
             showAlert('Error', (err && err.message) ? err.message : '에러', 'alert2');
         }).always(function() {
-            $btn.prop('disabled', false);
+            $buttons.prop('disabled', false);
         });
+    }
+
+    $('#prd_content_draft_btn').on('click', function() {
+        saveContent('draft', $(this));
+    });
+    $('#prd_content_save_btn').on('click', function() {
+        saveContent('version', $(this));
+    });
+
+    function previewPanelStorageKey() {
+        return 'prd_content_preview_panel_' + prdPk;
+    }
+
+    function applyPreviewPanelState(name, expanded) {
+        var $panel = $('[data-preview-panel="' + name + '"]');
+        $panel.toggleClass('is-collapsed', !expanded);
+        $panel.find('[data-preview-toggle="' + name + '"]').attr('aria-expanded', expanded ? 'true' : 'false');
+        if (name === 'detail' && expanded) {
+            fitPreview();
+        }
+    }
+
+    function loadPreviewPanelState() {
+        var state = { detail: true, list: true };
+        try {
+            var saved = sessionStorage.getItem(previewPanelStorageKey());
+            if (saved) {
+                var parsed = JSON.parse(saved);
+                if (typeof parsed.detail === 'boolean') {
+                    state.detail = parsed.detail;
+                }
+                if (typeof parsed.list === 'boolean') {
+                    state.list = parsed.list;
+                }
+            }
+        } catch (e) {}
+        applyPreviewPanelState('detail', state.detail);
+        applyPreviewPanelState('list', state.list);
+    }
+
+    function savePreviewPanelState() {
+        var state = {
+            detail: !$('[data-preview-panel="detail"]').hasClass('is-collapsed'),
+            list: !$('[data-preview-panel="list"]').hasClass('is-collapsed')
+        };
+        try {
+            sessionStorage.setItem(previewPanelStorageKey(), JSON.stringify(state));
+        } catch (e) {}
+    }
+
+    $(document).on('click.prdDetailContent', '[data-preview-toggle]', function() {
+        var name = $(this).attr('data-preview-toggle');
+        var $panel = $('[data-preview-panel="' + name + '"]');
+        applyPreviewPanelState(name, $panel.hasClass('is-collapsed'));
+        savePreviewPanelState();
     });
 
     renderPreview();
+    loadPreviewPanelState();
 })();
 </script>

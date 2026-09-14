@@ -13,6 +13,7 @@ class ProductDetailContentModel extends BaseModel
         'prd_pk',
         'original_name',
         'korean_name',
+        'list_summary',
         'title',
         'maker_comment',
         'md_comment',

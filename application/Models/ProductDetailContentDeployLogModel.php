@@ -17,6 +17,7 @@ class ProductDetailContentDeployLogModel extends BaseModel
         'deploy_version_code',
         'original_name',
         'korean_name',
+        'list_summary',
         'title',
         'maker_comment',
         'md_comment',

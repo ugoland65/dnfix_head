@@ -40,6 +40,7 @@ class ProductDetailContentService
         return [
             'prd_pk' => $prdPk,
             'product_name' => (string)($product['CD_NAME'] ?? ''),
+            'product_image' => $this->buildProductImagePath($product),
             'content' => $content,
             'godo_content' => $godoContent,
             'can_deploy' => $canDeploy,
@@ -63,8 +64,16 @@ class ProductDetailContentService
         $product = $this->requireProduct($prdPk);
         $current = ProductDetailContentModel::where('prd_pk', $prdPk)->first();
         $currentData = $this->rowToArray($current);
-        $nextDeployVersion = ((int)($currentData['deploy_version'] ?? 0)) + 1;
-        $deployVersionCode = $this->makeDeployVersionCode($prdPk, $nextDeployVersion);
+        $keepVersion = (($data['save_mode'] ?? '') === 'draft') || !empty($data['keep_version']);
+        $currentVersion = (int)($currentData['deploy_version'] ?? 0);
+        $currentCode = trim((string)($currentData['deploy_version_code'] ?? ''));
+        if ($keepVersion) {
+            $nextDeployVersion = $currentVersion;
+            $deployVersionCode = $currentCode;
+        } else {
+            $nextDeployVersion = $currentVersion + 1;
+            $deployVersionCode = $this->makeDeployVersionCode($prdPk, $nextDeployVersion);
+        }
 
         $now = date('Y-m-d H:i:s');
         $saved = ProductDetailContentModel::updateOrCreate(
@@ -72,6 +81,7 @@ class ProductDetailContentService
             [
                 'original_name' => $this->clip((string)($data['original_name'] ?? ''), 255),
                 'korean_name' => $this->clip((string)($data['korean_name'] ?? ''), 255),
+                'list_summary' => $this->clip((string)($data['list_summary'] ?? ''), 255),
                 'title' => $this->clip((string)($data['title'] ?? ''), 500),
                 'maker_comment' => (string)($data['maker_comment'] ?? ''),
                 'md_comment' => (string)($data['md_comment'] ?? ''),
@@ -130,7 +140,8 @@ class ProductDetailContentService
             $godoResult = (new GodoApiService())->deployPrdDetailContent(
                 $godoCode,
                 (int)$content['deploy_version'],
-                (string)$content['deploy_version_code']
+                (string)$content['deploy_version_code'],
+                (string)($payload['list_summary'] ?? '')
             );
             $debug['godo_url'] = (string)($godoResult['url'] ?? '');
             $debug['godo_http_code'] = (int)($godoResult['http_code'] ?? 0);
@@ -294,6 +305,9 @@ class ProductDetailContentService
                 'A.cd_godo_code',
                 'A.cd_spec',
                 'A.cd_weight_fn',
+                'A.cd_accessories',
+                'A.CD_IMG',
+                'A.img_mode',
                 'B.BD_NAME',
                 'B.BD_NAME_EN',
             ])
@@ -306,9 +320,22 @@ class ProductDetailContentService
 
         $product['cd_spec'] = $this->decodeJsonObject($product['cd_spec'] ?? []);
         $product['cd_weight_fn'] = $this->decodeJsonObject($product['cd_weight_fn'] ?? []);
+        $product['cd_accessories'] = $this->decodeJsonList($product['cd_accessories'] ?? []);
         $product['cd_sub_category_codes'] = $this->getSubCategoryCodes((int)($product['CD_IDX'] ?? 0));
 
         return $product;
+    }
+
+    private function buildProductImagePath(array $product): string
+    {
+        $image = trim((string)($product['CD_IMG'] ?? ''));
+        if ($image === '') {
+            return '';
+        }
+        if (trim((string)($product['img_mode'] ?? '')) === 'out') {
+            return $image;
+        }
+        return '/data/comparion/' . $image;
     }
 
     /**
@@ -341,6 +368,10 @@ class ProductDetailContentService
             $specs[] = $sizeSpec;
         }
         $specs[] = $this->specItem('weight', '중량', $this->buildWeightValue($product));
+        $accessorySpec = $this->buildAccessorySpec($product);
+        if ($accessorySpec !== null) {
+            $specs[] = $accessorySpec;
+        }
 
         return [
             'supported' => true,
@@ -420,10 +451,10 @@ class ProductDetailContentService
 
         $outerParts = [];
         if ($length !== '') {
-            $outerParts[] = '가로(W)' . $length;
+            $outerParts[] = '가로(W) ' . $length;
         }
         if ($height !== '') {
-            $outerParts[] = '세로 (H) ' . $height;
+            $outerParts[] = '세로(H) ' . $height;
         }
         $outerSize = implode(' x ', $outerParts);
 
@@ -463,6 +494,35 @@ class ProductDetailContentService
             return $weight;
         }
         return $weight . 'g';
+    }
+
+    /**
+     * @return array{code:string,name:string,value:string}|null
+     */
+    private function buildAccessorySpec(array $product): ?array
+    {
+        $texts = [];
+        foreach ((isset($product['cd_accessories']) && is_array($product['cd_accessories'])) ? $product['cd_accessories'] : [] as $accessory) {
+            if (is_string($accessory) || is_numeric($accessory)) {
+                $text = trim((string)$accessory);
+            } elseif (is_array($accessory)) {
+                $text = trim((string)($accessory['text'] ?? ''));
+            } else {
+                continue;
+            }
+            if ($text !== '') {
+                $texts[] = $text;
+            }
+        }
+
+        if ($texts === []) {
+            return null;
+        }
+        if (count($texts) === 1) {
+            return $this->specItem('accessory', '부속품', $texts[0]);
+        }
+
+        return $this->specItem('components', '구성품', '본품, ' . implode(', ', $texts));
     }
 
     /**
@@ -554,6 +614,7 @@ class ProductDetailContentService
             'prd_pk' => (int)($data['prd_pk'] ?? $prdPk),
             'original_name' => $originalName,
             'korean_name' => $koreanName,
+            'list_summary' => (string)($data['list_summary'] ?? ''),
             'title' => (string)($data['title'] ?? ''),
             'maker_comment' => (string)($data['maker_comment'] ?? ''),
             'md_comment' => (string)($data['md_comment'] ?? ''),
@@ -666,6 +727,7 @@ class ProductDetailContentService
      *   deploy_version_code:string,
      *   original_name:string,
      *   korean_name:string,
+     *   list_summary:string,
      *   title:string,
      *   maker_comment:string,
      *   md_comment:string,
@@ -713,6 +775,8 @@ class ProductDetailContentService
             'deploy_version_code' => trim((string)($content['deploy_version_code'] ?? '')),
             'original_name' => (string)($content['original_name'] ?? ''),
             'korean_name' => (string)($content['korean_name'] ?? ''),
+            'list_summary' => (string)($content['list_summary'] ?? ''),
+            'listSummary' => (string)($content['list_summary'] ?? ''),
             'title' => (string)($content['title'] ?? ''),
             'maker_comment' => (string)($content['maker_comment'] ?? ''),
             'md_comment' => (string)($content['md_comment'] ?? ''),
@@ -728,16 +792,26 @@ class ProductDetailContentService
     private function buildDeployHtml(array $content): string
     {
         $versionCode = trim((string)($content['deploy_version_code'] ?? ''));
-        $html = '<div class="new-goods2-wrap"'
+        $html = '<article class="dnfix-goods-contents"'
             . ($versionCode !== '' ? ' data-pdc-version="' . $this->escapeHtml($versionCode) . '"' : '')
             . '>';
 
         if ($versionCode !== '') {
-            $html .= '<div class="g2-pdc-version" data-pdc-version="' . $this->escapeHtml($versionCode) . '" hidden></div>';
+            $html .= '<div class="g3-pdc-version" data-pdc-version="' . $this->escapeHtml($versionCode) . '" hidden></div>';
         }
 
-        $html .= '<div class="g2-name-en">' . $this->escapeHtml((string)($content['original_name'] ?? '')) . '</div>';
-        $html .= '<div class="g2-name">' . $this->escapeHtml((string)($content['korean_name'] ?? '')) . '</div>';
+        $originalName = trim((string)($content['original_name'] ?? ''));
+        $koreanName = trim((string)($content['korean_name'] ?? ''));
+        if ($originalName !== '' || $koreanName !== '') {
+            $html .= '<header class="g3-header">';
+            if ($originalName !== '') {
+                $html .= '<p class="g3-name-en">' . $this->escapeHtml($originalName) . '</p>';
+            }
+            if ($koreanName !== '') {
+                $html .= '<h2 class="g3-name">' . $this->escapeHtml($koreanName) . '</h2>';
+            }
+            $html .= '</header>';
+        }
 
         $explanation = '';
         $title = trim((string)($content['title'] ?? ''));
@@ -747,44 +821,43 @@ class ProductDetailContentService
             $explanation .= '<p class="highlight">' . $this->escapeHtml($title) . '</p>';
         }
         if ($makerComment !== '') {
-            $explanation .= '<div class="maker-comment">[메이커 코멘트]<br>' . $this->nl2br($makerComment) . '</div>';
+            $explanation .= '<div class="maker-comment"><h4 class="maker-comment-title">[메이커 코멘트]</h4>' . $this->nl2br($makerComment) . '</div>';
         }
         if ($mdComment !== '') {
-            $explanation .= '<div class="maker-comment">[MD 코멘트]<br>' . $this->nl2br($mdComment) . '</div>';
+            $explanation .= '<div class="md-comment"><h4 class="md-comment-title">[MD 코멘트]</h4>' . $this->nl2br($mdComment) . '</div>';
         }
         if ($explanation !== '') {
-            $html .= '<div class="g2-explanation">' . $explanation . '</div>';
+            $html .= '<section class="g3-explanation">' . $explanation . '</section>';
         }
 
         $points = (isset($content['summary_points']) && is_array($content['summary_points'])) ? $content['summary_points'] : [];
         if ($points !== []) {
-            $html .= '<div class="g2-point">';
-            $html .= '<ul class="g2-point-title-ul"><div class="g2-point-title">POINT</div></ul>';
-            $html .= '<ul class="g2-point-box">';
+            $html .= '<section class="g3-point">';
+            $html .= '<h4 class="g3-point-title">POINT</h4>';
+            $html .= '<ul class="g3-point-list">';
             foreach ($points as $point) {
                 $html .= '<li>' . $this->escapeHtml((string)($point['text'] ?? '')) . '</li>';
             }
-            $html .= '</ul></div>';
+            $html .= '</ul></section>';
         }
 
         $specs = (isset($content['specs']) && is_array($content['specs'])) ? $content['specs'] : [];
         if ($specs !== []) {
-            $html .= '<div class="g2-spec">';
-            $html .= '<ul class="g2-spec-title-ul"><div class="g2-spec-title">SPEC</div></ul>';
-            $html .= '<ul>';
+            $html .= '<section class="g3-spec">';
+            $html .= '<h4 class="g3-spec-title">SPEC</h4>';
+            $html .= '<dl class="g3-spec-list">';
             foreach ($specs as $spec) {
-                $specName = trim((string)($spec['name'] ?? ''));
-                $html .= '<li>';
-                if ($specName !== '') {
-                    $html .= '<label>' . $this->escapeHtml($specName) . ' :</label>';
-                }
-                $html .= ' ' . $this->escapeHtml((string)($spec['value'] ?? ''));
-                $html .= '</li>';
+                $html .= '<div class="g3-spec-row">';
+                $html .= '<dt>' . $this->escapeHtml((string)($spec['name'] ?? '')) . ' :</dt>';
+                $html .= '<dd>' . $this->escapeHtml((string)($spec['value'] ?? '')) . '</dd>';
+                $html .= '</div>';
             }
-            $html .= '</ul></div>';
+            $html .= '</dl>';
+            $html .= '<p class="g3-spec-note">※ 사이즈, 중량정보는 브랜드(메이커)에서 제공하는 정보를 기준으로 합니다. 개체별, 측정기구에 따라 차이가 있을 수 있습니다.</p>';
+            $html .= '</section>';
         }
 
-        $html .= '</div>';
+        $html .= '</article>';
         return $html;
     }
 
@@ -910,7 +983,7 @@ class ProductDetailContentService
         }
 
         return [
-            'registered' => $version > 0 || $code !== '' || strpos($html, 'new-goods2-wrap') !== false,
+            'registered' => $version > 0 || $code !== '' || strpos($html, 'dnfix-goods-contents') !== false || strpos($html, 'new-goods2-wrap') !== false,
             'deploy_version' => $version,
             'deploy_version_code' => $code,
         ];
@@ -991,6 +1064,7 @@ class ProductDetailContentService
             'deploy_version_code' => (string)($content['deploy_version_code'] ?? ''),
             'original_name' => (string)($content['original_name'] ?? ''),
             'korean_name' => (string)($content['korean_name'] ?? ''),
+            'list_summary' => (string)($content['list_summary'] ?? ''),
             'title' => (string)($content['title'] ?? ''),
             'maker_comment' => (string)($content['maker_comment'] ?? ''),
             'md_comment' => (string)($content['md_comment'] ?? ''),

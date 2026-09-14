@@ -1588,17 +1588,21 @@ class ProductController extends BaseClass
             $prdPk = (int)($_POST['prd_pk'] ?? $_POST['prd_idx'] ?? $request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
             $summaryPoints = $this->decodePostedJsonList($_POST['summary_points'] ?? []);
             $specs = $this->decodePostedJsonList($_POST['specs'] ?? []);
+            $saveMode = trim((string)($_POST['save_mode'] ?? $request->input('save_mode') ?? 'version'));
+            $keepVersion = $saveMode === 'draft';
 
             $content = (new ProductDetailContentService())->save(
                 $prdPk,
                 [
                     'original_name' => $_POST['original_name'] ?? '',
                     'korean_name' => $_POST['korean_name'] ?? '',
+                    'list_summary' => $_POST['list_summary'] ?? '',
                     'title' => $_POST['title'] ?? '',
                     'maker_comment' => $_POST['maker_comment'] ?? '',
                     'md_comment' => $_POST['md_comment'] ?? '',
                     'summary_points' => $summaryPoints,
                     'specs' => $specs,
+                    'save_mode' => $keepVersion ? 'draft' : 'version',
                 ],
                 [
                     'idx' => AuthAdmin::getSession('sess_idx'),
@@ -1608,7 +1612,9 @@ class ProductController extends BaseClass
 
             return response()->json([
                 'success' => true,
-                'message' => '상품 컨텐츠를 저장했습니다.',
+                'message' => $keepVersion
+                    ? '임시저장했습니다. 배포버전은 그대로입니다.'
+                    : '새 배포버전으로 저장했습니다.',
                 'data' => $content,
             ]);
         } catch (Throwable $e) {

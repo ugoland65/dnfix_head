@@ -246,6 +246,56 @@ include($docRoot . "/admin2/layout/header_popup.php");
 	}
 	.prd-series b { color: #111827; }
 	.prd-series-empty { color: #9ca3af; font-weight: 400; }
+
+	.prd-settings-wrap {
+		position: relative;
+		align-self: center;
+	}
+	.prd-settings-btn {
+		width: 32px;
+		height: 32px;
+		border: 1px solid #d9dce7;
+		border-radius: 6px;
+		background: #fff;
+		color: #4b5563;
+		cursor: pointer;
+		line-height: 1;
+	}
+	.prd-settings-btn:hover,
+	.prd-settings-btn[aria-expanded="true"] {
+		background: #f3f4f6;
+		color: #111827;
+	}
+	.prd-settings-layer {
+		position: absolute;
+		top: calc(100% + 6px);
+		right: 0;
+		min-width: 148px;
+		padding: 6px;
+		background: #fff;
+		border: 1px solid #d9dce7;
+		border-radius: 8px;
+		box-shadow: 0 8px 24px rgba(15, 23, 42, .16);
+		z-index: 120;
+	}
+	.prd-settings-layer[hidden] {
+		display: none !important;
+	}
+	.prd-settings-item {
+		display: block;
+		width: 100%;
+		padding: 8px 10px;
+		border: 0;
+		border-radius: 6px;
+		background: none;
+		text-align: left;
+		font-size: 13px;
+		color: #111827;
+		cursor: pointer;
+	}
+	.prd-settings-item:hover {
+		background: #f3f4f6;
+	}
 </style>
 <div class="prd-quick-left">
 
@@ -539,10 +589,19 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				</dl>
 			</ul>
 			<ul>
-				수정일 : <?= $latest_modify_date ?: '-' ?><br>
-				등록일 : <?= $reg_date ?: '-' ?>
+				수정 : <?= $latest_modify_date ?: '-' ?><br>
+				등록 : <?= $reg_date ?: '-' ?>
 			</ul>
 
+			<!-- 설정 -->
+			<ul class="prd-settings-wrap">
+				<button type="button" class="prd-settings-btn" id="prd_settings_btn" aria-haspopup="true" aria-expanded="false" title="설정">
+					<i class="fas fa-cog"></i>
+				</button>
+				<div class="prd-settings-layer" id="prd_settings_layer" hidden>
+					<button type="button" class="prd-settings-item" data-prd-settings="copy-window">새창 복사</button>
+				</div>
+			</ul>
 
 		</div>
 		<div id="crm_body">
@@ -963,6 +1022,56 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				stockModifyWindow.close();
 			},
 
+			bindSettingsMenu: function() {
+				var $btn = $('#prd_settings_btn');
+				var $layer = $('#prd_settings_layer');
+				if (!$btn.length || !$layer.length) {
+					return;
+				}
+
+				function closeLayer() {
+					$layer.prop('hidden', true);
+					$btn.attr('aria-expanded', 'false');
+				}
+
+				function openLayer() {
+					$layer.prop('hidden', false);
+					$btn.attr('aria-expanded', 'true');
+				}
+
+				$btn.off('click.prdSettings').on('click.prdSettings', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					if ($layer.prop('hidden')) {
+						openLayer();
+					} else {
+						closeLayer();
+					}
+				});
+
+				$layer.off('click.prdSettings').on('click.prdSettings', '[data-prd-settings]', function(e) {
+					e.preventDefault();
+					e.stopPropagation();
+					var action = String($(this).attr('data-prd-settings') || '');
+					closeLayer();
+					if (action === 'copy-window') {
+						window.open(window.location.href, '_blank');
+					}
+				});
+
+				$(document).off('click.prdSettings').on('click.prdSettings', function(e) {
+					if (!$(e.target).closest('.prd-settings-wrap').length) {
+						closeLayer();
+					}
+				});
+
+				$(document).off('keydown.prdSettings').on('keydown.prdSettings', function(e) {
+					if (e.key === 'Escape') {
+						closeLayer();
+					}
+				});
+			},
+
 		}
 
 	})();
@@ -971,6 +1080,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 	$(function() {
 
 		prdInfo.restoreActiveMode();
+		prdInfo.bindSettingsMenu();
 
 	});
 </script>

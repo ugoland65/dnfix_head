@@ -1559,11 +1559,12 @@ class GodoApiService extends BaseClass {
 
     /**
      * 인트라넷 상품 컨텐츠를 고도몰에 실배포한다.
-     * 고도몰은 goodsNo / 배포버전 / 배포코드만 받은 뒤 인트라넷 API를 다시 호출한다.
+     * 고도몰은 goodsNo / 배포버전 / 배포코드를 받은 뒤 인트라넷 API를 다시 호출한다.
+     * list_summary는 상품목록 간략설명으로, 배포 요청과 조회 API 양쪽에 포함한다.
      *
      * @return array{success:bool,message:string,http_code:int,response:array,raw:string,url:string}
      */
-    public function deployPrdDetailContent($goodsNo, $deployVersion, $deployVersionCode): array
+    public function deployPrdDetailContent($goodsNo, $deployVersion, $deployVersionCode, $listSummary = ''): array
     {
         $goodsNo = trim((string)$goodsNo);
         $deployVersion = (int)$deployVersion;
@@ -1577,6 +1578,7 @@ class GodoApiService extends BaseClass {
             'goodsNo' => $goodsNo,
             'deploy_version' => $deployVersion,
             'deploy_version_code' => $deployVersionCode,
+            'list_summary' => (string)$listSummary,
         ]);
 
         $meta = HttpClient::getDataWithMeta($apiUrl, $this->getGodoGoodsApiAuthHeaders());

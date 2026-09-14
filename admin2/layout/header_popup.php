@@ -144,13 +144,15 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .crm-gap{ width:5px; border-right:1px solid #9c9fae; }
 .crm-body{ padding:20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
 .crm-body.has-top-menu{ padding: var(--crm-body-top-padding, 90px) 20px 20px; }
-.crm-top-menu-wrap{ width:calc(100% - 205px); background-color:#fff; height:70px; position:fixed; 
+.crm-top-menu-wrap{
+	width:calc(100% - 205px); 
+	background-color:#fff; height:70px; position:fixed; 
 	top:0; left:205px; right:0; 
 	z-index:101; border-bottom:1px solid #9c9fae; 
 	display:flex; 
 	align-items:center; 
-	gap:15px;
-	padding:0 30px;
+	gap:12px;
+	padding:0 20px;
 	box-sizing:border-box;
 
 	> ul{
@@ -175,7 +177,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 /* 상단 정보영역 ul 사이 구분선 */
 .crm-top-menu-wrap > ul + ul{
 	border-left:1px solid #d9dce7;
-	padding-left:15px;
+	padding-left:12px;
 }
 
 .stock-write-box{ padding:15px 15px 0 15px; }
