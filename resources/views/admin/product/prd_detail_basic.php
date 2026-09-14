@@ -57,7 +57,7 @@
     }
     .product-section-nav {
         position: fixed;
-        top: 75px;
+        top: var(--product-section-nav-top, 75px);
         left: calc(50% + 100px);
         z-index: 1001;
         max-width: calc(100vw - 32px);
@@ -488,11 +488,13 @@
 <nav id="product_section_nav" class="product-section-nav" aria-label="상품 상세 섹션 바로가기">
     <div class="product-section-nav-list">
         <button type="button" class="product-section-nav-button is-active" data-section-target="product-basic-section">기본정보</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-operation-section">상품운영</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-memo-section">상품메모</button>
+        <button type="button" class="product-section-nav-button" data-section-target="product-detail-section">상세정보</button>
         <button type="button" class="product-section-nav-button" data-section-target="product-reference-section">참고자료</button>
         <button type="button" class="product-section-nav-button" data-section-target="hbti-section-title">HBTI</button>
         <button type="button" class="product-section-nav-button" data-section-target="product-godo-section">고도몰</button>
         <button type="button" class="product-section-nav-button" data-section-target="product-site-section">사이트</button>
-        <button type="button" class="product-section-nav-button" data-section-target="product-detail-section">상세정보</button>
         <button type="button" class="product-section-nav-button" data-section-target="product-stock-section">재고/주문</button>
     </div>
 </nav>
@@ -618,6 +620,74 @@
             <tr>
                 <th>영문 상품명</th>
                 <td><input type='text' name='cd_name_en' size='40' value="<?= htmlspecialchars((string)($productData['CD_NAME_EN'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"></td>
+            </tr>
+            <tr>
+                <th>상품 코드</th>
+                <td>
+                    바코드 : <input type='text' name='cd_code' style='width:200px;' value="<?= $productData['CD_CODE'] ?? '' ?>">
+                    상품 품번 : <input type='text' name='cd_code2' style='width:100px;' value="<?= $productData['CD_CODE2'] ?? '' ?>">
+                </td>
+            </tr>
+
+            <tr>
+                <th>출시일</th>
+                <td>
+                    <?php
+                        $releaseDateValue = trim((string)($productData['CD_RELEASE_DATE'] ?? ''));
+                        $targetMonthValue = trim((string)($productData['target_month'] ?? ''));
+                        if ($targetMonthValue === '' && $releaseDateValue !== '' && $releaseDateValue !== '0000-00-00' && preg_match('/^(\d{4})-(0[1-9]|1[0-2])/', $releaseDateValue, $targetMonthMatch)) {
+                            $targetMonthValue = $targetMonthMatch[1] . '-' . $targetMonthMatch[2];
+                        }
+                        $targetMonthYear = '';
+                        $targetMonthNum = 0;
+                        if (preg_match('/^(\d{4})-(\d{2})$/', $targetMonthValue, $targetMonthParts)) {
+                            $targetMonthYear = $targetMonthParts[1];
+                            $targetMonthNum = (int)$targetMonthParts[2];
+                        }
+                        $targetMonthYearStart = 2000;
+                        $targetMonthYearEnd = (int)date('Y') + 3;
+                    ?>
+                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
+                        <div class="calendar-input">
+                            <input type="text" name="cd_release_date" id="cd_release_date" value="<?= htmlspecialchars($releaseDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                        </div>
+                        <div>
+                            <span class="m-r-3">입고 등록월</span>
+                            <input type="hidden" name="target_month" id="target_month" value="<?= htmlspecialchars($targetMonthValue, ENT_QUOTES, 'UTF-8') ?>">
+                            <select name="target_month_y" id="target_month_y">
+                                <option value="">년</option>
+                                <?php for ($targetYear = $targetMonthYearEnd; $targetYear >= $targetMonthYearStart; $targetYear--) { ?>
+                                    <option value="<?= $targetYear ?>" <?= $targetMonthYear === (string)$targetYear ? 'selected' : '' ?>><?= $targetYear ?>년</option>
+                                <?php } ?>
+                            </select>
+                            <select name="target_month_m" id="target_month_m">
+                                <option value="">월</option>
+                                <?php for ($targetMonthOption = 1; $targetMonthOption <= 12; $targetMonthOption++) { ?>
+                                    <option value="<?= $targetMonthOption ?>" <?= $targetMonthNum === $targetMonthOption ? 'selected' : '' ?>><?= $targetMonthOption ?>월</option>
+                                <?php } ?>
+                            </select>
+
+                        </div>
+                    </div>
+
+                    <div class="admin-guide-text">
+                        - 입고 등록월 쑈당몰에서 언제부터 판매했는지를 빠르게 파악하기 위한 데이터<br>
+                        - 예) 출시일이 26년 7월 17일 쑈당몰 판매 시작일이 26년 8월일경우 다르게 설정
+                    </div>
+
+                </td>
+            </tr>
+
+        </tbody>
+        
+        <tbody>
+            <tr>
+                <td colspan="2" class="none-bg" style="height:10px;"></td>
+            </tr>
+            <tr id="product-category-section">
+                <td colspan="2" class="none-bg title">
+                    <h1>상품 분류</h1>
+                </td>
             </tr>
 
             <!-- 상품 구분 -->
@@ -1056,7 +1126,45 @@
                 </td>
             </tr>
 
+            <!-- 시리즈/연관그룹 -->
+            <tr>
+                <th>시리즈/연관그룹</th>
+                <td>
+                    <?php
+                        $relationGroups = (isset($productData['relation_groups']) && is_array($productData['relation_groups']))
+                            ? $productData['relation_groups']
+                            : [];
+                        $relationGroupModeLabels = [
+                            'series' => '시리즈',
+                            'custom_group' => '특정 그룹',
+                        ];
+                    ?>
+                    <?php if (empty($relationGroups)) { ?>
+                        <span style="color:#6b7280;">포함된 시리즈/연관그룹이 없습니다.</span>
+                    <?php } else { ?>
+                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
+                            <?php foreach ($relationGroups as $relationGroup) { ?>
+                                <?php $relationGroupMode = (string)($relationGroup['prg_mode'] ?? ''); ?>
+                                <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc;">
+                                    <span style="font-size:11px; color:#475569;"><?= htmlspecialchars($relationGroupModeLabels[$relationGroupMode] ?? $relationGroupMode, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <b><?= htmlspecialchars((string)($relationGroup['prg_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b>
+                                </span>
+                            <?php } ?>
+                        </div>
+                    <?php } ?>
+                </td>
+            </tr>
 
+            <!-- 상품 검색어 -->
+            <tr>
+                <th>상품 검색어</th>
+                <td>
+                    <input type='text' name='cd_search_term' value="<?= $productData['CD_SEARCH_TERM'] ?? '' ?>">
+                    <div class="admin-guide-text">
+                        - 인트라넷, 오나디비 검색시 가능한 추가 검색어
+                    </div>
+                </td>
+            </tr>
 
             <tr>
                 <th>운영 이미지</th>
@@ -1219,37 +1327,13 @@
             </tr>
 
             <tr>
-                <th>시리즈/연관그룹</th>
-                <td>
-                    <?php
-                        $relationGroups = (isset($productData['relation_groups']) && is_array($productData['relation_groups']))
-                            ? $productData['relation_groups']
-                            : [];
-                        $relationGroupModeLabels = [
-                            'series' => '시리즈',
-                            'custom_group' => '특정 그룹',
-                        ];
-                    ?>
-                    <?php if (empty($relationGroups)) { ?>
-                        <span style="color:#6b7280;">포함된 시리즈/연관그룹이 없습니다.</span>
-                    <?php } else { ?>
-                        <div style="display:flex; flex-wrap:wrap; gap:6px;">
-                            <?php foreach ($relationGroups as $relationGroup) { ?>
-                                <?php $relationGroupMode = (string)($relationGroup['prg_mode'] ?? ''); ?>
-                                <span style="display:inline-flex; align-items:center; gap:4px; padding:5px 8px; border:1px solid #cbd5e1; border-radius:6px; background:#f8fafc;">
-                                    <span style="font-size:11px; color:#475569;"><?= htmlspecialchars($relationGroupModeLabels[$relationGroupMode] ?? $relationGroupMode, ENT_QUOTES, 'UTF-8') ?></span>
-                                    <b><?= htmlspecialchars((string)($relationGroup['prg_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></b>
-                                </span>
-                            <?php } ?>
-                        </div>
-                    <?php } ?>
+                <td colspan="2" class="none-bg" style="height:10px;"></td>
+            </tr>
+            <tr id="product-operation-section">
+                <td colspan="2" class="none-bg title">
+                    <h1>상품 운영</h1>
                 </td>
             </tr>
-
-            <tr>
-                <td colspan="2" class="none-bg" style="height:15px;"></td>
-            </tr>
-
 
             <tr>
                 <th>상품라벨</th>
@@ -1542,6 +1626,19 @@
                     </div>
                 </td>
             </tr>
+
+        </tbody>
+
+        <tbody>
+            <tr>
+                <td colspan="2" class="none-bg" style="height:10px;"></td>
+            </tr>
+            <tr id="product-memo-section">
+                <td colspan="2" class="none-bg title">
+                    <h1>상품메모</h1>
+                </td>
+            </tr>
+
             <tr>
                 <th>리스트 메모</th>
                 <td>
@@ -1561,17 +1658,191 @@
                     </div>
                 </td>
             </tr>
-
             <tr>
-                <th>상품 검색어</th>
+                <th>주문서 메모</th>
                 <td>
-                    <input type='text' name='cd_search_term' value="<?= $productData['CD_SEARCH_TERM'] ?? '' ?>">
+                    <input type='text' name='cd_memo3' value="<?= $productData['cd_memo3'] ?? '' ?>" />
                     <div class="admin-guide-text">
-                        - 인트라넷, 오나디비 검색시 가능한 추가 검색어
+                        - 주문서 폼에 노출되는 메모입니다.
                     </div>
                 </td>
             </tr>
         </tbody>
+
+        <tbody>
+            <tr>
+                <td colspan="2" class="none-bg" style="height:10px;"></td>
+            </tr>
+            <tr id="product-detail-section">
+                <td colspan="2" class="none-bg title">
+                    <h1>상품 상세정보</h1>
+                </td>
+            </tr>
+        </tbody>
+
+        <tbody>
+
+            <tr>
+                <th>상품 상세스펙</th>
+                <td>
+                    <?php
+                        $specCategoryCode = $selectedCategoryCode;
+                        $specData = $cdSpecData;
+                        $specInputPrefix = 'cd_spec';
+                        include __DIR__ . '/partials/spec_form.php';
+                    ?>
+                </td>
+            </tr>
+
+            <tr>
+                <th>내부길이</th>
+                <td>
+                    <input type='text' name='cd_size2' style='width:100px;' value="<?= $productData['CD_SIZE2'] ?? '' ?>"> ( Cm )
+                    <div class="admin-guide-text">
+                        ※ 젤일때는 용량( ml )
+                    </div>
+                </td>
+            </tr>
+
+            <tr>
+                <th>패키지 사이즈</th>
+                <td>
+                    가로(W) : <input type='text' name='cd_size_w' value="<?= $productData['CD_SIZE']['W'] ?? '' ?>" style="width:60px">
+                    세로(H) : <input type='text' name='cd_size_h' value="<?= $productData['CD_SIZE']['H'] ?? '' ?>" style="width:60px">
+                    깊이(D) : <input type='text' name='cd_size_d' value="<?= $productData['CD_SIZE']['D'] ?? '' ?>" style="width:60px">
+                    <div class="admin-guide-text">
+                        - 단위 mm (숫자만 등록할것)
+                    </div>
+
+                </td>
+            </tr>
+
+            <!-- 중량 -->
+            <tr>
+                <th>중량</th>
+                <td>
+
+                    <table class="table-style border01">
+                        <colgroup>
+                            <col width="150px" />
+                            <col />
+                        </colgroup>
+                        <tr>
+                            <th>상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 상품중량 ( 패키지 미포함 )
+                                <div class="admin-guide-text">
+                                    - 쑈당몰 카테고리 지정시 브랜드 제공 중량으로 표기해야 고객이 혼선없음
+                                </div>
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>"> g
+                                ※ 제공된 상품 상세페이지에 기재된 패키지를 포함한 전체 중량 (없다면 생략 가능)
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>실측 상품중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_4' style='width:80px;' value="<?= $productData['cd_weight_fn']['4'] ?? '' ?>"> g
+                                ※ 패키지를 제외한 상품만 실제 측정한 중량
+                            </td>
+                        </tr>
+                        <tr>
+                            <th>실측 전체중량</th>
+                            <td>
+                                <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>"> g
+                                ※ 패키지를 포함한 실제 측정한 중량
+                            </td>
+                        </tr>
+                    </table>
+
+                    <div class="admin-guide-text">
+                        - 단위 g (숫자만 등록할것)<br>
+                        - 실측 전체중량시 개체별 차이가 있으니 오차범위 있음 ( 10g 이내 )
+                    </div>
+
+                </td>
+            </tr>
+            
+            <tr>
+                <th>구성품/부속품</th>
+                <td>
+                    <?php
+                        $accessoryCodeOptions = config('admin.product')['accessory_code_options'] ?? [];
+                        if (!is_array($accessoryCodeOptions)) {
+                            $accessoryCodeOptions = [];
+                        }
+                        $accessories = $productData['cd_accessories'] ?? [];
+                        if (!is_array($accessories)) {
+                            $accessories = [];
+                        }
+                        if (empty($accessories)) {
+                            $accessories = [['code' => '', 'text' => '']];
+                        }
+                    ?>
+                    <div id="accessories_wrap">
+                        <table class="table-style border01 width-full">
+                            <colgroup>
+                                <col width="220px" />
+                                <col />
+                                <col width="80px" />
+                            </colgroup>
+                            <thead>
+                                <tr>
+                                    <th class="text-center">코드</th>
+                                    <th class="text-center">부속품</th>
+                                    <th class="text-center">삭제</th>
+                                </tr>
+                            </thead>
+                            <tbody id="accessories_tbody">
+                                <?php foreach ($accessories as $accessory) { ?>
+                                    <?php
+                                        $accessoryCode = (string)($accessory['code'] ?? '');
+                                        $accessoryText = (string)($accessory['text'] ?? '');
+                                    ?>
+                                    <tr class="accessory-row">
+                                        <td>
+                                            <select name="accessory_code[]" style="width:100%;">
+                                                <option value="">선택</option>
+                                                <?php foreach ($accessoryCodeOptions as $code => $label) { ?>
+                                                    <option value="<?= htmlspecialchars((string)$code, ENT_QUOTES, 'UTF-8') ?>" <?= $accessoryCode === (string)$code ? 'selected' : '' ?>>
+                                                        <?= htmlspecialchars((string)$code, ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string)$label, ENT_QUOTES, 'UTF-8') ?>)
+                                                    </option>
+                                                <?php } ?>
+                                                <?php if ($accessoryCode !== '' && !isset($accessoryCodeOptions[$accessoryCode])) { ?>
+                                                    <option value="<?= htmlspecialchars($accessoryCode, ENT_QUOTES, 'UTF-8') ?>" selected>
+                                                        <?= htmlspecialchars($accessoryCode, ENT_QUOTES, 'UTF-8') ?>
+                                                    </option>
+                                                <?php } ?>
+                                            </select>
+                                        </td>
+                                        <td>
+                                            <input type="text" name="accessory_text[]" value="<?= htmlspecialchars($accessoryText, ENT_QUOTES, 'UTF-8') ?>" placeholder="예: 오나츠유 샘플 로션 10ml" style="width:100%;">
+                                        </td>
+                                        <td class="text-center">
+                                            <button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-accessory-btn">삭제</button>
+                                        </td>
+                                    </tr>
+                                <?php } ?>
+                            </tbody>
+                        </table>
+                    </div>
+                    <div class="m-t-8">
+                        <button type="button" id="add_accessory_btn" class="btnstyle1 btnstyle1-sm">부속품 추가</button>
+                    </div>
+                    <div class="admin-guide-text">
+                        - 코드는 나중에 필터링할 때 사용합니다. 예) lotion / 오나츠유 샘플 로션 10ml
+                    </div>
+                </td>
+            </tr>
+
+        </tbody>
+
+
 
         <tbody>
             <tr>
@@ -1837,484 +2108,9 @@
                     </table>
                 </td>
             </tr>
-            <tr>
-                <th>분류</th>
-                <td>티어 정보는 오나DB 설정으로 옮겨감
-                </td>
-            </tr>
         </tbody>
 
-        <tbody>
-            <tr>
-                <td colspan="2" class="none-bg" style="height:10px;"></td>
-            </tr>
-            <tr id="product-detail-section">
-                <td colspan="2" class="none-bg title">
-                    <h1>상품 상세정보</h1>
-                </td>
-            </tr>
-        </tbody>
 
-        <tbody>
-            <tr>
-                <th>출시일</th>
-                <td>
-                    <?php
-                        $releaseDateValue = trim((string)($productData['CD_RELEASE_DATE'] ?? ''));
-                        $targetMonthValue = trim((string)($productData['target_month'] ?? ''));
-                        if ($targetMonthValue === '' && $releaseDateValue !== '' && $releaseDateValue !== '0000-00-00' && preg_match('/^(\d{4})-(0[1-9]|1[0-2])/', $releaseDateValue, $targetMonthMatch)) {
-                            $targetMonthValue = $targetMonthMatch[1] . '-' . $targetMonthMatch[2];
-                        }
-                        $targetMonthYear = '';
-                        $targetMonthNum = 0;
-                        if (preg_match('/^(\d{4})-(\d{2})$/', $targetMonthValue, $targetMonthParts)) {
-                            $targetMonthYear = $targetMonthParts[1];
-                            $targetMonthNum = (int)$targetMonthParts[2];
-                        }
-                        $targetMonthYearStart = 2000;
-                        $targetMonthYearEnd = (int)date('Y') + 3;
-                    ?>
-                    <div style="display:flex; align-items:center; gap:16px; flex-wrap:wrap;">
-                        <div class="calendar-input">
-                            <input type="text" name="cd_release_date" id="cd_release_date" value="<?= htmlspecialchars($releaseDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
-                        </div>
-                        <div>
-                            <span class="m-r-3">입고 등록월</span>
-                            <input type="hidden" name="target_month" id="target_month" value="<?= htmlspecialchars($targetMonthValue, ENT_QUOTES, 'UTF-8') ?>">
-                            <select name="target_month_y" id="target_month_y">
-                                <option value="">년</option>
-                                <?php for ($targetYear = $targetMonthYearEnd; $targetYear >= $targetMonthYearStart; $targetYear--) { ?>
-                                    <option value="<?= $targetYear ?>" <?= $targetMonthYear === (string)$targetYear ? 'selected' : '' ?>><?= $targetYear ?>년</option>
-                                <?php } ?>
-                            </select>
-                            <select name="target_month_m" id="target_month_m">
-                                <option value="">월</option>
-                                <?php for ($targetMonthOption = 1; $targetMonthOption <= 12; $targetMonthOption++) { ?>
-                                    <option value="<?= $targetMonthOption ?>" <?= $targetMonthNum === $targetMonthOption ? 'selected' : '' ?>><?= $targetMonthOption ?>월</option>
-                                <?php } ?>
-                            </select>
-
-                        </div>
-                    </div>
-
-                    <div class="admin-guide-text">
-                        - 입고 등록월 쑈당몰에서 언제부터 판매했는지를 빠르게 파악하기 위한 데이터<br>
-                        - 예) 출시일이 26년 7월 17일 쑈당몰 판매 시작일이 26년 8월일경우 다르게 설정
-                    </div>
-
-                </td>
-            </tr>
-
-            <tr>
-                <th>상품 상세스펙</th>
-                <td>
-                    <?php
-                    $specCategoryCode = $selectedCategoryCode;
-                    $specData = $cdSpecData;
-                    $specInputPrefix = 'cd_spec';
-                    include __DIR__ . '/partials/spec_form.php';
-                    ?>
-                </td>
-            </tr>
-
-                    <?php if (false) { // Legacy form retained temporarily for torso comparison markup. ?>
-                    <!-- 토르소형 상세스펙 -->
-                    <div id="cd-spec-02010000-wrap" style="<?php if (!$isTorsoCategory) echo 'display:none;'; ?>">
-                        
-                        <table class="table-style border01">
-                            <colgroup>
-                                <col width="180px" />
-                                <col />
-                                <col />
-                            </colgroup>
-                            <tr>
-                                <th>항목</th>
-                                <th>업체제공 수치</th>
-                                <th>실측 수치</th>
-                            </tr>
-                            <tr>
-                                <th>신체높이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[body_height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['body_height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[body_height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['body_height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>전체 너비 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[overall_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['overall_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Width
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[overall_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['overall_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>전체 깊이 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[overall_depth]" value="<?= htmlspecialchars((string)($cdSpecVendorData['overall_depth'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Depth,  Long
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[overall_depth]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['overall_depth'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>무게(체중) (kg)</th>
-                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>어깨 너비 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Shoulder Width
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th><b>가슴둘레</b> (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Upper bust
-                            </td>
-                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>밑가슴 둘레 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Under bust
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th><b>허리둘레</b> (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Waistline
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th><b>엉덩이 둘레</b> (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Hipline
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>엉덩이 너비 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[hip_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[hip_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>허벅지 둘레 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Thigh Circumference
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[thigh_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['thigh_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>다리길이 (cm)</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    Leg length
-                                </td>
-                                <td><input type="text" name="cd_spec_measured[leg_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 (질) (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 (애널) (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>소재</th>
-                                <td>
-                                    <input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;">
-                                    TPE, 플래티넘 실리콘(백금)
-                            </td>
-                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                        </table>
-                        <div class="admin-guide-text">
-                            - 2차 카테고리가 토르소형(02010000)일 때만 저장됩니다.
-                        </div>
-
-                        <div id="torso-size-compare" class="torso-size-compare">
-                            <h3>한국 여성 평균과 토르소 크기 비교</h3>
-                            <p class="torso-size-compare__desc">왼쪽은 키 160cm 기준 여성, 오른쪽은 입력한 토르소 치수를 같은 180cm 기준 비율로 표시합니다.</p>
-                            <div class="torso-size-compare__stage">
-                                <figure class="torso-size-compare__figure">
-                                    <figcaption>한국 여성 평균 · 160cm</figcaption>
-                                    <img src="/img/size_silhouette_m.jpg" alt="키 160cm 기준 여성 실루엣">
-                                </figure>
-                                <figure class="torso-size-compare__figure">
-                                    <figcaption id="torso-size-compare-summary">입력 토르소</figcaption>
-                                    <svg id="torso-size-compare-svg" class="torso-size-compare__svg" viewBox="0 0 430 700" role="img" aria-label="입력한 토르소 크기 비교 도식">
-                                        <line x1="24" y1="661" x2="406" y2="661" class="torso-guide"/>
-                                        <path id="torso-size-compare-path" class="torso-shape" d=""/>
-                                        <line id="torso-size-compare-height-line" class="torso-measure"/>
-                                        <line id="torso-size-compare-height-top" class="torso-measure"/>
-                                        <line id="torso-size-compare-height-bottom" class="torso-measure"/>
-                                        <text id="torso-size-compare-height-text" class="torso-measure-text"></text>
-                                    </svg>
-                                </figure>
-                            </div>
-                            <div class="torso-size-compare__results">
-                                <div>가슴 차이<strong id="torso-size-compare-bust-diff">-</strong></div>
-                                <div>허리 차이<strong id="torso-size-compare-waist-diff">-</strong></div>
-                                <div>엉덩이 차이<strong id="torso-size-compare-hip-diff">-</strong></div>
-                            </div>
-                        </div>
-
-                    </div>
-
-                    <div id="cd-spec-02020000-wrap" style="<?php if (!$isBreastCategory) echo 'display:none;'; ?>">
-                        <table class="table-style border01">
-                            <colgroup>
-                                <col width="180px" />
-                                <col />
-                                <col />
-                            </colgroup>
-                            <tr>
-                                <th>항목</th>
-                                <th>업체제공 수치</th>
-                                <th>실측 수치</th>
-                            </tr>
-                            <tr>
-                                <th>삽입기능 여부</th>
-                                <td colspan="2">
-                                    <select name="cd_spec_option[insertion_function_yn]">
-                                        <option value="N" <?= ($cdSpecOptionData['insertion_function_yn'] ?? 'N') === 'N' ? 'selected' : '' ?>>없음</option>
-                                        <option value="Y" <?= ($cdSpecOptionData['insertion_function_yn'] ?? '') === 'Y' ? 'selected' : '' ?>>있음</option>
-                                    </select>
-                                </td>
-                            </tr>
-                            <tr>
-                                <th>가로 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>세로 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>두께 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>어깨너비 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>가슴둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>밑가슴둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[underbust_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['underbust_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>무게 (kg)</th>
-                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>소재</th>
-                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 1 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_1]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_1'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_1]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_1'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 2 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_2]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_2]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_2'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                        </table>
-                        <div class="admin-guide-text">
-                            - 2차 카테고리가 가슴장난감(02020000)일 때만 저장됩니다.
-                        </div>
-                    </div>
-
-                    <div id="cd-spec-02050000-wrap" style="<?php if (!$isRealdollFullBodyCategory) echo 'display:none;'; ?>">
-                        <table class="table-style border01">
-                            <colgroup>
-                                <col width="180px" />
-                                <col />
-                                <col />
-                            </colgroup>
-                            <tr>
-                                <th>항목</th>
-                                <th>업체제공 수치</th>
-                                <th>실측 수치</th>
-                            </tr>
-                            <tr>
-                                <th>신장 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[height]" value="<?= htmlspecialchars((string)($cdSpecVendorData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[height]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['height'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>무게 (kg)</th>
-                                <td><input type="text" name="cd_spec_vendor[weight]" value="<?= htmlspecialchars((string)($cdSpecVendorData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[weight]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['weight'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>머리길이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[head_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['head_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[head_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['head_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>가슴둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[chest_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['chest_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>어깨너비 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecVendorData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[shoulder_width]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['shoulder_width'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>허리둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[waist_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['waist_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>엉덩이둘레 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecVendorData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[hip_circumference]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['hip_circumference'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>팔길이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[arm_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['arm_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[arm_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['arm_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>다리길이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[leg_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[leg_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['leg_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>발길이 (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[foot_length]" value="<?= htmlspecialchars((string)($cdSpecVendorData['foot_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[foot_length]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['foot_length'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 (질) (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_vagina]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_vagina'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>내부길이 (애널) (cm)</th>
-                                <td><input type="text" name="cd_spec_vendor[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecVendorData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[inner_length_anal]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['inner_length_anal'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                            <tr>
-                                <th>소재</th>
-                                <td><input type="text" name="cd_spec_vendor[material]" value="<?= htmlspecialchars((string)($cdSpecVendorData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                                <td><input type="text" name="cd_spec_measured[material]" value="<?= htmlspecialchars((string)($cdSpecMeasuredData['material'] ?? ''), ENT_QUOTES, 'UTF-8') ?>" style="width:120px;"></td>
-                            </tr>
-                        </table>
-                        <div class="admin-guide-text">
-                            - 2차 카테고리가 리얼돌/전신형(02050000)일 때만 저장됩니다.
-                        </div>
-                    </div>
-
-                </td>
-            </tr>
-                    <?php } ?>
-
-            <tr>
-                <th>패키지 사이즈</th>
-                <td>
-                    가로(W) : <input type='text' name='cd_size_w' value="<?= $productData['CD_SIZE']['W'] ?? '' ?>" style="width:60px">
-                    세로(H) : <input type='text' name='cd_size_h' value="<?= $productData['CD_SIZE']['H'] ?? '' ?>" style="width:60px">
-                    깊이(D) : <input type='text' name='cd_size_d' value="<?= $productData['CD_SIZE']['D'] ?? '' ?>" style="width:60px">
-                    <div class="admin-guide-text">
-                        - 단위 mm (숫자만 등록할것)
-                    </div>
-
-                </td>
-            </tr>
-
-            <tr>
-                <th>내부길이</th>
-                <td>
-                    <input type='text' name='cd_size2' style='width:100px;' value="<?= $productData['CD_SIZE2'] ?? '' ?>"> ( Cm )
-                    <div class="admin-guide-text">
-                        ※ 젤일때는 용량( ml )
-                    </div>
-                </td>
-            </tr>
-
-            <tr>
-                <th>중량</th>
-                <td>
-
-                    <table class="table-style border01">
-                        <colgroup>
-                            <col width="150px" />
-                            <col />
-                        </colgroup>
-                        <tr>
-                            <th>상품중량</th>
-                            <td>
-                                <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>"> g
-                                ※ 제공된 상품 상세페이지에 기재된 상품중량 ( 패키지 미포함 )
-                                <div class="admin-guide-text">
-                                    - 쑈당몰 카테고리 지정시 브랜드 제공 중량으로 표기해야 고객이 혼선없음
-                                </div>
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>전체중량</th>
-                            <td>
-                                <input type='text' name='cd_weight_2' style='width:80px;' value="<?= $productData['cd_weight_fn']['2'] ?? '' ?>"> g
-                                ※ 제공된 상품 상세페이지에 기재된 패키지를 포함한 전체 중량 (없다면 생략 가능)
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>실측 상품중량</th>
-                            <td>
-                                <input type='text' name='cd_weight_4' style='width:80px;' value="<?= $productData['cd_weight_fn']['4'] ?? '' ?>"> g
-                                ※ 패키지를 제외한 상품만 실제 측정한 중량
-                            </td>
-                        </tr>
-                        <tr>
-                            <th>실측 전체중량</th>
-                            <td>
-                                <input type='text' name='cd_weight_3' style='width:80px;' value="<?= $productData['cd_weight_fn']['3'] ?? '' ?>"> g
-                                ※ 패키지를 포함한 실제 측정한 중량
-                            </td>
-                        </tr>
-                    </table>
-
-                    <div class="admin-guide-text">
-                        - 단위 g (숫자만 등록할것)<br>
-                        - 실측 전체중량시 개체별 차이가 있으니 오차범위 있음 ( 10g 이내 )
-                    </div>
-
-                </td>
-            </tr>
-            <tr>
-                <th>상품 코드</th>
-                <td>
-                    바코드 : <input type='text' name='cd_code' style='width:200px;' value="<?= $productData['CD_CODE'] ?? '' ?>">
-                    상품 품번 : <input type='text' name='cd_code2' style='width:100px;' value="<?= $productData['CD_CODE2'] ?? '' ?>">
-                </td>
-            </tr>
-        </tbody>
 
 
 
@@ -2330,16 +2126,6 @@
             </tr>
         </tbody>
         <tbody>
-
-            <tr>
-                <th>주문서 메모</th>
-                <td>
-                    <input type='text' name='cd_memo3' value="<?= $productData['cd_memo3'] ?? '' ?>" />
-                    <div class="admin-guide-text">
-                        - 주문서 폼에 노출되는 메모입니다.
-                    </div>
-                </td>
-            </tr>
 
             <tr>
                 <th>발주서 주문코드</th>
@@ -3870,6 +3656,36 @@
                 .css('color', isDone ? '#15803d' : '#6b7280');
         });
 
+        var accessoryCodeOptions = <?= json_encode($accessoryCodeOptions ?? [], JSON_UNESCAPED_UNICODE) ?>;
+
+        function buildAccessoryCodeOptionsHtml(selectedCode) {
+            var selected = String(selectedCode || '');
+            var html = '<option value="">선택</option>';
+            var hasSelected = false;
+            Object.keys(accessoryCodeOptions).forEach(function (code) {
+                var isSelected = selected === String(code);
+                if (isSelected) {
+                    hasSelected = true;
+                }
+                html += '<option value="' + String(code).replace(/"/g, '&quot;') + '"' + (isSelected ? ' selected' : '') + '>'
+                    + String(code) + ' (' + String(accessoryCodeOptions[code] || '') + ')</option>';
+            });
+            if (selected !== '' && !hasSelected) {
+                html += '<option value="' + selected.replace(/"/g, '&quot;') + '" selected>' + selected + '</option>';
+            }
+            return html;
+        }
+
+        function buildAccessoryRow(code, text) {
+            var safeText = String(text || '').replace(/"/g, '&quot;');
+            return '' +
+                '<tr class="accessory-row">' +
+                    '<td><select name="accessory_code[]" style="width:100%;">' + buildAccessoryCodeOptionsHtml(code) + '</select></td>' +
+                    '<td><input type="text" name="accessory_text[]" value="' + safeText + '" placeholder="예: 오나츠유 샘플 로션 10ml" style="width:100%;"></td>' +
+                    '<td class="text-center"><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs remove-accessory-btn">삭제</button></td>' +
+                '</tr>';
+        }
+
         function buildReferenceLinkRow(title, url) {
             var safeTitle = String(title || '').replace(/"/g, '&quot;');
             var safeUrl = String(url || '').replace(/"/g, '&quot;');
@@ -4164,6 +3980,19 @@
                 syncOrderCodeEmptyState();
             });
 
+        $('#add_accessory_btn').on('click', function() {
+            $('#accessories_tbody').append(buildAccessoryRow('', ''));
+        });
+
+        $(document).off('click.prdDetailBasicAccessory', '.remove-accessory-btn')
+            .on('click.prdDetailBasicAccessory', '.remove-accessory-btn', function() {
+                var $tbody = $('#accessories_tbody');
+                $(this).closest('tr').remove();
+                if ($tbody.find('tr').length === 0) {
+                    $tbody.append(buildAccessoryRow('', ''));
+                }
+            });
+
         $('#add_reference_link_btn').on('click', function() {
             $('#reference_links_tbody').append(buildReferenceLinkRow('', ''));
         });
@@ -4203,8 +4032,32 @@
 
         var $productSectionNav = $('#product_section_nav');
         var $productSectionNavButtons = $productSectionNav.find('.product-section-nav-button');
+        var $crmBody = $productSectionNav.closest('.crm-body');
+        var syncCrmBodyTopPadding = function() {
+            if (!$crmBody.length || !$productSectionNav.length) {
+                return;
+            }
+            var topMenuHeight = $('.crm-top-menu-wrap').outerHeight() || 70;
+            var navGap = 5;
+            var contentGap = 20;
+            var navTop = topMenuHeight + navGap;
+            var paddingTop = navTop + ($productSectionNav.outerHeight() || 0) + contentGap;
+            $productSectionNav[0].style.setProperty('--product-section-nav-top', navTop + 'px');
+            $crmBody[0].style.setProperty('--crm-body-top-padding', paddingTop + 'px');
+        };
+        var sectionNavAlign = 10;
+        var getSectionNavBottom = function() {
+            var navEl = $productSectionNav[0];
+            return navEl ? navEl.getBoundingClientRect().bottom : 0;
+        };
+        var getSectionActivationLine = function() {
+            return $(window).scrollTop() + getSectionNavBottom() + sectionNavAlign;
+        };
+        var getSectionScrollTop = function($section) {
+            return Math.max(0, $section.offset().top - getSectionNavBottom() - sectionNavAlign);
+        };
         var updateProductSectionNav = function() {
-            var scrollPosition = $(window).scrollTop() + $productSectionNav.outerHeight() + 24;
+            var scrollPosition = getSectionActivationLine();
             var $activeButton = null;
 
             $productSectionNavButtons.each(function() {
@@ -4222,6 +4075,7 @@
                 $productSectionNavButtons.removeClass('is-active').removeAttr('aria-current');
                 $activeButton.addClass('is-active').attr('aria-current', 'page');
             }
+            syncCrmBodyTopPadding();
         };
 
         $productSectionNavButtons.on('click', function() {
@@ -4231,9 +4085,12 @@
                 return;
             }
 
+            $productSectionNavButtons.removeClass('is-active').removeAttr('aria-current');
+            $button.addClass('is-active').attr('aria-current', 'page');
+
             $('html, body').stop(true).animate({
-                scrollTop: Math.max(0, $section.offset().top - $productSectionNav.outerHeight() - 40)
-            }, 250);
+                scrollTop: getSectionScrollTop($section)
+            }, 250, updateProductSectionNav);
         });
 
         $(window).off('scroll.productSectionNav resize.productSectionNav')

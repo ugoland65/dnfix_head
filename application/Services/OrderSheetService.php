@@ -795,7 +795,7 @@ class OrderSheetService
         $godoApiService = new GodoApiService();
         try {
             if (!empty($stockCodes)) {
-                $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes(implode(',', $stockCodes), "Y");
+                $godoGoodsRows = $godoApiService->getGodoGoodsInfoByStockCodes(implode(',', $stockCodes), ['category']);
                 //dd($godoGoodsRows);
                 if (!is_array($godoGoodsRows)) {
                     $godoGoodsRows = [];
@@ -829,7 +829,7 @@ class OrderSheetService
             }
             $unmatchedGoodsNos = array_values(array_unique($unmatchedGoodsNos));
             if (!empty($unmatchedGoodsNos)) {
-                $extraGoodsRows = $godoApiService->getGodoGoodsInfoByGoodsNo(implode(',', $unmatchedGoodsNos), "Y");
+                $extraGoodsRows = $godoApiService->getGodoGoodsInfoByGoodsNo(implode(',', $unmatchedGoodsNos), ['category']);
                 if (is_array($extraGoodsRows)) {
                     foreach ($extraGoodsRows as $godoRow) {
                         if (!is_array($godoRow)) {

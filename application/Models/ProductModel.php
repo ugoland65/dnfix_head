@@ -88,6 +88,7 @@ class ProductModel extends BaseModel
 		'comment_count',
 		'delivery_type',
 		'cd_spec',
+		'cd_accessories',
 		'CD_DELETED_YN',
 		'CD_DELETED_AT',
 		'CD_DELETED_ADMIN_IDX',

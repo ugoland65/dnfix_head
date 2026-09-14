@@ -71,7 +71,9 @@ $options = (isset($specData['options']) && is_array($specData['options'])) ? $sp
                 </tr>
             <?php } ?>
         </table>
+        
         <div class="admin-guide-text">- <?= htmlspecialchars($schema['label'], ENT_QUOTES, 'UTF-8') ?> 카테고리에서만 저장됩니다.</div>
+        
         <?php if ($schemaCode === '02010000') { ?>
             <div class="torso-size-compare">
                 <h3>한국 여성 평균과 토르소 크기 비교</h3>
@@ -98,11 +100,14 @@ $options = (isset($specData['options']) && is_array($specData['options'])) ? $sp
                 </div>
             </div>
         <?php } ?>
+
 </div>
 <?php } ?>
 </div>
+
 <script>
 $(function() {
+
     window.toggleSharedProductSpec = function(categoryCode, inputPrefix) {
         var rawCode = String(categoryCode || '');
         var specType = rawCode;
@@ -135,11 +140,13 @@ $(function() {
         if (Number.isFinite(vendor) && vendor > 0) return vendor;
         return fallback;
     };
+
     var hasMeasurement = function(key) {
         var measured = parseFloat(String($form.find('input[name="' + prefix + '_measured[' + key + ']"]').val() || '').replace(/,/g, ''));
         var vendor = parseFloat(String($form.find('input[name="' + prefix + '_vendor[' + key + ']"]').val() || '').replace(/,/g, ''));
         return (Number.isFinite(measured) && measured > 0) || (Number.isFinite(vendor) && vendor > 0);
     };
+
     var render = function() {
         var clamp = function(value, min, max) { return Math.min(max, Math.max(min, value)); };
         var bust = clamp(read('chest_circumference', 90), 20, 200);

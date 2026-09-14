@@ -7,12 +7,9 @@ use App\Utils\HttpClient;
 
 class GodoApiService extends BaseClass {
 
-    /*
-    // POST + X-Api-Key 인증용. 고도몰 Front CSRF로 당분간 GET만 사용한다.
     private const GODO_GOODS_API_URL = 'https://showdang.co.kr/dnfix/api/goods_api.php';
     private const GODO_GOODS_API_KEY_HEADER = 'X-Api-Key';
     private const GODO_GOODS_API_KEY = 'sdm_gapi_b7e4c19a2f8d0635c4a1e9b7d2f6c0a8';
-    */
 
     public function __construct() {
         parent::__construct();
@@ -1502,21 +1499,22 @@ class GodoApiService extends BaseClass {
 
     /**
      * 고도몰 상품 재고코드로 상품 정보 조회
-     * 
+     *
      * @param string $codes 재고코드
+     * @param array $withData 추가 조회 항목. 예: ['category', 'DnfixContent']
      * @return array
      */
-    public function getGodoGoodsInfoByStockCodes($codes, $withCategory = null)
+    public function getGodoGoodsInfoByStockCodes($codes, array $withData = [])
     {
         $codeList = $this->splitGodoCodeList($codes);
         if (empty($codeList)) {
             return [];
         }
 
-        $withCategoryParam = ($withCategory == "Y") ? "&withCategory=Y" : "";
+        $withParam = $this->buildGodoGoodsWithQuery($withData);
         $merged = [];
         foreach (array_chunk($codeList, 40) as $chunk) {
-            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes=' . implode(',', $chunk) . $withCategoryParam;
+            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=codes&codes=' . implode(',', $chunk) . $withParam;
             $rows = $this->extractGodoGoodsList($this->requestGodoGoodsApi($apiUrl));
             foreach ($rows as $row) {
                 if (is_array($row)) {
@@ -1531,27 +1529,22 @@ class GodoApiService extends BaseClass {
 
     /**
      * 고도몰 상품코드(goodsNo)로 상품 정보 조회
-     * 
+     *
      * @param string $goodsNos 상품코드 - 구분자 쉼표 또는 쉼표없이 단일상품으로 가능
+     * @param array $withData 추가 조회 항목. 예: ['category', 'DnfixContent']
      * @return array
      */
-    public function getGodoGoodsInfoByGoodsNo($goodsNos, $withCategory = null)
+    public function getGodoGoodsInfoByGoodsNo($goodsNos, array $withData = [])
     {
-
-        if($withCategory == "Y"){
-            $withCategoryParam = "&withCategory=Y";
-        }else{
-            $withCategoryParam = "";
-        }
-
         $goodsNoList = $this->splitGodoCodeList($goodsNos);
         if (empty($goodsNoList)) {
             return [];
         }
 
+        $withParam = $this->buildGodoGoodsWithQuery($withData);
         $merged = [];
         foreach (array_chunk($goodsNoList, 40) as $chunk) {
-            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos=' . implode(',', $chunk) . $withCategoryParam;
+            $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsNos&goodsNos=' . implode(',', $chunk) . $withParam;
             $rows = $this->extractGodoGoodsList($this->requestGodoGoodsApi($apiUrl));
             foreach ($rows as $row) {
                 if (is_array($row)) {
@@ -1561,6 +1554,62 @@ class GodoApiService extends BaseClass {
         }
 
         return $merged;
+    }
+
+
+    /**
+     * 인트라넷 상품 컨텐츠를 고도몰에 실배포한다.
+     * 고도몰은 goodsNo / 배포버전 / 배포코드만 받은 뒤 인트라넷 API를 다시 호출한다.
+     *
+     * @return array{success:bool,message:string,http_code:int,response:array,raw:string,url:string}
+     */
+    public function deployPrdDetailContent($goodsNo, $deployVersion, $deployVersionCode): array
+    {
+        $goodsNo = trim((string)$goodsNo);
+        $deployVersion = (int)$deployVersion;
+        $deployVersionCode = trim((string)$deployVersionCode);
+        if ($goodsNo === '' || $deployVersion <= 0 || $deployVersionCode === '') {
+            throw new \Exception('고도몰 배포 파라미터가 올바르지 않습니다.');
+        }
+
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query([
+            'mode' => 'prdDetailContentDeploy',
+            'goodsNo' => $goodsNo,
+            'deploy_version' => $deployVersion,
+            'deploy_version_code' => $deployVersionCode,
+        ]);
+
+        $meta = HttpClient::getDataWithMeta($apiUrl, $this->getGodoGoodsApiAuthHeaders());
+        $response = (string)($meta['response'] ?? '');
+        $httpCode = (int)($meta['http_code'] ?? 0);
+        $curlError = trim((string)($meta['curl_error'] ?? ''));
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        $success = !empty($decoded['success']) && ($httpCode === 0 || $httpCode === 200);
+        $message = trim((string)($decoded['message'] ?? ''));
+        if ($message === '') {
+            if ($curlError !== '') {
+                $message = '고도몰 배포 요청 실패: ' . $curlError;
+            } elseif ($success) {
+                $message = '고도몰에 배포했습니다.';
+            } else {
+                $message = $httpCode > 0
+                    ? '고도몰 배포 실패 (HTTP ' . $httpCode . ')'
+                    : '고도몰 배포 응답을 확인하지 못했습니다.';
+            }
+        }
+
+        return [
+            'success' => $success,
+            'message' => $message,
+            'http_code' => $httpCode,
+            'response' => $decoded,
+            'raw' => $response,
+            'url' => $apiUrl,
+        ];
     }
 
 
@@ -1980,15 +2029,48 @@ class GodoApiService extends BaseClass {
     }
 
 
-    /*
-    // POST + X-Api-Key 인증용. 재개 시 위 주석과 함께 해제한다.
     private function getGodoGoodsApiAuthHeaders()
     {
         return [
             self::GODO_GOODS_API_KEY_HEADER . ': ' . self::GODO_GOODS_API_KEY,
+            'Accept: application/json',
         ];
     }
-    */
+
+    /**
+     * withData 배열을 고도몰 goods_api 쿼리로 변환한다.
+     * 예: ['category', 'DnfixContent'] → &withCategory=Y&withDnfixContent=Y
+     *
+     * @param array $withData
+     * @return string
+     */
+    private function buildGodoGoodsWithQuery(array $withData): string
+    {
+        $aliasMap = [
+            'category' => 'withCategory',
+            'withcategory' => 'withCategory',
+            'dnfixcontent' => 'withDnfixContent',
+            'withdnfixcontent' => 'withDnfixContent',
+        ];
+
+        $params = [];
+        foreach ($withData as $item) {
+            $key = strtolower(preg_replace('/[^a-zA-Z0-9]/', '', (string)$item) ?? '');
+            if ($key === '' || !isset($aliasMap[$key])) {
+                continue;
+            }
+            $params[$aliasMap[$key]] = true;
+        }
+
+        $query = '';
+        foreach ($params as $name => $enabled) {
+            if ($enabled) {
+                $query .= '&' . $name . '=Y';
+            }
+        }
+
+        return $query;
+    }
 
 
     /**
@@ -2114,7 +2196,7 @@ class GodoApiService extends BaseClass {
      */
     private function requestGodoGoodsApi($apiUrl)
     {
-        $meta = HttpClient::getDataWithMeta($apiUrl);
+        $meta = HttpClient::getDataWithMeta($apiUrl, $this->getGodoGoodsApiAuthHeaders());
         $response = (string)($meta['response'] ?? '');
         $httpCode = (int)($meta['http_code'] ?? 0);
         $curlError = trim((string)($meta['curl_error'] ?? ''));

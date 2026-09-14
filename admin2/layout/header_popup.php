@@ -143,7 +143,7 @@ background:#8c9093 url("//img.echosting.cafe24.com/suio/bg_fixnav_selected.gif")
 .crm-menu-wrap{ width:200px; border-right:1px solid #9c9fae; }
 .crm-gap{ width:5px; border-right:1px solid #9c9fae; }
 .crm-body{ padding:20px; box-sizing:border-box; background-color:#dddddd; position:relative; }
-.crm-body.has-top-menu{ padding:90px 20px 20px; }
+.crm-body.has-top-menu{ padding: var(--crm-body-top-padding, 90px) 20px 20px; }
 .crm-top-menu-wrap{ width:calc(100% - 205px); background-color:#fff; height:70px; position:fixed; 
 	top:0; left:205px; right:0; 
 	z-index:101; border-bottom:1px solid #9c9fae; 

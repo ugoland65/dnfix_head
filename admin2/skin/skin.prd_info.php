@@ -23,7 +23,7 @@ if (!$_prd_idx) {
 if ($_prd_idx) {
 
 	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
-		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.is_handling_stopped, A.cd_sale_price, A.cd_cost_price";
+		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.is_handling_stopped, A.cd_sale_price, A.cd_cost_price, A.cd_site_show";
 
 	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special  ";
 	$_colum .= ", C.BD_NAME";
@@ -374,8 +374,8 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_saleLog" class="" onclick="prdInfo.mode('', 'saleLog')">할인 로그</ul>
 
 		<?php if (!empty($prd_data['ps_idx'])) { ?>
-		<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')">판매량/발주 요약</ul>
-		<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고 변경 이력</ul>
+			<ul id="crm_menu_stock_chart" class="" onclick="prdInfo.mode('', 'stock_chart')"><b>판매량/발주 요약</b></ul>
+			<ul id="crm_menu_stock" class="" onclick="prdInfo.mode('', 'stock')">재고 변경 이력</ul>
 		<?php } ?>
 
 		<ul id="crm_menu_competitor_product" class="" onclick="prdInfo.mode('', 'competitor_product')">경쟁사 판매현황</ul>
@@ -383,8 +383,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		<ul id="crm_menu_relation_group" class="" onclick="prdInfo.mode('', 'relation_group')">시리즈/연관그룹 관리</ul>
 		<ul id="crm_menu_info_collection" class="" onclick="prdInfo.mode('', 'info_collection')">상품 정보수집</ul>
 		<ul id="crm_menu_spec_info" class="" onclick="prdInfo.mode('', 'spec_info')">상품 스팩정보</ul>
-		<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
-		<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
+		<ul id="crm_menu_content" class="" onclick="prdInfo.mode('', 'content')"><b>상품 컨텐츠 관리</b></ul>
+
+		<?php if (!empty($prd_data['cd_site_show']) && $prd_data['cd_site_show'] == 'Y') { ?>
+			<ul id="crm_menu_onadb_config" class="" onclick="prdInfo.mode('', 'onadb_config')">오나DB 설정</ul>
+			<ul id="crm_menu_onadb_comment" class="" onclick="prdInfo.mode('', 'onadb_comment')">오나DB 한줄평</ul>
+		<?php } ?>
+
 		<ul id="crm_menu_log" class="" onclick="prdInfo.mode('', 'log')">수정로그</ul>
 	</div>
 
@@ -596,10 +601,18 @@ include($docRoot . "/admin2/layout/header_popup.php");
 		/**
 		 * 메뉴 클릭
 		 */
+		function resetCrmBodyTopPadding() {
+			var crmBody = document.querySelector('.crm-body');
+			if (crmBody) {
+				crmBody.style.removeProperty('--crm-body-top-padding');
+			}
+		}
+
 		function mode(pn, modeKey) {
 
 			$(".crm-menu ul").removeClass('active');
 			$("#crm_menu_" + modeKey).addClass('active');
+			resetCrmBodyTopPadding();
 			try {
 				window.sessionStorage.setItem(activeModeStorageKey, modeKey);
 			} catch (e) {
@@ -717,6 +730,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 					requestConfig = {
 						method: "GET",
 						url: "/admin/product/detail_spec_info",
+						data: { prd_idx: prd_idx }
+					};
+					break;
+				case "content": // 상품 컨텐츠 관리
+					requestConfig = {
+						method: "GET",
+						url: "/admin/product/detail_content",
 						data: { prd_idx: prd_idx }
 					};
 					break;

@@ -89,6 +89,7 @@ try {
     $router->post('/product/info_collect/images/hosting_order/save', ProductController::class, 'saveHostedImageOrder'); //호스팅 이미지 순서 저장
     $router->post('/product/info_collect/translation/save', ProductController::class, 'saveCollectionTranslation'); //수집 데이터 번역 저장
     $router->post('/product/info_collect/request', ProductController::class, 'requestProductInfoCollection'); //상품 정보수집 요청
+    $router->post('/product/info_collect/fields/apply', ProductController::class, 'applyCollectedProductFields'); //수집 데이터 상품 반영
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
     $router->get('/product/detail_stock_chart', ProductController::class, 'prdDetailStockChartPage'); //상품 디테일 (판매량/발주 요약)
@@ -98,6 +99,10 @@ try {
     $router->post('/product/detail_spec_info/image', ProductController::class, 'uploadProductSpecInfoImage'); //상품 스펙정보 이미지 업로드
     $router->get('/product/detail_spec_info/preview', ProductController::class, 'previewProductSpecInfoImage'); //상품 스펙정보 URL 미리보기
     $router->post('/product/detail_spec_info/save', ProductController::class, 'saveProductSpecInfo'); //상품 스펙정보 저장
+    $router->get('/product/detail_content', ProductController::class, 'prdDetailContentPage'); //상품 디테일 (상품 컨텐츠 관리)
+    $router->post('/product/detail_content/save', ProductController::class, 'saveProductDetailContent'); //상품 컨텐츠 저장
+    $router->post('/product/detail_content/deploy', ProductController::class, 'deployProductDetailContent'); //상품 컨텐츠 고도몰 실배포
+    $router->post('/product/detail_content/recommend_specs', ProductController::class, 'recommendProductDetailSpecs'); //상품 컨텐츠 스펙 추천값
     $router->get('/product/relation_group_management', ProductController::class, 'relationGroupManagementList'); //시리즈/연관그룹 관리
     $router->post('/product/detail_sale_log/save', ProductController::class, 'saveProductSaleLog'); //상품 디테일 (할인 로그 저장)
     $router->post('/product/detail_godo_inspection', ProductController::class, 'prdDetailGodoInspection'); //상품 디테일 (고도몰 검수 처리)

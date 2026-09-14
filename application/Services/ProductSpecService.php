@@ -28,8 +28,14 @@ class ProductSpecService
             '01000000' => [
                 'label' => '오나홀',
                 'fields' => [
+                    'length' => ['가로 (W)', 'cm'], 
+                    'height' => ['세로 (H)', 'cm'], 
+                    'width' => ['깊이 (D)', 'cm', false, ''],
                     'weight' => ['상품중량', 'g', true],
-                    'inner_length' => ['내부길이', 'cm', true],
+                    'inner_length_vagina' => ['내부길이 (질)', 'cm', true], 
+                    'inner_length_anal' => ['내부길이 (애널)', 'cm', false, '2구멍일 경우'],
+                    'color' => ['색상', ''],
+                    'material' => ['소재', '', false, 'TPE, 플래티넘 실리콘(백금), TPE + 스킨명', true],
                 ],
                 'options' => [],
             ],
@@ -60,7 +66,9 @@ class ProductSpecService
             '02020000' => [
                 'label' => '가슴장난감',
                 'fields' => [
-                    'length' => ['가로', 'cm'], 'height' => ['세로', 'cm'], 'width' => ['두께', 'cm'],
+                    'length' => ['가로 (W)', 'cm'], 
+                    'height' => ['세로 (H)', 'cm'], 
+                    'width' => ['두께 (D)', 'cm', false, '깊이'],
                     'shoulder_width' => ['어깨너비', 'cm'], 'chest_circumference' => ['가슴둘레', 'cm', true],
                     'underbust_circumference' => ['밑가슴둘레', 'cm'], 'weight' => ['무게', 'kg'],
                     'material' => ['소재', ''], 'inner_length_1' => ['내부길이 1', 'cm'],

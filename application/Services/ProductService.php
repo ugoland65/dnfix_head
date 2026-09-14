@@ -1322,6 +1322,7 @@ class ProductService extends BaseClass
             }
 
             $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
+            $productData['cd_accessories'] = $this->decodeAccessories($productData['cd_accessories'] ?? '[]');
         }
 
         return $productData;
@@ -1453,6 +1454,7 @@ class ProductService extends BaseClass
             }
 
             $productData['cd_reference_links'] = $this->decodeReferenceLinks($productData['cd_reference_links'] ?? '[]');
+            $productData['cd_accessories'] = $this->decodeAccessories($productData['cd_accessories'] ?? '[]');
             $productData['cd_additional_category_codes'] = $this->getAdditionalCategoryCodesForProduct(
                 (int)($productData['CD_IDX'] ?? 0)
             );
@@ -2052,6 +2054,10 @@ class ProductService extends BaseClass
         $referenceLinkTitles = $postData['reference_link_title'] ?? [];
         $referenceLinkUrls = $postData['reference_link_url'] ?? [];
         $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
+        $accessories = $this->buildAccessories(
+            $postData['accessory_code'] ?? [],
+            $postData['accessory_text'] ?? []
+        );
         $workTaskCodes = $postData['work_task_codes'] ?? [];
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
         $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
@@ -2159,6 +2165,7 @@ class ProductService extends BaseClass
             'cd_hbti' => $cdHbt,
             'cd_site_show' => $cdSiteShow,
             'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'cd_accessories' => json_encode($accessories, JSON_UNESCAPED_UNICODE),
         ];
 
         ProductModel::query()
@@ -2481,6 +2488,10 @@ class ProductService extends BaseClass
         $referenceLinkTitles = $postData['reference_link_title'] ?? [];
         $referenceLinkUrls = $postData['reference_link_url'] ?? [];
         $referenceLinks = $this->buildReferenceLinks($referenceLinkTitles, $referenceLinkUrls);
+        $accessories = $this->buildAccessories(
+            $postData['accessory_code'] ?? [],
+            $postData['accessory_text'] ?? []
+        );
         $workTaskCodes = $postData['work_task_codes'] ?? [];
         $workTaskDoneMap = $postData['work_task_done'] ?? [];
         $productLabelIdxs = $this->normalizeProductLabelIdxs($postData['product_label_idxs'] ?? []);
@@ -2613,6 +2624,7 @@ class ProductService extends BaseClass
             'cd_reg_time' => $now,
             'cd_site_show' => $cdSiteShow,
             'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+            'cd_accessories' => json_encode($accessories, JSON_UNESCAPED_UNICODE),
         ];
 
         $newIdx = (int)ProductModel::query()->insertGetId($insertData);
@@ -5987,6 +5999,84 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 부속품 JSON 디코딩
+     *
+     * @param mixed $raw
+     * @return array
+     */
+    private function decodeAccessories($raw): array
+    {
+        if (is_array($raw)) {
+            $decoded = $raw;
+        } else {
+            $decoded = json_decode((string)$raw, true);
+        }
+
+        if (!is_array($decoded)) {
+            return [];
+        }
+
+        $normalized = [];
+        foreach ($decoded as $item) {
+            if (!is_array($item)) {
+                continue;
+            }
+            $code = strtolower(trim((string)($item['code'] ?? '')));
+            $code = preg_replace('/[^a-z0-9_]/', '', $code);
+            $text = trim((string)($item['text'] ?? ''));
+            if ($code === '' && $text === '') {
+                continue;
+            }
+            if ($text === '') {
+                continue;
+            }
+            $normalized[] = [
+                'code' => $code !== '' ? $code : 'etc',
+                'text' => $text,
+            ];
+        }
+
+        return $normalized;
+    }
+
+    /**
+     * 입력 배열을 부속품 JSON 구조로 정규화
+     *
+     * @param mixed $codes
+     * @param mixed $texts
+     * @return array
+     */
+    private function buildAccessories($codes, $texts): array
+    {
+        if (!is_array($codes)) {
+            $codes = [$codes];
+        }
+        if (!is_array($texts)) {
+            $texts = [$texts];
+        }
+
+        $max = max(count($codes), count($texts));
+        $rows = [];
+        for ($i = 0; $i < $max; $i++) {
+            $code = strtolower(trim((string)($codes[$i] ?? '')));
+            $code = preg_replace('/[^a-z0-9_]/', '', $code);
+            $text = $this->decodeHtmlText(trim((string)($texts[$i] ?? '')));
+            if ($code === '' && $text === '') {
+                continue;
+            }
+            if ($text === '') {
+                continue;
+            }
+            $rows[] = [
+                'code' => $code !== '' ? $code : 'etc',
+                'text' => $text,
+            ];
+        }
+
+        return $rows;
+    }
+
+    /**
      * 입력 배열을 자료참고 링크 JSON 구조로 정규화
      *
      * @param mixed $titles
@@ -6903,12 +6993,12 @@ class ProductService extends BaseClass
             try {
                 $godoApiService = new GodoApiService();
                 if ($godoCode !== '') {
-                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, 'Y');
+                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, ['category']);
                     $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
                         ? $godoGoodsResponse['data']
                         : $godoGoodsResponse;
                 } else {
-                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, 'Y');
+                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByStockCodes((string)$resolvedPsIdx, ['category']);
                     $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
                         ? $godoGoodsResponse['data']
                         : $godoGoodsResponse;

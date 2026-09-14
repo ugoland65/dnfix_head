@@ -1862,7 +1862,7 @@ class ProductPartnerService extends BaseClass
         if ($godoCode !== '' && $godoCode !== '0') {
             try {
                 $godoApiService = new GodoApiService();
-                $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, 'Y');
+                $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, ['category']);
                 $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
                     ? $godoGoodsResponse['data']
                     : $godoGoodsResponse;

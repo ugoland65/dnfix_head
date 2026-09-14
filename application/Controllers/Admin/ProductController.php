@@ -24,6 +24,8 @@ use App\Services\ProductImageHostingService;
 use App\Services\AdminActionLogService;
 use App\Services\OrderGroupService;
 use App\Services\ProductSpecInfoService;
+use App\Services\ProductSpecService;
+use App\Services\ProductDetailContentService;
 use App\Models\ProductModel;
 use App\Models\ProductCollectionItemModel;
 use App\Utils\Pagination;
@@ -370,6 +372,7 @@ class ProductController extends BaseClass
                 'hbti_target' => 'Y',
                 'cd_site_show' => 'N',
                 'cd_reference_links' => [],
+                'cd_accessories' => [],
                 'cd_code_fn' => [],
                 'work_check_list' => [],
                 'product_label_options' => $this->productService->getActiveProductLabelOptions(),
@@ -1081,6 +1084,266 @@ class ProductController extends BaseClass
 
 
     /**
+     * 수집 데이터를 상품 DB에 일괄 반영
+     */
+    public function applyCollectedProductFields(Request $request)
+    {
+        try {
+            $prdIdx = (int)($_POST['prd_idx'] ?? $request->input('prd_idx') ?? 0);
+            $siteCode = strtolower(trim((string)($_POST['site_code'] ?? $request->input('site_code') ?? '')));
+            $fieldsRaw = $_POST['fields'] ?? [];
+            $fields = is_array($fieldsRaw) ? $fieldsRaw : json_decode((string)$fieldsRaw, true);
+            if (!is_array($fields)) {
+                $fields = json_decode(html_entity_decode((string)$fieldsRaw, ENT_QUOTES, 'UTF-8'), true);
+            }
+            $fieldMap = [
+                'cd_name_og' => 'CD_NAME_OG',
+                'cd_size' => 'CD_SIZE',
+                'cd_weight_1' => 'cd_weight_fn',
+                'cd_weight_2' => 'cd_weight_fn',
+                'cd_spec_product_size' => 'cd_spec',
+                'cd_spec_inner_length_vagina' => 'cd_spec',
+                'cd_spec_inner_length_anal' => 'cd_spec',
+                'cd_spec_material' => 'cd_spec',
+                'cd_release_date' => 'CD_RELEASE_DATE',
+            ];
+            $fieldLabels = [
+                'cd_name_og' => '원상품명',
+                'cd_size' => '패키지 사이즈',
+                'cd_weight_1' => '상품중량',
+                'cd_weight_2' => '전체중량',
+                'cd_spec_product_size' => '상품 사이즈',
+                'cd_spec_inner_length_vagina' => '내부길이 (질)',
+                'cd_spec_inner_length_anal' => '내부길이 (애널)',
+                'cd_spec_material' => '소재',
+                'cd_release_date' => '출시일',
+            ];
+            if ($prdIdx < 1 || !is_array($fields) || empty($fields)) {
+                throw new \InvalidArgumentException('업데이트할 항목을 선택해 주세요.');
+            }
+
+            $product = ProductModel::find($prdIdx);
+            if (empty($product)) {
+                throw new \RuntimeException('상품을 찾을 수 없습니다.');
+            }
+            $product = is_array($product) ? $product : $product->toArray();
+
+            $updateData = [];
+            $before = [];
+            $after = [];
+            $labels = [];
+            foreach ($fields as $fieldRow) {
+                if (!is_array($fieldRow)) {
+                    continue;
+                }
+                $field = trim((string)($fieldRow['field'] ?? ''));
+                if (!isset($fieldMap[$field])) {
+                    continue;
+                }
+                $column = $fieldMap[$field];
+                $value = html_entity_decode(trim((string)($fieldRow['value'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+                if ($value === '') {
+                    continue;
+                }
+                if ($field === 'cd_size') {
+                    $sizeData = json_decode($value, true);
+                    if (!is_array($sizeData)) {
+                        continue;
+                    }
+                    $value = json_encode([
+                        'W' => trim((string)($sizeData['W'] ?? '')),
+                        'H' => trim((string)($sizeData['H'] ?? '')),
+                        'D' => trim((string)($sizeData['D'] ?? '')),
+                    ], JSON_UNESCAPED_UNICODE);
+                } elseif ($field === 'cd_weight_1' || $field === 'cd_weight_2') {
+                    $weightKey = $field === 'cd_weight_1' ? '1' : '2';
+                    if (isset($updateData['cd_weight_fn'])) {
+                        $decodedWeightFn = json_decode((string)$updateData['cd_weight_fn'], true);
+                        $weightFn = is_array($decodedWeightFn) ? $decodedWeightFn : [];
+                    } else {
+                        $weightFn = $product['cd_weight_fn'] ?? [];
+                        if (is_string($weightFn)) {
+                            $decodedWeightFn = json_decode($weightFn, true);
+                            $weightFn = is_array($decodedWeightFn) ? $decodedWeightFn : [];
+                        }
+                    }
+                    if (!is_array($weightFn)) {
+                        $weightFn = [];
+                    }
+                    $weightFn[$weightKey] = $value;
+                    $productWeightValue = $value;
+                    $value = json_encode([
+                        '1' => (string)($weightFn['1'] ?? ''),
+                        '2' => (string)($weightFn['2'] ?? ''),
+                        '3' => (string)($weightFn['3'] ?? ''),
+                        '4' => (string)($weightFn['4'] ?? ''),
+                    ], JSON_UNESCAPED_UNICODE);
+                    if ($field === 'cd_weight_1') {
+                        $categoryCode = (string)($product['CD_CATEGORY_CODE'] ?? $product['CD_KIND_CODE'] ?? '');
+                        $weightSchema = (new ProductSpecService())->getSchema($categoryCode);
+                        if (isset($weightSchema['fields']['weight'])) {
+                            $specWeightUnit = strtolower(trim((string)($weightSchema['fields']['weight'][1] ?? '')));
+                            $specWeightValue = $productWeightValue;
+                            if ($specWeightValue !== '' && ($specWeightUnit === 'kg' || str_starts_with($specWeightUnit, 'kg'))) {
+                                $specWeightValue = rtrim(rtrim(sprintf('%.4F', (float)$specWeightValue / 1000), '0'), '.');
+                            }
+                            if (isset($updateData['cd_spec'])) {
+                                $decodedSpec = json_decode((string)$updateData['cd_spec'], true);
+                                $specData = is_array($decodedSpec) ? $decodedSpec : [];
+                            } else {
+                                $specData = $product['cd_spec'] ?? [];
+                                if (is_string($specData)) {
+                                    $decodedSpec = json_decode($specData, true);
+                                    $specData = is_array($decodedSpec) ? $decodedSpec : [];
+                                }
+                            }
+                            if (!is_array($specData)) {
+                                $specData = [];
+                            }
+                            $vendorSize = (isset($specData['vendor_size']) && is_array($specData['vendor_size']))
+                                ? $specData['vendor_size']
+                                : [];
+                            $vendorSize['weight'] = $specWeightValue;
+                            $specData['vendor_size'] = $vendorSize;
+                            if (!isset($specData['measured_size']) || !is_array($specData['measured_size'])) {
+                                $specData['measured_size'] = [];
+                            }
+                            if (!isset($specData['options']) || !is_array($specData['options'])) {
+                                $specData['options'] = [];
+                            }
+                            if (trim((string)($specData['category_code'] ?? '')) === '') {
+                                $specData['category_code'] = $categoryCode;
+                            }
+                            $encodedSpec = json_encode($specData, JSON_UNESCAPED_UNICODE);
+                            $updateData['cd_spec'] = $encodedSpec;
+                            $before['cd_spec'] = is_array($product['cd_spec'] ?? null)
+                                ? json_encode($product['cd_spec'], JSON_UNESCAPED_UNICODE)
+                                : (string)($product['cd_spec'] ?? '');
+                            $after['cd_spec'] = $encodedSpec;
+                        }
+                    }
+                } elseif (in_array($field, ['cd_spec_product_size', 'cd_spec_inner_length_vagina', 'cd_spec_inner_length_anal', 'cd_spec_material'], true)) {
+                    $vendorValues = [];
+                    if ($field === 'cd_spec_product_size') {
+                        $sizeData = json_decode($value, true);
+                        if (!is_array($sizeData)) {
+                            continue;
+                        }
+                        foreach (['length', 'height', 'width'] as $sizeKey) {
+                            $sizeValue = trim((string)($sizeData[$sizeKey] ?? ''));
+                            if ($sizeValue !== '') {
+                                $vendorValues[$sizeKey] = $sizeValue;
+                            }
+                        }
+                    } elseif ($field === 'cd_spec_inner_length_vagina') {
+                        $vendorValues['inner_length_vagina'] = $value;
+                    } elseif ($field === 'cd_spec_inner_length_anal') {
+                        $vendorValues['inner_length_anal'] = $value;
+                    } else {
+                        $vendorValues['material'] = $value;
+                    }
+                    if ($vendorValues === []) {
+                        continue;
+                    }
+                    if (isset($updateData['cd_spec'])) {
+                        $decodedSpec = json_decode((string)$updateData['cd_spec'], true);
+                        $specData = is_array($decodedSpec) ? $decodedSpec : [];
+                    } else {
+                        $specData = $product['cd_spec'] ?? [];
+                        if (is_string($specData)) {
+                            $decodedSpec = json_decode($specData, true);
+                            $specData = is_array($decodedSpec) ? $decodedSpec : [];
+                        }
+                    }
+                    if (!is_array($specData)) {
+                        $specData = [];
+                    }
+                    $vendorSize = (isset($specData['vendor_size']) && is_array($specData['vendor_size']))
+                        ? $specData['vendor_size']
+                        : [];
+                    foreach ($vendorValues as $sizeKey => $sizeValue) {
+                        $vendorSize[$sizeKey] = $sizeValue;
+                    }
+                    $specData['vendor_size'] = $vendorSize;
+                    if (!isset($specData['measured_size']) || !is_array($specData['measured_size'])) {
+                        $specData['measured_size'] = [];
+                    }
+                    if (!isset($specData['options']) || !is_array($specData['options'])) {
+                        $specData['options'] = [];
+                    }
+                    if (trim((string)($specData['category_code'] ?? '')) === '') {
+                        $specData['category_code'] = (string)($product['CD_CATEGORY_CODE'] ?? $product['CD_KIND_CODE'] ?? '');
+                    }
+                    $value = json_encode($specData, JSON_UNESCAPED_UNICODE);
+                    if ($field === 'cd_spec_inner_length_vagina') {
+                        $categoryCode = (string)($product['CD_CATEGORY_CODE'] ?? $product['CD_KIND_CODE'] ?? '');
+                        if ((new ProductSpecService())->getSpecType($categoryCode) === '01000000') {
+                            $updateData['CD_SIZE2'] = $vendorValues['inner_length_vagina'];
+                            $before['CD_SIZE2'] = (string)($product['CD_SIZE2'] ?? '');
+                            $after['CD_SIZE2'] = $vendorValues['inner_length_vagina'];
+                        }
+                    }
+                } elseif ($field === 'cd_release_date') {
+                    if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $value)) {
+                        continue;
+                    }
+                }
+                $updateData[$column] = $value;
+                $before[$column] = is_array($product[$column] ?? null)
+                    ? json_encode($product[$column], JSON_UNESCAPED_UNICODE)
+                    : (string)($product[$column] ?? '');
+                $after[$column] = $value;
+                $labels[] = $fieldLabels[$field] ?? $field;
+            }
+            if (empty($updateData)) {
+                throw new \InvalidArgumentException('반영할 수집값이 없습니다.');
+            }
+
+            $updateData['cd_update_time'] = date('Y-m-d H:i:s');
+            ProductModel::update(['CD_IDX' => $prdIdx], $updateData);
+            $siteCodeNames = [
+                'npg' => 'NPG 주문사이트',
+                'tamatoys' => '타마토이즈 본사사이트',
+                'mzakka' => '엠자카',
+                'nobunaga' => '노부나가',
+                'nls' => 'NLS 사이트',
+                'ms' => '엠즈',
+                'tis' => 'TIS',
+            ];
+            $siteName = $siteCodeNames[$siteCode] ?? '';
+            $siteLabel = $siteCode === ''
+                ? ''
+                : ($siteName !== '' ? $siteName . ' (' . $siteCode . ')' : $siteCode);
+            $actionSummary = '수집 정보 일괄 업데이트';
+            if ($siteLabel !== '') {
+                $actionSummary .= ' [' . $siteLabel . ']';
+            }
+            $actionSummary .= ' (' . implode(', ', $labels) . ')';
+            (new AdminActionLogService())->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'collection_field_apply',
+                'action_summary' => $actionSummary,
+                'before_json' => $before,
+                'after_json' => $after,
+                'diff_json' => (new AdminActionLogService())->buildDiff($before, $after),
+            ]);
+
+            return response()->json([
+                'success' => true,
+                'message' => implode(', ', $labels) . '을(를) 상품에 반영했습니다.',
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
      * 상품 디테일 (가격정보)
      */
     public function prdDetailPricePage(Request $request)
@@ -1296,6 +1559,150 @@ class ProductController extends BaseClass
             ], 400);
         }
     }
+
+
+    /**
+     * 상품 디테일 (상품 컨텐츠 관리)
+     */
+    public function prdDetailContentPage(Request $request)
+    {
+        try {
+            $prdPk = (int)($request->input('prd_idx') ?? $request->input('prd_pk') ?? 0);
+            $pageData = (new ProductDetailContentService())->getPageData($prdPk);
+
+            return view('admin.product.prd_detail_content', $pageData);
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
+     * 상품 상세페이지 컨텐츠 저장
+     */
+    public function saveProductDetailContent(Request $request)
+    {
+        try {
+            $prdPk = (int)($_POST['prd_pk'] ?? $_POST['prd_idx'] ?? $request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $summaryPoints = $this->decodePostedJsonList($_POST['summary_points'] ?? []);
+            $specs = $this->decodePostedJsonList($_POST['specs'] ?? []);
+
+            $content = (new ProductDetailContentService())->save(
+                $prdPk,
+                [
+                    'original_name' => $_POST['original_name'] ?? '',
+                    'korean_name' => $_POST['korean_name'] ?? '',
+                    'title' => $_POST['title'] ?? '',
+                    'maker_comment' => $_POST['maker_comment'] ?? '',
+                    'md_comment' => $_POST['md_comment'] ?? '',
+                    'summary_points' => $summaryPoints,
+                    'specs' => $specs,
+                ],
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => '상품 컨텐츠를 저장했습니다.',
+                'data' => $content,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 현재 저장된 상품 컨텐츠를 고도몰에 실배포
+     */
+    public function deployProductDetailContent(Request $request)
+    {
+        try {
+            $prdPk = (int)($_POST['prd_pk'] ?? $_POST['prd_idx'] ?? $request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $result = (new ProductDetailContentService())->deployToGodo(
+                $prdPk,
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            if (empty($result['ok'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => (string)($result['message'] ?? '고도몰 배포에 실패했습니다.'),
+                    'stage' => (string)($result['stage'] ?? ''),
+                    'error_code' => (string)($result['error_code'] ?? ''),
+                    'debug' => $result['debug'] ?? [],
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '고도몰에 배포했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => "단계: 서버 처리\n코드: SERVER_ERROR\n" . $e->getMessage(),
+                'stage' => 'server',
+                'error_code' => 'SERVER_ERROR',
+                'debug' => [
+                    'exception' => get_class($e),
+                    'file' => basename($e->getFile()) . ':' . $e->getLine(),
+                ],
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 상품 컨텐츠 스펙 추천값 생성
+     */
+    public function recommendProductDetailSpecs(Request $request)
+    {
+        try {
+            $prdPk = (int)($request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $result = (new ProductDetailContentService())->getRecommendedSpecs($prdPk);
+
+            return response()->json([
+                'success' => !empty($result['supported']),
+                'message' => $result['message'] ?? '추천값을 생성했습니다.',
+                'data' => $result,
+            ], !empty($result['supported']) ? 200 : 400);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * POST JSON 배열 파싱
+     */
+    private function decodePostedJsonList($raw): array
+    {
+        if (is_array($raw)) {
+            return $raw;
+        }
+        $decoded = json_decode((string)$raw, true);
+        if (!is_array($decoded)) {
+            $decoded = json_decode(html_entity_decode((string)$raw, ENT_QUOTES, 'UTF-8'), true);
+        }
+        return is_array($decoded) ? $decoded : [];
+    }
+
 
     /**
      * 시리즈/연관그룹 관리 목록.

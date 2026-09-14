@@ -926,6 +926,17 @@ $data = [
     'importing_country' => $importing_country,
     'purchase_type_options' => $purchase_type_options,
     'sale_status_options' => $sale_status_options,
+    'accessory_code_options' => [
+        'lotion' => '로션',
+        'powder' => '파우더',
+        'manual' => '설명서',
+        'storage_bag' => '보관주머니',
+        'sample' => '샘플',
+        'charger' => '충전기',
+        'cable' => '케이블',
+        'replacement' => '교체부품',
+        'etc' => '기타',
+    ],
 ];
 
 return $data;

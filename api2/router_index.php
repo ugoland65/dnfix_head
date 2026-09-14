@@ -3,6 +3,7 @@ require_once __DIR__ . '/autoloader.php';
 
 use App\Core\Router;
 use App\Controllers\Api\ProductApi;
+use App\Controllers\Api\ProductDetailContentApi;
 use App\Controllers\Api\AiRulebook;
 
 
@@ -11,6 +12,8 @@ try {
     $router = new Router('/api2');  // 라우터 인스턴스 생성
 
     $router->get('/product/product-stock', ProductApi::class, 'productStockApi'); //상품재고목록
+    $router->get('/product/detail-content', ProductDetailContentApi::class, 'detailContentApi'); //고도몰 상품 컨텐츠 조회
+    $router->post('/product/detail-content', ProductDetailContentApi::class, 'detailContentApi'); //고도몰 상품 컨텐츠 조회
     $router->get('/ai/rulebook/{code}', AiRulebook::class, 'aiRulebookApi'); //AI 룰북(code 기준) 조회
     $router->get('/ai/rulebook', AiRulebook::class, 'aiRulebookApi'); //AI 룰북(query code) 조회
 

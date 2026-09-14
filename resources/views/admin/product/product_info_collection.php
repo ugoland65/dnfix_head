@@ -178,6 +178,196 @@ $siteCodeNames = [
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
 };
+$normalizeCompareText = static function ($value): string {
+    $text = html_entity_decode(trim((string)$value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+    $text = preg_replace('/\s+/u', ' ', $text);
+    return trim((string)$text);
+};
+$currentNameOg = $normalizeCompareText($productData['CD_NAME_OG'] ?? '');
+$collectedProductName = $normalizeCompareText($collectionItem['product_name'] ?? '');
+$canSyncNameOg = $collectedProductName !== '' && $currentNameOg !== $collectedProductName;
+$normalizeSizeNumber = static function ($value): string {
+    $text = trim((string)$value);
+    $text = str_replace([',', ' '], '', $text);
+    $text = preg_replace('/[^\d.\-]/', '', $text);
+    if ($text === '' || !is_numeric($text)) {
+        return '';
+    }
+    $number = (float)$text;
+    if (abs($number - round($number)) < 0.0001) {
+        return (string)(int)round($number);
+    }
+    return rtrim(rtrim(sprintf('%.4F', $number), '0'), '.');
+};
+$toMillimeter = static function (string $value, string $unit) use ($normalizeSizeNumber): string {
+    if ($value === '') {
+        return '';
+    }
+    $unit = strtolower(trim($unit));
+    if ($unit === 'cm' || str_starts_with($unit, 'cm')) {
+        $millimeter = (float)$value * 10;
+        return $normalizeSizeNumber($millimeter);
+    }
+    return $value;
+};
+$currentPackageSize = $productData['CD_SIZE'] ?? [];
+if (is_string($currentPackageSize)) {
+    $decodedPackageSize = json_decode($currentPackageSize, true);
+    $currentPackageSize = is_array($decodedPackageSize) ? $decodedPackageSize : [];
+}
+if (!is_array($currentPackageSize)) {
+    $currentPackageSize = [];
+}
+$collectedPackageUnit = trim((string)($packageSize['unit'] ?? ''));
+$collectedPackageSizeMm = [
+    'W' => $toMillimeter($normalizeSizeNumber($packageSize['width'] ?? ''), $collectedPackageUnit),
+    'H' => $toMillimeter($normalizeSizeNumber($packageSize['height'] ?? ''), $collectedPackageUnit),
+    'D' => $toMillimeter($normalizeSizeNumber($packageSize['depth'] ?? ''), $collectedPackageUnit),
+];
+$currentPackageSizeMm = [
+    'W' => $normalizeSizeNumber($currentPackageSize['W'] ?? ''),
+    'H' => $normalizeSizeNumber($currentPackageSize['H'] ?? ''),
+    'D' => $normalizeSizeNumber($currentPackageSize['D'] ?? ''),
+];
+$hasCollectedPackageSize = ($collectedPackageSizeMm['W'] !== '' || $collectedPackageSizeMm['H'] !== '' || $collectedPackageSizeMm['D'] !== '');
+$canSyncPackageSize = $hasCollectedPackageSize && (
+    $collectedPackageSizeMm['W'] !== $currentPackageSizeMm['W']
+    || $collectedPackageSizeMm['H'] !== $currentPackageSizeMm['H']
+    || $collectedPackageSizeMm['D'] !== $currentPackageSizeMm['D']
+);
+$currentPackageSizeLabel = ($currentPackageSizeMm['W'] === '' && $currentPackageSizeMm['H'] === '' && $currentPackageSizeMm['D'] === '')
+    ? ''
+    : ($currentPackageSizeMm['W'] !== '' ? $currentPackageSizeMm['W'] : '-')
+        . ' × ' . ($currentPackageSizeMm['H'] !== '' ? $currentPackageSizeMm['H'] : '-')
+        . ' × ' . ($currentPackageSizeMm['D'] !== '' ? $currentPackageSizeMm['D'] : '-')
+        . ' mm';
+$toGram = static function (string $value, string $unit) use ($normalizeSizeNumber): string {
+    if ($value === '') {
+        return '';
+    }
+    $unit = strtolower(trim($unit));
+    if ($unit === 'kg' || str_starts_with($unit, 'kg')) {
+        return $normalizeSizeNumber((float)$value * 1000);
+    }
+    return $value;
+};
+$currentWeightFn = $productData['cd_weight_fn'] ?? [];
+if (is_string($currentWeightFn)) {
+    $decodedWeightFn = json_decode($currentWeightFn, true);
+    $currentWeightFn = is_array($decodedWeightFn) ? $decodedWeightFn : [];
+}
+if (!is_array($currentWeightFn)) {
+    $currentWeightFn = [];
+}
+$collectedPackageWeightG = $toGram(
+    $normalizeSizeNumber($packageWeight['weight'] ?? ''),
+    (string)($packageWeight['unit'] ?? '')
+);
+$currentPackageWeightG = $normalizeSizeNumber($currentWeightFn['2'] ?? '');
+$canSyncPackageWeight = $collectedPackageWeightG !== '' && $collectedPackageWeightG !== $currentPackageWeightG;
+$collectedProductWeightG = $toGram(
+    $normalizeSizeNumber($productWeight['weight'] ?? ''),
+    (string)($productWeight['unit'] ?? '')
+);
+$currentProductWeightG = $normalizeSizeNumber($currentWeightFn['1'] ?? '');
+$canSyncProductWeight = $collectedProductWeightG !== '' && $collectedProductWeightG !== $currentProductWeightG;
+$hasSpecWeight = false;
+$collectedSpecWeight = $collectedProductWeightG;
+$currentSpecWeight = '';
+$specWeightUnit = '';
+$toCentimeter = static function (string $value, string $unit) use ($normalizeSizeNumber): string {
+    if ($value === '') {
+        return '';
+    }
+    $unit = strtolower(trim($unit));
+    if ($unit === 'mm' || str_starts_with($unit, 'mm')) {
+        return $normalizeSizeNumber((float)$value / 10);
+    }
+    return $value;
+};
+$currentSpec = $productData['cd_spec'] ?? [];
+if (is_string($currentSpec)) {
+    $decodedSpec = json_decode($currentSpec, true);
+    $currentSpec = is_array($decodedSpec) ? $decodedSpec : [];
+}
+if (!is_array($currentSpec)) {
+    $currentSpec = [];
+}
+$currentSpecVendor = (isset($currentSpec['vendor_size']) && is_array($currentSpec['vendor_size'])) ? $currentSpec['vendor_size'] : [];
+$specService = new \App\Services\ProductSpecService();
+$specSchema = $specService->getSchema((string)($productData['CD_CATEGORY_CODE'] ?? $productData['CD_KIND_CODE'] ?? ''));
+$hasSpecProductSizeFields = isset($specSchema['fields']['length'], $specSchema['fields']['height'], $specSchema['fields']['width']);
+$collectedProductUnit = trim((string)($productSize['unit'] ?? ''));
+$collectedProductSizeCm = [
+    'length' => $toCentimeter($normalizeSizeNumber($productSize['width'] ?? ''), $collectedProductUnit),
+    'height' => $toCentimeter($normalizeSizeNumber($productSize['height'] ?? ''), $collectedProductUnit),
+    'width' => $toCentimeter($normalizeSizeNumber($productSize['depth'] ?? ''), $collectedProductUnit),
+];
+$currentProductSizeCm = [
+    'length' => $normalizeSizeNumber($currentSpecVendor['length'] ?? ''),
+    'height' => $normalizeSizeNumber($currentSpecVendor['height'] ?? ''),
+    'width' => $normalizeSizeNumber($currentSpecVendor['width'] ?? ''),
+];
+$hasCollectedProductSize = ($collectedProductSizeCm['length'] !== '' || $collectedProductSizeCm['height'] !== '' || $collectedProductSizeCm['width'] !== '');
+$canSyncProductSize = $hasSpecProductSizeFields && $hasCollectedProductSize && (
+    $collectedProductSizeCm['length'] !== $currentProductSizeCm['length']
+    || $collectedProductSizeCm['height'] !== $currentProductSizeCm['height']
+    || $collectedProductSizeCm['width'] !== $currentProductSizeCm['width']
+);
+$currentProductSizeLabel = ($currentProductSizeCm['length'] === '' && $currentProductSizeCm['height'] === '' && $currentProductSizeCm['width'] === '')
+    ? ''
+    : ($currentProductSizeCm['length'] !== '' ? $currentProductSizeCm['length'] : '-')
+        . ' × ' . ($currentProductSizeCm['height'] !== '' ? $currentProductSizeCm['height'] : '-')
+        . ' × ' . ($currentProductSizeCm['width'] !== '' ? $currentProductSizeCm['width'] : '-')
+        . ' cm';
+$specType = $specService->getSpecType((string)($productData['CD_CATEGORY_CODE'] ?? $productData['CD_KIND_CODE'] ?? ''));
+$isOnaholeSpec = ($specType === '01000000');
+$hasSpecWeight = isset($specSchema['fields']['weight']);
+$specWeightUnit = strtolower(trim((string)($specSchema['fields']['weight'][1] ?? '')));
+$currentSpecWeight = $normalizeSizeNumber($currentSpecVendor['weight'] ?? '');
+$collectedSpecWeight = $collectedProductWeightG;
+if ($collectedSpecWeight !== '' && ($specWeightUnit === 'kg' || str_starts_with($specWeightUnit, 'kg'))) {
+    $collectedSpecWeight = $normalizeSizeNumber((float)$collectedSpecWeight / 1000);
+}
+$canSyncProductWeight = $collectedProductWeightG !== '' && (
+    $collectedProductWeightG !== $currentProductWeightG
+    || ($hasSpecWeight && $collectedSpecWeight !== $currentSpecWeight)
+);
+$hasSpecInnerLengthVagina = isset($specSchema['fields']['inner_length_vagina']);
+$hasSpecInnerLengthAnal = isset($specSchema['fields']['inner_length_anal']);
+$collectedVaginalLengthCm = $toCentimeter(
+    $normalizeSizeNumber($vaginalInternalLength['length'] ?? $vaginalInternalLength['weight'] ?? ''),
+    (string)($vaginalInternalLength['unit'] ?? '')
+);
+$collectedAnalLengthCm = $toCentimeter(
+    $normalizeSizeNumber($analInternalLength['length'] ?? $analInternalLength['weight'] ?? ''),
+    (string)($analInternalLength['unit'] ?? '')
+);
+$currentVaginalLengthCm = $normalizeSizeNumber($currentSpecVendor['inner_length_vagina'] ?? '');
+$currentAnalLengthCm = $normalizeSizeNumber($currentSpecVendor['inner_length_anal'] ?? '');
+$currentSize2Cm = $normalizeSizeNumber($productData['CD_SIZE2'] ?? '');
+$canSyncVaginalLength = $collectedVaginalLengthCm !== '' && (
+    ($hasSpecInnerLengthVagina && $collectedVaginalLengthCm !== $currentVaginalLengthCm)
+    || ($isOnaholeSpec && $collectedVaginalLengthCm !== $currentSize2Cm)
+);
+$canSyncAnalLength = $hasSpecInnerLengthAnal && $collectedAnalLengthCm !== '' && $collectedAnalLengthCm !== $currentAnalLengthCm;
+$currentVaginalLengthLabel = $currentVaginalLengthCm !== ''
+    ? $currentVaginalLengthCm
+    : ($isOnaholeSpec ? $currentSize2Cm : '');
+$currentAnalLengthLabel = $currentAnalLengthCm;
+$hasSpecMaterial = isset($specSchema['fields']['material']);
+$collectedMaterial = $normalizeCompareText($material);
+$currentMaterial = $normalizeCompareText($currentSpecVendor['material'] ?? '');
+$canSyncMaterial = $hasSpecMaterial && $collectedMaterial !== '' && $collectedMaterial !== $currentMaterial;
+$collectedReleaseDate = $registrationDateText;
+if ($collectedReleaseDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $collectedReleaseDate)) {
+    $collectedReleaseDate = '';
+}
+$currentReleaseDate = trim((string)($productData['CD_RELEASE_DATE'] ?? ''));
+if ($currentReleaseDate === '0000-00-00') {
+    $currentReleaseDate = '';
+}
+$canSyncReleaseDate = $collectedReleaseDate !== '' && $collectedReleaseDate !== $currentReleaseDate;
 $sourceUrl = trim((string)($collectionItem['source_url'] ?? ''));
 $supplyPriceRaw = $collectionItem['supply_price'] ?? null;
 $supplyCurrency = trim((string)($collectionItem['supply_currency'] ?? ''));
@@ -185,6 +375,25 @@ $supplyPriceText = ($supplyPriceRaw === null || $supplyPriceRaw === '')
     ? 'No Data'
     : number_format((float)$supplyPriceRaw) . ($supplyCurrency !== '' ? ' ' . $supplyCurrency : '');
 $accessoriesText = trim((string)($specifications['accessories'] ?? ''));
+$currentAccessories = $productData['cd_accessories'] ?? [];
+if (is_string($currentAccessories)) {
+    $decodedAccessories = json_decode($currentAccessories, true);
+    $currentAccessories = is_array($decodedAccessories) ? $decodedAccessories : [];
+}
+if (!is_array($currentAccessories)) {
+    $currentAccessories = [];
+}
+$hasProductAccessories = false;
+foreach ($currentAccessories as $currentAccessory) {
+    if (!is_array($currentAccessory)) {
+        continue;
+    }
+    if (trim((string)($currentAccessory['text'] ?? '')) !== '') {
+        $hasProductAccessories = true;
+        break;
+    }
+}
+$showAccessoryMissingWarning = $accessoriesText !== '' && !$hasProductAccessories;
 $makerCommentText = trim((string)($collectionItem['maker_comment'] ?? ''));
 $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 ?>
@@ -297,7 +506,12 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     <h2>수집된 상품 정보</h2>
                     <p>전체 <?= count($collectionItems) ?>건 중 <?= $selectedCollectionIndex + 1 ?>번 수집정보입니다.</p>
                 </div>
-                <span>수집 <?= htmlspecialchars($formatCollectedDate($collectionItem['collected_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                <div class="collected-product-information-actions">
+                    <?php if ($canSyncNameOg || $canSyncPackageSize || $canSyncPackageWeight || $canSyncProductSize || $canSyncProductWeight || $canSyncVaginalLength || $canSyncAnalLength || $canSyncMaterial || $canSyncReleaseDate) { ?>
+                        <button type="button" id="applyCollectedProductFields" class="btnstyle1 btnstyle1-primary btnstyle1-sm">선택 항목 일괄 업데이트</button>
+                    <?php } ?>
+                    <span>수집 <?= htmlspecialchars($formatCollectedDate($collectionItem['collected_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
+                </div>
             </div>
 
             <table class="collected-product-table">
@@ -325,14 +539,37 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                         </td>
                     </tr>
                     <tr>
-                        <th>품번</th>
+                        <th>고유번호 / 품번</th>
                         <td><?= $renderCollectedValue($formatCollectedText($collectionItem['product_code'] ?? null)) ?></td>
                         <th>바코드</th>
                         <td><?= $renderCollectedValue($formatCollectedText($collectionItem['barcode'] ?? null)) ?></td>
                     </tr>
                     <tr>
                         <th>상품명</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedText($collectionItem['product_name'] ?? null)) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedText($collectionItem['product_name'] ?? null)) ?>
+                            <?php if ($canSyncNameOg) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_name_og"
+                                            data-field="cd_name_og"
+                                            data-label="원상품명"
+                                            data-value="<?= htmlspecialchars($collectedProductName, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        원상품명 업데이트
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentNameOg === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentNameOg === ''
+                                            ? '현재 원상품명 없음'
+                                            : '현재 원상품명: ' . htmlspecialchars($currentNameOg, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>공급가</th>
@@ -340,19 +577,121 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     </tr>
                     <tr>
                         <th>패키지 사이즈</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedSize($packageSize, '깊이(D)')) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedSize($packageSize, '깊이(D)')) ?>
+                            <?php if ($canSyncPackageSize) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_size"
+                                            data-field="cd_size"
+                                            data-label="패키지 사이즈"
+                                            data-value="<?= htmlspecialchars(json_encode($collectedPackageSizeMm, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        패키지 사이즈 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentPackageSizeLabel === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentPackageSizeLabel === ''
+                                            ? '현재 패키지 사이즈 없음'
+                                            : '현재 패키지 사이즈: ' . htmlspecialchars($currentPackageSizeLabel, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>패키지 중량</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedMeasure($packageWeight)) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedMeasure($packageWeight)) ?>
+                            <?php if ($canSyncPackageWeight) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_weight_2"
+                                            data-field="cd_weight_2"
+                                            data-label="전체중량"
+                                            data-value="<?= htmlspecialchars($collectedPackageWeightG, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        전체중량 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentPackageWeightG === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentPackageWeightG === ''
+                                            ? '현재 전체중량 없음'
+                                            : '현재 전체중량: ' . htmlspecialchars($currentPackageWeightG, ENT_QUOTES, 'UTF-8') . ' g' ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>상품 사이즈</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedSize($productSize, '길이(D)')) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedSize($productSize, '길이(D)')) ?>
+                            <?php if ($canSyncProductSize) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_spec_product_size"
+                                            data-field="cd_spec_product_size"
+                                            data-label="상품 사이즈"
+                                            data-value="<?= htmlspecialchars(json_encode($collectedProductSizeCm, JSON_UNESCAPED_UNICODE), ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        상품 사이즈 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentProductSizeLabel === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentProductSizeLabel === ''
+                                            ? '현재 스펙 가로/세로/깊이 없음'
+                                            : '현재 스펙 가로/세로/깊이: ' . htmlspecialchars($currentProductSizeLabel, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>상품 중량</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedMeasure($productWeight)) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedMeasure($productWeight)) ?>
+                            <?php if ($canSyncProductWeight) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_weight_1"
+                                            data-field="cd_weight_1"
+                                            data-label="상품중량"
+                                            data-value="<?= htmlspecialchars($collectedProductWeightG, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        <?= $hasSpecWeight ? '상품중량 · 스펙 상품중량 수정' : '상품중량 수정' ?>
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentProductWeightG === '' && $currentSpecWeight === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?php
+                                        $productWeightCompareParts = [];
+                                        $productWeightCompareParts[] = $currentProductWeightG === ''
+                                            ? '현재 상품중량 없음'
+                                            : '현재 상품중량: ' . htmlspecialchars($currentProductWeightG, ENT_QUOTES, 'UTF-8') . ' g';
+                                        if ($hasSpecWeight) {
+                                            $specWeightUnitLabel = $specWeightUnit !== '' ? $specWeightUnit : 'g';
+                                            $productWeightCompareParts[] = $currentSpecWeight === ''
+                                                ? '스펙 상품중량 없음'
+                                                : '스펙 상품중량: ' . htmlspecialchars($currentSpecWeight, ENT_QUOTES, 'UTF-8') . ' ' . htmlspecialchars($specWeightUnitLabel, ENT_QUOTES, 'UTF-8');
+                                        }
+                                        echo implode(' / ', $productWeightCompareParts);
+                                        ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>내부 길이</th>
@@ -360,11 +699,79 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                             질 길이: <?= $renderCollectedValue($formatCollectedMeasure($vaginalInternalLength)) ?>
                             &nbsp; / &nbsp;
                             애널 길이: <?= $renderCollectedValue($formatCollectedMeasure($analInternalLength)) ?>
+                            <?php if ($canSyncVaginalLength) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_spec_inner_length_vagina"
+                                            data-field="cd_spec_inner_length_vagina"
+                                            data-label="내부길이 (질)"
+                                            data-value="<?= htmlspecialchars($collectedVaginalLengthCm, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        <?= $isOnaholeSpec ? '내부길이 (질) · 내부길이 수정' : '내부길이 (질) 수정' ?>
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentVaginalLengthLabel === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentVaginalLengthLabel === ''
+                                            ? '현재 내부길이 (질) 없음'
+                                            : '현재 내부길이 (질): ' . htmlspecialchars($currentVaginalLengthLabel, ENT_QUOTES, 'UTF-8') . ' cm'
+                                                . ($isOnaholeSpec && $currentSize2Cm !== '' && $currentSize2Cm !== $currentVaginalLengthCm
+                                                    ? ' / 내부길이: ' . htmlspecialchars($currentSize2Cm, ENT_QUOTES, 'UTF-8') . ' cm'
+                                                    : '') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                            <?php if ($canSyncAnalLength) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_spec_inner_length_anal"
+                                            data-field="cd_spec_inner_length_anal"
+                                            data-label="내부길이 (애널)"
+                                            data-value="<?= htmlspecialchars($collectedAnalLengthCm, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        내부길이 (애널) 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentAnalLengthLabel === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentAnalLengthLabel === ''
+                                            ? '현재 내부길이 (애널) 없음'
+                                            : '현재 내부길이 (애널): ' . htmlspecialchars($currentAnalLengthLabel, ENT_QUOTES, 'UTF-8') . ' cm' ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
                         </td>
                     </tr>
                     <tr>
                         <th>소재</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedText($material !== '' ? $material : null)) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedText($material !== '' ? $material : null)) ?>
+                            <?php if ($canSyncMaterial) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_spec_material"
+                                            data-field="cd_spec_material"
+                                            data-label="소재"
+                                            data-value="<?= htmlspecialchars($collectedMaterial, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        소재 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentMaterial === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentMaterial === ''
+                                            ? '현재 소재 없음'
+                                            : '현재 소재: ' . htmlspecialchars($currentMaterial, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>상품구분</th>
@@ -376,8 +783,32 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     </tr>
                     <tr>
                         <th>발매일</th>
-                        <td colspan="3"><?= $renderCollectedValue($formatCollectedText($registrationDateText !== '' ? $registrationDateText : null)) ?></td>
+                        <td colspan="3">
+                            <?= $renderCollectedValue($formatCollectedText($registrationDateText !== '' ? $registrationDateText : null)) ?>
+                            <?php if ($canSyncReleaseDate) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_release_date"
+                                            data-field="cd_release_date"
+                                            data-label="출시일"
+                                            data-value="<?= htmlspecialchars($collectedReleaseDate, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        출시일 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentReleaseDate === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentReleaseDate === ''
+                                            ? '현재 출시일 없음'
+                                            : '현재 출시일: ' . htmlspecialchars($currentReleaseDate, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
+
                     <tr>
                         <th>부속품</th>
                         <td colspan="3">
@@ -395,8 +826,12 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                                 </div>
                                 <?php if ($translationLogs['accessories'] !== null) { ?><div class="collection-action-log">번역 수정: <?= htmlspecialchars($formatActionLog($translationLogs['accessories']), ENT_QUOTES, 'UTF-8') ?></div><?php } ?>
                             <?php } ?>
+                            <?php if ($showAccessoryMissingWarning) { ?>
+                                <div class="collected-product-compare collected-product-compare-empty">부속품 정보가 상품 DB에 없습니다! 정보를 기입해주세요.</div>
+                            <?php } ?>
                         </td>
                     </tr>
+                    
                     <tr>
                         <th>메이커 코멘트</th>
                         <td colspan="3" class="collected-product-comment">
@@ -554,7 +989,10 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 .collection-record-button.is-active span small{color:#64748b}
 .collection-record-button:disabled{cursor:wait;opacity:.65}
 @media(max-width:640px){.product-collection-layout{display:block}.collection-record-list{position:static;order:0;width:100%;max-width:220px;margin:20px 0 0 auto}}
-.collected-product-compare{display:block;width:max-content;max-width:100%;margin-top:6px;padding:3px 7px;border-radius:4px;font-size:11px;font-weight:600}.collected-product-compare-empty{color:#92400e;background:#fef3c7}.collected-product-compare-mismatch{color:#b91c1c;background:#fee2e2}
+.collected-product-information-actions{display:flex;align-items:center;gap:10px;flex-wrap:wrap}
+.collected-product-sync{display:inline-flex;align-items:center;gap:6px;margin:8px 8px 0 0;color:#1e3a8a;font-size:12px;font-weight:700;cursor:pointer}
+.collected-product-sync input{margin:0}
+.collected-product-compare{display:inline-block;max-width:100%;margin-top:8px;padding:3px 7px;border-radius:4px;font-size:11px;font-weight:600;word-break:break-all}.collected-product-compare-empty{color:#92400e;background:#fef3c7}.collected-product-compare-mismatch{color:#b91c1c;background:#fee2e2}
 .collection-translation{margin-top:8px;padding:8px 10px;border:1px solid #e5e7eb;border-left:3px solid #6b7280;background:#f4f4f5;color:#1f2937}
 .collection-translation-button{margin-top:8px}
 .collection-translation-label{display:inline-block;margin:0 0 6px;padding:2px 8px;border-radius:999px;background:#4b5563;color:#fff;font-size:11px;font-weight:700;line-height:1.3;letter-spacing:.02em}
@@ -587,6 +1025,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var productIdx = <?= json_encode($prdIdx, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var collectionItemIdx = <?= json_encode($collectionItemIdx) ?>;
     var selectedCollectionIndex = <?= json_encode($selectedCollectionIndex) ?>;
+    var collectionSiteCode = <?= json_encode(trim((string)($collectionItem['site_code'] ?? '')), JSON_UNESCAPED_UNICODE) ?>;
     var collectionRecordButtons = document.querySelectorAll('.collection-record-button');
     var apiResult = document.getElementById('collectionApiResult');
     var apiResultData = document.getElementById('collectionApiResultData');
@@ -621,6 +1060,55 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
         input.disabled = isLoading;
         submitButton.disabled = isLoading;
         submitButton.textContent = isLoading ? '수집 중...' : '검수 후 수집 요청';
+    }
+
+    var applyCollectedFieldsButton = document.getElementById('applyCollectedProductFields');
+    if (applyCollectedFieldsButton) {
+        applyCollectedFieldsButton.addEventListener('click', function () {
+            var selectedFields = [];
+            Array.prototype.forEach.call(document.querySelectorAll('.collected-product-sync-check:checked'), function (checkbox) {
+                var field = String(checkbox.dataset.field || '').trim();
+                var value = String(checkbox.dataset.value || '').trim();
+                if (field !== '' && value !== '') {
+                    selectedFields.push({
+                        field: field,
+                        value: value
+                    });
+                }
+            });
+            if (!selectedFields.length) {
+                window.alert('업데이트할 항목을 선택해 주세요.');
+                return;
+            }
+            if (!window.confirm('선택한 ' + selectedFields.length + '개 항목을 상품에 반영할까요?')) {
+                return;
+            }
+
+            fetch('/admin/product/info_collect/fields/apply', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({
+                    prd_idx: productIdx,
+                    site_code: collectionSiteCode,
+                    fields: JSON.stringify(selectedFields)
+                }).toString()
+            })
+            .then(function (response) { return response.json(); })
+            .then(function (responseData) {
+                if (!responseData.success) {
+                    throw new Error(responseData.message || '일괄 업데이트에 실패했습니다.');
+                }
+                if (window.toast2) {
+                    toast2('success', '상품 정보수집', responseData.message || '반영했습니다.');
+                } else {
+                    window.alert(responseData.message || '반영했습니다.');
+                }
+                loadCollectionView(selectedCollectionIndex);
+            })
+            .catch(function (error) {
+                window.alert(error.message || '일괄 업데이트 중 오류가 발생했습니다.');
+            });
+        });
     }
 
     function loadCollectionView(collectionIndex) {
