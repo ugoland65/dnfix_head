@@ -99,6 +99,7 @@ class GodoInspectionService
         ['sourceCategoryCode' => 'ONAHOLE_FEATURE_NUB', 'cateNm' => '돌기형(이보계)', 'cateCd' => '026004013'],
         ['sourceCategoryCode' => 'ONAHOLE_FEATURE_ELECTRIC', 'cateNm' => '전자기믹', 'cateCd' => '026004012'],
         ['sourceCategoryCode' => 'ONAHOLE_FEATURE_HERRING_ROE', 'cateNm' => '청어알형', 'cateCd' => '026004015'],
+        ['sourceCategoryCode' => 'ONAHOLE_FEATURE_SNAKE', 'cateNm' => '지렁이형', 'cateCd' => '026004016'],
     ];
 
     private const ONAHOLE_INNER_LENGTH_CATEGORIES = [

@@ -731,6 +731,12 @@ $subCategoriesByKind = [
                     'image' => '',
                 ],
                 [
+                    'code' => 'ONAHOLE_FEATURE_SNAKE',
+                    'name' => '지렁이형',
+                    'description' => '지렁이 기믹, 컨셉이 지렁이라고 표현한 경우',
+                    'image' => '',
+                ],
+                [
                     'code' => 'ONAHOLE_FEATURE_ELECTRIC',
                     'name' => '전자기믹',
                     'description' => '배터리, 전원 연결해서 진동·전자 효과가 있는 경우',

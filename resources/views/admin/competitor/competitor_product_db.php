@@ -146,8 +146,16 @@
                                 </div>
                                 */ ?>
                             </td>
-                            <td >
-                                <a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><img src="<?=$row['image_url']?>" style="height:70px; border:1px solid #eee !important;"></a>
+                            <td class="text-center">
+                                <?php $rowImageUrl = trim((string)($row['image_url'] ?? '')); ?>
+                                <?php if ($rowImageUrl !== '') { ?>
+                                    <img
+                                        src="<?= htmlspecialchars($rowImageUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                        class="competitor-product-thumb"
+                                        data-preview-src="<?= htmlspecialchars($rowImageUrl, ENT_QUOTES, 'UTF-8') ?>"
+                                        alt="상품 이미지"
+                                    >
+                                <?php } ?>
                             </td>
                             <td class="text-left"><?=$row['category'] ?? ''?></td>
                             <td class="text-center" style="width:100px; min-width:100px; max-width:100px; white-space: normal !important;"><?=$row['brand_name']?></td>
@@ -679,6 +687,58 @@
         border-color: #2563eb;
         color: #fff;
     }
+    .competitor-product-thumb {
+        height: 70px;
+        border: 1px solid #eee !important;
+        cursor: zoom-in;
+        vertical-align: middle;
+    }
+    .competitor-product-thumb:hover {
+        opacity: 0.85;
+    }
+    .competitor-image-preview-overlay {
+        display: none;
+        position: fixed;
+        inset: 0;
+        z-index: 90000020;
+        align-items: center;
+        justify-content: center;
+        padding: 24px;
+        background: rgba(0, 0, 0, 0.78);
+        cursor: zoom-out;
+    }
+    .competitor-image-preview-overlay.is-open {
+        display: flex;
+    }
+    .competitor-image-preview-box {
+        position: relative;
+        max-width: min(90vw, 960px);
+        max-height: 90vh;
+        cursor: default;
+    }
+    .competitor-image-preview-box img {
+        display: block;
+        max-width: 90vw;
+        max-height: 85vh;
+        object-fit: contain;
+        border-radius: 8px;
+        box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
+        background: #fff;
+    }
+    .competitor-image-preview-close {
+        position: absolute;
+        top: -40px;
+        right: 0;
+        border: 0;
+        background: transparent;
+        color: #fff;
+        font-size: 32px;
+        line-height: 1;
+        cursor: pointer;
+    }
+    .competitor-image-preview-close:hover {
+        color: #d1d5db;
+    }
 </style>
 
 <div id="competitorProductMatchLayer" class="match-layer-overlay" aria-hidden="true">
@@ -740,6 +800,13 @@
             <div id="match_selected_info">선택된 상품 없음</div>
             <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="matchSelectDoneBtn">선택완료</button>
         </div>
+    </div>
+</div>
+
+<div id="competitorImagePreviewLayer" class="competitor-image-preview-overlay" aria-hidden="true">
+    <div class="competitor-image-preview-box" role="dialog" aria-modal="true" aria-label="이미지 크게 보기">
+        <button type="button" class="competitor-image-preview-close" aria-label="닫기">&times;</button>
+        <img id="competitorImagePreviewTarget" src="" alt="상품 이미지">
     </div>
 </div>
 
@@ -1362,8 +1429,46 @@ $(function(){
         }
     });
 
+    var $imagePreviewLayer = $("#competitorImagePreviewLayer");
+    var $imagePreviewTarget = $("#competitorImagePreviewTarget");
+
+    function closeCompetitorImagePreview() {
+        $imagePreviewLayer.removeClass("is-open").attr("aria-hidden", "true");
+        $imagePreviewTarget.attr("src", "");
+    }
+
+    $(document).on("click", ".competitor-product-thumb", function(e) {
+        e.preventDefault();
+        var src = String($(this).data("preview-src") || $(this).attr("src") || "").trim();
+        if (!src) {
+            return;
+        }
+        $imagePreviewTarget.attr("src", src);
+        $imagePreviewLayer.addClass("is-open").attr("aria-hidden", "false");
+    });
+
+    $imagePreviewLayer.on("click", function() {
+        closeCompetitorImagePreview();
+    });
+
+    $imagePreviewLayer.find(".competitor-image-preview-close").on("click", function(e) {
+        e.stopPropagation();
+        closeCompetitorImagePreview();
+    });
+
+    $imagePreviewTarget.on("click", function(e) {
+        e.stopPropagation();
+    });
+
     $(document).on("keydown", function(e) {
-        if (e.key === "Escape" && $matchLayer.hasClass("active")) {
+        if (e.key !== "Escape") {
+            return;
+        }
+        if ($imagePreviewLayer.hasClass("is-open")) {
+            closeCompetitorImagePreview();
+            return;
+        }
+        if ($matchLayer.hasClass("active")) {
             closeMatchLayer();
         }
     });

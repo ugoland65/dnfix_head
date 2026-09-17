@@ -88,7 +88,11 @@ $analInternalLength = is_array($internalLength['anal'] ?? null) ? $internalLengt
 $material = trim((string)($collectionItem['material'] ?? $specifications['material'] ?? ''));
 $productType = trim((string)($collectionItem['product_type'] ?? $specifications['product_type'] ?? ''));
 $countryOfOrigin = trim((string)($collectionItem['country_of_origin'] ?? $specifications['country_of_origin'] ?? ''));
-$registrationDateRaw = $collectionItem['registration_date'] ?? $specifications['registration_date'] ?? '';
+$registrationDateRaw = $collectionItem['registration_date']
+    ?? $collectionItem['release_date']
+    ?? $specifications['registration_date']
+    ?? $specifications['release_date']
+    ?? '';
 $registrationDateText = is_array($registrationDateRaw)
     ? trim((string)($registrationDateRaw['date'] ?? ''))
     : trim((string)$registrationDateRaw);
@@ -186,8 +190,11 @@ $normalizeCompareText = static function ($value): string {
     $text = preg_replace('/\s+/u', ' ', $text);
     return trim((string)$text);
 };
+$toHalfwidthAscii = static function (string $text): string {
+    return $text === '' ? '' : mb_convert_kana($text, 'as', 'UTF-8');
+};
 $currentNameOg = $normalizeCompareText($productData['CD_NAME_OG'] ?? '');
-$collectedProductName = $normalizeCompareText($collectionItem['product_name'] ?? '');
+$collectedProductName = $toHalfwidthAscii($normalizeCompareText($collectionItem['product_name'] ?? ''));
 $canSyncNameOg = $collectedProductName !== '' && $currentNameOg !== $collectedProductName;
 $normalizeSizeNumber = static function ($value): string {
     $text = trim((string)$value);
@@ -430,19 +437,43 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     <div class="product-info-collection-input">
                         <input type="url" id="collection_url" name="collection_url" placeholder="수집 대상 URL을 입력하세요" autocomplete="url">
                         <button type="submit" class="btnstyle1 btnstyle1-primary">수집시작</button>
+                        <button type="button" id="firebaseWorkerPing" class="btnstyle1">DNFIX006컴 연결 확인</button>
                     </div>
                 </div>
-                <p class="product-info-collection-help">현재 수집가능한 사이트 <br>
-                    1) 닛포리기프트 발주 사이트 ex) <a href="http://www.nipporigift.net" target="_blank" rel="noopener noreferrer">http://www.nipporigift.net/products/detail.php?product_id=31373</a><br>
-                    2) [브랜드] 타마토이즈 ex) <a href="https://tamatoys.tma.co.jp" target="_blank" rel="noopener noreferrer">https://tamatoys.tma.co.jp/item/detail/TMT-1716</a><br>
-                    3) 엠자카 ex) <a href="https://mzakka.com" target="_blank" rel="noopener noreferrer">https://mzakka.com/pc/detail/item.php?item_id=M12488&amp;category=1789</a><br>
-                    4) 노부나가 ex) <a href="https://www.nobunaga-toys.com" target="_blank" rel="noopener noreferrer">https://www.nobunaga-toys.com/?pid=193204770</a><br>
-                    5) NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a><br>
-                    6) 엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a><br>
-                    7) TIS (<b>현재 수집불가</b>) ex) <a href="https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261" target="_blank" rel="noopener noreferrer">https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261</a><br>
-                    8) [브랜드] 라이드재팬 ex) <a href="http://ridejapan.net" target="_blank" rel="noopener noreferrer">http://ridejapan.net/product_item/ftm/</a><br>
-                    9) [브랜드] 옐로랩 ex) <a href="https://yelolab.jp" target="_blank" rel="noopener noreferrer">https://yelolab.jp/products/hole/yelo-041</a>
-                </p>
+
+                <div class="product-info-collection-sites">
+                    <h3>수집 가능한 사이트</h3>
+                    <ul>
+                        <li>
+                            <label class="brand">브랜드</label> 타마토이즈 ex) <a href="https://tamatoys.tma.co.jp" target="_blank" rel="noopener noreferrer">https://tamatoys.tma.co.jp/item/detail/TMT-1716</a>
+                        </li>
+                        <li>
+                            <label class="brand">브랜드</label>라이드재팬 ex) <a href="http://ridejapan.net" target="_blank" rel="noopener noreferrer">http://ridejapan.net/product_item/ftm/</a>
+                        </li>
+                        <li>
+                            <label class="brand">브랜드</label>옐로랩 ex) <a href="https://yelolab.jp" target="_blank" rel="noopener noreferrer">https://yelolab.jp/products/hole/yelo-041</a>
+                        </li>
+                        <li>
+                            <label class="local_supplier">현지 공급사</label>N.P.G ex) <a href="http://www.nipporigift.net" target="_blank" rel="noopener noreferrer">http://www.nipporigift.net/products/detail.php?product_id=31373</a>
+                        </li>
+                        <li>
+                            <label class="local_supplier">현지 공급사</label>TIS (DNFIX006컴 수집) ex) <a href="https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261" target="_blank" rel="noopener noreferrer">https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261</a>
+                        </li>
+                        <li>
+                            <label class="local_shopping_mall">현지 쇼핑몰</label>엠자카 ex) <a href="https://mzakka.com" target="_blank" rel="noopener noreferrer">https://mzakka.com/pc/detail/item.php?item_id=M12488&amp;category=1789</a>
+                        </li>
+                        <li>
+                            <label class="local_shopping_mall">현지 쇼핑몰</label>노부나가 ex) <a href="https://www.nobunaga-toys.com" target="_blank" rel="noopener noreferrer">https://www.nobunaga-toys.com/?pid=193204770</a>
+                        </li>
+                        <li>
+                            <label class="local_shopping_mall">현지 쇼핑몰</label>NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a>
+                        </li>
+                        <li>
+                            <label class="local_shopping_mall">현지 쇼핑몰</label>엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a>
+                        </li>
+                    </ul>
+                </div>
+
                 <div id="collectionUrlValidation" class="product-info-collection-validation" hidden aria-live="polite"></div>
             </form>
 
@@ -454,8 +485,9 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             <div id="collectionLoadingOverlay" class="product-info-collection-loading" hidden aria-live="assertive" aria-busy="true">
                 <div>
                     <span class="product-info-collection-spinner"></span>
-                    <strong>데이터를 수집중입니다.</strong>
-                    <p>완료될때까지 잠시만 기다려주세요.</p>
+                    <strong id="collectionLoadingTitle">데이터를 수집중입니다.</strong>
+                    <p id="collectionLoadingDetail">완료될때까지 잠시만 기다려주세요.</p>
+                    <button type="button" id="collectionLoadingCancel" class="product-info-collection-cancel" hidden>수집 중단</button>
                 </div>
             </div>
         </section>
@@ -606,7 +638,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     <tr>
                         <th>상품명</th>
                         <td colspan="3">
-                            <?= $renderCollectedValue($formatCollectedText($collectionItem['product_name'] ?? null)) ?>
+                            <?= $renderCollectedValue($collectedProductName === '' ? 'No Data' : $collectedProductName) ?>
                             <?php if ($canSyncNameOg) { ?>
                                 <div>
                                     <label class="collected-product-sync">
@@ -1040,8 +1072,22 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 }
 .product-info-collection-search{margin:2px 0 12px;padding:14px;border:1px solid #f6d98a;border-radius:8px;background:linear-gradient(180deg,#fff8e1 0%,#ffefc2 100%);box-shadow:inset 0 1px 0 rgba(255,255,255,.8)}
 .product-info-collection-search-label{display:inline-flex;align-items:center;margin-bottom:8px;padding:3px 8px;border-radius:999px;background:#f59e0b;color:#fff;font-size:11px;font-weight:700;letter-spacing:.02em}
-.product-info-collection-heading h2{margin:0 0 6px;font-size:19px;color:#1f2937}.product-info-collection-heading p{margin:0;color:#6b7280;font-size:13px}.product-info-collection-product{flex:0 0 auto;padding:7px 10px;border-radius:5px;background:#f3f6fa;color:#64748b;font-size:12px}.product-info-collection-product strong{color:#334155}.product-info-collection label{display:block;margin-bottom:9px;font-size:13px;font-weight:700;color:#374151}.product-info-collection-input{display:flex;gap:8px}.product-info-collection-input input{box-sizing:border-box;flex:1;min-width:0;height:46px;padding:0 14px;border:2px solid #f0b429;border-radius:6px;background:#fff;color:#1f2937;font-size:15px;box-shadow:0 1px 2px rgba(146,64,14,.08)}.product-info-collection-input input::placeholder{color:#b45309;opacity:.72}.product-info-collection-input input:focus{outline:0;border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.28)}.product-info-collection-input button{min-width:90px}.product-info-collection-help{margin:9px 0 0;color:#333;font-size:12px;line-height:1.5}.product-info-collection-help a{color:#333;text-decoration:underline}.product-info-collection-help code{padding:1px 4px;border-radius:3px;background:#f1f5f9;color:#475569}.product-info-collection-validation{margin-top:16px;padding:11px 13px;border-radius:5px;font-size:13px}.product-info-collection-validation.is-success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.product-info-collection-validation.is-error{color:#b91c1c;background:#fef2f2;border:1px solid #fecaca}.product-info-collection-result{margin-top:22px;padding-top:20px;border-top:1px solid #e5e7eb}.product-info-collection-result h3{margin:0 0 9px;font-size:14px;color:#374151}.product-info-collection-result h3 small{margin-left:5px;color:#94a3b8;font-weight:400}.product-info-collection-result pre{max-height:460px;margin:0;padding:14px;overflow:auto;border-radius:6px;background:#0f172a;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,Monaco,monospace}.product-info-collection-loading{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.56);text-align:center}.product-info-collection-loading>div{min-width:280px;padding:28px 36px;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.22);color:#1f2937}.product-info-collection-loading strong{display:block;margin-top:14px;font-size:16px}.product-info-collection-loading p{margin:7px 0 0;color:#64748b;font-size:13px}.product-info-collection-spinner{display:inline-block;width:32px;height:32px;border:4px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:collection-spin .8s linear infinite}@keyframes collection-spin{to{transform:rotate(360deg)}}.collected-product-information{flex:1;min-width:0;max-width:900px;margin-top:20px;border:1px solid #dfe5ed;border-radius:10px;background:#fff;overflow:hidden}.collected-product-information-heading{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:#f8fafc;border-bottom:1px solid #e5e7eb}.collected-product-information-heading h2{margin:0 0 4px;font-size:17px;color:#1e293b}.collected-product-information-heading p,.collected-product-information-heading span{margin:0;color:#64748b;font-size:12px}.collected-product-table{width:100%;border-collapse:collapse}.collected-product-table th,.collected-product-table td{padding:11px 13px;border-bottom:1px solid #edf0f4;text-align:left;vertical-align:top;font-size:13px;line-height:1.55}.collected-product-table th{width:135px;background:#f8fafc;color:#475569;font-weight:600}.collected-product-table td a{color:#2563eb;word-break:break-all}.collected-no-data{color:#b0b8c4}.collected-product-comment{white-space:normal;color:#475569}.collected-product-images{padding:20px}.collected-product-images-title{display:flex;align-items:center;gap:8px;margin-bottom:10px}.collected-product-images-title h3{margin:0;font-size:14px;color:#334155}.collected-product-images-title span{padding:2px 6px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-size:11px}.collected-product-image-html{box-sizing:border-box;width:100%;height:75px;margin-bottom:14px;padding:9px;border:1px solid #d7dee8;border-radius:5px;resize:vertical;font:11px/1.4 Consolas,monospace}.collected-product-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.collected-product-image-list a{display:block;overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list img{display:block;width:100%;aspect-ratio:1;object-fit:contain}@media(max-width:640px){.product-info-collection{padding:20px}.product-info-collection-heading{display:block}.product-info-collection-product{display:inline-block;margin-top:12px}.product-info-collection-input{display:block}.product-info-collection-input button{width:100%;margin-top:8px}.collected-product-information-heading{display:block}.collected-product-information-heading span{display:block;margin-top:6px}.collected-product-table th{width:100px}.collected-product-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.product-info-collection-sites{margin:4px 0 12px}
+.product-info-collection-sites h3{margin:0 0 8px;font-size:14px;color:#374151}
+.product-info-collection-sites ul{list-style:none;margin:0;padding:0;display:grid;gap:4px; }
+.product-info-collection-sites li{display:flex;align-items:center;gap:6px;min-width:0;white-space:nowrap;font-size:12px;line-height:1.4;color:#475569}
+.product-info-collection-sites li a{min-width:0;overflow:hidden;text-overflow:ellipsis;color:#2563eb}
+.product-info-collection-sites label{display:inline-flex;align-items:center;flex:0 0 auto;margin:0;padding:2px 8px;border-radius:999px;font-size:11px;font-weight:700;line-height:1.4;color:#fff}
+.product-info-collection-sites label.brand{background:#2563eb}
+.product-info-collection-sites label.local_supplier{background:#0d9488}
+.product-info-collection-sites label.local_shopping_mall{background:#7c3aed}
+.product-info-collection-heading h2{margin:0 0 6px;font-size:19px;color:#1f2937}.product-info-collection-heading p{margin:0;color:#6b7280;font-size:13px}.product-info-collection-product{flex:0 0 auto;padding:7px 10px;border-radius:5px;background:#f3f6fa;color:#64748b;font-size:12px}.product-info-collection-product strong{color:#334155}
+.product-info-collection label{display:block; color:#fff; }
+.product-info-collection-input{display:flex;gap:8px}.product-info-collection-input input{box-sizing:border-box;flex:1;min-width:0;height:46px;padding:0 14px;border:2px solid #f0b429;border-radius:6px;background:#fff;color:#1f2937;font-size:15px;box-shadow:0 1px 2px rgba(146,64,14,.08)}.product-info-collection-input input::placeholder{color:#b45309;opacity:.72}.product-info-collection-input input:focus{outline:0;border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.28)}.product-info-collection-input button{min-width:90px}.product-info-collection-help{margin:9px 0 0;color:#333;font-size:12px;line-height:1.5}.product-info-collection-help a{color:#333;text-decoration:underline}.product-info-collection-help code{padding:1px 4px;border-radius:3px;background:#f1f5f9;color:#475569}.product-info-collection-validation{margin-top:16px;padding:11px 13px;border-radius:5px;font-size:13px}.product-info-collection-validation.is-success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.product-info-collection-validation.is-error{color:#b91c1c;background:#fef2f2;border:1px solid #fecaca}.product-info-collection-result{margin-top:22px;padding-top:20px;border-top:1px solid #e5e7eb}.product-info-collection-result h3{margin:0 0 9px;font-size:14px;color:#374151}.product-info-collection-result h3 small{margin-left:5px;color:#94a3b8;font-weight:400}.product-info-collection-result pre{max-height:460px;margin:0;padding:14px;overflow:auto;border-radius:6px;background:#0f172a;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,Monaco,monospace}.product-info-collection-loading{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.56);text-align:center}.product-info-collection-loading>div{min-width:280px;padding:28px 36px;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.22);color:#1f2937}.product-info-collection-loading strong{display:block;margin-top:14px;font-size:16px}.product-info-collection-loading p{margin:7px 0 0;color:#64748b;font-size:13px}.product-info-collection-spinner{display:inline-block;width:32px;height:32px;border:4px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:collection-spin .8s linear infinite}@keyframes collection-spin{to{transform:rotate(360deg)}}.collected-product-information{flex:1;min-width:0;max-width:900px;margin-top:20px;border:1px solid #dfe5ed;border-radius:10px;background:#fff;overflow:hidden}.collected-product-information-heading{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:#f8fafc;border-bottom:1px solid #e5e7eb}.collected-product-information-heading h2{margin:0 0 4px;font-size:17px;color:#1e293b}.collected-product-information-heading p,.collected-product-information-heading span{margin:0;color:#64748b;font-size:12px}.collected-product-table{width:100%;border-collapse:collapse}.collected-product-table th,.collected-product-table td{padding:11px 13px;border-bottom:1px solid #edf0f4;text-align:left;vertical-align:top;font-size:13px;line-height:1.55}.collected-product-table th{width:135px;background:#f8fafc;color:#475569;font-weight:600}.collected-product-table td a{color:#2563eb;word-break:break-all}.collected-no-data{color:#b0b8c4}.collected-product-comment{white-space:normal;color:#475569}.collected-product-images{padding:20px}.collected-product-images-title{display:flex;align-items:center;gap:8px;margin-bottom:10px}.collected-product-images-title h3{margin:0;font-size:14px;color:#334155}.collected-product-images-title span{padding:2px 6px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-size:11px}.collected-product-image-html{box-sizing:border-box;width:100%;height:75px;margin-bottom:14px;padding:9px;border:1px solid #d7dee8;border-radius:5px;resize:vertical;font:11px/1.4 Consolas,monospace}.collected-product-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.collected-product-image-list a{display:block;overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list img{display:block;width:100%;aspect-ratio:1;object-fit:contain}@media(max-width:640px){.product-info-collection{padding:20px}.product-info-collection-heading{display:block}.product-info-collection-product{display:inline-block;margin-top:12px}.product-info-collection-input{display:block}.product-info-collection-input button{width:100%;margin-top:8px}.collected-product-information-heading{display:block}.collected-product-information-heading span{display:block;margin-top:6px}.collected-product-table th{width:100px}.collected-product-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .product-info-collection-loading[hidden]{display:none}
+.product-info-collection-cancel{margin-top:16px;min-width:120px;height:36px;padding:0 16px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font-size:13px;font-weight:700;cursor:pointer}
+.product-info-collection-cancel:hover{background:#f8fafc;border-color:#94a3b8}
+.product-info-collection-cancel[hidden]{display:none}
 .product-collection-layout{display:flex;align-items:flex-start;gap:16px;max-width:1136px}
 .collection-record-list{position:sticky; top:90px; z-index:20; box-sizing:border-box;order:2;display:grid;gap:6px;flex:0 0 220px;width:220px;max-width:220px;margin:20px 0 0;padding:10px;border:1px solid #dfe5ed;border-radius:10px;background:#f8fafc;max-height:calc(100vh - 32px);overflow:auto}
 .collection-record-list-heading{padding:2px 2px 6px;color:#1e293b;font-size:13px;font-weight:700}
@@ -1088,6 +1134,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var input = document.getElementById('collection_url');
     var message = document.getElementById('collectionUrlValidation');
     var submitButton = form.querySelector('button[type="submit"]');
+    var pingButton = document.getElementById('firebaseWorkerPing');
     var productIdx = <?= json_encode($prdIdx, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var collectionItemIdx = <?= json_encode($collectionItemIdx) ?>;
     var selectedCollectionIndex = <?= json_encode($selectedCollectionIndex) ?>;
@@ -1096,6 +1143,13 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var apiResult = document.getElementById('collectionApiResult');
     var apiResultData = document.getElementById('collectionApiResultData');
     var loadingOverlay = document.getElementById('collectionLoadingOverlay');
+    var loadingTitle = document.getElementById('collectionLoadingTitle');
+    var loadingDetail = document.getElementById('collectionLoadingDetail');
+    var loadingCancelButton = document.getElementById('collectionLoadingCancel');
+    var collectionWaitActive = false;
+    var collectionRequestAbort = null;
+    var collectionPollTimer = null;
+    var collectionActiveJobId = '';
     var copyImageHtmlButton = document.getElementById('copyCollectedImageHtml');
     var imageHtmlTextarea = document.getElementById('collectedProductImageHtml');
     var copyHostedImageHtmlButton = document.getElementById('copyHostedImageHtml');
@@ -1121,11 +1175,200 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
         message.className = 'product-info-collection-validation ' + (isSuccess ? 'is-success' : 'is-error');
     }
 
-    function setCollectionLoading(isLoading) {
+    function setCollectionLoading(isLoading, options) {
+        options = options || {};
         loadingOverlay.hidden = !isLoading;
+        if (loadingCancelButton) {
+            loadingCancelButton.hidden = !isLoading || !options.canCancel;
+        }
         input.disabled = isLoading;
         submitButton.disabled = isLoading;
-        submitButton.textContent = isLoading ? '수집 중...' : '검수 후 수집 요청';
+        submitButton.textContent = isLoading ? '수집 중...' : '수집시작';
+        if (pingButton) {
+            pingButton.disabled = isLoading;
+        }
+    }
+
+    function setCollectionLoadingCopy(title, detail) {
+        if (loadingTitle) {
+            loadingTitle.textContent = title;
+        }
+        if (loadingDetail) {
+            loadingDetail.textContent = detail;
+        }
+    }
+
+    function stopCollectionWait() {
+        collectionWaitActive = false;
+        collectionActiveJobId = '';
+        if (collectionPollTimer) {
+            clearTimeout(collectionPollTimer);
+            collectionPollTimer = null;
+        }
+        if (collectionRequestAbort) {
+            collectionRequestAbort.abort();
+            collectionRequestAbort = null;
+        }
+        setCollectionLoading(false);
+    }
+
+    function notifyCollectionJobCancel(jobId) {
+        if (!jobId) {
+            return;
+        }
+        fetch('/admin/product/info_collect/job/cancel', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams({ job_id: jobId }).toString()
+        }).catch(function () {});
+    }
+
+    function cancelCollectionWait() {
+        var jobId = collectionActiveJobId;
+        stopCollectionWait();
+        showMessage('수집을 중단했습니다.', false);
+        notifyCollectionJobCancel(jobId);
+    }
+
+    function pollFirebaseCollectionJob(jobId, options) {
+        options = options || {};
+        collectionActiveJobId = jobId;
+        var queuedAt = Date.now();
+        var seenRunning = false;
+        var deadlineAt = Date.now() + (options.timeoutMs || 150000);
+        var noResponseMs = options.noResponseMs || 45000;
+
+        function scheduleNext() {
+            collectionPollTimer = setTimeout(tick, 2000);
+        }
+
+        function tick() {
+            if (!collectionWaitActive || collectionActiveJobId !== jobId) {
+                return;
+            }
+            if (!seenRunning && Date.now() - queuedAt > noResponseMs) {
+                stopCollectionWait();
+                showMessage('DNFIX006컴 응답이 없습니다. 수집기 앱이 켜져 있는지 확인하세요.', false);
+                notifyCollectionJobCancel(jobId);
+                return;
+            }
+            if (Date.now() > deadlineAt) {
+                stopCollectionWait();
+                showMessage('DNFIX006컴 수집 대기 시간이 초과되었습니다.', false);
+                notifyCollectionJobCancel(jobId);
+                return;
+            }
+            fetch('/admin/product/info_collect/job?job_id=' + encodeURIComponent(jobId), {
+                headers: { 'Accept': 'application/json' }
+            })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    throw new Error('수집 상태를 읽을 수 없습니다.');
+                });
+            })
+            .then(function (jobData) {
+                if (!collectionWaitActive || collectionActiveJobId !== jobId) {
+                    return;
+                }
+                if (!jobData.success) {
+                    throw new Error(jobData.message || '수집 상태를 확인할 수 없습니다.');
+                }
+                var status = String(jobData.status || '').toLowerCase();
+                var result = jobData.result || {};
+                if (status === 'running') {
+                    seenRunning = true;
+                }
+                if (status === 'done' && result.ok !== false) {
+                    if (typeof options.onDone === 'function') {
+                        stopCollectionWait();
+                        options.onDone(jobData);
+                        return;
+                    }
+                    window.location.reload();
+                    return;
+                }
+                if (status === 'cancelled') {
+                    stopCollectionWait();
+                    showMessage(jobData.message || '수집이 취소되었습니다.', false);
+                    return;
+                }
+                if (status === 'failed' || status === 'fail' || result.ok === false) {
+                    stopCollectionWait();
+                    showMessage(jobData.message || result.message || result.error || '수집에 실패했습니다.', false);
+                    return;
+                }
+                setCollectionLoadingCopy(
+                    status === 'running' ? 'DNFIX006컴에서 TIS 수집 중입니다.' : 'DNFIX006컴 응답을 기다리는 중',
+                    jobData.message || (status === 'running' ? '수집기 앱이 작업을 실행 중입니다.' : '수집기 앱이 요청을 받을 때까지 대기합니다.')
+                );
+                scheduleNext();
+            })
+            .catch(function (error) {
+                if (!collectionWaitActive || collectionActiveJobId !== jobId) {
+                    return;
+                }
+                showMessage(error.message || '수집 상태 확인 중 오류가 발생했습니다.', false);
+                scheduleNext();
+            });
+        }
+
+        tick();
+    }
+
+    if (loadingCancelButton) {
+        loadingCancelButton.addEventListener('click', cancelCollectionWait);
+    }
+
+    if (pingButton) {
+        pingButton.addEventListener('click', function () {
+            collectionWaitActive = true;
+            collectionActiveJobId = '';
+            collectionRequestAbort = (typeof AbortController === 'function') ? new AbortController() : null;
+            setCollectionLoadingCopy('DNFIX006컴 연결을 확인하는 중', '핑 요청을 보냈습니다. 응답이 없으면 바로 중단할 수 있습니다.');
+            setCollectionLoading(true, { canCancel: true });
+            fetch('/admin/product/info_collect/ping', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                signal: collectionRequestAbort ? collectionRequestAbort.signal : undefined
+            })
+            .then(function (response) {
+                return response.json().catch(function () {
+                    throw new Error('연결 확인 응답을 읽을 수 없습니다.');
+                });
+            })
+            .then(function (responseData) {
+                if (!collectionWaitActive) {
+                    if (responseData && responseData.data && responseData.data.job_id) {
+                        notifyCollectionJobCancel(responseData.data.job_id);
+                    }
+                    return;
+                }
+                if (!responseData.success) {
+                    throw new Error(responseData.message || '연결 확인 요청에 실패했습니다.');
+                }
+                var jobId = responseData.data && responseData.data.job_id ? String(responseData.data.job_id) : '';
+                if (!jobId) {
+                    throw new Error('연결 확인 작업 ID를 받지 못했습니다.');
+                }
+                setCollectionLoadingCopy('DNFIX006컴 응답을 기다리는 중', '수집기 앱이 핑을 받을 때까지 대기합니다.');
+                pollFirebaseCollectionJob(jobId, {
+                    timeoutMs: 20000,
+                    noResponseMs: 15000,
+                    onDone: function (jobData) {
+                        var result = jobData.result || {};
+                        var workerId = result.worker_id ? ' / ' + result.worker_id : '';
+                        showMessage('DNFIX006컴 응답: ' + (result.message || 'pong') + workerId, true);
+                    }
+                });
+            })
+            .catch(function (error) {
+                if (!collectionWaitActive || (error && error.name === 'AbortError')) {
+                    return;
+                }
+                showMessage(error.message || '연결 확인 중 오류가 발생했습니다.', false);
+                stopCollectionWait();
+            });
+        });
     }
 
     var applyCollectedFieldsButton = document.getElementById('applyCollectedProductFields');
@@ -1475,9 +1718,11 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             }
 
             uploadImagesButton.disabled = true;
-            loadingOverlay.querySelector('strong').textContent = '이미지를 이미지 호스팅에 업로드중입니다.';
-            loadingOverlay.querySelector('p').textContent = '완료될때까지 잠시만 기다려주세요.';
+            setCollectionLoadingCopy('이미지를 이미지 호스팅에 업로드중입니다.', '완료될때까지 잠시만 기다려주세요.');
             loadingOverlay.hidden = false;
+            if (loadingCancelButton) {
+                loadingCancelButton.hidden = true;
+            }
 
             fetch('/admin/product/info_collect/images/upload_hosting', {
                 method: 'POST',
@@ -1600,7 +1845,15 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             return;
         }
 
-        setCollectionLoading(true);
+        if (normalizedHost === 'bb-order.com') {
+            setCollectionLoadingCopy('DNFIX006컴에 수집 요청을 보내는 중', '응답이 없으면 바로 중단할 수 있습니다.');
+        } else {
+            setCollectionLoadingCopy('데이터를 수집중입니다.', '완료될때까지 잠시만 기다려주세요. 필요하면 바로 중단할 수 있습니다.');
+        }
+        collectionWaitActive = true;
+        collectionActiveJobId = '';
+        collectionRequestAbort = (typeof AbortController === 'function') ? new AbortController() : null;
+        setCollectionLoading(true, { canCancel: true });
         apiResult.hidden = true;
         fetch('/admin/product/info_collect/request', {
             method: 'POST',
@@ -1608,7 +1861,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             body: new URLSearchParams({
                 collection_url: rawUrl,
                 prd_idx: productIdx
-            }).toString()
+            }).toString(),
+            signal: collectionRequestAbort ? collectionRequestAbort.signal : undefined
         })
         .then(function (response) {
             return response.json().catch(function () {
@@ -1616,14 +1870,29 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             });
         })
         .then(function (responseData) {
+            if (!collectionWaitActive) {
+                if (responseData && responseData.data && responseData.data.job_id) {
+                    notifyCollectionJobCancel(responseData.data.job_id);
+                }
+                return;
+            }
             if (!responseData.success) {
                 throw new Error(responseData.message || '정보수집 요청에 실패했습니다.');
+            }
+            var jobId = responseData.data && responseData.data.job_id ? String(responseData.data.job_id) : '';
+            if ((responseData.async || (responseData.data && responseData.data.async)) && jobId) {
+                setCollectionLoadingCopy('DNFIX006컴 응답을 기다리는 중', '수집기 앱이 요청을 받을 때까지 대기합니다. 응답이 없으면 중단하세요.');
+                pollFirebaseCollectionJob(jobId);
+                return;
             }
             window.location.reload();
         })
         .catch(function (error) {
+            if (!collectionWaitActive || (error && error.name === 'AbortError')) {
+                return;
+            }
             showMessage(error.message || '정보수집 요청 중 오류가 발생했습니다.', false);
-            setCollectionLoading(false);
+            stopCollectionWait();
         })
     });
 }());

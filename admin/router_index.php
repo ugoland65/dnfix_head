@@ -89,6 +89,9 @@ try {
     $router->post('/product/info_collect/images/hosting_order/save', ProductController::class, 'saveHostedImageOrder'); //호스팅 이미지 순서 저장
     $router->post('/product/info_collect/translation/save', ProductController::class, 'saveCollectionTranslation'); //수집 데이터 번역 저장
     $router->post('/product/info_collect/request', ProductController::class, 'requestProductInfoCollection'); //상품 정보수집 요청
+    $router->post('/product/info_collect/ping', ProductController::class, 'pingProductInfoCollectionWorker'); //DNFIX006컴 연결 확인
+    $router->get('/product/info_collect/job', ProductController::class, 'getProductInfoCollectionJob'); //DNFIX006컴 수집 상태
+    $router->post('/product/info_collect/job/cancel', ProductController::class, 'cancelProductInfoCollectionJob'); //DNFIX006컴 수집 취소
     $router->post('/product/info_collect/fields/apply', ProductController::class, 'applyCollectedProductFields'); //수집 데이터 상품 반영
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)

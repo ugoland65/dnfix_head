@@ -1,6 +1,6 @@
 <?php
 
-@deprecated 사용하지 않을 예정
+//@deprecated 사용하지 않을 예정
 
 ini_set('display_errors', 1);
 ini_set('display_startup_errors', 1);

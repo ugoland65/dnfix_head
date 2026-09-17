@@ -22,6 +22,12 @@ class HttpClient
         return self::sendRequestWithMeta($url, 'POST', $data, $header, $timeout);
     }
 
+    // PATCH 요청 상세 결과 반환
+    public static function patchDataWithMeta($url, $data, $header = '', $timeout = 20)
+    {
+        return self::sendRequestWithMeta($url, 'PATCH', $data, $header, $timeout);
+    }
+
     // GET 요청
     // - 기존 시그니처(getData($url, $header))와 호환
     // - getData($url, $data, $header) 형태도 지원

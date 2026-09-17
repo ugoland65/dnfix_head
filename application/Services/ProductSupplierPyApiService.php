@@ -342,6 +342,8 @@ class ProductSupplierPyApiService
             ],
             'bb-order.com' => [
                 'endpoint' => '/maker-products/tis/crawl',
+                'transport' => 'firebase',
+                'firebase_type' => 'TIS',
                 'identifier_type' => 'path_code',
                 'required_path_prefix' => '/tisgoods_kr/shop/detail/',
                 'payload_key' => 'product_pk',
@@ -445,12 +447,19 @@ class ProductSupplierPyApiService
         $payload[$collector['payload_key']] = ($collector['payload_value_type'] ?? 'string') === 'int'
             ? (int)$identifier
             : $identifier;
+        if (($collector['transport'] ?? '') === 'firebase') {
+            return $this->requestViaFirebaseWorker(
+                (string)($collector['firebase_type'] ?? 'TIS'),
+                $payload
+            );
+        }
+
         $headers = [
             'Content-Type: application/json',
             'Accept: application/json',
             'X-API-KEY: ' . $this->apiKey,
         ];
-        $timeout = $host === 'bb-order.com' ? 120 : 90;
+        $timeout = 90;
         $httpResult = HttpClient::postDataWithMeta($this->domain . $collector['endpoint'], $payload, $headers, $timeout);
         $response = (string)($httpResult['response'] ?? '');
         $responseData = json_decode($response, true);
@@ -476,6 +485,58 @@ class ProductSupplierPyApiService
         }
 
         return $responseData;
+    }
+
+    /**
+     * TIS처럼 Cloud Run IP가 막힌 사이트는 DNFIX006컴 수집기로 넘긴다.
+     *
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    private function requestViaFirebaseWorker(string $type, array $payload): array
+    {
+        $jobId = (new FirebaseRealtimeService())->enqueueRemoteJob($type, $payload);
+        return [
+            'success' => true,
+            'async' => true,
+            'transport' => 'firebase',
+            'job_id' => $jobId,
+            'status' => 'queued',
+            'message' => 'DNFIX006컴에 수집 요청을 보냈습니다.',
+        ];
+    }
+
+    /**
+     * @param array<string, mixed> $payload
+     * @return array<string, mixed>
+     */
+    public function pingFirebaseWorker(array $payload = []): array
+    {
+        $jobId = (new FirebaseRealtimeService())->enqueueRemoteJob('ping', $payload);
+        return [
+            'success' => true,
+            'async' => true,
+            'transport' => 'firebase',
+            'job_id' => $jobId,
+            'status' => 'queued',
+            'message' => 'DNFIX006컴 연결 확인을 요청했습니다.',
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function getFirebaseCollectionJob(string $jobId): array
+    {
+        return (new FirebaseRealtimeService())->describeRemoteJob($jobId);
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    public function cancelFirebaseCollectionJob(string $jobId): array
+    {
+        return (new FirebaseRealtimeService())->cancelRemoteJob($jobId);
     }
 
 }

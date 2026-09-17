@@ -599,8 +599,8 @@ class ProductController extends BaseClass
     public function requestProductInfoCollection(Request $request)
     {
         try {
-            set_time_limit(180);
-            ini_set('max_execution_time', '180');
+            set_time_limit(120);
+            ini_set('max_execution_time', '120');
             $requestData = $request->all();
             $result = (new ProductSupplierPyApiService())->requestProductInfoCollection([
                 'collection_url' => $requestData['collection_url'] ?? '',
@@ -612,8 +612,76 @@ class ProductController extends BaseClass
             return response()->json([
                 'success' => true,
                 'message' => $result['message'] ?? '정보수집을 요청했습니다.',
+                'async' => !empty($result['async']),
                 'data' => $result,
             ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * DNFIX006컴 수집기 연결을 ping으로 확인한다.
+     */
+    public function pingProductInfoCollectionWorker(Request $request)
+    {
+        try {
+            $result = (new ProductSupplierPyApiService())->pingFirebaseWorker([
+                'requester_user_pk' => AuthAdmin::getSession('sess_idx'),
+                'requester_user_name' => AuthAdmin::getSession('sess_name'),
+                'source' => 'intranet_collection_page',
+            ]);
+            return response()->json([
+                'success' => true,
+                'async' => true,
+                'message' => $result['message'] ?? 'DNFIX006컴 연결 확인을 요청했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * DNFIX006컴 Firebase 수집 작업 상태를 조회한다.
+     */
+    public function getProductInfoCollectionJob(Request $request)
+    {
+        try {
+            $jobId = trim((string)($request->all()['job_id'] ?? ''));
+            if ($jobId === '') {
+                throw new \InvalidArgumentException('job_id가 없습니다.');
+            }
+            return response()->json(
+                (new ProductSupplierPyApiService())->getFirebaseCollectionJob($jobId)
+            );
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * DNFIX006컴 Firebase 수집 작업을 취소한다.
+     */
+    public function cancelProductInfoCollectionJob(Request $request)
+    {
+        try {
+            $jobId = trim((string)($request->all()['job_id'] ?? ''));
+            if ($jobId === '') {
+                throw new \InvalidArgumentException('job_id가 없습니다.');
+            }
+            return response()->json(
+                (new ProductSupplierPyApiService())->cancelFirebaseCollectionJob($jobId)
+            );
         } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
@@ -1152,6 +1220,9 @@ class ProductController extends BaseClass
                 $value = html_entity_decode(trim((string)($fieldRow['value'] ?? '')), ENT_QUOTES | ENT_HTML5, 'UTF-8');
                 if ($value === '') {
                     continue;
+                }
+                if ($field === 'cd_name_og') {
+                    $value = mb_convert_kana($value, 'as', 'UTF-8');
                 }
                 if ($field === 'cd_code') {
                     $codeFn = $product['cd_code_fn'] ?? [];
