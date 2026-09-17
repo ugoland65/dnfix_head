@@ -99,6 +99,7 @@ if ($registrationDateText !== '' && preg_match('/^(\d{4}-\d{2}-\d{2})/', $regist
     $registrationDateText = $registrationTimestamp ? date('Y-m-d', $registrationTimestamp) : $registrationDateText;
 }
 $imageSources = is_array($collectionItem['image_sources'] ?? null) ? $collectionItem['image_sources'] : [];
+$sourceUrl = trim((string)($collectionItem['source_url'] ?? ''));
 $collectedImages = [];
 
 foreach ($imageSources as $imageSource) {
@@ -110,7 +111,7 @@ foreach ($imageSources as $imageSource) {
         $imageAlt = '';
     }
     if ($imageUrl !== '') {
-        $imageUrl = \App\Services\ProductImageHostingService::resolveCollectedImageUrl($imageUrl);
+        $imageUrl = \App\Services\ProductImageHostingService::resolveCollectedImageUrl($imageUrl, $sourceUrl);
         $imageKey = \App\Services\ProductImageHostingService::collectedImageTranslationKey($imageUrl);
         $collectedImages[] = [
             'url' => $imageUrl,
@@ -174,6 +175,8 @@ $siteCodeNames = [
     'nls' => 'NLS 사이트',
     'ms' => '엠즈',
     'tis' => 'TIS',
+    'ridejapan' => '라이드재팬',
+    'yelolab' => '옐로랩',
 ];
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
@@ -356,7 +359,10 @@ $currentVaginalLengthLabel = $currentVaginalLengthCm !== ''
     : ($isOnaholeSpec ? $currentSize2Cm : '');
 $currentAnalLengthLabel = $currentAnalLengthCm;
 $hasSpecMaterial = isset($specSchema['fields']['material']);
-$collectedMaterial = $normalizeCompareText($material);
+$resolvedMaterial = $specService->resolveCollectedMaterial($material);
+$collectedMaterialRaw = $resolvedMaterial['raw'];
+$collectedMaterialMapped = $resolvedMaterial['mapped'];
+$collectedMaterial = $normalizeCompareText($resolvedMaterial['value']);
 $currentMaterial = $normalizeCompareText($currentSpecVendor['material'] ?? '');
 $canSyncMaterial = $hasSpecMaterial && $collectedMaterial !== '' && $collectedMaterial !== $currentMaterial;
 $collectedReleaseDate = $registrationDateText;
@@ -368,7 +374,12 @@ if ($currentReleaseDate === '0000-00-00') {
     $currentReleaseDate = '';
 }
 $canSyncReleaseDate = $collectedReleaseDate !== '' && $collectedReleaseDate !== $currentReleaseDate;
-$sourceUrl = trim((string)($collectionItem['source_url'] ?? ''));
+$currentBarcode = trim((string)($productData['CD_CODE'] ?? ''));
+$collectedBarcode = trim((string)($collectionItem['barcode'] ?? ''));
+$canSyncBarcode = $collectedBarcode !== '' && $currentBarcode !== $collectedBarcode;
+$currentProductCode = $normalizeCompareText($productData['CD_CODE2'] ?? '');
+$collectedProductCode = $normalizeCompareText($collectionItem['product_code'] ?? '');
+$canSyncProductCode = $collectedProductCode !== '' && $currentProductCode !== $collectedProductCode;
 $supplyPriceRaw = $collectionItem['supply_price'] ?? null;
 $supplyCurrency = trim((string)($collectionItem['supply_currency'] ?? ''));
 $supplyPriceText = ($supplyPriceRaw === null || $supplyPriceRaw === '')
@@ -423,12 +434,14 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                 </div>
                 <p class="product-info-collection-help">현재 수집가능한 사이트 <br>
                     1) 닛포리기프트 발주 사이트 ex) <a href="http://www.nipporigift.net" target="_blank" rel="noopener noreferrer">http://www.nipporigift.net/products/detail.php?product_id=31373</a><br>
-                    2) 타마토이즈 ex) <a href="https://tamatoys.tma.co.jp" target="_blank" rel="noopener noreferrer">https://tamatoys.tma.co.jp/item/detail/TMT-1716</a><br>
+                    2) [브랜드] 타마토이즈 ex) <a href="https://tamatoys.tma.co.jp" target="_blank" rel="noopener noreferrer">https://tamatoys.tma.co.jp/item/detail/TMT-1716</a><br>
                     3) 엠자카 ex) <a href="https://mzakka.com" target="_blank" rel="noopener noreferrer">https://mzakka.com/pc/detail/item.php?item_id=M12488&amp;category=1789</a><br>
                     4) 노부나가 ex) <a href="https://www.nobunaga-toys.com" target="_blank" rel="noopener noreferrer">https://www.nobunaga-toys.com/?pid=193204770</a><br>
                     5) NLS ex) <a href="https://www.e-nls.com" target="_blank" rel="noopener noreferrer">https://www.e-nls.com/pict1-68047?c2=new</a><br>
                     6) 엠즈 ex) <a href="https://www.ms-online.co.jp" target="_blank" rel="noopener noreferrer">https://www.ms-online.co.jp/onahole/punivirgin/UGPRO-011?pclass_id=13489</a><br>
-                    7) TIS ex) <a href="https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261" target="_blank" rel="noopener noreferrer">https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261</a>
+                    7) TIS (<b>현재 수집불가</b>) ex) <a href="https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261" target="_blank" rel="noopener noreferrer">https://bb-order.com/tisgoods_kr/shop/detail/TKR0003261</a><br>
+                    8) [브랜드] 라이드재팬 ex) <a href="http://ridejapan.net" target="_blank" rel="noopener noreferrer">http://ridejapan.net/product_item/ftm/</a><br>
+                    9) [브랜드] 옐로랩 ex) <a href="https://yelolab.jp" target="_blank" rel="noopener noreferrer">https://yelolab.jp/products/hole/yelo-041</a>
                 </p>
                 <div id="collectionUrlValidation" class="product-info-collection-validation" hidden aria-live="polite"></div>
             </form>
@@ -507,7 +520,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     <p>전체 <?= count($collectionItems) ?>건 중 <?= $selectedCollectionIndex + 1 ?>번 수집정보입니다.</p>
                 </div>
                 <div class="collected-product-information-actions">
-                    <?php if ($canSyncNameOg || $canSyncPackageSize || $canSyncPackageWeight || $canSyncProductSize || $canSyncProductWeight || $canSyncVaginalLength || $canSyncAnalLength || $canSyncMaterial || $canSyncReleaseDate) { ?>
+                    <?php if ($canSyncNameOg || $canSyncProductCode || $canSyncBarcode || $canSyncPackageSize || $canSyncPackageWeight || $canSyncProductSize || $canSyncProductWeight || $canSyncVaginalLength || $canSyncAnalLength || $canSyncMaterial || $canSyncReleaseDate) { ?>
                         <button type="button" id="applyCollectedProductFields" class="btnstyle1 btnstyle1-primary btnstyle1-sm">선택 항목 일괄 업데이트</button>
                     <?php } ?>
                     <span>수집 <?= htmlspecialchars($formatCollectedDate($collectionItem['collected_at'] ?? ''), ENT_QUOTES, 'UTF-8') ?></span>
@@ -540,9 +553,55 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     </tr>
                     <tr>
                         <th>고유번호 / 품번</th>
-                        <td><?= $renderCollectedValue($formatCollectedText($collectionItem['product_code'] ?? null)) ?></td>
+                        <td>
+                            <?= $renderCollectedValue($formatCollectedText($collectionItem['product_code'] ?? null)) ?>
+                            <?php if ($canSyncProductCode) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_code2"
+                                            data-field="cd_code2"
+                                            data-label="상품 품번"
+                                            data-value="<?= htmlspecialchars($collectedProductCode, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        상품 품번 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentProductCode === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentProductCode === ''
+                                            ? '현재 상품 품번 없음'
+                                            : '현재 상품 품번: ' . htmlspecialchars($currentProductCode, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                         <th>바코드</th>
-                        <td><?= $renderCollectedValue($formatCollectedText($collectionItem['barcode'] ?? null)) ?></td>
+                        <td>
+                            <?= $renderCollectedValue($formatCollectedText($collectionItem['barcode'] ?? null)) ?>
+                            <?php if ($canSyncBarcode) { ?>
+                                <div>
+                                    <label class="collected-product-sync">
+                                        <input
+                                            type="checkbox"
+                                            class="collected-product-sync-check"
+                                            name="collection_sync_fields[]"
+                                            value="cd_code"
+                                            data-field="cd_code"
+                                            data-label="바코드"
+                                            data-value="<?= htmlspecialchars($collectedBarcode, ENT_QUOTES, 'UTF-8') ?>"
+                                        >
+                                        바코드 수정
+                                    </label>
+                                    <span class="collected-product-compare <?= $currentBarcode === '' ? 'collected-product-compare-empty' : 'collected-product-compare-mismatch' ?>">
+                                        <?= $currentBarcode === ''
+                                            ? '현재 바코드 없음'
+                                            : '현재 바코드: ' . htmlspecialchars($currentBarcode, ENT_QUOTES, 'UTF-8') ?>
+                                    </span>
+                                </div>
+                            <?php } ?>
+                        </td>
                     </tr>
                     <tr>
                         <th>상품명</th>
@@ -749,7 +808,14 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                     <tr>
                         <th>소재</th>
                         <td colspan="3">
-                            <?= $renderCollectedValue($formatCollectedText($material !== '' ? $material : null)) ?>
+                            <?php if ($collectedMaterial === '') { ?>
+                                <?= $renderCollectedValue('No Data') ?>
+                            <?php } elseif ($collectedMaterialMapped !== '') { ?>
+                                <?= htmlspecialchars($collectedMaterialMapped, ENT_QUOTES, 'UTF-8') ?>
+                                <br><small>원문: <?= htmlspecialchars($collectedMaterialRaw, ENT_QUOTES, 'UTF-8') ?></small>
+                            <?php } else { ?>
+                                <?= $renderCollectedValue($formatCollectedText($collectedMaterialRaw !== '' ? $collectedMaterialRaw : null)) ?>
+                            <?php } ?>
                             <?php if ($canSyncMaterial) { ?>
                                 <div>
                                     <label class="collected-product-sync">
@@ -1510,6 +1576,18 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             var tisMatch = url.pathname.match(/^\/tisgoods_kr\/shop\/detail\/([A-Za-z0-9_-]+)\/?$/);
             if (!tisMatch) {
                 showMessage('TIS URL은 /tisgoods_kr/shop/detail/상품코드 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'ridejapan.net') {
+            var ridejapanMatch = url.pathname.match(/^\/product_item\/([A-Za-z0-9_-]+)\/?$/);
+            if (!ridejapanMatch) {
+                showMessage('라이드재팬 URL은 /product_item/상품코드 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'yelolab.jp') {
+            var yelolabMatch = url.pathname.match(/^\/products\/[^/]+\/([A-Za-z0-9_-]+)\/?$/);
+            if (!yelolabMatch) {
+                showMessage('옐로랩 URL은 /products/카테고리/상품코드 형식이어야 합니다.', false);
                 return;
             }
         } else {

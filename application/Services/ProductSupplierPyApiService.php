@@ -349,6 +349,24 @@ class ProductSupplierPyApiService
                 'path_error' => 'TIS URL은 /tisgoods_kr/shop/detail/상품코드 형식이어야 합니다.',
                 'identifier_error' => 'TIS 상품 코드가 올바르지 않습니다.',
             ],
+            'ridejapan.net' => [
+                'endpoint' => '/maker-products/ridejapan/crawl',
+                'identifier_type' => 'path_code',
+                'required_path_prefix' => '/product_item/',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+                'path_error' => '라이드재팬 URL은 /product_item/상품코드 형식이어야 합니다.',
+                'identifier_error' => '라이드재팬 상품 코드가 올바르지 않습니다.',
+            ],
+            'yelolab.jp' => [
+                'endpoint' => '/maker-products/yelolab/crawl',
+                'identifier_type' => 'path_category_code',
+                'required_path_prefix' => '/products/',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'string',
+                'path_error' => '옐로랩 URL은 /products/카테고리/상품코드 형식이어야 합니다.',
+                'identifier_error' => '옐로랩 상품 코드가 올바르지 않습니다.',
+            ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
         if ($collector === null) {
@@ -369,8 +387,8 @@ class ProductSupplierPyApiService
             if (strpos($path, $pathPrefix) !== 0) {
                 throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
             }
-            $identifier = trim((string)basename($path));
-            if ($identifier === '' || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
+            $identifier = trim(substr($path, strlen($pathPrefix)), '/');
+            if ($identifier === '' || strpos($identifier, '/') !== false || !preg_match('/^[A-Za-z0-9_-]+$/', $identifier)) {
                 throw new \InvalidArgumentException((string)($collector['identifier_error'] ?? '상품 코드가 올바르지 않습니다.'));
             }
         } elseif ($collector['identifier_type'] === 'query_code') {
@@ -396,6 +414,15 @@ class ProductSupplierPyApiService
                 throw new \InvalidArgumentException('NLS URL은 /pict1-상품번호 형식이어야 합니다.');
             }
             $identifier = $nlsMatches[1];
+        } elseif ($collector['identifier_type'] === 'path_category_code') {
+            $pathPrefix = (string)$collector['required_path_prefix'];
+            if (!preg_match('#^' . preg_quote($pathPrefix, '#') . '([^/]+)/([A-Za-z0-9_-]+)/?$#', $path, $categoryCodeMatches)) {
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
+            }
+            $identifier = $categoryCodeMatches[2];
+            if ($identifier === '') {
+                throw new \InvalidArgumentException((string)($collector['identifier_error'] ?? '상품 코드가 올바르지 않습니다.'));
+            }
         }
 
         $matchedProductPk = (int)($data['matched_product_pk'] ?? 0);

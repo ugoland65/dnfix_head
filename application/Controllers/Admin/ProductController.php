@@ -528,10 +528,11 @@ class ProductController extends BaseClass
 
                     if (empty($collectionItemData)) {
                         $sourceImageUrls = [];
+                        $collectionPageUrl = trim((string)($sourceItem['source_url'] ?? ''));
                         foreach ((array)($sourceItem['image_sources'] ?? []) as $imageSource) {
                             $sourceUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
                             if ($sourceUrl !== '') {
-                                $sourceImageUrls[] = $sourceUrl;
+                                $sourceImageUrls[] = ProductImageHostingService::resolveCollectedImageUrl($sourceUrl, $collectionPageUrl);
                             }
                         }
                         $previousCollectionItem = ProductCollectionItemModel::query()
@@ -690,9 +691,11 @@ class ProductController extends BaseClass
             'image/gif' => 'gif',
             'image/webp' => 'webp',
         ];
+        $collectionPageUrl = trim((string)($item['source_url'] ?? ''));
         $imageCount = 0;
         foreach (array_slice($imageSources, 0, 50) as $imageSource) {
             $imageUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
+            $imageUrl = ProductImageHostingService::resolveCollectedImageUrl($imageUrl, $collectionPageUrl);
             try {
                 $image = ProductImageHostingService::downloadCollectedSourceImage($imageUrl, 20);
             } catch (Throwable $e) {
@@ -814,10 +817,11 @@ class ProductController extends BaseClass
             }
 
             $sourceImageUrls = [];
+            $collectionPageUrl = trim((string)($sourceItem['source_url'] ?? ''));
             foreach ((array)($sourceItem['image_sources'] ?? []) as $imageSource) {
                 $sourceUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
                 if ($sourceUrl !== '') {
-                    $sourceImageUrls[] = $sourceUrl;
+                    $sourceImageUrls[] = ProductImageHostingService::resolveCollectedImageUrl($sourceUrl, $collectionPageUrl);
                 }
             }
             if (empty($sourceImageUrls)) {
@@ -1098,6 +1102,8 @@ class ProductController extends BaseClass
             }
             $fieldMap = [
                 'cd_name_og' => 'CD_NAME_OG',
+                'cd_code' => 'CD_CODE',
+                'cd_code2' => 'CD_CODE2',
                 'cd_size' => 'CD_SIZE',
                 'cd_weight_1' => 'cd_weight_fn',
                 'cd_weight_2' => 'cd_weight_fn',
@@ -1109,6 +1115,8 @@ class ProductController extends BaseClass
             ];
             $fieldLabels = [
                 'cd_name_og' => '원상품명',
+                'cd_code' => '바코드',
+                'cd_code2' => '상품 품번',
                 'cd_size' => '패키지 사이즈',
                 'cd_weight_1' => '상품중량',
                 'cd_weight_2' => '전체중량',
@@ -1145,7 +1153,23 @@ class ProductController extends BaseClass
                 if ($value === '') {
                     continue;
                 }
-                if ($field === 'cd_size') {
+                if ($field === 'cd_code') {
+                    $codeFn = $product['cd_code_fn'] ?? [];
+                    if (is_string($codeFn)) {
+                        $decodedCodeFn = json_decode($codeFn, true);
+                        $codeFn = is_array($decodedCodeFn) ? $decodedCodeFn : [];
+                    }
+                    if (!is_array($codeFn)) {
+                        $codeFn = [];
+                    }
+                    $codeFn['jan'] = $value;
+                    $encodedCodeFn = json_encode($codeFn, JSON_UNESCAPED_UNICODE);
+                    $updateData['cd_code_fn'] = $encodedCodeFn;
+                    $before['cd_code_fn'] = is_array($product['cd_code_fn'] ?? null)
+                        ? json_encode($product['cd_code_fn'], JSON_UNESCAPED_UNICODE)
+                        : (string)($product['cd_code_fn'] ?? '');
+                    $after['cd_code_fn'] = $encodedCodeFn;
+                } elseif ($field === 'cd_size') {
                     $sizeData = json_decode($value, true);
                     if (!is_array($sizeData)) {
                         continue;
@@ -1240,7 +1264,7 @@ class ProductController extends BaseClass
                     } elseif ($field === 'cd_spec_inner_length_anal') {
                         $vendorValues['inner_length_anal'] = $value;
                     } else {
-                        $vendorValues['material'] = $value;
+                        $vendorValues['material'] = (new ProductSpecService())->mapCollectedMaterial($value);
                     }
                     if ($vendorValues === []) {
                         continue;
@@ -1309,6 +1333,8 @@ class ProductController extends BaseClass
                 'nls' => 'NLS 사이트',
                 'ms' => '엠즈',
                 'tis' => 'TIS',
+                'ridejapan' => '라이드재팬',
+                'yelolab' => '옐로랩',
             ];
             $siteName = $siteCodeNames[$siteCode] ?? '';
             $siteLabel = $siteCode === ''

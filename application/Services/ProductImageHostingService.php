@@ -126,12 +126,36 @@ class ProductImageHostingService
             'ms-online.co.jp' => 'https://www.ms-online.co.jp/',
             'go744sfa.user.webaccel.jp' => 'https://www.ms-online.co.jp/',
             'bb-order.com' => 'https://bb-order.com/',
+            'ridejapan.net' => 'http://ridejapan.net/',
+            'yelolab.jp' => 'https://yelolab.jp/',
         ];
     }
 
-    public static function resolveCollectedImageUrl(string $sourceUrl): string
+    public static function resolveCollectedImageUrl(string $sourceUrl, string $pageUrl = ''): string
     {
         $sourceUrl = trim($sourceUrl);
+        if ($sourceUrl === '') {
+            return '';
+        }
+
+        if (!preg_match('#^https?://#i', $sourceUrl)) {
+            $pageHost = preg_replace('/^www\./', '', strtolower((string)(parse_url($pageUrl, PHP_URL_HOST) ?? '')));
+            $bases = self::getCollectedImageSourceSites();
+            if ($pageHost !== '' && isset($bases[$pageHost])) {
+                $base = rtrim((string)$bases[$pageHost], '/');
+            } elseif ($pageHost !== '') {
+                $scheme = strtolower((string)(parse_url($pageUrl, PHP_URL_SCHEME) ?? 'http'));
+                if (!in_array($scheme, ['http', 'https'], true)) {
+                    $scheme = 'http';
+                }
+                $base = $scheme . '://' . (string)(parse_url($pageUrl, PHP_URL_HOST) ?? '');
+            } else {
+                $base = 'http://ridejapan.net';
+            }
+            $path = $sourceUrl[0] === '/' ? $sourceUrl : '/' . ltrim($sourceUrl, '/');
+            return $base . $path;
+        }
+
         $urlParts = parse_url($sourceUrl);
         $host = preg_replace('/^www\./', '', strtolower((string)($urlParts['host'] ?? '')));
         if ($host !== 'msonline-g.com') {

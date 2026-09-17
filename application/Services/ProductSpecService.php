@@ -158,4 +158,58 @@ class ProductSpecService
         }
         return $result;
     }
+
+    /**
+     * 수집 소재 원문을 스펙 저장값으로 변환한다.
+     *
+     * @return array{raw:string,mapped:string,value:string}
+     */
+    public function resolveCollectedMaterial(string $raw): array
+    {
+        $raw = html_entity_decode(trim($raw), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $mapped = '';
+        if ($raw !== '') {
+            $lookup = $this->getCollectedMaterialLookup();
+            $mapped = (string)($lookup[$this->normalizeCollectedMaterialKey($raw)] ?? '');
+        }
+
+        return [
+            'raw' => $raw,
+            'mapped' => $mapped,
+            'value' => $mapped !== '' ? $mapped : $raw,
+        ];
+    }
+
+    public function mapCollectedMaterial(string $raw): string
+    {
+        return $this->resolveCollectedMaterial($raw)['value'];
+    }
+
+    private function getCollectedMaterialLookup(): array
+    {
+        $map = config('admin.collected_material', []);
+        if (!is_array($map)) {
+            return [];
+        }
+
+        $lookup = [];
+        foreach ($map as $source => $target) {
+            $sourceKey = $this->normalizeCollectedMaterialKey((string)$source);
+            $targetValue = trim((string)$target);
+            if ($sourceKey === '' || $targetValue === '') {
+                continue;
+            }
+            $lookup[$sourceKey] = $targetValue;
+        }
+
+        return $lookup;
+    }
+
+    private function normalizeCollectedMaterialKey(string $value): string
+    {
+        $text = html_entity_decode(trim($value), ENT_QUOTES | ENT_HTML5, 'UTF-8');
+        $text = preg_replace('/\s+/u', '', $text);
+
+        return (string)$text;
+    }
 }
