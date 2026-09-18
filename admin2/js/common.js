@@ -85,7 +85,7 @@ var onlyAD = function () {
 	function prdView(idx, vmode = 'info', prd_mode = "basic") {
 
 		vmode = String(vmode || 'info').trim() || 'info';
-		var url = "/ad/ajax/prd_info/" + idx + "?vmode=" + encodeURIComponent(vmode);
+		var url = "/admin/product/info?prd_idx=" + encodeURIComponent(idx) + "&vmode=" + encodeURIComponent(vmode);
 		if (prd_mode == "stock") {
 			url += "&prd_mode=stock";
 		}

@@ -1616,6 +1616,47 @@ class GodoApiService extends BaseClass {
 
 
     /**
+     * 고도몰 신상품/입고예정 진열
+     * mode=newGoodsDisplay, 헤더 X-Api-Key 인증
+     *
+     * acKind: new(신규입고예정), expectedInStock(재입고예정)
+     * acMode: display(진열), hide(진열해제)
+     * 현재 고도몰은 expectedInStock + display만 구현되어 있다.
+     *
+     * @param int|string $goodsNo
+     * @param string $acKind
+     * @param string $acMode
+     * @return array
+     */
+    public function setGodoNewGoodsDisplay($goodsNo, $acKind, $acMode)
+    {
+        $goodsNo = trim((string)$goodsNo);
+        if ($goodsNo === '' || !preg_match('/^\d+$/', $goodsNo) || (int)$goodsNo < 1) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $acKind = trim((string)$acKind);
+        if ($acKind !== 'new' && $acKind !== 'expectedInStock') {
+            throw new \Exception('acKind는 new 또는 expectedInStock만 가능합니다.');
+        }
+
+        $acMode = trim((string)$acMode);
+        if ($acMode !== 'display' && $acMode !== 'hide') {
+            throw new \Exception('acMode는 display 또는 hide만 가능합니다.');
+        }
+
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query([
+            'mode' => 'newGoodsDisplay',
+            'goodsNo' => (int)$goodsNo,
+            'acKind' => $acKind,
+            'acMode' => $acMode,
+        ]);
+
+        return $this->requestGodoGoodsApi($apiUrl);
+    }
+
+
+    /**
      * 고도몰 상품코드(goodsNo)로 재입고 알림 신청 목록 조회
      * 
      * @param string $goodsNos 상품코드 - 쉼표없이 단일상품으로 가능

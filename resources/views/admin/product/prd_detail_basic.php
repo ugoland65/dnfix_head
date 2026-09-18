@@ -1625,6 +1625,75 @@
                 </td>
             </tr>
 
+            <?php
+                $godoLookupSuccess = (isset($godoGoods) && is_array($godoGoods) && $godoGoods !== [] && trim((string)($godoApiErrorMessage ?? '')) === '');
+            ?>
+            <?php if ($godoLookupSuccess) { ?>
+            <tr>
+                <th>입고예정<br>진열관리</th>
+                <td>
+                    <?php
+                        $godoCateCodes = [];
+                        foreach ((isset($godoGoods['categories']) && is_array($godoGoods['categories'])) ? $godoGoods['categories'] : [] as $godoCategoryRow) {
+                            if (!is_array($godoCategoryRow)) {
+                                continue;
+                            }
+                            $cateCd = trim((string)($godoCategoryRow['cateCd'] ?? ''));
+                            if ($cateCd !== '') {
+                                $godoCateCodes[$cateCd] = true;
+                            }
+                            foreach (['path', 'parents'] as $cateListKey) {
+                                $cateList = $godoCategoryRow[$cateListKey] ?? [];
+                                if (!is_array($cateList)) {
+                                    continue;
+                                }
+                                foreach ($cateList as $catePathRow) {
+                                    if (!is_array($catePathRow)) {
+                                        continue;
+                                    }
+                                    $pathCateCd = trim((string)($catePathRow['cateCd'] ?? ''));
+                                    if ($pathCateCd !== '') {
+                                        $godoCateCodes[$pathCateCd] = true;
+                                    }
+                                }
+                            }
+                        }
+                        $isIncomingParentDisplay = isset($godoCateCodes['010']);
+                        $isNewIncomingDisplay = isset($godoCateCodes['010001']);
+                        $isRestockIncomingDisplay = isset($godoCateCodes['010002']);
+                        $hasIncomingDisplay = $isIncomingParentDisplay || $isNewIncomingDisplay || $isRestockIncomingDisplay;
+                        $incomingStockQty = (int)($productData['ps_stock'] ?? 0);
+                        $canApplyIncomingDisplay = ($incomingStockQty < 1);
+                    ?>
+
+                    <?php
+                        $incomingPrdIdx = (int)($productData['CD_IDX'] ?? 0);
+                    ?>
+                    <?php if ($isNewIncomingDisplay) { ?>
+                        <div style="margin-bottom:6px;">현재 상태: <b>신규입고예정 진열중</b></div>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setGodoNewGoodsDisplay(this, <?= $incomingPrdIdx ?>, 'new', 'hide')">신규입고예정 진열해제</button>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setGodoNewGoodsDisplay(this, <?= $incomingPrdIdx ?>, 'expectedInStock', 'display')">재입고예정으로 진열</button>
+                    <?php } elseif (!$hasIncomingDisplay) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" <?= $canApplyIncomingDisplay ? '' : 'disabled' ?> onclick="prdDetailBasicForm.setGodoNewGoodsDisplay(this, <?= $incomingPrdIdx ?>, 'new', 'display')">신규입고예정 진열하기</button>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" <?= $canApplyIncomingDisplay ? '' : 'disabled' ?> onclick="prdDetailBasicForm.setGodoNewGoodsDisplay(this, <?= $incomingPrdIdx ?>, 'expectedInStock', 'display')">재입고예정 진열하기</button>
+                        <?php if (!$canApplyIncomingDisplay) { ?>
+                            <div class="m-t-6" style="color:#dc3545;">재고가 존재합니다. 우선 확인해주세요</div>
+                        <?php } ?>
+                    <?php } elseif ($isRestockIncomingDisplay) { ?>
+                        <div style="margin-bottom:6px;">현재 상태: <b>재입고예정 진열중</b></div>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setGodoNewGoodsDisplay(this, <?= $incomingPrdIdx ?>, 'expectedInStock', 'hide')">재입고예정 진열해제</button>
+                    <?php } else { ?>
+                        <div>현재 상태: <b>입고예정</b></div>
+                    <?php } ?>
+
+                    <div class="admin-guide-text">
+                        - 고도몰 카테고리 010 / 010001(신규입고예정) / 010002(재입고예정) 기준으로 진열 상태를 판단합니다.
+                        <br>- 재고가 1개라도 있으면 입고예정 진열을 할 수 없습니다. (현재고: <?= number_format($incomingStockQty) ?>)
+                    </div>
+                </td>
+            </tr>
+            <?php } ?>
+
         </tbody>
 
         <tbody>
@@ -2020,10 +2089,117 @@
             <tr>
                 <th>고도몰 상품번호</th>
                 <td>
-                    <input type='text' name='cd_godo_code' style='width:200px;' value="<?= $productData['cd_godo_code'] ?? '' ?>">
+                    <?php
+                        $godoGoods = (isset($godoGoods) && is_array($godoGoods)) ? $godoGoods : [];
+                        $godoApiErrorMessage = trim((string)($godoApiErrorMessage ?? ''));
+                        $godoInfoLoadedAt = trim((string)($godoInfoLoadedAt ?? ''));
+                        $godoInfoLoadMs = (int)($godoInfoLoadMs ?? 0);
+                        $godoCodeValue = trim((string)($productData['cd_godo_code'] ?? ''));
+                        $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
+                        $godoGoodsName = trim((string)($godoGoods['goodsNm'] ?? ''));
+                        $godoPurchaseGoodsName = trim((string)($godoGoods['purchaseGoodsNm'] ?? ''));
+                        $godoGoodsPrice = trim((string)($godoGoods['goodsPrice'] ?? ''));
+                        $godoCostPrice = trim((string)($godoGoods['costPrice'] ?? ''));
+                        $godoModelNo = trim((string)($godoGoods['goodsModelNo'] ?? ''));
+                        $godoOnlyAdultFl = strtolower(trim((string)($godoGoods['onlyAdultFl'] ?? '')));
+                        $godoStockQty = 0;
+                        if (isset($godoGoods['totalStock']) && is_numeric($godoGoods['totalStock'])) {
+                            $godoStockQty = (int)$godoGoods['totalStock'];
+                        } elseif (isset($godoGoods['stockCnt']) && is_numeric($godoGoods['stockCnt'])) {
+                            $godoStockQty = (int)$godoGoods['stockCnt'];
+                        } elseif (isset($godoGoods['stock']) && is_numeric($godoGoods['stock'])) {
+                            $godoStockQty = (int)$godoGoods['stock'];
+                        } elseif (isset($godoGoods['goodsStock']) && is_numeric($godoGoods['goodsStock'])) {
+                            $godoStockQty = (int)$godoGoods['goodsStock'];
+                        }
+                        $godoCategoryLines = [];
+                        $godoCategoryRows = (isset($godoGoods['categories']) && is_array($godoGoods['categories']))
+                            ? $godoGoods['categories']
+                            : [];
+                        foreach ($godoCategoryRows as $godoCategoryRow) {
+                            if (!is_array($godoCategoryRow)) {
+                                continue;
+                            }
+                            $pathRows = (isset($godoCategoryRow['path']) && is_array($godoCategoryRow['path']))
+                                ? $godoCategoryRow['path']
+                                : [];
+                            $pathNames = [];
+                            foreach ($pathRows as $pathRow) {
+                                if (!is_array($pathRow)) {
+                                    continue;
+                                }
+                                $cateNm = trim((string)($pathRow['cateNm'] ?? ''));
+                                if ($cateNm !== '') {
+                                    $pathNames[] = $cateNm;
+                                }
+                            }
+                            if ($pathNames === []) {
+                                $cateNm = trim((string)($godoCategoryRow['cateNm'] ?? ''));
+                                if ($cateNm !== '') {
+                                    $pathNames[] = $cateNm;
+                                }
+                            }
+                            if ($pathNames !== []) {
+                                $godoCategoryLines[] = implode(' > ', $pathNames);
+                            }
+                        }
+                        $godoCategoryLines = array_values(array_unique($godoCategoryLines));
+                    ?>
+                    <input type='text' name='cd_godo_code' style='width:200px;' value="<?= htmlspecialchars($godoCodeValue, ENT_QUOTES, 'UTF-8') ?>">
+                    <?php if ($godoCodeValue !== '' && $godoCodeValue !== '0') { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-xs m-l-5" onclick="goGodoMall('<?= htmlspecialchars($godoCodeValue, ENT_QUOTES, 'UTF-8') ?>');">쑈당몰 보기</button>
+                        <button type="button" class="btnstyle1 btnstyle1-xs m-l-5" onclick="goGodoMallAdmin('<?= htmlspecialchars($godoCodeValue, ENT_QUOTES, 'UTF-8') ?>');">관리자 보기</button>
+                    <?php } ?>
                     <div class="admin-guide-text">
                         - 상품코드 아니고 상품번호 입니다.!!!!
                     </div>
+                    <?php if ($godoApiErrorMessage !== '') { ?>
+                        <div class="m-t-8" style="color:#dc3545;">고도몰 정보 조회 실패: <?= htmlspecialchars($godoApiErrorMessage, ENT_QUOTES, 'UTF-8') ?></div>
+                    <?php } elseif (!empty($godoGoods)) { ?>
+                        <table class="table-style border01 m-t-8">
+                            <tr>
+                                <th>고도몰 상품명</th>
+                                <td><?= htmlspecialchars($godoGoodsName !== '' ? $godoGoodsName : '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                <th>원상품명</th>
+                                <td><?= htmlspecialchars($godoPurchaseGoodsName !== '' ? $godoPurchaseGoodsName : '-', ENT_QUOTES, 'UTF-8') ?></td>
+                            </tr>
+                            <tr>
+                                <th>판매가</th>
+                                <td><?= $godoGoodsPrice !== '' && is_numeric($godoGoodsPrice) ? number_format((float)$godoGoodsPrice) . ' 원' : htmlspecialchars($godoGoodsPrice !== '' ? $godoGoodsPrice : '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                <th>원가</th>
+                                <td><?= $godoCostPrice !== '' && is_numeric($godoCostPrice) ? number_format((float)$godoCostPrice) . ' 원' : htmlspecialchars($godoCostPrice !== '' ? $godoCostPrice : '-', ENT_QUOTES, 'UTF-8') ?></td>
+                            </tr>
+                            <tr>
+                                <th>재고</th>
+                                <td><?= number_format($godoStockQty) ?></td>
+                                <th>성인인증</th>
+                                <td><?= $godoOnlyAdultFl === 'y' ? 'Y' : ($godoOnlyAdultFl === 'n' ? 'N' : '-') ?></td>
+                            </tr>
+                            <tr>
+                                <th>모델번호</th>
+                                <td><?= htmlspecialchars($godoModelNo !== '' ? $godoModelNo : '-', ENT_QUOTES, 'UTF-8') ?></td>
+                                <th>상품번호</th>
+                                <td>#<?= htmlspecialchars($godoGoodsNo !== '' ? $godoGoodsNo : $godoCodeValue, ENT_QUOTES, 'UTF-8') ?></td>
+                            </tr>
+                            <?php if (!empty($godoCategoryLines)) { ?>
+                            <tr>
+                                <th>카테고리</th>
+                                <td colspan="3">
+                                    <?php foreach ($godoCategoryLines as $categoryLine) { ?>
+                                        <?php if ($categoryLine !== '') { ?>
+                                            <div><?= htmlspecialchars($categoryLine, ENT_QUOTES, 'UTF-8') ?></div>
+                                        <?php } ?>
+                                    <?php } ?>
+                                </td>
+                            </tr>
+                            <?php } ?>
+                        </table>
+                        <?php if ($godoInfoLoadedAt !== '') { ?>
+                            <div class="m-t-5" style="color:#777; font-size:11px;">조회: <?= htmlspecialchars($godoInfoLoadedAt, ENT_QUOTES, 'UTF-8') ?> (<?= number_format($godoInfoLoadMs) ?>ms)</div>
+                        <?php } ?>
+                    <?php } elseif ($godoCodeValue !== '' && $godoCodeValue !== '0') { ?>
+                        <div class="m-t-8" style="color:#777;">고도몰에서 해당 상품번호를 찾지 못했습니다.</div>
+                    <?php } ?>
                 </td>
             </tr>
 
@@ -2827,6 +3003,77 @@
                 });
         }
 
+        function setGodoNewGoodsDisplay(button, prdIdx, acKind, acMode) {
+            if (!prdIdx) {
+                alert('상품번호가 없습니다.');
+                return;
+            }
+
+            var kind = String(acKind || '');
+            var mode = String(acMode || '');
+            if (kind !== 'new' && kind !== 'expectedInStock') {
+                alert('진열 종류가 올바르지 않습니다.');
+                return;
+            }
+            if (mode !== 'display' && mode !== 'hide') {
+                alert('진열 모드가 올바르지 않습니다.');
+                return;
+            }
+
+            var kindLabel = (kind === 'new') ? '신규입고예정' : '재입고예정';
+            var actionLabel = kindLabel + ((mode === 'display') ? ' 진열' : ' 진열해제');
+            var confirmMessage = actionLabel + '을 진행할까요?';
+            if (kind === 'expectedInStock' && mode === 'display') {
+                confirmMessage = '재입고예정으로 진열할까요?\n상품이 맨위로 진열됩니다.';
+            } else if (kind === 'expectedInStock' && mode === 'hide') {
+                confirmMessage = '재입고예정 진열을 해제할까요?';
+            } else if (kind === 'new' && mode === 'display') {
+                confirmMessage = '신규입고예정으로 진열할까요?';
+            } else if (kind === 'new' && mode === 'hide') {
+                confirmMessage = '신규입고예정 진열을 해제할까요?';
+            }
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            var $button = $(button);
+            if ($button.prop('disabled')) {
+                return;
+            }
+            var originalText = $button.text();
+            $button.prop('disabled', true).text('처리중...');
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'set_godo_new_goods_display',
+                prd_idx: prdIdx,
+                ac_kind: kind,
+                ac_mode: mode,
+                action_url: window.location.pathname + window.location.search
+            })
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || (actionLabel + '을 완료했습니다.'));
+                        location.reload();
+                        return;
+                    }
+                    showProcessFailModal(
+                        actionLabel + ' 실패',
+                        getFailMessage(res, actionLabel + '에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
+                })
+                .fail(function(res) {
+                    showProcessFailModal(
+                        actionLabel + ' 실패',
+                        getFailMessage(res, actionLabel + '에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
+                })
+                .always(function() {
+                    $button.prop('disabled', false).text(originalText);
+                });
+        }
+
         function syncGodoRestockAlertCount(button, prdIdx) {
             if (!prdIdx) {
                 alert('상품번호가 없습니다.');
@@ -2959,6 +3206,7 @@
             setProductDiscontinued,
             setGodoProductDiscontinued,
             setGodoProductHandlingStopped,
+            setGodoNewGoodsDisplay,
             openGodoSpecialDiscountModal,
             unsetProductDiscontinued,
             setProductHandlingStopped,

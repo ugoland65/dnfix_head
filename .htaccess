@@ -68,6 +68,10 @@ RewriteRule ^ad/proc/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /adm
 RewriteRule ^ad/ajax/prd_provider_info$ /admin/provider_product/info [R=302,QSA,L]
 RewriteRule ^ad/prd/prd_provider_info$ /admin/provider_product/info [R=302,QSA,L]
 
+# 상품 상세 팝업 구 URL → 신규 라우트
+RewriteRule ^ad/ajax/prd_info/([0-9]+)$ /admin/product/info?prd_idx=$1 [R=302,QSA,L]
+RewriteRule ^ad/ajax/prd_info$ /admin/product/info [R=302,QSA,L]
+
 # AJAX 요청 Rewrite
 RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1 [QSA,L]
 RewriteRule ^ad/ajax/([0-9a-zA-Z\-_]+)/([0-9a-zA-Z\-_]+)$ /admin2/ajax.php?pageN=$1&get1=$2 [QSA,L]

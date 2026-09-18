@@ -80,6 +80,7 @@ try {
     $router->get('/product/product_db', ProductController::class, 'prdDbList'); //상품 DB 목록
     $router->get('/product/product_stock', ProductController::class, 'productStock'); //상품재고목록    
     $router->get('/product/prd_db_create', ProductController::class, 'prdDbCreate'); //상품 DB 생성
+    $router->get('/product/info', ProductController::class, 'prdInfoPage'); //상품 상세 팝업
     $router->get('/product/detail_basic', ProductController::class, 'prdDetailBasicPage'); //상품 디테일 (베이직)
     $router->get('/product/info_collect', ProductController::class, 'productInfoCollectionPage'); //상품 정보수집
     $router->get('/product/info_collect/image', ProductController::class, 'collectedProductImageProxy'); //수집 이미지 프록시

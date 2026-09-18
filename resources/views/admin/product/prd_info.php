@@ -1,169 +1,17 @@
-<?
-
-use App\Services\ProductPartnerService;
-use App\Services\ProductService;
-
-ini_set('display_errors', 1);
-error_reporting(E_ALL);
-
-// 변수 초기화
-$_prd_idx = $_get1 ?? "";
-$prd_data = [];
-$img_path = "";
-$seriesNames = [];
-
-$prd_mode = $_GET['prd_mode'] ?? "basic";
-
-// 디버깅: $_prd_idx 값 확인
-if (!$_prd_idx) {
-	echo "오류: 상품 IDX가 없습니다. _get1 = " . ($_get1 ?? 'undefined');
-	exit;
-}
-
-if ($_prd_idx) {
-
-	$_colum = "A.CD_IDX, A.CD_IMG, A.CD_NAME, A.CD_MEMO, comment_count, A.cd_godo_code, A.cd_national, A.img_mode,
-		A.cd_reg_time, A.cd_update_time, A.supplier_prd_idx, A.is_discontinued, A.is_handling_stopped, A.cd_sale_price, A.cd_cost_price, A.cd_site_show";
-
-	$_colum .= ",B.ps_idx, B.ps_stock, B.ps_stock_hold, B.ps_rack_code, B.is_sale_month, B.is_sale_special  ";
-	$_colum .= ", C.BD_NAME";
-
-	if ($prd_mode == "basic") {
-
-		$_query = "select " . $_colum . " from " . _DB_COMPARISON . " A
-			left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX) 
-			left join " . _DB_BRAND . " C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
-			where A.CD_IDX = '" . $_prd_idx . "' ";
-	} else {
-
-		$_query = "select " . $_colum . " from  prd_stock B
-			left join " . _DB_COMPARISON . " A ON (B.ps_prd_idx = A.CD_IDX) 
-			left join " . _DB_BRAND . " C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
-			where B.ps_idx = '" . $_prd_idx . "' ";
-	}
-
-	/*
-	$_query = "select ".$_colum." from "._DB_COMPARISON." A
-		left join prd_stock B ON (B.ps_prd_idx = A.CD_IDX) 
-		left join "._DB_BRAND." C ON (C.BD_IDX = A.CD_BRAND_IDX AND A.CD_BRAND_IDX > 0) 
-		where A.CD_IDX = '".$_prd_idx."' ";
-	*/
-
-	// 디버깅: 쿼리 확인
-	// echo "<pre>쿼리: " . $_query . "</pre>";
-
-	$result = sql_query_error($_query);
-
-	// 디버깅: 쿼리 결과 확인
-	if (!$result) {
-		echo "쿼리 실행 실패";
-		exit;
-	}
-
-	$prd_data = sql_fetch_array($result);
-
-	$reg_date = $prd_data['cd_reg_time'] ?? '';
-	$latest_modify_date = $prd_data['cd_update_time'] ?? '';
-
-
-	// 배열 검증
-	if (!is_array($prd_data) || empty($prd_data)) {
-		echo "<pre>오류: 상품 데이터를 찾을 수 없습니다.<br>";
-		echo "상품 IDX: " . $_prd_idx . "<br>";
-		echo "쿼리: " . $_query . "</pre>";
-		$prd_data = [];
-	}
-
-	// 디버깅: 데이터 확인
-	// echo "<pre>prd_data: "; print_r($prd_data); echo "</pre>";
-
-	if( $prd_data['img_mode'] == 'out' ){
-		if (!empty($prd_data['CD_IMG'])) {
-			$img_path = $prd_data['CD_IMG'];
-		}
-	}else{
-		if (!empty($prd_data['CD_IMG'])) {
-			$img_path = '/data/comparion/' . $prd_data['CD_IMG'];
-		}
-	}
-
-	//매입 방식 라벨
-	$cd_national_label = "";
-	if ($prd_data['cd_national'] == "jp") {
-		$cd_national_label = "일본수입";
-	} else if ($prd_data['cd_national'] == "cn") {
-		$cd_national_label = "중국수입";
-	} else if ($prd_data['cd_national'] == "kr") {
-		$cd_national_label = "한국사입";
-	} else if ($prd_data['cd_national'] == "dollar") {
-		$cd_national_label = "달러";
-	}
-
-	$popup_browser_title = "(" . $prd_data['BD_NAME'] . ") " . $prd_data['CD_NAME'] ?? '';
-
-	$seriesNames = [];
-	if (!empty($prd_data['CD_IDX'])) {
-		$seriesNames = (new ProductService())->getProductSeriesNames((int)$prd_data['CD_IDX']);
-	}
-
-	if( !empty($prd_data['supplier_prd_idx']) ){
-		$supplier_prd_idx = $prd_data['supplier_prd_idx'];
-
-		$ProductPartnerService = new ProductPartnerService();
-		$supplier_data = $ProductPartnerService->getProductPartnerInfo($supplier_prd_idx);
-
-		//dump($supplier_data);
-	}
-
-
-	if( !empty($prd_data['cd_sale_price']) ){
-		$_margin_per = 0;
-
-		if( $prd_data['cd_sale_price'] > 0 && $prd_data['cd_cost_price'] > 0 ){
-			if( $prd_data['cd_sale_price'] < 29999 ){
-				$_margin_per =  round( ($prd_data['cd_sale_price'] - $prd_data['cd_cost_price'] ) / $prd_data['cd_sale_price'] * 100, 2);
-			}else{
-				$_margin_per =  round( ($prd_data['cd_sale_price'] - ($prd_data['cd_cost_price'] + 2500) ) / $prd_data['cd_sale_price'] * 100, 2);
-			}
-		}
-
-		// 등급 계산 (40% 기준, 5단위)
-		$grade = '';
-		$gradeColor = '';
-		if ($_margin_per > 39) {
-			$grade = 'A';
-			$gradeColor = '#28a745'; // 초록색
-		} elseif ($_margin_per >= 35) {
-			$grade = 'B';
-			$gradeColor = '#20c997'; // 연두색
-		} elseif ($_margin_per >= 30) {
-			$grade = 'C';
-			$gradeColor = '#17a2b8'; // 청록색
-		} elseif ($_margin_per >= 25) {
-			$grade = 'D';
-			$gradeColor = '#0dcaf0'; // 하늘색
-		} elseif ($_margin_per >= 20) {
-			$grade = 'E';
-			$gradeColor = '#ffc107'; // 노란색
-		} elseif ($_margin_per >= 15) {
-			$grade = 'F';
-			$gradeColor = '#fd7e14'; // 오렌지색
-		} elseif ($_margin_per >= 10) {
-			$grade = 'G';
-			$gradeColor = '#dc3545'; // 빨간색
-		} elseif ($_margin_per >= 5) {
-			$grade = 'H';
-			$gradeColor = '#d63384'; // 진한 빨강
-		} elseif ($_margin_per > 0) {
-			$grade = 'I';
-			$gradeColor = '#6c757d'; // 회색
-		}
-
-	}
-
-}
-
-include($docRoot . "/admin2/layout/header_popup.php");
+<?php
+$prd_idx = (int)($prd_idx ?? 0);
+$vmode = (string)($vmode ?? 'info');
+$prd_data = (isset($prd_data) && is_array($prd_data)) ? $prd_data : [];
+$supplier_data = (isset($supplier_data) && is_array($supplier_data)) ? $supplier_data : [];
+$seriesNames = (isset($seriesNames) && is_array($seriesNames)) ? $seriesNames : [];
+$img_path = (string)($img_path ?? '');
+$cd_national_label = (string)($cd_national_label ?? '');
+$grade = (string)($grade ?? '');
+$reg_date = (string)($reg_date ?? '');
+$latest_modify_date = (string)($latest_modify_date ?? '');
+$h = static function ($value): string {
+    return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
+};
 ?>
 <style>
 	.supplier-match-wrap {
@@ -299,15 +147,15 @@ include($docRoot . "/admin2/layout/header_popup.php");
 </style>
 <div class="prd-quick-left">
 
-	<?php if ($prd_data['is_sale_month'] || $prd_data['is_sale_special'] || $prd_data['is_discontinued'] || !empty($prd_data['is_handling_stopped'])) { ?>
+	<?php if (!empty($prd_data['is_sale_month']) || !empty($prd_data['is_sale_special']) || !empty($prd_data['is_discontinued']) || !empty($prd_data['is_handling_stopped'])) { ?>
 		<div class="on_sale_label_wrap">
-			<?php if ($prd_data['is_sale_month']) { ?>
+			<?php if (!empty($prd_data['is_sale_month'])) { ?>
 				<label class="on_sale_label xs monthly">월간할인</label>
 			<?php } ?>
-			<?php if ($prd_data['is_sale_special']) { ?>
+			<?php if (!empty($prd_data['is_sale_special'])) { ?>
 				<label class="on_sale_label xs special">특가할인</label>
 			<?php } ?>
-			<?php if ($prd_data['is_discontinued']) { ?>
+			<?php if (!empty($prd_data['is_discontinued'])) { ?>
 				<label class="on_sale_label xs discontinued">단종</label>
 			<?php } ?>
 			<?php if (!empty($prd_data['is_handling_stopped'])) { ?>
@@ -317,16 +165,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 	<?php } ?>
 
 	<div class="prd-img">
-		<? if ($img_path) { ?>
-			<img src="<?= $img_path ?>" style="height:150px; border:1px solid #eee !important;">
-		<? } else { ?>
+		<?php if ($img_path !== '') { ?>
+			<img src="<?= $h($img_path) ?>" referrerpolicy="no-referrer" style="height:150px; border:1px solid #eee !important;">
+		<?php } else { ?>
 			<div style="width:150px; height:150px; border:1px solid #eee; display:flex; align-items:center; justify-content:center; color:#999;">이미지 없음</div>
-		<? } ?>
+		<?php } ?>
 	</div>
 
 	<div class="prd-quick-info">
-		<ul class="prd-brand-name"><?= $prd_data['BD_NAME'] ?? '' ?></ul>
-		<ul class="prd-name"><b><?= $prd_data['CD_NAME'] ?? '' ?></b></ul>
+		<ul class="prd-brand-name"><?= $h($prd_data['BD_NAME'] ?? '') ?></ul>
+		<ul class="prd-name"><b><?= $h($prd_data['CD_NAME'] ?? '') ?></b></ul>
 		<!-- <ul class="prd-name-en"><?= $prd_data['CD_NAME_OG'] ?? '' ?></ul> -->
 
 		<?php if( !empty($prd_data['supplier_prd_idx']) ){ ?>
@@ -341,25 +189,25 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			<ul class="supplier-match-wrap">
 
 				<p>매칭된 위탁 상품</p>
-				<div class="supplier-match-card" onclick="prdProviderQuick('<?= $prd_data['supplier_prd_idx'] ?>');" >
+				<div class="supplier-match-card" onclick="prdProviderQuick('<?= $h($prd_data['supplier_prd_idx'] ?? '') ?>');" >
 					
 					<?php if ($supplierImage !== '') { ?>
-						<img src="<?= $supplierImage ?>" alt="supplier" class="supplier-match-avatar">
+						<img src="<?= $h($supplierImage) ?>" alt="supplier" class="supplier-match-avatar" referrerpolicy="no-referrer">
 					<?php } else { ?>
 						<div class="supplier-match-avatar-placeholder">IMG</div>
 					<?php } ?>
 
 					<div class="supplier-match-text">
 						<div class="supplier-match-name">
-							<?= $supplierName !== '' ? $supplierName : '위탁 상품명 없음' ?>
+							<?= $supplierName !== '' ? $h($supplierName) : '위탁 상품명 없음' ?>
 						</div>
 						<div class="supplier-match-meta">
-							고유번호: <b>#<?= $supplierIdxText ?></b></br>
+							고유번호: <b>#<?= $h($supplierIdxText) ?></b><br>
 							<?php if ($supplierStatus !== '') { ?>
-								상태: <b><?= $supplierStatus ?></b></br>
+								상태: <b><?= $h($supplierStatus) ?></b><br>
 							<?php } ?>
 							<?php if ($supplierStatus === '품절' && $supplierSoldOutDate !== '') { ?>
-								| 품절일: <span class="text-red"><?= date('Y.m.d', strtotime($supplierSoldOutDate)) ?></span>
+								| 품절일: <span class="text-red"><?= $h(date('Y.m.d', strtotime($supplierSoldOutDate))) ?></span>
 							<?php } ?>
 						</div>
 					</div>
@@ -482,7 +330,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 			<ul>
 				<dl>
 					<dt>고유번호</dt>
-					<dd><b class="text-blue"><?= $prd_data['CD_IDX'] ?></b></dd>
+					<dd><b class="text-blue"><?= $h($prd_data['CD_IDX'] ?? '') ?></b></dd>
 				</dl>
 			</ul>
 			<?php if (!empty($prd_data['ps_idx'])) { ?>
@@ -490,7 +338,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 					<ul>
 						<dl>
 							<dt>매입 방식</dt>
-							<dd><b><?= $cd_national_label ?? '' ?></b></dd>
+							<dd><b><?= $h($cd_national_label) ?></b></dd>
 						</dl>
 					</ul>
 				<?php }else{ ?>
@@ -506,7 +354,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<?php if (!empty($prd_data['ps_idx'])) { ?>
 					<dl>
 						<dt>재고코드</dt>
-						<dd><b><?= $prd_data['ps_idx'] ?></b></dd>
+						<dd><b><?= $h($prd_data['ps_idx'] ?? '') ?></b></dd>
 					</dl>
 				<?php } else { ?>
 					<dl>
@@ -522,7 +370,7 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<ul>
 					<dl>
 						<dt>랙코드</dt>
-						<dd><b><?= $prd_data['ps_rack_code'] ?></b></dd>
+						<dd><b><?= $h($prd_data['ps_rack_code'] ?? '') ?></b></dd>
 					</dl>
 				</ul>
 			<?php } ?>
@@ -547,8 +395,8 @@ include($docRoot . "/admin2/layout/header_popup.php");
 						<dl>
 							<dt>마진등급</dt>
 							<dd>
-								<span class="grade-badge grade-<?=$grade?>">
-									<?=$grade?>
+								<span class="grade-badge grade-<?= $h($grade) ?>">
+									<?= $h($grade) ?>
 								</span>
 							</dd>
 						</dl>
@@ -560,13 +408,13 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<ul>
 					<dl>
 						<dt>쑈당몰 보기</dt>
-						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
+						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMall('<?= $h($prd_data['cd_godo_code'] ?? '') ?>');">#<?= $h($prd_data['cd_godo_code'] ?? 0) ?></button></dd>
 					</dl>
 				</ul>
 				<ul>
 					<dl>
 						<dt>고도몰 관리</dt>
-						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?= $prd_data['cd_godo_code'] ?? '' ?>');">#<?= $prd_data['cd_godo_code'] ?? 0 ?></button></dd>
+						<dd><button type="button" class="btnstyle1 btnstyle1-xs" onclick="goGodoMallAdmin('<?= $h($prd_data['cd_godo_code'] ?? '') ?>');">#<?= $h($prd_data['cd_godo_code'] ?? 0) ?></button></dd>
 					</dl>
 				</ul>
 			<?php } else { ?>
@@ -581,16 +429,16 @@ include($docRoot . "/admin2/layout/header_popup.php");
 				<dl>
 					<dt>댓글</dt>
 					<dd>
-						<button type="button" id="" class="btnstyle1 btnstyle1-xs" onclick="footerGlobal.comment('prd','<?= $_prd_idx ?>')">
+						<button type="button" class="btnstyle1 btnstyle1-xs" onclick="footerGlobal.comment('prd','<?= $h($prd_idx) ?>')">
 							댓글
-							<? if (($prd_data['comment_count'] ?? 0) > 0) { ?> : <b><?= $prd_data['comment_count'] ?></b><? } ?>
+							<?php if ((int)($prd_data['comment_count'] ?? 0) > 0) { ?> : <b><?= (int)$prd_data['comment_count'] ?></b><?php } ?>
 						</button>
 					</dd>
 				</dl>
 			</ul>
 			<ul>
-				수정 : <?= $latest_modify_date ?: '-' ?><br>
-				등록 : <?= $reg_date ?: '-' ?>
+				수정 : <?= $latest_modify_date !== '' ? $h($latest_modify_date) : '-' ?><br>
+				등록 : <?= $reg_date !== '' ? $h($reg_date) : '-' ?>
 			</ul>
 
 			<!-- 설정 -->
@@ -613,8 +461,8 @@ include($docRoot . "/admin2/layout/header_popup.php");
 <script>
 	const prdInfo = (function() {
 
-		var prd_idx = "<?= $prd_data['CD_IDX'] ?? '' ?>";
-		var ps_idx = "<?= $prd_data['ps_idx'] ?? '' ?>";
+		var prd_idx = "<?= $h($prd_data['CD_IDX'] ?? '') ?>";
+		var ps_idx = "<?= $h($prd_data['ps_idx'] ?? '') ?>";
 		var stockModifyWindow;
 		var activeModeStorageKey = 'prd_info_active_mode:' + prd_idx + ':' + ps_idx;
 
@@ -1081,10 +929,9 @@ include($docRoot . "/admin2/layout/header_popup.php");
 
 		prdInfo.restoreActiveMode();
 		prdInfo.bindSettingsMenu();
+		$('.crm-body').each(function(){
+			$(this).toggleClass('has-top-menu', $(this).find('.crm-top-menu-wrap').length > 0);
+		});
 
 	});
 </script>
-<?
-include($docRoot . "/admin2/layout/footer_popup.php");
-exit;
-?>

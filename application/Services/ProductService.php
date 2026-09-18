@@ -6451,6 +6451,133 @@ class ProductService extends BaseClass
 
 
     /**
+     * 고도몰 신상품/입고예정 진열
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoNewGoodsDisplay(array $postData): array
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $acKind = trim((string)($postData['ac_kind'] ?? ($postData['acKind'] ?? '')));
+        $acMode = trim((string)($postData['ac_mode'] ?? ($postData['acMode'] ?? '')));
+        if ($acKind !== 'new' && $acKind !== 'expectedInStock') {
+            throw new Exception('acKind는 new 또는 expectedInStock만 가능합니다.');
+        }
+        if ($acMode !== 'display' && $acMode !== 'hide') {
+            throw new Exception('acMode는 display 또는 hide만 가능합니다.');
+        }
+
+        $kindLabel = ($acKind === 'new') ? '신규입고예정' : '재입고예정';
+        $actionLabel = $kindLabel . (($acMode === 'display') ? ' 진열' : ' 진열해제');
+        $actionMode = 'set_godo_new_goods_display';
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $stock = ProductStockModel::query()
+            ->select(['ps_stock'])
+            ->where('ps_prd_idx', '=', $idx)
+            ->first();
+        $stock = empty($stock) ? [] : (is_array($stock) ? $stock : $stock->toArray());
+        $currentStock = (int)($stock['ps_stock'] ?? 0);
+        if ($acMode === 'display' && $currentStock > 0) {
+            throw new Exception('재고가 존재합니다. 우선 확인해주세요');
+        }
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->setGodoNewGoodsDisplay($goodsNo, $acKind, $acMode);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 ' . $actionLabel . ' 처리에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $successMessage = trim((string)($godoResponse['message'] ?? ''));
+        if ($successMessage === '') {
+            $successMessage = '고도몰 ' . $actionLabel . '을 완료했습니다.';
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'ac_kind' => $acKind,
+            'ac_mode' => $acMode,
+            'ps_stock' => $currentStock,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'ac_kind' => $acKind,
+            'ac_mode' => $acMode,
+            'ps_stock' => $currentStock,
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'godo_response' => $godoResponse,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => $actionMode,
+                'action_summary' => $godoSuccess ? ('고도몰 ' . $actionLabel) : ('고도몰 ' . $actionLabel . ' 실패'),
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            throw new Exception('고도몰 ' . $actionLabel . ' 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $successMessage,
+            'msg' => '완료',
+            'idx' => $idx,
+            'ac_kind' => $acKind,
+            'ac_mode' => $acMode,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+
+    /**
      * 고도몰 특가할인 설정
      *
      * @param array $postData

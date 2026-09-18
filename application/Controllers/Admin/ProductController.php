@@ -17,6 +17,7 @@ use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
 use App\Services\ProductStockService;
 use App\Services\GodoInspectionService;
+use App\Services\GodoApiService;
 use App\Services\InspectionProcessLogService;
 use App\Services\CompetitorApiService;
 use App\Services\ProductSupplierPyApiService;
@@ -28,6 +29,7 @@ use App\Services\ProductSpecService;
 use App\Services\ProductDetailContentService;
 use App\Models\ProductModel;
 use App\Models\ProductCollectionItemModel;
+use App\Models\ProductStockModel;
 use App\Utils\Pagination;
 class ProductController extends BaseClass 
 {
@@ -406,6 +408,105 @@ class ProductController extends BaseClass
 
 
     /**
+     * 상품 상세 팝업 (메인)
+     */
+    public function prdInfoPage(Request $request)
+    {
+
+        try {
+            $requestData = $request->all();
+            $requestIdx = (int)($requestData['prd_idx'] ?? 0);
+            $prdMode = strtolower(trim((string)($requestData['prd_mode'] ?? 'basic')));
+            $vmode = trim((string)($requestData['vmode'] ?? 'info'));
+            $allowedModes = [
+                'info', 'price', 'saleLog', 'stock_chart', 'stock',
+                'competitor_product', 'godo_inspection', 'relation_group',
+                'info_collection', 'spec_info', 'content',
+                'onadb_config', 'onadb_comment', 'log',
+            ];
+            if (!in_array($vmode, $allowedModes, true)) {
+                $vmode = 'info';
+            }
+
+            if ($requestIdx <= 0) {
+                throw new Exception('상품 IDX가 없습니다.');
+            }
+
+            $prdIdx = $requestIdx;
+            if ($prdMode === 'stock') {
+                $stock = ProductStockModel::find($requestIdx);
+                $stock = $stock ? (is_array($stock) ? $stock : $stock->toArray()) : [];
+                $prdIdx = (int)($stock['ps_prd_idx'] ?? 0);
+                if ($prdIdx <= 0) {
+                    throw new Exception('재고코드에 해당하는 상품을 찾을 수 없습니다.');
+                }
+            }
+
+            $productData = $this->productService->getProductDataForAdmin($prdIdx);
+            if (empty($productData) || empty($productData['CD_IDX'])) {
+                throw new Exception('상품 데이터를 찾을 수 없습니다.');
+            }
+
+            $cdImg = trim((string)($productData['CD_IMG'] ?? ''));
+            $imgPath = '';
+            if ($cdImg !== '') {
+                $imgPath = trim((string)($productData['img_mode'] ?? '')) === 'out'
+                    ? $cdImg
+                    : '/data/comparion/' . ltrim($cdImg, '/');
+            }
+
+            $nationalLabels = [
+                'jp' => '일본수입',
+                'cn' => '중국수입',
+                'kr' => '한국사입',
+                'dollar' => '달러',
+            ];
+            $cdNational = (string)($productData['cd_national'] ?? '');
+
+            $supplierData = [];
+            $supplierPrdIdx = (int)($productData['supplier_prd_idx'] ?? 0);
+            if ($supplierPrdIdx > 0) {
+                try {
+                    $supplierData = $this->productPartnerService->getProductPartnerInfo($supplierPrdIdx);
+                    if (!is_array($supplierData)) {
+                        $supplierData = [];
+                    }
+                } catch (Throwable $e) {
+                    $supplierData = [];
+                }
+            }
+
+            $brandName = trim((string)($productData['BD_NAME'] ?? ''));
+            $productName = trim((string)($productData['CD_NAME'] ?? ''));
+            $headTitle = trim(($brandName !== '' ? '(' . $brandName . ') ' : '') . $productName);
+            if ($headTitle === '') {
+                $headTitle = '상품 상세';
+            }
+
+            return view('admin.product.prd_info', [
+                'prd_idx' => (int)$productData['CD_IDX'],
+                'vmode' => $vmode,
+                'prd_data' => $productData,
+                'supplier_data' => $supplierData,
+                'seriesNames' => $this->productService->getProductSeriesNames((int)$productData['CD_IDX']),
+                'img_path' => $imgPath,
+                'cd_national_label' => $nationalLabels[$cdNational] ?? '',
+                'grade' => (string)($productData['margin_grade'] ?? ''),
+                'reg_date' => (string)($productData['cd_reg_time'] ?? ''),
+                'latest_modify_date' => (string)($productData['cd_update_time'] ?? ''),
+            ])->extends('admin.layout.popup_layout', [
+                'headTitle' => $headTitle,
+            ]);
+
+        } catch (Throwable $e) {
+            return view('admin.errors.404', [
+                'message' => $e->getMessage(),
+            ])->response(404);
+        }
+    }
+
+
+    /**
      * 상품 디테일 (베이직)
      */
     public function prdDetailBasicPage(Request $request)
@@ -445,6 +546,38 @@ class ProductController extends BaseClass
                 InspectionProcessLogService::LOCATION_PRODUCT_GODO_SPECIAL_DISCOUNT
             );
 
+            $godoCode = trim((string)($productData['cd_godo_code'] ?? ''));
+            $godoGoods = [];
+            $godoApiErrorMessage = '';
+            $godoInfoLoadedAt = '';
+            $godoInfoLoadMs = 0;
+            if ($godoCode !== '' && $godoCode !== '0') {
+                $godoApiStartAt = microtime(true);
+                try {
+                    $godoApiService = new GodoApiService();
+                    $godoGoodsResponse = $godoApiService->getGodoGoodsInfoByGoodsNo($godoCode, ['category']);
+                    $godoGoodsRows = is_array($godoGoodsResponse['data'] ?? null)
+                        ? $godoGoodsResponse['data']
+                        : $godoGoodsResponse;
+                    if (!is_array($godoGoodsRows)) {
+                        $godoGoodsRows = [];
+                    }
+                    foreach ($godoGoodsRows as $godoRow) {
+                        if (!is_array($godoRow)) {
+                            continue;
+                        }
+                        if (trim((string)($godoRow['goodsNo'] ?? '')) === $godoCode) {
+                            $godoGoods = $godoRow;
+                            break;
+                        }
+                    }
+                } catch (Throwable $e) {
+                    $godoApiErrorMessage = $e->getMessage();
+                }
+                $godoInfoLoadedAt = date('Y-m-d H:i:s');
+                $godoInfoLoadMs = (int)round((microtime(true) - $godoApiStartAt) * 1000);
+            }
+
             $data = [
                 'mode' => 'edit',
                 'prd_idx' => $prdIdx,
@@ -457,6 +590,10 @@ class ProductController extends BaseClass
                 'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
                 'godoSpecialDiscountLog' => $godoSpecialDiscountLog,
                 'orderGroupCodeOptions' => (new OrderGroupService())->getOrderGroupCodeOptions(),
+                'godoGoods' => $godoGoods,
+                'godoApiErrorMessage' => $godoApiErrorMessage,
+                'godoInfoLoadedAt' => $godoInfoLoadedAt,
+                'godoInfoLoadMs' => $godoInfoLoadMs,
             ];
 
             return view('admin.product.prd_detail_basic', $data);
@@ -510,6 +647,7 @@ class ProductController extends BaseClass
                 if ($sourceProductIdentifier === '' && is_array($sourceItem) && !empty($sourceItem['product_code'])) {
                     $sourceProductIdentifier = (string)$sourceItem['product_code'];
                 }
+
                 if (is_array($sourceItem) && !empty($sourceItem['site_code']) && $sourceProductIdentifier !== '') {
                     $sourceCollectedAt = is_array($sourceItem['collected_at'] ?? null)
                         ? (string)($sourceItem['collected_at']['date'] ?? '')
@@ -622,6 +760,7 @@ class ProductController extends BaseClass
             ], 400);
         }
     }
+
 
     /**
      * DNFIX006컴 수집기 연결을 ping으로 확인한다.
@@ -2256,6 +2395,10 @@ class ProductController extends BaseClass
 
                 case 'unset_godo_product_special_discount':
                     $result = $this->productService->unsetGodoProductSpecialDiscount($requestData);
+                    break;
+
+                case 'set_godo_new_goods_display':
+                    $result = $this->productService->setGodoNewGoodsDisplay($requestData);
                     break;
 
                 case 'unset_product_discontinued':
