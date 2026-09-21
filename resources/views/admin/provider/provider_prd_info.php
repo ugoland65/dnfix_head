@@ -63,8 +63,8 @@ if (!empty($prd_data['created_at'])) {
 .crm-menu ul.active {
 	color:#fff;
 	font-weight:bold;
-	background-color:#2070db;
-	background: linear-gradient(180deg, #0088cc, #0044cc);
+	background-color:#159a5a;
+	background: linear-gradient(180deg, #22c55e, #15803d);
 }
 .crm-wrap{ width:100%; height:calc(100% - 30px); display:table; table-layout: fixed; }
 .crm-wrap > ul{ display:table-cell; vertical-align:top; }

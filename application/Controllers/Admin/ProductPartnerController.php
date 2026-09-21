@@ -453,6 +453,16 @@ class ProductPartnerController extends BaseClass
             $partnersService = new PartnersService();
             $partnerForSelect = $partnersService->getPartnersForSelect($extraData);
 
+            $inspectionProcessLogService = new InspectionProcessLogService();
+            $godoDiscontinuedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prd_idx,
+                InspectionProcessLogService::LOCATION_PROVIDER_PRODUCT_GODO_DISCONTINUED
+            );
+            $godoHandlingStoppedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prd_idx,
+                InspectionProcessLogService::LOCATION_PROVIDER_PRODUCT_GODO_HANDLING_STOPPED
+            );
+
             $data = [
                 'godo_cate' => $godo_cate,
                 'prd_kind_name' => $prd_kind_name,
@@ -460,6 +470,8 @@ class ProductPartnerController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'partnerForSelect' => $partnerForSelect,
                 'prd_data' => $productPartner ?? [],
+                'godoDiscontinuedLog' => $godoDiscontinuedLog,
+                'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
             ];
 
             return view('admin.provider.provider_prd_form', $data);
@@ -682,6 +694,18 @@ class ProductPartnerController extends BaseClass
                 $result = true;
                 $message = '취급중단이 해제되었습니다.';
                 $errorMessage = '취급중단 해제에 실패했습니다.';
+
+            }elseif( $actionMode == 'set_godo_product_discontinued' ){
+                $resultData = $productPartnerService->setGodoProductDiscontinued($requestData);
+                $result = true;
+                $message = $resultData['message'] ?? '고도몰 단종 처리되었습니다.';
+                $errorMessage = '고도몰 단종 처리에 실패했습니다.';
+
+            }elseif( $actionMode == 'set_godo_product_handling_stopped' ){
+                $resultData = $productPartnerService->setGodoProductHandlingStopped($requestData);
+                $result = true;
+                $message = $resultData['message'] ?? '고도몰 취급중단 처리되었습니다.';
+                $errorMessage = '고도몰 취급중단 처리에 실패했습니다.';
 
             }elseif( $actionMode == 'process_single_godo_inspection' ){
                 $result = $productPartnerService->processSingleProductGodoInspection($requestData);

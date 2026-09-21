@@ -144,6 +144,10 @@ $h = static function ($value): string {
 	.prd-settings-item:hover {
 		background: #f3f4f6;
 	}
+	.prd-quick-left {
+		overflow: auto;
+		box-sizing: border-box;
+	}
 </style>
 <div class="prd-quick-left">
 

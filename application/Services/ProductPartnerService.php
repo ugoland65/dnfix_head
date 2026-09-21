@@ -11,6 +11,7 @@ use App\Services\AdminActionLogService;
 use App\Services\ProductPartnerApiService;
 use App\Services\GodoApiService;
 use App\Services\BrandService;
+use App\Services\InspectionProcessLogService;
 use App\Core\AuthAdmin;
 use App\Services\ProductStockService;
 
@@ -1833,6 +1834,196 @@ class ProductPartnerService extends BaseClass
             'status' => 'success',
             'message' => '완료',
             'idx' => $idx,
+        ];
+    }
+
+    /**
+     * 위탁상품 인트라넷 단종 + 고도몰 단종 처리
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoProductDiscontinued(array $postData): array
+    {
+        return $this->applyGodoProductSalesStop($postData, 'discontinued');
+    }
+
+    /**
+     * 위탁상품 인트라넷 취급중단 + 고도몰 취급중단 처리
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function setGodoProductHandlingStopped(array $postData): array
+    {
+        return $this->applyGodoProductSalesStop($postData, 'sales_end');
+    }
+
+    /**
+     * 위탁상품 고도몰 단종/취급중단 공통 처리
+     *
+     * @param array $postData
+     * @param string $salesStopType discontinued|sales_end
+     * @return array
+     */
+    private function applyGodoProductSalesStop(array $postData, string $salesStopType): array
+    {
+        $isHandlingStop = ($salesStopType === 'sales_end');
+        $label = $isHandlingStop ? '취급중단' : '단종';
+        $actionMode = $isHandlingStop ? 'set_godo_product_handling_stopped' : 'set_godo_product_discontinued';
+
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('위탁상품 고유번호가 없습니다.');
+        }
+
+        $product = ProductPartnerModel::query()
+            ->select('idx', 'godo_goodsNo', 'is_discontinued', 'is_handling_stopped')
+            ->where('idx', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('위탁상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['godo_goodsNo'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $intranetAlreadyDiscontinued = ((int)($product['is_discontinued'] ?? 0) === 1);
+        $intranetAlreadyHandlingStopped = ((int)($product['is_handling_stopped'] ?? 0) === 1);
+        $intranetAlready = $isHandlingStop ? $intranetAlreadyHandlingStopped : $intranetAlreadyDiscontinued;
+        $intranetApplied = false;
+        if (!$intranetAlready) {
+            if ($isHandlingStop) {
+                $this->setProductHandlingStopped($postData);
+            } else {
+                $this->setProductDiscontinued($postData);
+            }
+            $intranetApplied = true;
+        }
+
+        $discontinuedMode = $isHandlingStop ? 'sales_end' : 'discontinued';
+        $deleteCategoryCds = $postData['delete_category_cds'] ?? ($postData['deleteCategoryCds'] ?? '');
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->setGodoProductDiscontinued($goodsNo, $discontinuedMode, $deleteCategoryCds);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 ' . $label . ' 처리에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $deletedCategoryCds = [];
+        if (isset($godoResponse['deletedCategoryCds']) && is_array($godoResponse['deletedCategoryCds'])) {
+            $deletedCategoryCds = $godoResponse['deletedCategoryCds'];
+        } elseif (isset($godoResponse['updated']['deletedCategoryCds']) && is_array($godoResponse['updated']['deletedCategoryCds'])) {
+            $deletedCategoryCds = $godoResponse['updated']['deletedCategoryCds'];
+        }
+
+        $deletedCategories = [];
+        if (isset($godoResponse['deletedCategories']) && is_array($godoResponse['deletedCategories'])) {
+            $deletedCategories = $godoResponse['deletedCategories'];
+        }
+
+        $successMessage = '고도몰 ' . $label . ' 처리가 완료되었습니다.';
+        $resultContent = [
+            'success' => $godoSuccess,
+            'status' => $godoSuccess ? '처리완료' : '실패',
+            'message' => $godoSuccess ? $successMessage : $godoError,
+            'discontinued_mode' => $discontinuedMode,
+            'deleted_category_cds' => $deletedCategoryCds,
+            'deleted_categories' => $deletedCategories,
+            'godo_response' => $godoResponse,
+        ];
+
+        $inspectionProcessLogService = new InspectionProcessLogService();
+        $inspectionPayload = [
+            'prd_idx' => $idx,
+            'godo_goods_no' => $goodsNo,
+            'process_content' => [
+                'discontinued_mode' => $discontinuedMode,
+                'requested_delete_category_cds' => $deleteCategoryCds,
+                'intranet_already_discontinued' => $intranetAlreadyDiscontinued,
+                'intranet_already_handling_stopped' => $intranetAlreadyHandlingStopped,
+                'intranet_applied' => $intranetApplied,
+            ],
+            'result_content' => $resultContent,
+        ];
+        try {
+            if ($isHandlingStop) {
+                $inspectionProcessLogService->logProviderProductGodoHandlingStopped($inspectionPayload);
+            } else {
+                $inspectionProcessLogService->logProviderProductGodoDiscontinued($inspectionPayload);
+            }
+        } catch (\Throwable $e) {
+            // 검수 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        $beforeLog = [
+            'idx' => $idx,
+            'godo_goodsNo' => $goodsNo,
+            'is_discontinued' => $intranetAlreadyDiscontinued ? 1 : 0,
+            'is_handling_stopped' => $intranetAlreadyHandlingStopped ? 1 : 0,
+            'godo_sales_stop' => 0,
+        ];
+        $afterLog = [
+            'idx' => $idx,
+            'godo_goodsNo' => $goodsNo,
+            'is_discontinued' => $isHandlingStop ? 0 : 1,
+            'is_handling_stopped' => $isHandlingStop ? 1 : 0,
+            'godo_sales_stop' => $godoSuccess ? 1 : 0,
+            'godo_price_string' => $isHandlingStop ? '판매종료' : '단종상품',
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'deleted_category_cds' => $deletedCategoryCds,
+            'deleted_categories' => $deletedCategories,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'prd_partner',
+                'target_table' => 'prd_partner',
+                'target_pk' => (string)$idx,
+                'action_mode' => $actionMode,
+                'action_summary' => $godoSuccess ? ('고도몰 ' . $label . ' 처리') : ('고도몰 ' . $label . ' 처리 실패'),
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            $prefix = $intranetApplied ? ('인트라넷 ' . $label . '은 완료되었습니다. ') : '';
+            throw new Exception($prefix . '고도몰 ' . $label . ' 처리 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'status' => 'success',
+            'message' => $intranetApplied
+                ? ('인트라넷 ' . $label . '과 고도몰 ' . $label . ' 처리를 완료했습니다.')
+                : ('고도몰 ' . $label . ' 처리를 완료했습니다.'),
+            'idx' => $idx,
+            'godo_response' => $godoResponse,
         ];
     }
 

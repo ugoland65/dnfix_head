@@ -1,51 +1,70 @@
 <?php
-$prdIdx = (int)($prd_idx ?? 0);
-$spec = (isset($spec) && is_array($spec)) ? $spec : [];
-$specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec['psi_items'] : [];
+    $prdIdx = (int)($prd_idx ?? 0);
+    $spec = (isset($spec) && is_array($spec)) ? $spec : [];
+    $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec['psi_items'] : [];
 ?>
 <style>
-.spec-info-wrap { display: flex; gap: 16px; align-items: flex-start; font-size: 12px; color: #374151; }
-.spec-info-canvas-col { flex: 1; min-width: 0; }
-.spec-info-side { width: 320px; flex-shrink: 0; }
-.spec-info-stage {
-    position: relative;
-    min-height: 240px;
-    border: 1px solid #e5e7eb;
-    background: #f8fafc;
-    overflow: auto;
-}
-.spec-info-stage canvas { display: block; cursor: crosshair; max-width: 100%; }
-.spec-info-empty {
-    padding: 60px 16px;
-    text-align: center;
-    color: #6b7280;
-}
-.spec-info-guide { margin: 8px 0 12px; color: #4b5563; line-height: 1.5; }
-.spec-info-step { margin-bottom: 10px; padding: 10px; border: 1px solid #e5e7eb; background: #fff; }
-.spec-info-step b { display: block; margin-bottom: 6px; color: #111827; }
-.spec-info-step.active { border-color: #2563eb; background: #eff6ff; }
-.spec-info-result { width: 100%; border-collapse: collapse; }
-.spec-info-result th,
-.spec-info-result td { padding: 6px 8px; border: 1px solid #e5e7eb; text-align: left; }
-.spec-info-result th { background: #f9fafb; width: 110px; }
-.spec-info-result .spec-info-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
-.spec-info-del { display: none; flex-shrink: 0; }
-.spec-info-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; }
-.spec-info-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
-.spec-info-hint { margin-top: 8px; color: #2563eb; font-weight: 600; min-height: 18px; }
-.spec-info-url { width: 100%; box-sizing: border-box; margin: 8px 0 6px; }
-.spec-info-rotate { display: none; margin-top: 8px; }
+    .spec-info-wrap { display: flex; gap: 16px; align-items: flex-start; font-size: 12px; color: #374151; }
+    .spec-info-canvas-col { flex: 1; min-width: 0; }
+    .spec-info-side { width: 320px; flex-shrink: 0; }
+    .spec-info-stage {
+        position: relative;
+        min-height: 240px;
+        border: 1px solid #e5e7eb;
+        background: #f8fafc;
+        overflow: auto;
+        margin-top: 10px;
+    }
+    .spec-info-stage canvas { display: block; cursor: crosshair; max-width: 100%; }
+    .spec-info-empty {
+        padding: 60px 16px;
+        text-align: center;
+        color: #6b7280;
+    }
+    .spec-info-guide { margin: 8px 0 12px; color: #4b5563; line-height: 1.5; }
+    .spec-info-step { margin-bottom: 10px; padding: 10px; border: 1px solid #e5e7eb; background: #fff; }
+    .spec-info-step b { display: block; margin-bottom: 6px; color: #111827; }
+    .spec-info-step.active { border-color: #2563eb; background: #eff6ff; }
+    .spec-info-result { width: 100%; border-collapse: collapse; }
+    .spec-info-result th,
+    .spec-info-result td { padding: 6px 8px; border: 1px solid #e5e7eb; text-align: left; }
+    .spec-info-result th { background: #f9fafb; width: 110px; }
+    .spec-info-result .spec-info-value { display: flex; align-items: center; justify-content: space-between; gap: 8px; }
+    .spec-info-del { display: none; flex-shrink: 0; }
+    .spec-info-dot { display: inline-block; width: 10px; height: 10px; margin-right: 6px; vertical-align: middle; }
+    .spec-info-actions { margin-top: 10px; display: flex; gap: 6px; flex-wrap: wrap; }
+    .spec-info-hint { margin-top: 8px; color: #2563eb; font-weight: 600; min-height: 18px; }
+    .spec-info-url { width: 100%; box-sizing: border-box; margin: 8px 0 6px; }
+    .spec-info-rotate { display: none; margin-top: 8px; align-items: center; }
+    .spec-info-rotate-fine {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin-left: 4px;
+        padding-left: 8px;
+        border-left: 1px solid #e5e7eb;
+        color: #4b5563;
+    }
+    .spec-info-rotate-fine input { width: 58px; height: 28px; box-sizing: border-box; }
+    .spec-info-rotate-now { color: #4b5563; font-weight: 600; }
 </style>
 
 <div class="spec-info-wrap">
     <div class="spec-info-canvas-col">
-        <div class="spec-info-guide">
-            파일 또는 이미지 URL로 단면도를 올린 뒤, 가로로 시작점과 끝점을 클릭해 전체길이를 맞추고 실제 cm를 입력합니다.
-            내부길이는 같은 비율로 계산됩니다. 통로가 더 있으면 내부길이 1, 2를 추가하세요.
-        </div>
+        
         <div class="spec-info-rotate spec-info-actions" id="specRotateBar">
+            <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateUndo" disabled>되돌리기</button>
+            <span class="spec-info-rotate-now" id="specRotateNow">0°</span>
             <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateLeft">좌로 90°</button>
             <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateRight">우로 90°</button>
+            <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateLeft1">좌로 1°</button>
+            <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateRight1">우로 1°</button>
+            <span class="spec-info-rotate-fine">
+                <input type="number" id="specRotateDeg" value="0.5" step="0.1" min="0.1" max="45">
+                °
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateFineLeft">좌로</button>
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="specBtnRotateFineRight">우로</button>
+            </span>
         </div>  
         <div class="spec-info-stage" id="specInfoStage">
             <div class="spec-info-empty" id="specInfoEmpty">파일 또는 이미지 URL을 넣으면 여기에 표시됩니다.</div>
@@ -69,6 +88,10 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
                 길이
                 <input type="text" id="specTotalCm" style="width:80px;" value="<?= htmlspecialchars((string)($spec['psi_total_length_cm'] ?? ''), ENT_QUOTES, 'UTF-8') ?>"> cm
             </div>
+        </div>
+        <div class="admin-guide-text m-t-8">
+            내부길이는 입구시작부터 기믹이 끝나는 부분까지의 길이를 측정합니다.<bt>
+            음부,음순 제외하고 입구부터 측정합니다.
         </div>
         <div class="spec-info-step" id="specStepInner">
             <b>3. 내부길이</b>
@@ -115,7 +138,11 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
             <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-lg" id="specBtnSave">측정값 저장</button>
         </div>
         <div class="admin-guide-text m-t-8">
-            선은 가로로만 그어집니다. 지정한 선은 위아래로 옮길 수 있고, 좌우 끝점을 드래그하면 길이를 늘이거나 줄일 수 있습니다. 시작점을 잘못 찍으면 ESC로 취소한 뒤 다시 찍으세요. 이미지 회전·교체 시 측정값이 초기화됩니다.
+            선은 가로로만 그어집니다. 지정한 선은 위아래로 옮길 수 있고, 좌우 끝점을 드래그하면 길이를 늘이거나 줄일 수 있습니다. 시작점을 잘못 찍으면 ESC로 취소한 뒤 다시 찍으세요. 이미지 모서리를 드래그하면 각도를 맞출 수 있고, 되돌리기로 이전 각도로 돌아갑니다. 원본은 유지되며 저장할 때 한 번만 반영됩니다.
+        </div>
+        <div class="spec-info-guide">
+            파일 또는 이미지 URL로 단면도를 올린 뒤, 가로로 시작점과 끝점을 클릭해 전체길이를 맞추고 실제 cm를 입력합니다.
+            내부길이는 같은 비율로 계산됩니다. 통로가 더 있으면 내부길이 1, 2를 추가하세요.
         </div>
     </div>
 </div>
@@ -146,7 +173,11 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
     var draggingItem = null;
     var draggingEnd = '';
     var dragMoved = false;
-    var imageRotated = false;
+    var rotationDeg = 0;
+    var rotationUndoStack = [];
+    var rotatingHandle = false;
+    var rotateDrag = null;
+    var hoverRotateFrame = false;
 
     function setHint(text) {
         hintEl.textContent = text || '';
@@ -394,8 +425,16 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
 
     function redraw() {
         if (!hasImage || !image.naturalWidth) return;
+        layoutRotatedCanvas();
+        ctx.setTransform(1, 0, 0, 1, 0, 0);
         ctx.clearRect(0, 0, canvas.width, canvas.height);
-        ctx.drawImage(image, 0, 0, canvas.width, canvas.height);
+        ctx.fillStyle = '#ffffff';
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.save();
+        ctx.translate(canvas.width / 2, canvas.height / 2);
+        ctx.rotate(rotationDeg * Math.PI / 180);
+        ctx.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+        ctx.restore();
         items.forEach(function(item) {
             drawLine(item, false);
         });
@@ -408,17 +447,23 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
                 cm: null
             }, true);
         }
+        if (rotatingHandle || hoverRotateFrame) {
+            drawRotateFrame();
+        }
     }
 
-    function showImage(src, onReady) {
+    function showImage(src, onReady, options) {
+        options = options || {};
         image.onload = function() {
             hasImage = true;
-            canvas.width = image.naturalWidth;
-            canvas.height = image.naturalHeight;
+            if (!options.keepRotation) {
+                resetRotationState();
+            }
             canvas.style.display = 'block';
             emptyEl.style.display = 'none';
             document.getElementById('specRotateBar').style.display = 'flex';
             redraw();
+            updateRotateUi();
             if (typeof onReady === 'function') onReady();
         };
         image.onerror = function() {
@@ -441,30 +486,225 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         renderResults();
     }
 
-    function rotateWorkingImage(dir) {
+    function hasUnsavedRotation() {
+        var deg = ((rotationDeg % 360) + 360) % 360;
+        return deg > 0.05 && deg < 359.95;
+    }
+
+    function formatRotationDeg(deg) {
+        return (Math.round(Number(deg) * 10) / 10) + '°';
+    }
+
+    function resetRotationState() {
+        rotationDeg = 0;
+        rotationUndoStack = [];
+        rotatingHandle = false;
+        rotateDrag = null;
+        hoverRotateFrame = false;
+        updateRotateUi();
+    }
+
+    function updateRotateUi() {
+        var undoBtn = document.getElementById('specBtnRotateUndo');
+        var nowEl = document.getElementById('specRotateNow');
+        if (undoBtn) {
+            undoBtn.disabled = rotationUndoStack.length < 1;
+        }
+        if (nowEl) {
+            nowEl.textContent = formatRotationDeg(rotationDeg);
+        }
+    }
+
+    function rotatedCanvasSize(deg) {
+        var srcW = image.naturalWidth;
+        var srcH = image.naturalHeight;
+        var rad = Number(deg) * Math.PI / 180;
+        var absCos = Math.abs(Math.cos(rad));
+        var absSin = Math.abs(Math.sin(rad));
+        return {
+            w: Math.max(1, Math.ceil(srcW * absCos + srcH * absSin)),
+            h: Math.max(1, Math.ceil(srcW * absSin + srcH * absCos))
+        };
+    }
+
+    function layoutRotatedCanvas() {
+        var size = rotatedCanvasSize(rotationDeg);
+        if (canvas.width !== size.w) canvas.width = size.w;
+        if (canvas.height !== size.h) canvas.height = size.h;
+    }
+
+    function getImageCorners() {
+        var w = image.naturalWidth;
+        var h = image.naturalHeight;
+        var rad = rotationDeg * Math.PI / 180;
+        var cos = Math.cos(rad);
+        var sin = Math.sin(rad);
+        var cx = canvas.width / 2;
+        var cy = canvas.height / 2;
+        var locals = [
+            { x: -w / 2, y: -h / 2 },
+            { x: w / 2, y: -h / 2 },
+            { x: w / 2, y: h / 2 },
+            { x: -w / 2, y: h / 2 }
+        ];
+        return locals.map(function(p) {
+            return {
+                x: cx + p.x * cos - p.y * sin,
+                y: cy + p.x * sin + p.y * cos
+            };
+        });
+    }
+
+    function clientAngleFromCenter(evt) {
+        var rect = canvas.getBoundingClientRect();
+        return Math.atan2(
+            evt.clientY - (rect.top + rect.height / 2),
+            evt.clientX - (rect.left + rect.width / 2)
+        );
+    }
+
+    function rotateHandlePad() {
+        return Math.max(16, canvas.width / 55);
+    }
+
+    function findRotateHandleAtPoint(point) {
+        var pad = rotateHandlePad();
+        var corners = getImageCorners();
+        var best = -1;
+        var bestDist = pad + 1;
+        for (var i = 0; i < corners.length; i++) {
+            var dx = point.x - corners[i].x;
+            var dy = point.y - corners[i].y;
+            var dist = Math.sqrt(dx * dx + dy * dy);
+            if (dist <= pad && dist < bestDist) {
+                best = i;
+                bestDist = dist;
+            }
+        }
+        return best >= 0 ? corners[best] : null;
+    }
+
+    function distToSegment(point, a, b) {
+        var dx = b.x - a.x;
+        var dy = b.y - a.y;
+        var len2 = dx * dx + dy * dy;
+        if (len2 <= 0) {
+            dx = point.x - a.x;
+            dy = point.y - a.y;
+            return Math.sqrt(dx * dx + dy * dy);
+        }
+        var t = ((point.x - a.x) * dx + (point.y - a.y) * dy) / len2;
+        t = Math.max(0, Math.min(1, t));
+        dx = point.x - (a.x + t * dx);
+        dy = point.y - (a.y + t * dy);
+        return Math.sqrt(dx * dx + dy * dy);
+    }
+
+    function isNearRotateFrame(point) {
+        if (findRotateHandleAtPoint(point)) return true;
+        var corners = getImageCorners();
+        if (corners.length < 4) return false;
+        var pad = rotateHandlePad();
+        for (var i = 0; i < corners.length; i++) {
+            if (distToSegment(point, corners[i], corners[(i + 1) % corners.length]) <= pad) {
+                return true;
+            }
+        }
+        return false;
+    }
+
+    function setRotateFrameHover(nextHover) {
+        nextHover = !!nextHover;
+        if (hoverRotateFrame === nextHover) return;
+        hoverRotateFrame = nextHover;
+        redraw();
+    }
+
+    function drawRotateFrame() {
+        var corners = getImageCorners();
+        if (!corners.length) return;
+        var handleR = Math.max(7, canvas.width / 130);
+        ctx.save();
+        ctx.strokeStyle = '#2563eb';
+        ctx.lineWidth = Math.max(2, canvas.width / 500);
+        ctx.setLineDash([8, 5]);
+        ctx.beginPath();
+        ctx.moveTo(corners[0].x, corners[0].y);
+        for (var i = 1; i < corners.length; i++) {
+            ctx.lineTo(corners[i].x, corners[i].y);
+        }
+        ctx.closePath();
+        ctx.stroke();
+        ctx.setLineDash([]);
+        corners.forEach(function(corner) {
+            ctx.beginPath();
+            ctx.arc(corner.x, corner.y, handleR + 2, 0, Math.PI * 2);
+            ctx.fillStyle = '#111827';
+            ctx.fill();
+            ctx.beginPath();
+            ctx.arc(corner.x, corner.y, handleR, 0, Math.PI * 2);
+            ctx.fillStyle = '#ffffff';
+            ctx.strokeStyle = '#2563eb';
+            ctx.lineWidth = 2;
+            ctx.fill();
+            ctx.stroke();
+        });
+        ctx.restore();
+    }
+
+    function applyRotation(nextDeg, message) {
         if (!hasImage || !image.naturalWidth) {
             setHint('먼저 단면도를 올려주세요.');
             return;
         }
-        var srcW = image.naturalWidth;
-        var srcH = image.naturalHeight;
-        var off = document.createElement('canvas');
-        off.width = srcH;
-        off.height = srcW;
-        var octx = off.getContext('2d');
-        if (dir > 0) {
-            octx.translate(srcH, 0);
-        } else {
-            octx.translate(0, srcW);
-        }
-        octx.rotate(dir * Math.PI / 2);
-        octx.drawImage(image, 0, 0);
-        imageRotated = true;
-        pendingImageUrl = '';
+        if (!isFinite(Number(nextDeg))) return;
+        rotationUndoStack.push(rotationDeg);
+        rotationDeg = Number(nextDeg);
         resetMeasureState();
-        showImage(off.toDataURL('image/jpeg', 0.92), function() {
-            setHint('이미지를 회전했습니다. 측정선을 다시 지정하세요.');
-        });
+        redraw();
+        updateRotateUi();
+        setHint(message || ('이미지를 ' + formatRotationDeg(rotationDeg) + ' 로 맞췄습니다. 측정선을 다시 지정하세요.'));
+    }
+
+    function rotateBy(delta, message) {
+        applyRotation(rotationDeg + Number(delta), message);
+    }
+
+    function undoRotation() {
+        if (!rotationUndoStack.length) {
+            setHint('되돌릴 회전이 없습니다.');
+            return;
+        }
+        rotationDeg = rotationUndoStack.pop();
+        resetMeasureState();
+        redraw();
+        updateRotateUi();
+        setHint('이전 각도로 되돌렸습니다. 현재 ' + formatRotationDeg(rotationDeg) + '. 측정선을 다시 지정하세요.');
+    }
+
+    function readFineRotateDeg() {
+        var value = parseFloat(document.getElementById('specRotateDeg').value);
+        if (!(value > 0) || value > 45) {
+            showAlert('Error', '미세 각도는 0.1~45 사이로 입력해주세요.', 'alert2');
+            return null;
+        }
+        return value;
+    }
+
+    function bakeRotatedImage(done) {
+        var size = rotatedCanvasSize(rotationDeg);
+        var off = document.createElement('canvas');
+        off.width = size.w;
+        off.height = size.h;
+        var octx = off.getContext('2d');
+        octx.fillStyle = '#ffffff';
+        octx.fillRect(0, 0, size.w, size.h);
+        octx.translate(size.w / 2, size.h / 2);
+        octx.rotate(rotationDeg * Math.PI / 180);
+        octx.drawImage(image, -image.naturalWidth / 2, -image.naturalHeight / 2);
+        off.toBlob(function(blob) {
+            done(blob);
+        }, 'image/jpeg', 0.95);
     }
 
     function saveSpecInfo() {
@@ -482,7 +722,7 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         formData.append('prd_idx', prdIdx);
         formData.append('psi_total_length_cm', totalLengthCm());
         formData.append('psi_items', JSON.stringify(items));
-        if (pendingImageUrl && !imageRotated) {
+        if (pendingImageUrl && !hasUnsavedRotation()) {
             formData.append('image_url', pendingImageUrl);
         }
 
@@ -503,10 +743,14 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
                     items = Array.isArray(spec.psi_items) ? spec.psi_items.slice() : items;
                     imagePath = spec.psi_image_path || imagePath;
                     pendingImageUrl = '';
-                    imageRotated = false;
+                    resetRotationState();
                     hasImage = !!imagePath || hasImage;
                     renderResults();
-                    redraw();
+                    if (imagePath) {
+                        showImage(imagePath);
+                    } else {
+                        redraw();
+                    }
                     if (typeof toast2 === 'function') {
                         toast2('success', '상품 스펙정보', '측정값을 저장했습니다.');
                     } else {
@@ -524,20 +768,16 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
             });
         }
 
-        if (!imageRotated) {
+        if (!hasUnsavedRotation()) {
             postSave();
             return;
         }
-        var off = document.createElement('canvas');
-        off.width = image.naturalWidth;
-        off.height = image.naturalHeight;
-        off.getContext('2d').drawImage(image, 0, 0);
-        off.toBlob(function(blob) {
+        bakeRotatedImage(function(blob) {
             if (blob) {
                 formData.append('rotated_image', blob, 'rotated.jpg');
             }
             postSave();
-        }, 'image/jpeg', 0.92);
+        });
     }
 
     function previewFromUrl() {
@@ -548,7 +788,7 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         }
         pendingImageUrl = url;
         imagePath = '';
-        imageRotated = false;
+        resetRotationState();
         resetMeasureState();
         setHint('이미지를 불러오는 중...');
         showImage('/admin/product/detail_spec_info/preview?url=' + encodeURIComponent(url), function() {
@@ -602,6 +842,22 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
     canvas.addEventListener('mousedown', function(evt) {
         if (!hasImage || activeType || pendingStart) return;
         var point = canvasPoint(evt);
+        var rotateHandle = findRotateHandleAtPoint(point);
+        if (rotateHandle) {
+            rotationUndoStack.push(rotationDeg);
+            resetMeasureState();
+            rotatingHandle = true;
+            hoverRotateFrame = true;
+            rotateDrag = {
+                startDeg: rotationDeg,
+                startAngle: clientAngleFromCenter(evt)
+            };
+            dragMoved = false;
+            canvas.style.cursor = 'grabbing';
+            evt.preventDefault();
+            updateRotateUi();
+            return;
+        }
         var handle = findHandleAtPoint(point);
         if (handle) {
             draggingItem = handle.item;
@@ -644,6 +900,14 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
 
     canvas.addEventListener('mousemove', function(evt) {
         var point = canvasPoint(evt);
+        if (rotatingHandle && rotateDrag) {
+            dragMoved = true;
+            rotationDeg = rotateDrag.startDeg + ((clientAngleFromCenter(evt) - rotateDrag.startAngle) * 180 / Math.PI);
+            redraw();
+            updateRotateUi();
+            canvas.style.cursor = 'grabbing';
+            return;
+        }
         if (draggingItem && draggingEnd) {
             dragMoved = true;
             moveItemEnd(draggingItem, draggingEnd, point.x);
@@ -658,7 +922,17 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         }
         if (pendingStart) {
             hoverX = point.x;
+            setRotateFrameHover(false);
             redraw();
+            return;
+        }
+        if (activeType || draggingItem) {
+            setRotateFrameHover(false);
+        } else {
+            setRotateFrameHover(isNearRotateFrame(point));
+        }
+        if (!activeType && findRotateHandleAtPoint(point)) {
+            canvas.style.cursor = 'grab';
             return;
         }
         if (!activeType && findHandleAtPoint(point)) {
@@ -668,7 +942,24 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         canvas.style.cursor = (!activeType && findLineAtPoint(point)) ? 'ns-resize' : 'crosshair';
     });
 
+    canvas.addEventListener('mouseleave', function() {
+        if (rotatingHandle) return;
+        setRotateFrameHover(false);
+    });
+
     window.addEventListener('mouseup', function() {
+        if (rotatingHandle) {
+            rotatingHandle = false;
+            rotateDrag = null;
+            updateRotateUi();
+            if (dragMoved) {
+                setHint('각도를 ' + formatRotationDeg(rotationDeg) + ' 로 맞췄습니다. 측정선을 다시 지정하세요.');
+            } else if (rotationUndoStack.length) {
+                rotationUndoStack.pop();
+                updateRotateUi();
+            }
+            return;
+        }
         if (!draggingItem) return;
         var movedItem = draggingItem;
         var movedEnd = draggingEnd;
@@ -712,11 +1003,28 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
         recalc();
         redraw();
     });
+    document.getElementById('specBtnRotateUndo').addEventListener('click', undoRotation);
     document.getElementById('specBtnRotateLeft').addEventListener('click', function() {
-        rotateWorkingImage(-1);
+        rotateBy(-90, '이미지를 좌로 90° 회전했습니다. 측정선을 다시 지정하세요.');
     });
     document.getElementById('specBtnRotateRight').addEventListener('click', function() {
-        rotateWorkingImage(1);
+        rotateBy(90, '이미지를 우로 90° 회전했습니다. 측정선을 다시 지정하세요.');
+    });
+    document.getElementById('specBtnRotateLeft1').addEventListener('click', function() {
+        rotateBy(-1);
+    });
+    document.getElementById('specBtnRotateRight1').addEventListener('click', function() {
+        rotateBy(1);
+    });
+    document.getElementById('specBtnRotateFineLeft').addEventListener('click', function() {
+        var deg = readFineRotateDeg();
+        if (deg === null) return;
+        rotateBy(-deg);
+    });
+    document.getElementById('specBtnRotateFineRight').addEventListener('click', function() {
+        var deg = readFineRotateDeg();
+        if (deg === null) return;
+        rotateBy(deg);
     });
     document.getElementById('specBtnLoadUrl').addEventListener('click', previewFromUrl);
     document.getElementById('specInfoUrl').addEventListener('keydown', function(evt) {
@@ -748,7 +1056,7 @@ $specItems = (isset($spec['psi_items']) && is_array($spec['psi_items'])) ? $spec
                 items = Array.isArray(spec.psi_items) ? spec.psi_items.slice() : [];
                 imagePath = spec.psi_image_path || '';
                 pendingImageUrl = '';
-                imageRotated = false;
+                resetRotationState();
                 document.getElementById('specInfoUrl').value = '';
                 document.getElementById('specTotalCm').value = spec.psi_total_length_cm || '';
                 pendingStart = null;

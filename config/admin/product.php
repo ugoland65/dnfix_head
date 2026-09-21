@@ -732,8 +732,8 @@ $subCategoriesByKind = [
                 ],
                 [
                     'code' => 'ONAHOLE_FEATURE_SNAKE',
-                    'name' => '지렁이형',
-                    'description' => '지렁이 기믹, 컨셉이 지렁이라고 표현한 경우',
+                    'name' => '촉수/지렁이',
+                    'description' => '촉수, 지렁이 기믹, 컨셉이 촉수또는 지렁이라고 표현한 경우',
                     'image' => '',
                 ],
                 [
