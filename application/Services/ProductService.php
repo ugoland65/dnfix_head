@@ -129,6 +129,14 @@ class ProductService extends BaseClass
         $s_discontinued = $criteria['s_discontinued'] ?? null; // 단종여부
         $s_label_idx = (int)($criteria['s_label_idx'] ?? 0);
         $s_relation_group_idx = (int)($criteria['s_relation_group_idx'] ?? 0);
+        $s_display_weight_min = $this->normalizeDisplayWeightRangeValue($criteria['s_display_weight_min'] ?? null);
+        $s_display_weight_max = $this->normalizeDisplayWeightRangeValue($criteria['s_display_weight_max'] ?? null);
+
+        if ($s_display_weight_min !== null && $s_display_weight_max !== null && $s_display_weight_min > $s_display_weight_max) {
+            $swappedWeight = $s_display_weight_min;
+            $s_display_weight_min = $s_display_weight_max;
+            $s_display_weight_max = $swappedWeight;
+        }
 
         $since = $criteria['since'] ?? null;
         $salePriceChangedSince = $criteria['sale_price_changed_since'] ?? null;
@@ -259,6 +267,21 @@ class ProductService extends BaseClass
             } elseif ((string)$s_discontinued === '0') {
                 $query->where('A.is_discontinued', 0)
                     ->where('A.is_handling_stopped', 0);
+            }
+        }
+
+        // 표기중량(cd_weight_fn.1) 범위 검색
+        if ($s_display_weight_min !== null || $s_display_weight_max !== null) {
+            $displayWeightSql = $this->getDisplayWeightSql();
+            if ($s_display_weight_min !== null) {
+                $query->whereRaw("{$displayWeightSql} >= :display_weight_min", [
+                    'display_weight_min' => $s_display_weight_min,
+                ]);
+            }
+            if ($s_display_weight_max !== null) {
+                $query->whereRaw("{$displayWeightSql} <= :display_weight_max", [
+                    'display_weight_max' => $s_display_weight_max,
+                ]);
             }
         }
 
@@ -6451,6 +6474,217 @@ class ProductService extends BaseClass
 
 
     /**
+     * 고도몰 상품 카테고리 선택 삭제
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function deleteGodoCategories(array $postData): array
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $categoryCds = trim((string)($postData['category_cds'] ?? ($postData['deleteCategoryCds'] ?? '')));
+        if ($categoryCds === '') {
+            throw new Exception('삭제할 카테고리를 선택하세요.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->autoStockUpdateAndInspection([
+                'goodsNo' => $goodsNo,
+                'deleteCategoryCds' => $categoryCds,
+            ]);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 카테고리 삭제에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $successMessage = trim((string)($godoResponse['message'] ?? ''));
+        if ($successMessage === '') {
+            $successMessage = '선택한 고도몰 카테고리를 삭제했습니다.';
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'delete_category_cds' => $categoryCds,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'delete_category_cds' => $categoryCds,
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'godo_response' => $godoResponse,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'delete_godo_categories',
+                'action_summary' => $godoSuccess ? '고도몰 카테고리 삭제' : '고도몰 카테고리 삭제 실패',
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            throw new Exception('고도몰 카테고리 삭제 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $successMessage,
+            'msg' => '완료',
+            'idx' => $idx,
+            'delete_category_cds' => $categoryCds,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+    
+    /**
+     * 고도몰 상품을 지정 카테고리 맨 앞 진열로 이동
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function moveGodoGoodsToCategoryTop(array $postData): array
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $cateCd = trim((string)($postData['cate_cd'] ?? ($postData['cateCd'] ?? '')));
+        if ($cateCd === '') {
+            throw new Exception('카테고리 코드가 없습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->moveGoodsToCategoryTop($goodsNo, $cateCd);
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 카테고리 맨앞 정렬에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $successMessage = trim((string)($godoResponse['message'] ?? ''));
+        if ($successMessage === '') {
+            $successMessage = '지정 카테고리 맨 앞 진열로 이동했습니다.';
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'cate_cd' => $cateCd,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'cate_cd' => $cateCd,
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'godo_response' => $godoResponse,
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'move_godo_goods_to_category_top',
+                'action_summary' => $godoSuccess ? '고도몰 카테고리 맨앞 정렬' : '고도몰 카테고리 맨앞 정렬 실패',
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 처리 성공/실패에 영향을 주지 않도록 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            throw new Exception('고도몰 카테고리 맨앞 정렬 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $successMessage,
+            'msg' => '완료',
+            'idx' => $idx,
+            'cate_cd' => $cateCd,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+
+    /**
      * 고도몰 신상품/입고예정 진열
      *
      * @param array $postData
@@ -7561,6 +7795,60 @@ class ProductService extends BaseClass
         });
 
         return $lineRows;
+    }
+
+    /**
+     * 표기중량(cd_weight_fn.1) 숫자 추출 SQL
+     * TEXT JSON({"1":"600"})을 함수 없이 파싱한다.
+     */
+    private function getDisplayWeightSql(): string
+    {
+        return "
+            CAST(
+                NULLIF(
+                    TRIM(
+                        REPLACE(
+                            CASE
+                                WHEN A.cd_weight_fn LIKE '%\"1\":\"%'
+                                    THEN SUBSTRING_INDEX(SUBSTRING_INDEX(A.cd_weight_fn, '\"1\":\"', -1), '\"', 1)
+                                WHEN A.cd_weight_fn LIKE '%\"1\":%'
+                                    THEN TRIM(TRAILING '}' FROM TRIM(SUBSTRING_INDEX(SUBSTRING_INDEX(A.cd_weight_fn, '\"1\":', -1), ',', 1)))
+                                ELSE NULL
+                            END,
+                            ',',
+                            ''
+                        )
+                    ),
+                    ''
+                ) AS DECIMAL(12,2)
+            )
+        ";
+    }
+
+    /**
+     * 표기중량 범위 검색값 정규화
+     */
+    private function normalizeDisplayWeightRangeValue($value): ?float
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $normalized = preg_replace('/[^\d.]/', '', (string)$value);
+        if ($normalized === null || $normalized === '') {
+            return null;
+        }
+
+        $firstDot = strpos($normalized, '.');
+        if ($firstDot !== false) {
+            $normalized = substr($normalized, 0, $firstDot + 1) . str_replace('.', '', substr($normalized, $firstDot + 1));
+        }
+
+        if (!is_numeric($normalized)) {
+            return null;
+        }
+
+        return (float)$normalized;
     }
 
 }

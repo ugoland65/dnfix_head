@@ -65,15 +65,15 @@ class Database {
      */
 	public function fetchAll($query, $params = []) {
 		if (!$this->conn) {
-			throw new Exception("Database connection is not established.");
+			throw new \Exception("Database connection is not established.");
 		}
 
 		try {
 			$stmt = $this->conn->prepare($query);
 			$stmt->execute($params);
-			return $stmt->fetchAll(PDO::FETCH_ASSOC);
-		} catch (PDOException $e) {
-			throw new Exception("쿼리 실행 중 오류 발생: " . $e->getMessage() . " | Query: $query");
+			return $stmt->fetchAll(\PDO::FETCH_ASSOC);
+		} catch (\PDOException $e) {
+			throw new \Exception("쿼리 실행 중 오류 발생: " . $e->getMessage() . " | Query: $query");
 		}
 	}
 
@@ -84,9 +84,9 @@ class Database {
         try {
             $stmt = $this->conn->prepare($query);
             $stmt->execute($params);
-            return $stmt->fetch(PDO::FETCH_ASSOC);
-        } catch (PDOException $e) {
-            throw new Exception("쿼리 실행 중 오류 발생: " . $e->getMessage());
+            return $stmt->fetch(\PDO::FETCH_ASSOC);
+        } catch (\PDOException $e) {
+            throw new \Exception("쿼리 실행 중 오류 발생: " . $e->getMessage());
         }
     }
 
@@ -95,14 +95,14 @@ class Database {
      */
 	public function execute($query, $params = []) {
 		if (!$this->conn) {
-			throw new Exception("Database connection이 설정되지 않았습니다.");
+			throw new \Exception("Database connection이 설정되지 않았습니다.");
 		}
 
 		try {
 			$stmt = $this->conn->prepare($query);
 			return $stmt->execute($params);
-		} catch (PDOException $e) {
-			throw new Exception("쿼리 실행 중 오류 발생: " . $e->getMessage() . " | Query: $query");
+		} catch (\PDOException $e) {
+			throw new \Exception("쿼리 실행 중 오류 발생: " . $e->getMessage() . " | Query: $query");
 		}
 	}
 
@@ -159,7 +159,7 @@ class Database {
     // 다중 INSERT
     public function insertMultiple($table, $dataArray) {
         if (empty($dataArray)) {
-            throw new Exception("데이터 배열이 비어 있습니다.");
+            throw new \Exception("데이터 배열이 비어 있습니다.");
         }
 
         $fields = implode(", ", array_keys($dataArray[0]));
@@ -183,9 +183,9 @@ class Database {
             }
 
             $this->conn->commit(); // 커밋
-        } catch (Exception $e) {
+        } catch (\Exception $e) {
             $this->conn->rollBack(); // 롤백
-            throw new Exception("다중 INSERT 중 오류 발생: " . $e->getMessage());
+            throw new \Exception("다중 INSERT 중 오류 발생: " . $e->getMessage());
         }
 
         return true;

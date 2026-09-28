@@ -110,6 +110,20 @@ class ProductSpecService
                 ],
                 'options' => [],
             ],
+            '02080000' => [
+                'label' => '퍼리/피규어',
+                'fields' => [
+                    'length' => ['가로 (W)', 'cm'], 
+                    'height' => ['세로 (H)', 'cm'], 
+                    'width' => ['깊이 (D)', 'cm', false, ''],
+                    'weight' => ['상품중량', 'g', true],
+                    'inner_length_vagina' => ['내부길이 (질)', 'cm', true], 
+                    'inner_length_anal' => ['내부길이 (애널)', 'cm', false, '2구멍일 경우'],
+                    'color' => ['색상', ''],
+                    'material' => ['소재', '', false, 'TPE, 플래티넘 실리콘(백금), TPE + 스킨명', true],
+                ],
+                'options' => [],
+            ],
         ];
     }
 

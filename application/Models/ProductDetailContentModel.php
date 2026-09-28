@@ -19,12 +19,19 @@ class ProductDetailContentModel extends BaseModel
         'md_comment',
         'summary_points',
         'specs',
+        'bottom_items',
+        'bottom_position',
         'deploy_version',
         'deploy_version_code',
+        'bottom_deploy_version',
+        'bottom_deploy_version_code',
         'admin_idx',
         'admin_name',
+        'bottom_admin_idx',
+        'bottom_admin_name',
         'created_at',
         'updated_at',
+        'bottom_updated_at',
     ];
 
     protected $casts = [
@@ -32,8 +39,11 @@ class ProductDetailContentModel extends BaseModel
         'prd_pk' => 'int',
         'summary_points' => 'array',
         'specs' => 'array',
+        'bottom_items' => 'array',
         'deploy_version' => 'int',
+        'bottom_deploy_version' => 'int',
         'admin_idx' => 'int',
+        'bottom_admin_idx' => 'int',
     ];
 
     /**

@@ -86,6 +86,67 @@
         gap: 8px;
         margin-top: 16px;
     }
+    .detail-search-wrap {
+        position: relative;
+    }
+    .detail-search-btn.has-condition {
+        color: #111;
+        border-color: #111;
+        font-weight: 700;
+    }
+    .detail-search-dot {
+        display: none;
+        width: 7px;
+        height: 7px;
+        margin-left: 6px;
+        border-radius: 50%;
+        background: #111;
+        vertical-align: middle;
+    }
+    .detail-search-btn.has-condition .detail-search-dot {
+        display: inline-block;
+    }
+    .detail-search-layer {
+        display: none;
+        position: fixed;
+        z-index: 10040;
+        min-width: 360px;
+        background: #fff;
+        border: 1px solid #d9dce3;
+        border-radius: 8px;
+        box-shadow: 0 8px 24px rgba(0, 0, 0, 0.2);
+        padding: 14px;
+    }
+    .detail-search-layer.active {
+        display: block;
+    }
+    .detail-search-layer-title {
+        font-size: 14px;
+        font-weight: 700;
+        margin-bottom: 12px;
+    }
+    .detail-search-row {
+        margin-bottom: 12px;
+    }
+    .detail-search-row label {
+        display: block;
+        font-weight: 700;
+        margin-bottom: 6px;
+    }
+    .detail-search-range {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+    }
+    .detail-search-range input {
+        width: 90px;
+    }
+    .detail-search-actions {
+        display: flex;
+        justify-content: flex-end;
+        gap: 8px;
+        margin-top: 14px;
+    }
 </style>
 <?php
     $categoryRows = (isset($categories) && is_array($categories)) ? $categories : [];
@@ -340,6 +401,37 @@
                     <option value="0" <? if( $s_discontinued == '0' ) echo "selected";?> >정상</option>
                 </select>
             </ul>
+
+            <ul class="detail-search-wrap" id="detailSearchWrap">
+                <?php
+                    $displayWeightMin = trim((string)($s_display_weight_min ?? ''));
+                    $displayWeightMax = trim((string)($s_display_weight_max ?? ''));
+                    $hasDisplayWeightCondition = ($displayWeightMin !== '' || $displayWeightMax !== '');
+                ?>
+                <input type="hidden" name="s_display_weight_min" id="s_display_weight_min" value="<?= htmlspecialchars($displayWeightMin, ENT_QUOTES, 'UTF-8') ?>">
+                <input type="hidden" name="s_display_weight_max" id="s_display_weight_max" value="<?= htmlspecialchars($displayWeightMax, ENT_QUOTES, 'UTF-8') ?>">
+                <button type="button" class="btnstyle1 btnstyle1-sm detail-search-btn<?= $hasDisplayWeightCondition ? ' has-condition' : '' ?>" id="detailSearchBtn">
+                    <span id="detailSearchBtnLabel">상세조건</span>
+                    <span class="detail-search-dot"></span>
+                </button>
+                <div id="detailSearchLayer" class="detail-search-layer" aria-hidden="true">
+                    <div class="detail-search-layer-title">상세조건</div>
+                    <div class="detail-search-row">
+                        <label for="detail_weight_min">표기중량 (g)</label>
+                        <div class="detail-search-range">
+                            <input type="text" id="detail_weight_min" inputmode="numeric" placeholder="최소" value="<?= htmlspecialchars($displayWeightMin, ENT_QUOTES, 'UTF-8') ?>">
+                            <span>~</span>
+                            <input type="text" id="detail_weight_max" inputmode="numeric" placeholder="최대" value="<?= htmlspecialchars($displayWeightMax, ENT_QUOTES, 'UTF-8') ?>">
+                        </div>
+                    </div>
+                    <div class="detail-search-actions">
+                        <button type="button" class="btnstyle1 btnstyle1-sm" id="detailSearchClearBtn">조건삭제</button>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" id="detailSearchCloseBtn">닫기</button>
+                        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="detailSearchApplyBtn">적용</button>
+                    </div>
+                </div>
+            </ul>
+
             <ul>
                 <input type='text' name='search_value' id='search_value' value="<?= htmlspecialchars(trim((string)($search_value ?? '')), ENT_QUOTES, 'UTF-8') ?>" placeholder="검색어" style="min-width: 200px;">
             </ul>
@@ -393,7 +485,7 @@
                                 <th>랙코드</th>
                                 */?>
 
-                                <th>무게</th>
+                                <th>표기중량<br>실무게</th>
                                 <th>패키지 사이즈</th>
                                 <th>플라스틱<br>함유량</th>
                                 <th>관리</th>
@@ -603,9 +695,11 @@
                                     <td class="text-center"><?=$product['ps_rack_code']?></td>
                                     */?>
 
+                                    <!-- 표기중량 -->
                                     <td class="text-center">
+                                        <b><?= $product['cd_weight_fn']['1'] ?? '' ?>g</b><br>
                                         <?php if( $product['weight'] ){ ?>
-                                            <b><?=number_format($product['weight'])?></b>g
+                                            <?=number_format($product['weight'])?>g
                                         <?php }else{ ?>
                                             -
                                         <?php } ?>
@@ -873,6 +967,8 @@ function select_all() {
 			's_discontinued': $("#s_discontinued").val(),
             'rack_code': $("#rack_code").val(),
             'in_stock': $("#in_stock").val(),
+            's_display_weight_min': String($("#s_display_weight_min").val() || '').trim(),
+            's_display_weight_max': String($("#s_display_weight_max").val() || '').trim(),
 		};
 
 		// 추가 파라미터가 있으면 병합
@@ -1443,6 +1539,107 @@ function select_all() {
         
         // 초기 선택 개수 업데이트
         updateSelectedCount();
+
+        function normalizeDisplayWeightInput(value) {
+            var normalized = String(value || '').replace(/[^\d.]/g, '');
+            var firstDot = normalized.indexOf('.');
+            if (firstDot !== -1) {
+                normalized = normalized.slice(0, firstDot + 1) + normalized.slice(firstDot + 1).replace(/\./g, '');
+            }
+            return normalized;
+        }
+
+        function syncDetailSearchInputs() {
+            $('#detail_weight_min').val($('#s_display_weight_min').val() || '');
+            $('#detail_weight_max').val($('#s_display_weight_max').val() || '');
+        }
+
+        function refreshDetailSearchButton() {
+            var min = String($('#s_display_weight_min').val() || '').trim();
+            var max = String($('#s_display_weight_max').val() || '').trim();
+            $('#detailSearchBtn').toggleClass('has-condition', !!(min || max));
+            $('#detailSearchBtnLabel').text('상세조건');
+        }
+
+        function openDetailSearchLayer() {
+            syncDetailSearchInputs();
+            var $layer = $('#detailSearchLayer');
+            var $btn = $('#detailSearchBtn');
+            var btnRect = $btn[0] ? $btn[0].getBoundingClientRect() : { bottom: 0, left: 0 };
+            $layer.addClass('active').attr('aria-hidden', 'false').css({ left: 0, top: 0 });
+            var top = btnRect.bottom + 6;
+            var left = btnRect.left;
+            var layerWidth = $layer.outerWidth();
+            if (left + layerWidth > $(window).width() - 10) {
+                left = $(window).width() - layerWidth - 10;
+            }
+            if (left < 10) {
+                left = 10;
+            }
+            $layer.css({ top: top, left: left });
+            $('#detail_weight_min').trigger('focus');
+        }
+
+        function closeDetailSearchLayer() {
+            $('#detailSearchLayer').removeClass('active').attr('aria-hidden', 'true');
+        }
+
+        function applyDetailSearch(triggerSearch) {
+            var min = normalizeDisplayWeightInput($('#detail_weight_min').val());
+            var max = normalizeDisplayWeightInput($('#detail_weight_max').val());
+            if (min !== '' && max !== '' && Number(min) > Number(max)) {
+                var swapped = min;
+                min = max;
+                max = swapped;
+            }
+            $('#s_display_weight_min').val(min);
+            $('#s_display_weight_max').val(max);
+            $('#detail_weight_min').val(min);
+            $('#detail_weight_max').val(max);
+            refreshDetailSearchButton();
+            closeDetailSearchLayer();
+            if (triggerSearch !== false) {
+                $('#searchBtn').trigger('click');
+            }
+        }
+
+        $("#detailSearchBtn").on('click', function(e) {
+            e.stopPropagation();
+            if ($('#detailSearchLayer').hasClass('active')) {
+                closeDetailSearchLayer();
+                return;
+            }
+            openDetailSearchLayer();
+        });
+
+        $("#detailSearchCloseBtn").on('click', function() {
+            closeDetailSearchLayer();
+        });
+
+        $("#detailSearchApplyBtn").on('click', function() {
+            applyDetailSearch(true);
+        });
+
+        $("#detailSearchClearBtn").on('click', function() {
+            $('#detail_weight_min').val('');
+            $('#detail_weight_max').val('');
+            applyDetailSearch(true);
+        });
+
+        $("#detail_weight_min, #detail_weight_max").on('keydown', function(e) {
+            if (e.key === 'Enter') {
+                e.preventDefault();
+                applyDetailSearch(true);
+            }
+        });
+
+        $(document).on('click', function(e) {
+            if (!$(e.target).closest('#detailSearchWrap').length) {
+                closeDetailSearchLayer();
+            }
+        });
+
+        refreshDetailSearchButton();
 
         $("#search_reset").click(function(){
             var url = "?";

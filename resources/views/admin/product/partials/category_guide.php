@@ -76,11 +76,11 @@ $formatGuideHtml = static function (string $text): string {
 
         <?php
         $onaholeSecondCategoryGuides = [
-            ['name' => '콤팩트', 'description' => '100g 이하', 'image' => ''],
-            ['name' => '핸디형 S', 'description' => '100~299g', 'image' => ''],
-            ['name' => '핸디형 M', 'description' => '300~650g', 'image' => ''],
-            ['name' => '핸디형 L', 'description' => '650g 이상 ~ 1kg', 'image' => ''],
-            ['name' => '중/대형', 'description' => '1kg 이상', 'image' => ''],
+            ['name' => '콤팩트', 'description' => '표기중량 - 100g 이하', 'image' => ''],
+            ['name' => '핸디형 S', 'description' => '표기중량 - 100~299g', 'image' => ''],
+            ['name' => '핸디형 M', 'description' => '표기중량 - 300~600g', 'image' => ''],
+            ['name' => '핸디형 L', 'description' => '표기중량 - 600g 초과 ~ 1kg', 'image' => ''],
+            ['name' => '중/대형', 'description' => '표기중량 - 1kg 이상', 'image' => ''],
             ['name' => '전동/자동형', 'description' => '', 'image' => ''],
             ['name' => '페라형', 'description' => '만약 펠라와 홀이 같이 있는 제품일 경우 펠라형 우선!<br>펠라형이라고 이름이 붙어있어도 입, 입술 조형이 없으면 일반 오나홀로 분류', 'image' => ''],
             ['name' => '컵홀형', 'description' => '', 'image' => ''],

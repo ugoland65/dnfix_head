@@ -105,6 +105,10 @@ try {
     $router->post('/product/detail_spec_info/save', ProductController::class, 'saveProductSpecInfo'); //상품 스펙정보 저장
     $router->get('/product/detail_content', ProductController::class, 'prdDetailContentPage'); //상품 디테일 (상품 컨텐츠 관리)
     $router->post('/product/detail_content/save', ProductController::class, 'saveProductDetailContent'); //상품 컨텐츠 저장
+    $router->post('/product/detail_content/image_library/import', ProductController::class, 'importProductImageLibrary'); //이미지 저장소 라이브러리 끌고오기
+    $router->post('/product/detail_content/image_library/upload', ProductController::class, 'uploadProductImageLibrary'); //이미지 저장소 업로드 후 라이브러리 추가
+    $router->post('/product/detail_content/bottom/save', ProductController::class, 'saveProductDetailBottomContent'); //하단 컨텐츠 저장
+    $router->post('/product/detail_content/bottom/deploy', ProductController::class, 'deployProductDetailBottomContent'); //하단 컨텐츠 고도몰 실배포
     $router->post('/product/detail_content/deploy', ProductController::class, 'deployProductDetailContent'); //상품 컨텐츠 고도몰 실배포
     $router->post('/product/detail_content/recommend_specs', ProductController::class, 'recommendProductDetailSpecs'); //상품 컨텐츠 스펙 추천값
     $router->get('/product/relation_group_management', ProductController::class, 'relationGroupManagementList'); //시리즈/연관그룹 관리

@@ -1616,6 +1616,113 @@ class GodoApiService extends BaseClass {
 
 
     /**
+     * 인트라넷 하단 컨텐츠를 고도몰에 실배포한다.
+     * 고도몰은 goodsNo / 배포버전 / 배포코드를 받은 뒤 인트라넷 API를 target=bottom 으로 다시 호출하거나,
+     * POST body의 bottom_html / bottom_items 를 dnfix_goods_contents 에 저장한다.
+     *
+     * @return array{success:bool,message:string,http_code:int,response:array,raw:string,url:string}
+     */
+    public function deployPrdDetailBottomContent($goodsNo, $deployVersion, $deployVersionCode, array $payload = []): array
+    {
+        $goodsNo = trim((string)$goodsNo);
+        $deployVersion = (int)$deployVersion;
+        $deployVersionCode = trim((string)$deployVersionCode);
+        if ($goodsNo === '' || $deployVersion <= 0 || $deployVersionCode === '') {
+            throw new \Exception('고도몰 하단 배포 파라미터가 올바르지 않습니다.');
+        }
+
+        $query = [
+            'mode' => 'prdDetailBottomContentDeploy',
+            'goodsNo' => $goodsNo,
+            'deploy_version' => $deployVersion,
+            'deploy_version_code' => $deployVersionCode,
+            'target' => 'bottom',
+        ];
+        $body = $payload !== [] ? $payload : [
+            'godo_code' => (int)$goodsNo,
+            'goodsNo' => (int)$goodsNo,
+            'target' => 'bottom',
+            'deploy_version' => $deployVersion,
+            'deploy_version_code' => $deployVersionCode,
+            'bottom_deploy_version' => $deployVersion,
+            'bottom_deploy_version_code' => $deployVersionCode,
+            'bottom_position' => 'bottom',
+            'bottom_position_label' => '본문하단',
+        ];
+        $result = $this->requestGodoPrdDetailDeploy($query, $body);
+        if (!empty($result['success']) || !$this->isUnknownGodoDeployMode($result)) {
+            return $result;
+        }
+
+        $query['mode'] = 'prdDetailContentDeploy';
+        $fallbackBody = $body;
+        unset($fallbackBody['html']);
+        $fallback = $this->requestGodoPrdDetailDeploy($query, $fallbackBody);
+        if ($fallback['message'] === '' || $this->isUnknownGodoDeployMode($fallback)) {
+            $fallback['message'] = trim((string)$result['message'] . "\n" . (string)$fallback['message']);
+        }
+        return $fallback;
+    }
+
+    /**
+     * @param array<string,mixed> $query
+     * @param array<string,mixed> $body
+     * @return array{success:bool,message:string,http_code:int,response:array,raw:string,url:string}
+     */
+    private function requestGodoPrdDetailDeploy(array $query, array $body): array
+    {
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query($query);
+        $headers = $this->getGodoGoodsApiAuthHeaders();
+        $headers[] = 'Content-Type: application/json';
+        $meta = HttpClient::postDataWithMeta($apiUrl, $body, $headers, 90);
+        $response = (string)($meta['response'] ?? '');
+        $httpCode = (int)($meta['http_code'] ?? 0);
+        $curlError = trim((string)($meta['curl_error'] ?? ''));
+        $decoded = json_decode($response, true);
+        if (!is_array($decoded)) {
+            $decoded = [];
+        }
+
+        $success = !empty($decoded['success']) && ($httpCode === 0 || $httpCode === 200);
+        $message = trim((string)($decoded['message'] ?? ''));
+        if ($message === '') {
+            if ($curlError !== '') {
+                $message = '고도몰 배포 요청 실패: ' . $curlError;
+            } elseif ($success) {
+                $message = '고도몰에 배포했습니다.';
+            } else {
+                $message = $httpCode > 0
+                    ? '고도몰 배포 실패 (HTTP ' . $httpCode . ')'
+                    : '고도몰 배포 응답을 확인하지 못했습니다.';
+            }
+        }
+
+        return [
+            'success' => $success,
+            'message' => $message,
+            'http_code' => $httpCode,
+            'response' => $decoded,
+            'raw' => $response,
+            'url' => $apiUrl,
+        ];
+    }
+
+    /**
+     * @param array{message?:string,raw?:string,response?:array} $result
+     */
+    private function isUnknownGodoDeployMode(array $result): bool
+    {
+        $haystack = strtolower(trim(
+            (string)($result['message'] ?? '') . ' ' . (string)($result['raw'] ?? '')
+        ));
+        if ($haystack === '') {
+            return false;
+        }
+        return (bool)preg_match('/(unknown|invalid|undefined|not found|없는).{0,20}mode|mode.{0,20}(unknown|invalid|undefined|not found|없)/i', $haystack);
+    }
+
+
+    /**
      * 고도몰 신상품/입고예정 진열
      * mode=newGoodsDisplay, 헤더 X-Api-Key 인증
      *
@@ -1650,6 +1757,36 @@ class GodoApiService extends BaseClass {
             'goodsNo' => (int)$goodsNo,
             'acKind' => $acKind,
             'acMode' => $acMode,
+        ]);
+
+        return $this->requestGodoGoodsApi($apiUrl);
+    }
+
+
+    /**
+     * 고도몰 특정 상품을 지정 카테고리 맨 앞 진열로 이동
+     * mode=moveGoodsToCategoryTop, 헤더 X-Api-Key 인증
+     *
+     * @param int|string $goodsNo
+     * @param string $cateCd
+     * @return array
+     */
+    public function moveGoodsToCategoryTop($goodsNo, $cateCd)
+    {
+        $goodsNo = trim((string)$goodsNo);
+        if ($goodsNo === '' || !preg_match('/^\d+$/', $goodsNo) || (int)$goodsNo < 1) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $cateCd = trim((string)$cateCd);
+        if ($cateCd === '' || !preg_match('/^\d{3}(\d{3}){0,3}$/', $cateCd)) {
+            throw new \Exception('카테고리 코드가 올바르지 않습니다.');
+        }
+
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query([
+            'mode' => 'moveGoodsToCategoryTop',
+            'goodsNo' => (int)$goodsNo,
+            'cateCd' => $cateCd,
         ]);
 
         return $this->requestGodoGoodsApi($apiUrl);
@@ -2094,6 +2231,8 @@ class GodoApiService extends BaseClass {
             'withcategory' => 'withCategory',
             'dnfixcontent' => 'withDnfixContent',
             'withdnfixcontent' => 'withDnfixContent',
+            'dnfixbottomcontent' => 'withDnfixBottomContent',
+            'withdnfixbottomcontent' => 'withDnfixBottomContent',
         ];
 
         $params = [];

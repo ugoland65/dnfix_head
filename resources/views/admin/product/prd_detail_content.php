@@ -29,6 +29,70 @@
     $godoError = trim((string)($godoContent['error'] ?? ''));
     $godoFound = !empty($godoContent['found']);
     $productImage = trim((string)($product_image ?? ''));
+    $imageStoragePath = trim((string)($image_storage_path ?? ''));
+    $imageLibrary = (isset($image_library) && is_array($image_library)) ? $image_library : [];
+    $bottomItems = (isset($content['bottom_items']) && is_array($content['bottom_items'])) ? $content['bottom_items'] : [];
+    $bottomPosition = trim((string)($content['bottom_position'] ?? 'bottom'));
+    if ($bottomPosition !== 'top') {
+        $bottomPosition = 'bottom';
+    }
+    $bottomDeployVersion = (int)($content['bottom_deploy_version'] ?? 0);
+    $bottomDeployVersionCode = trim((string)($content['bottom_deploy_version_code'] ?? ''));
+    $bottomUpdatedAt = trim((string)($content['bottom_updated_at'] ?? ''));
+    $bottomAdminName = trim((string)($content['bottom_admin_name'] ?? ''));
+    $canDeployBottom = !empty($can_deploy_bottom);
+    $godoBottomContent = (isset($godo_bottom_content) && is_array($godo_bottom_content)) ? $godo_bottom_content : [];
+    $godoBottomHasCode = !empty($godoBottomContent['has_godo_code']);
+    $godoBottomRegistered = !empty($godoBottomContent['registered']);
+    $godoBottomDeployVersion = (int)($godoBottomContent['deploy_version'] ?? 0);
+    $godoBottomDeployVersionCode = trim((string)($godoBottomContent['deploy_version_code'] ?? ''));
+    $godoBottomMatchesLocal = !empty($godoBottomContent['matches_local']);
+    $godoBottomError = trim((string)($godoBottomContent['error'] ?? ''));
+    $godoBottomFound = !empty($godoBottomContent['found']);
+    $prdContentDeployOverview = static function (
+        bool $hasCode,
+        string $error,
+        bool $found,
+        bool $registered,
+        bool $matchesLocal,
+        int $intranetVersion
+    ): array {
+        if (!$hasCode) {
+            return ['class' => 'is-empty', 'text' => '상품번호 없음', 'title' => ''];
+        }
+        if ($error !== '') {
+            return ['class' => 'is-error', 'text' => '조회 실패', 'title' => $error];
+        }
+        if (!$found) {
+            return ['class' => 'is-empty', 'text' => '상품 없음', 'title' => ''];
+        }
+        if ($intranetVersion <= 0) {
+            return ['class' => 'is-empty', 'text' => '미저장', 'title' => ''];
+        }
+        if (!$registered) {
+            return ['class' => 'is-empty', 'text' => '미배포', 'title' => ''];
+        }
+        if ($matchesLocal) {
+            return ['class' => 'is-sync', 'text' => '배포됨 · 동기화', 'title' => ''];
+        }
+        return ['class' => 'is-diff', 'text' => '배포됨 · 다름', 'title' => ''];
+    };
+    $topDeployOverview = $prdContentDeployOverview(
+        $godoHasCode,
+        $godoError,
+        $godoFound,
+        $godoRegistered,
+        $godoMatchesLocal,
+        $deployVersion
+    );
+    $bottomDeployOverview = $prdContentDeployOverview(
+        $godoBottomHasCode,
+        $godoBottomError,
+        $godoBottomFound,
+        $godoBottomRegistered,
+        $godoBottomMatchesLocal,
+        $bottomDeployVersion
+    );
 ?>
 <style>
 @import url('https://fonts.googleapis.com/css2?family=Nanum+Gothic:wght@400;700&family=Noto+Sans+KR:wght@400;600;700&display=swap');
@@ -49,6 +113,7 @@
 .prd-content-preview-label { margin: 0; font-weight: 700; color: #111827; }
 .prd-content-preview-actions { display: flex; gap: 6px; flex-wrap: wrap; }
 .prd-content-preview-scaler { width: 100%; overflow: hidden; background: #ffffff; border: 1px solid #e5e7eb; border-radius: 9px; }
+#prd_content_bottom_preview_scaler { background: #f3f4f6; }
 .prd-content-preview-inner { width: 1000px; transform-origin: top left; }
 .prd-content-real-preview { position: fixed; inset: 0; z-index: 12000; display: flex; flex-direction: column; }
 .prd-content-real-preview[hidden] { display: none; }
@@ -61,6 +126,49 @@
 .prd-content-real-preview.is-pc .prd-content-real-preview__device { width: 1000px; }
 .prd-content-real-preview.is-mobile .prd-content-real-preview__device { width: 390px; border: 10px solid #1f2937; border-radius: 28px; overflow: hidden; }
 .prd-content-real-preview .dnfix-goods-contents { width: 100%; }
+.prd-content-real-preview .dnfix-goods-bottom { width: 100%; padding: 10px 0 40px; background: #f3f4f6; }
+.dnfix-goods-bottom { padding: 10px 0 40px; min-height: 160px; }
+.dnfix-goods-bottom-list {
+    width: 100%;
+    max-width: 1000px;
+    margin: 30px auto 0;
+    padding: 10px 50px 50px;
+    box-sizing: border-box;
+    background: #fff;
+    border-radius: 13px;
+}
+.dnfix-goods-bottom-item {
+    margin: 0;
+    padding: 40px 0;
+    border-bottom: 1px solid #ddd;
+}
+.dnfix-goods-bottom-item:first-child { padding-top: 0; }
+.dnfix-goods-bottom-item:last-child { padding-bottom: 0; border-bottom: 0; }
+.dnfix-goods-bottom-img {
+    display: block;
+    width: 600px;
+    max-width: 100%;
+    height: auto !important;
+    margin: 0 auto;
+}
+.dnfix-goods-bottom-info {
+    width: 100%;
+    max-width: 600px;
+    margin: 0 auto;
+    padding-top: 30px;
+    box-sizing: border-box;
+    text-align: center;
+    font-size: 16px;
+    font-weight: 500;
+    line-height: 1.7;
+    color: #000;
+    word-break: keep-all;
+    overflow-wrap: break-word;
+}
+.prd-content-real-preview.is-mobile .dnfix-goods-bottom-list { width: 100%; margin-top: 16px; padding: 10px 12px 28px; border-radius: 10px; }
+.prd-content-real-preview.is-mobile .dnfix-goods-bottom-item { padding: 24px 0; }
+.prd-content-real-preview.is-mobile .dnfix-goods-bottom-img { width: 100%; }
+.prd-content-real-preview.is-mobile .dnfix-goods-bottom-info { padding-top: 16px; font-size: 14px; }
 
 .prd-content-repeat { width: 100%; border-collapse: collapse; }
 .prd-content-repeat th,
@@ -79,8 +187,11 @@
 .prd-content-repeat .prd-content-name { width: 180px; }
 .prd-content-actions { margin-top: 8px; display: flex; gap: 6px; flex-wrap: wrap; }
 .prd-content-title-row { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
-.prd-content-title-row h1 { margin: 0; }
+.prd-content-title-row h1 { margin: 0; font-size: 20px; font-weight: 600; }
 .prd-content-title-row .prd-content-deploy-btn { margin-left: 2px; }
+.prd-content-head-status { display: inline-flex; align-items: center; gap: 6px; }
+.prd-content-head-status + .prd-content-head-status { margin-left: 2px; padding-left: 10px; border-left: 1px solid #d1d5db; }
+.prd-content-head-status-label { font-size: 12px; font-weight: 700; color: #4b5563; }
 .prd-content-version { display: inline-flex; align-items: center; padding: 3px 8px; border-radius: 999px; background: #111827; color: #fff; font-size: 12px; font-weight: 700; line-height: 1.4; }
 .prd-content-version.is-empty { background: #e5e7eb; color: #6b7280; font-weight: 600; }
 .prd-content-version.is-sync { background: #047857; }
@@ -142,6 +253,208 @@
 .prd-content-real-preview.is-mobile .g3-spec-list .g3-spec-row { gap: 4px; font-size: 14px; line-height: 140%; flex-wrap: wrap; }
 .prd-content-real-preview.is-mobile .g3-spec-list .g3-spec-row dt::before { font-size: 8px; }
 .prd-content-real-preview.is-mobile .g3-spec-note { margin: 10px 0 0; font-size: 11px; }
+
+.prd-content-page-head { margin-bottom: 12px; }
+.prd-content-tab-nav {
+    display: flex;
+    gap: 0;
+    margin: 0 0 14px;
+    border-bottom: 1px solid #999;
+}
+.prd-content-tab-btn {
+    width: 200px;
+    margin: 0 0 -1px;
+    padding: 8px 25px;
+    /*
+    border: 1px solid transparent;
+    */
+    border: 1px solid #bbb;
+    border-bottom: 0;
+    background: none;
+    color: #333;
+    font-size: 14px;
+    font-weight: 600;
+    cursor: pointer;
+    line-height: 1.4;
+}
+.prd-content-tab-btn.is-active {
+    color: #111827;
+    background: #fff;
+    border-color: #999;
+    border-bottom: 1px solid #fff;
+}
+.prd-content-tab-panel[hidden] { display: none !important; }
+.prd-content-bottom-layout { display: flex; gap: 16px; align-items: flex-start; }
+.prd-content-bottom-main { flex: 1; min-width: 0; padding-bottom: 8px; }
+.prd-content-library-head { margin-bottom: 12px; }
+.prd-content-library-head h2 { margin: 0 0 4px; font-size: 16px; color: #111827; }
+.prd-content-library-path { margin: 0 0 8px; color: #6b7280; font-size: 12px; line-height: 1.5; }
+.prd-content-library-path code { font-family: Consolas, Monaco, monospace; color: #111827; word-break: break-all; }
+.prd-content-library-col {
+    width: 340px;
+    flex-shrink: 0;
+    position: sticky;
+    top: 80px;
+    max-height: calc(100vh - 160px);
+    display: flex;
+    flex-direction: column;
+    overflow: hidden;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+}
+.prd-content-library-tools {
+    flex-shrink: 0;
+    margin-bottom: 10px;
+    padding-bottom: 10px;
+    border-bottom: 1px solid #edf0f4;
+}
+.prd-content-library-box {
+    flex: 1;
+    min-height: 0;
+    overflow: auto;
+}
+.prd-content-library-col-head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 8px;
+    margin-bottom: 8px;
+    font-size: 13px;
+    font-weight: 700;
+    color: #111827;
+}
+.prd-content-library-col-head span {
+    padding: 1px 6px;
+    border-radius: 999px;
+    background: #f3f4f6;
+    color: #4b5563;
+    font-size: 11px;
+    font-weight: 700;
+}
+.prd-content-library-empty { margin: 18px 0 8px; color: #9ca3af; text-align: center; font-size: 12px; line-height: 1.5; }
+.prd-content-library-list { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 6px; }
+.prd-content-library-item {
+    display: block;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    overflow: hidden;
+    border: 1px solid #e5e7eb;
+    border-radius: 5px;
+    background: #f8fafc;
+    text-align: left;
+    cursor: pointer;
+}
+.prd-content-library-item.is-used {
+    border-color: #2563eb;
+}
+.prd-content-library-item img {
+    display: block;
+    width: 100%;
+    aspect-ratio: 1;
+    object-fit: contain;
+    background: #fff;
+}
+.prd-content-library-item .prd-content-library-name,
+.prd-content-library-item .prd-content-library-meta {
+    display: block;
+    padding: 3px 5px 0;
+    overflow: hidden;
+}
+.prd-content-library-item .prd-content-library-name {
+    color: #374151;
+    font-size: 10px;
+    font-weight: 700;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.prd-content-library-item .prd-content-library-meta {
+    padding: 1px 5px 4px;
+    color: #6b7280;
+    font-size: 10px;
+    font-weight: 500;
+    line-height: 1.35;
+    white-space: normal;
+}
+.prd-content-library-item .prd-content-library-meta span {
+    display: block;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+}
+.prd-content-bottom-toolbar { display: flex; flex-wrap: nowrap; gap: 6px; }
+.prd-content-bottom-toolbar .btnstyle1 { flex: 1; min-width: 0; width: auto; text-align: center; }
+.prd-content-bottom-status { display: flex; flex-wrap: wrap; gap: 6px; align-items: center; margin: 0 0 10px; }
+.prd-content-bottom-position {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 12px;
+    margin: 0 0 10px;
+    padding: 8px 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #f8fafc;
+    font-size: 13px;
+    color: #111827;
+}
+.prd-content-bottom-position > span { font-weight: 700; }
+.prd-content-bottom-position label { display: inline-flex; align-items: center; gap: 5px; margin: 0; cursor: pointer; font-weight: 500; }
+.prd-content-bottom-position input { margin: 0; }
+.prd-content-bottom-list { display: flex; flex-direction: column; gap: 8px; }
+.prd-content-bottom-item {
+    display: flex;
+    gap: 10px;
+    align-items: flex-start;
+    padding: 10px;
+    border: 1px solid #e5e7eb;
+    border-radius: 8px;
+    background: #fff;
+}
+.prd-content-bottom-item-order { display: flex; flex-direction: column; gap: 4px; }
+.prd-content-bottom-item-order button {
+    width: 28px;
+    height: 26px;
+    padding: 0;
+    border: 1px solid #d1d5db;
+    border-radius: 4px;
+    background: #f8fafc;
+    color: #374151;
+    cursor: pointer;
+}
+.prd-content-bottom-item img {
+    width: 88px;
+    height: 88px;
+    object-fit: contain;
+    background: #fff;
+    border: 1px solid #edf0f4;
+    border-radius: 6px;
+    flex-shrink: 0;
+}
+.prd-content-bottom-item-body { flex: 1; min-width: 0; }
+.prd-content-bottom-item-name { display: block; margin-bottom: 6px; font-size: 12px; font-weight: 700; color: #111827; }
+.prd-content-bottom-item-body textarea {
+    width: 100%;
+    min-height: 62px;
+    box-sizing: border-box;
+    resize: vertical;
+}
+.prd-content-bottom-item-remove {
+    flex-shrink: 0;
+    height: 28px;
+    padding: 0 8px;
+    border: 1px solid #fecaca;
+    border-radius: 4px;
+    background: #fff;
+    color: #b91c1c;
+    cursor: pointer;
+}
+@media (max-width: 1100px) {
+    .prd-content-bottom-layout { flex-direction: column; }
+    .prd-content-library-col { width: 100%; position: static; max-height: none; }
+}
 
 @media (max-width: 1280px) {
     .prd-content-layout { flex-direction: column; }
@@ -234,6 +547,63 @@
 }
 </style>
 
+<div class="prd-content-page-head">
+    <div class="prd-content-title-row">
+        <h1>상품 컨텐츠 관리</h1>
+        <span class="prd-content-head-status">
+            <span class="prd-content-head-status-label">상단</span>
+            <span class="prd-content-version <?= htmlspecialchars($topDeployOverview['class'], ENT_QUOTES, 'UTF-8') ?>"<?php if ($topDeployOverview['title'] !== '') { ?> title="<?= htmlspecialchars($topDeployOverview['title'], ENT_QUOTES, 'UTF-8') ?>"<?php } ?>>
+                <?= htmlspecialchars($topDeployOverview['text'], ENT_QUOTES, 'UTF-8') ?>
+            </span>
+        </span>
+        <span class="prd-content-head-status">
+            <span class="prd-content-head-status-label">하단</span>
+            <span class="prd-content-version <?= htmlspecialchars($bottomDeployOverview['class'], ENT_QUOTES, 'UTF-8') ?>"<?php if ($bottomDeployOverview['title'] !== '') { ?> title="<?= htmlspecialchars($bottomDeployOverview['title'], ENT_QUOTES, 'UTF-8') ?>"<?php } ?>>
+                <?= htmlspecialchars($bottomDeployOverview['text'], ENT_QUOTES, 'UTF-8') ?>
+            </span>
+        </span>
+    </div>
+</div>
+
+<div class="prd-content-tab-nav" role="tablist">
+    <button type="button" class="prd-content-tab-btn is-active" data-content-tab="top" role="tab" aria-selected="true">상단</button>
+    <button type="button" class="prd-content-tab-btn" data-content-tab="bottom" role="tab" aria-selected="false">하단</button>
+</div>
+
+<div class="prd-content-tab-panel" data-content-tab-panel="top" role="tabpanel">
+    <div class="prd-content-library-head">
+        <div class="prd-content-bottom-status">
+            <?php if ($deployVersion > 0) { ?>
+                <span class="prd-content-version">인트라넷 v<?= $deployVersion ?></span>
+                <?php if ($deployVersionCode !== '') { ?>
+                    <span class="prd-content-version-code" title="고도몰 배포서버 비교용 코드"><?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
+                <?php } ?>
+            <?php } else { ?>
+                <span class="prd-content-version is-empty">인트라넷 배포버전 없음</span>
+            <?php } ?>
+            <?php if (!$godoHasCode) { ?>
+                <span class="prd-content-version is-empty">고도몰 상품번호 없음</span>
+            <?php } elseif ($godoError !== '') { ?>
+                <span class="prd-content-version is-error" title="<?= htmlspecialchars($godoError, ENT_QUOTES, 'UTF-8') ?>">고도몰 조회 실패</span>
+            <?php } elseif (!$godoFound) { ?>
+                <span class="prd-content-version is-empty">고도몰 상품 없음</span>
+            <?php } elseif (!$godoRegistered) { ?>
+                <span class="prd-content-version is-empty">고도몰 미배포</span>
+            <?php } else { ?>
+                <span class="prd-content-version <?= $godoMatchesLocal ? 'is-sync' : 'is-diff' ?>">
+                    고도몰 <?= $godoDeployVersion > 0 ? 'v' . $godoDeployVersion : '배포됨' ?><?= $godoMatchesLocal ? ' · 동기화' : ' · 다름' ?>
+                </span>
+                <?php if ($godoDeployVersionCode !== '') { ?>
+                    <span class="prd-content-version-code" title="고도몰에 저장된 배포코드"><?= htmlspecialchars($godoDeployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
+                <?php } ?>
+            <?php } ?>
+            <?php if ($canDeploy && !$godoMatchesLocal) { ?>
+                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm prd-content-deploy-btn" id="prd_content_deploy_btn">현재 버전으로 고도몰 배포</button>
+            <?php } else { ?>
+                <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm prd-content-deploy-btn" id="prd_content_deploy_btn" <?= $deployVersion > 0 && $godoHasCode ? '' : 'disabled' ?>>현재 버전으로 고도몰 배포</button>
+            <?php } ?>
+        </div>
+    </div>
 <div class="prd-content-layout">
     <div class="prd-content-editor">
         <form id="prd_detail_content_form" autocomplete="off">
@@ -241,43 +611,6 @@
 
             <table class="table-style">
                 <tbody>
-
-                    <tr>
-                        <td class="none-bg title">
-                            <div class="prd-content-title-row">
-                                <h1>상품 컨텐츠 관리</h1>
-                                <?php if ($deployVersion > 0) { ?>
-                                    <span class="prd-content-version">인트라넷 v<?= $deployVersion ?></span>
-                                    <?php if ($deployVersionCode !== '') { ?>
-                                        <span class="prd-content-version-code" title="고도몰 배포서버 비교용 코드"><?= htmlspecialchars($deployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
-                                    <?php } ?>
-                                <?php } else { ?>
-                                    <span class="prd-content-version is-empty">인트라넷 배포버전 없음</span>
-                                <?php } ?>
-                                <?php if (!$godoHasCode) { ?>
-                                    <span class="prd-content-version is-empty">고도몰 상품번호 없음</span>
-                                <?php } elseif ($godoError !== '') { ?>
-                                    <span class="prd-content-version is-error" title="<?= htmlspecialchars($godoError, ENT_QUOTES, 'UTF-8') ?>">고도몰 조회 실패</span>
-                                <?php } elseif (!$godoFound) { ?>
-                                    <span class="prd-content-version is-empty">고도몰 상품 없음</span>
-                                <?php } elseif (!$godoRegistered) { ?>
-                                    <span class="prd-content-version is-empty">고도몰 미배포</span>
-                                <?php } else { ?>
-                                    <span class="prd-content-version <?= $godoMatchesLocal ? 'is-sync' : 'is-diff' ?>">
-                                        고도몰 <?= $godoDeployVersion > 0 ? 'v' . $godoDeployVersion : '배포됨' ?><?= $godoMatchesLocal ? ' · 동기화' : ' · 다름' ?>
-                                    </span>
-                                    <?php if ($godoDeployVersionCode !== '') { ?>
-                                        <span class="prd-content-version-code" title="고도몰에 저장된 배포코드"><?= htmlspecialchars($godoDeployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
-                                    <?php } ?>
-                                <?php } ?>
-                                <?php if ($canDeploy && !$godoMatchesLocal) { ?>
-                                    <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm prd-content-deploy-btn" id="prd_content_deploy_btn">
-                                        현재 버전으로 고도몰 배포
-                                    </button>
-                                <?php } ?>
-                            </div>
-                        </td>
-                    </tr>
 
                     <tr>
                         <td class="none-bg ">
@@ -443,8 +776,8 @@
             <div class="prd-content-preview-head">
                 <button type="button" class="prd-preview-toggle" data-preview-toggle="detail" aria-expanded="true">디테일 미리보기</button>
                 <div class="prd-content-preview-actions">
-                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="pc">PC버전 실사이즈</button>
-                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="mobile">모바일화면보기</button>
+                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="pc" data-real-preview-source="top">PC버전 실사이즈</button>
+                    <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="mobile" data-real-preview-source="top">모바일화면보기</button>
                 </div>
             </div>
             <div class="prd-preview-panel-body">
@@ -495,6 +828,120 @@
         <i class="far fa-check-circle"></i> 저장
     </button>
 </div>
+</div>
+
+<div class="prd-content-tab-panel" data-content-tab-panel="bottom" role="tabpanel" hidden>
+    <div class="prd-content-bottom-layout">
+        <div class="prd-content-bottom-main">
+            <div class="prd-content-library-head">
+                <h2>하단 컨텐츠</h2>
+                <div class="prd-content-bottom-status">
+                    <?php if ($bottomDeployVersion > 0) { ?>
+                        <span class="prd-content-version">인트라넷 v<?= $bottomDeployVersion ?></span>
+                        <?php if ($bottomDeployVersionCode !== '') { ?>
+                            <span class="prd-content-version-code" title="하단 배포코드"><?= htmlspecialchars($bottomDeployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php } ?>
+                    <?php } else { ?>
+                        <span class="prd-content-version is-empty">인트라넷 하단 배포버전 없음</span>
+                    <?php } ?>
+                    <?php if (!$godoBottomHasCode) { ?>
+                        <span class="prd-content-version is-empty">고도몰 상품번호 없음</span>
+                    <?php } elseif ($godoBottomError !== '') { ?>
+                        <span class="prd-content-version is-error" title="<?= htmlspecialchars($godoBottomError, ENT_QUOTES, 'UTF-8') ?>">고도몰 조회 실패</span>
+                    <?php } elseif (!$godoBottomFound) { ?>
+                        <span class="prd-content-version is-empty">고도몰 상품 없음</span>
+                    <?php } elseif (!$godoBottomRegistered) { ?>
+                        <span class="prd-content-version is-empty">고도몰 하단 미배포</span>
+                    <?php } else { ?>
+                        <span class="prd-content-version <?= $godoBottomMatchesLocal ? 'is-sync' : 'is-diff' ?>">
+                            고도몰 <?= $godoBottomDeployVersion > 0 ? 'v' . $godoBottomDeployVersion : '배포됨' ?><?= $godoBottomMatchesLocal ? ' · 동기화' : ' · 다름' ?>
+                        </span>
+                        <?php if ($godoBottomDeployVersionCode !== '') { ?>
+                            <span class="prd-content-version-code" title="고도몰 하단 배포코드"><?= htmlspecialchars($godoBottomDeployVersionCode, ENT_QUOTES, 'UTF-8') ?></span>
+                        <?php } ?>
+                    <?php } ?>
+                    <?php if ($canDeployBottom && !$godoBottomMatchesLocal) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm" id="prd_content_bottom_deploy_btn">현재 버전으로 고도몰 배포</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm" id="prd_content_bottom_deploy_btn" <?= $bottomDeployVersion > 0 && $godoBottomHasCode ? '' : 'disabled' ?>>현재 버전으로 고도몰 배포</button>
+                    <?php } ?>
+                </div>
+                <div class="prd-content-bottom-position">
+                    <span>출력위치</span>
+                    <label>
+                        <input type="radio" name="bottom_position" value="top" <?= $bottomPosition === 'top' ? 'checked' : '' ?>>
+                        본문상단
+                    </label>
+                    <label>
+                        <input type="radio" name="bottom_position" value="bottom" <?= $bottomPosition !== 'top' ? 'checked' : '' ?>>
+                        본문하단
+                    </label>
+                </div>
+                <?php if ($bottomDeployVersion > 0 || $bottomUpdatedAt !== '' || $bottomAdminName !== '') { ?>
+                    <p class="prd-content-library-path">
+                        <?php if ($bottomDeployVersion > 0) { ?>하단 배포버전 v<?= $bottomDeployVersion ?><?php } ?>
+                        <?php if ($bottomAdminName !== '' || $bottomUpdatedAt !== '') { ?>
+                            <?= $bottomDeployVersion > 0 ? ' · ' : '' ?>최근 저장<?= $bottomAdminName !== '' ? ': ' . htmlspecialchars($bottomAdminName, ENT_QUOTES, 'UTF-8') : '' ?><?= $bottomUpdatedAt !== '' ? ' · ' . htmlspecialchars($bottomUpdatedAt, ENT_QUOTES, 'UTF-8') : '' ?>
+                        <?php } ?>
+                    </p>
+                <?php } ?>
+            </div>
+            <div id="prd_content_bottom_list" class="prd-content-bottom-list"></div>
+            <p id="prd_content_bottom_empty" class="prd-content-library-empty">우측 라이브러리에서 이미지를 선택하거나, 새 이미지를 업로드하세요.</p>
+            <section class="prd-preview-panel" data-preview-panel="bottom" style="margin-top: 16px;">
+                <div class="prd-content-preview-head">
+                    <button type="button" class="prd-preview-toggle" data-preview-toggle="bottom" aria-expanded="true">하단 미리보기</button>
+                    <div class="prd-content-preview-actions">
+                        <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="pc" data-real-preview-source="bottom">PC버전 실사이즈</button>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" data-real-preview="mobile" data-real-preview-source="bottom">모바일화면보기</button>
+                    </div>
+                </div>
+                <div class="prd-preview-panel-body">
+                    <div id="prd_content_bottom_preview_scaler" class="prd-content-preview-scaler">
+                        <div id="prd_content_bottom_preview_inner" class="prd-content-preview-inner">
+                            <div id="prd_content_bottom_preview" class="dnfix-goods-bottom"></div>
+                        </div>
+                    </div>
+                </div>
+            </section>
+        </div>
+        <aside class="prd-content-library-col">
+            <div class="prd-content-library-tools">
+                <?php if ($imageStoragePath !== '') { ?>
+                    <p class="prd-content-library-path">저장소 경로: <code><?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?></code></p>
+                <?php } else { ?>
+                    <p class="prd-content-library-path">이미지 저장소 경로가 없습니다. 상품 정보수집에서 먼저 설정해 주세요.</p>
+                <?php } ?>
+                <div class="prd-content-bottom-toolbar">
+                    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="prd_content_library_import_btn" <?= $imageStoragePath === '' ? 'disabled' : '' ?>>
+                        이미지저장소 갱신
+                    </button>
+                    <button type="button" class="btnstyle1 btnstyle1-sm" id="prd_content_library_upload_btn" <?= $imageStoragePath === '' ? 'disabled' : '' ?>>
+                        이미지 업로드
+                    </button>
+                    <input type="file" id="prd_content_library_upload_input" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+                </div>
+            </div>
+            <div class="prd-content-library-box">
+                <div class="prd-content-library-col-head">
+                    라이브러리
+                    <span id="prd_content_library_count"><?= count($imageLibrary) ?></span>
+                </div>
+                <div id="prd_content_library_list" class="prd-content-library-list" <?= empty($imageLibrary) ? 'hidden' : '' ?>></div>
+                <p id="prd_content_library_empty" class="prd-content-library-empty" <?= empty($imageLibrary) ? '' : 'hidden' ?>>
+                    아직 목록화한 이미지가 없습니다.
+                </p>
+            </div>
+        </aside>
+    </div>
+    <div class="button-wrap-back"></div>
+    <div class="button-wrap">
+        <button type="button" class="btnstyle1 btnstyle1-lg" id="prd_content_bottom_draft_btn" title="하단 배포버전을 유지하고 저장합니다">임시저장</button>
+        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-lg" id="prd_content_bottom_save_btn" title="하단 새 배포버전을 만들고 저장합니다">
+            <i class="far fa-check-circle"></i> 저장
+        </button>
+    </div>
+</div>
 
 <div id="prd_content_real_preview" class="prd-content-real-preview" hidden>
     <div class="prd-content-real-preview__backdrop" data-real-preview-close="1"></div>
@@ -519,6 +966,11 @@
     var deployVersion = <?= (int)$deployVersion ?>;
     var deployVersionCode = <?= json_encode($deployVersionCode, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
     var godoMatchesLocal = <?= $godoMatchesLocal ? 'true' : 'false' ?>;
+    var bottomDeployVersion = <?= (int)$bottomDeployVersion ?>;
+    var godoBottomMatchesLocal = <?= $godoBottomMatchesLocal ? 'true' : 'false' ?>;
+    var imageLibraryItems = <?= json_encode($imageLibrary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || [];
+    var bottomItems = <?= json_encode($bottomItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || [];
+    var bottomPosition = <?= json_encode($bottomPosition, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || 'bottom';
 
     function escapeHtml(text) {
         return $('<div>').text(text || '').html();
@@ -659,22 +1111,39 @@
         return specs;
     }
 
+    var realPreviewSource = 'top';
+
     function fitPreview() {
-        var scaler = document.getElementById('prd_content_preview_scaler');
-        var inner = document.getElementById('prd_content_preview_inner');
+        fitPreviewScaler('prd_content_preview_scaler', 'prd_content_preview_inner', 'detail');
+        fitPreviewScaler('prd_content_bottom_preview_scaler', 'prd_content_bottom_preview_inner', 'bottom');
+    }
+
+    function fitPreviewScaler(scalerId, innerId, panelName) {
+        var scaler = document.getElementById(scalerId);
+        var inner = document.getElementById(innerId);
         if (!scaler || !inner) {
             return;
         }
-        if ($('[data-preview-panel="detail"]').hasClass('is-collapsed')) {
+        if ($('[data-preview-panel="' + panelName + '"]').hasClass('is-collapsed')) {
             return;
         }
-        var scale = scaler.clientWidth / 1000;
-        if (!(scale > 0)) {
-            scale = 1;
+        var width = scaler.clientWidth;
+        if (!(width > 0)) {
+            return;
         }
+        var scale = width / 1000;
         inner.style.transform = 'scale(' + scale + ')';
         inner.style.width = '1000px';
         scaler.style.height = Math.ceil(inner.scrollHeight * scale) + 'px';
+    }
+
+    function bindPreviewImageFit($root) {
+        $root.find('img').each(function() {
+            if (this.complete) {
+                return;
+            }
+            $(this).one('load.prdDetailContent error.prdDetailContent', fitPreview);
+        });
     }
 
     function buildPreviewHtml() {
@@ -750,12 +1219,45 @@
         return html;
     }
 
+    function buildBottomPreviewHtml() {
+        var position = currentBottomPosition();
+        var html = '<section class="dnfix-goods-bottom-list" aria-label="상품 상세 설명">';
+        var hasItem = false;
+        bottomItems.forEach(function(item) {
+            var url = String((item && item.hosting_url) || '');
+            var comment = String((item && item.comment) || '');
+            var name = String((item && item.filename) || '');
+            if (!url) {
+                return;
+            }
+            if (!name) {
+                name = url.split('/').pop() || '';
+            }
+            hasItem = true;
+            html += '<figure class="dnfix-goods-bottom-item">'
+                + '<img class="dnfix-goods-bottom-img" alt="' + escapeHtml(name || comment) + '" src="' + escapeHtml(url) + '">'
+                + (comment !== '' ? '<figcaption class="dnfix-goods-bottom-info">' + nl2br(comment) + '</figcaption>' : '')
+                + '</figure>';
+        });
+        if (!hasItem) {
+            html += '<figure class="dnfix-goods-bottom-item"><figcaption class="dnfix-goods-bottom-info">선택한 이미지가 없습니다.</figcaption></figure>';
+        }
+        html += '</section>';
+        $('#prd_content_bottom_preview').attr('data-pdb-position', position);
+        $('#prd_content_real_preview_body.dnfix-goods-bottom').attr('data-pdb-position', position);
+        return html;
+    }
+
+    function currentPreviewHtml() {
+        return realPreviewSource === 'bottom' ? buildBottomPreviewHtml() : buildPreviewHtml();
+    }
+
     function syncRealPreview() {
         var $overlay = $('#prd_content_real_preview');
         if ($overlay.prop('hidden')) {
             return;
         }
-        $('#prd_content_real_preview_body').html(buildPreviewHtml());
+        $('#prd_content_real_preview_body').html(currentPreviewHtml());
     }
 
     function closeRealPreview() {
@@ -763,7 +1265,8 @@
         $('body').css('overflow', '');
     }
 
-    function openRealPreview(mode) {
+    function openRealPreview(mode, source) {
+        realPreviewSource = source === 'bottom' ? 'bottom' : 'top';
         var isMobile = mode === 'mobile';
         var $overlay = $('#prd_content_real_preview');
         $overlay
@@ -773,16 +1276,33 @@
         $('#prd_content_real_preview_title').text(
             isMobile ? '모바일 화면 · 390px' : 'PC 실사이즈 · 1000px'
         );
-        $('#prd_content_real_preview_body').html(buildPreviewHtml());
+        $('#prd_content_real_preview_body')
+            .toggleClass('dnfix-goods-contents', realPreviewSource !== 'bottom')
+            .toggleClass('dnfix-goods-bottom', realPreviewSource === 'bottom')
+            .html(currentPreviewHtml());
         $('body').css('overflow', 'hidden');
     }
 
+    function renderBottomPreview() {
+        var $preview = $('#prd_content_bottom_preview');
+        $preview.html(buildBottomPreviewHtml());
+        bindPreviewImageFit($preview);
+        fitPreview();
+        if (realPreviewSource === 'bottom') {
+            syncRealPreview();
+        }
+    }
+
     function renderPreview() {
-        $('#prd_content_preview').html(buildPreviewHtml());
+        var $preview = $('#prd_content_preview');
+        $preview.html(buildPreviewHtml());
         $('#prd_content_list_name').text($.trim($('#prd_detail_content_form input[name="korean_name"]').val() || ''));
         $('#prd_content_list_summary').text($.trim($('#prd_detail_content_form input[name="list_summary"]').val() || ''));
+        bindPreviewImageFit($preview);
         fitPreview();
-        syncRealPreview();
+        if (realPreviewSource !== 'bottom') {
+            syncRealPreview();
+        }
     }
 
     $('#prd_content_summary_add').on('click', function() {
@@ -845,7 +1365,7 @@
     });
 
     $(document).on('click.prdDetailContent', '[data-real-preview]', function() {
-        openRealPreview($(this).attr('data-real-preview'));
+        openRealPreview($(this).attr('data-real-preview'), $(this).attr('data-real-preview-source'));
     });
     $(document).on('click.prdDetailContent', '[data-real-preview-close]', closeRealPreview);
     $(document).off('keydown.prdDetailContentReal').on('keydown.prdDetailContentReal', function(event) {
@@ -858,13 +1378,16 @@
     $(window).off('resize.prdDetailContent').on('resize.prdDetailContent', fitPreview);
 
     $('#prd_content_deploy_btn').on('click', function() {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) {
+            return;
+        }
         var confirmMessage = godoMatchesLocal
             ? '고도몰에 이미 같은 버전이 있습니다. v' + deployVersion + '을 다시 배포할까요?'
             : '현재 버전 v' + deployVersion + '을 고도몰에 배포할까요?';
         if (!confirm(confirmMessage)) {
             return;
         }
-        var $btn = $(this);
         $btn.prop('disabled', true);
         ajaxRequest('/admin/product/detail_content/deploy', {
             prd_pk: prdPk
@@ -936,10 +1459,13 @@
         if (name === 'detail' && expanded) {
             fitPreview();
         }
+        if (name === 'bottom' && expanded) {
+            fitPreview();
+        }
     }
 
     function loadPreviewPanelState() {
-        var state = { detail: true, list: true };
+        var state = { detail: true, list: true, bottom: true };
         try {
             var saved = sessionStorage.getItem(previewPanelStorageKey());
             if (saved) {
@@ -950,16 +1476,21 @@
                 if (typeof parsed.list === 'boolean') {
                     state.list = parsed.list;
                 }
+                if (typeof parsed.bottom === 'boolean') {
+                    state.bottom = parsed.bottom;
+                }
             }
         } catch (e) {}
         applyPreviewPanelState('detail', state.detail);
         applyPreviewPanelState('list', state.list);
+        applyPreviewPanelState('bottom', state.bottom);
     }
 
     function savePreviewPanelState() {
         var state = {
             detail: !$('[data-preview-panel="detail"]').hasClass('is-collapsed'),
-            list: !$('[data-preview-panel="list"]').hasClass('is-collapsed')
+            list: !$('[data-preview-panel="list"]').hasClass('is-collapsed'),
+            bottom: !$('[data-preview-panel="bottom"]').hasClass('is-collapsed')
         };
         try {
             sessionStorage.setItem(previewPanelStorageKey(), JSON.stringify(state));
@@ -973,6 +1504,343 @@
         savePreviewPanelState();
     });
 
+    function activateContentTab(name) {
+        var tabName = name === 'bottom' ? 'bottom' : 'top';
+        $('[data-content-tab]').removeClass('is-active').attr('aria-selected', 'false');
+        $('[data-content-tab="' + tabName + '"]').addClass('is-active').attr('aria-selected', 'true');
+        $('[data-content-tab-panel]').attr('hidden', true);
+        $('[data-content-tab-panel="' + tabName + '"]').removeAttr('hidden');
+        if (tabName === 'top') {
+            fitPreview();
+        }
+        if (tabName === 'bottom') {
+            renderBottomPreview();
+        }
+    }
+
+    $(document).on('click.prdDetailContent', '[data-content-tab]', function() {
+        activateContentTab($(this).attr('data-content-tab'));
+    });
+
+    function usedBottomUrls() {
+        var map = {};
+        bottomItems.forEach(function(item) {
+            var url = String((item && item.hosting_url) || '');
+            if (url) {
+                map[url] = true;
+            }
+        });
+        return map;
+    }
+
+    function renderBottomList() {
+        var $list = $('#prd_content_bottom_list');
+        var $empty = $('#prd_content_bottom_empty');
+        var html = '';
+        bottomItems.forEach(function(item, index) {
+            var url = String((item && item.hosting_url) || '');
+            var name = String((item && item.filename) || '');
+            var comment = String((item && item.comment) || '');
+            if (!url) {
+                return;
+            }
+            if (!name) {
+                name = url.split('/').pop() || url;
+            }
+            html += '<div class="prd-content-bottom-item" data-bottom-index="' + index + '">'
+                + '<div class="prd-content-bottom-item-order">'
+                + '<button type="button" data-bottom-move="up" title="위로">▲</button>'
+                + '<button type="button" data-bottom-move="down" title="아래로">▼</button>'
+                + '</div>'
+                + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(name) + '">'
+                + '<div class="prd-content-bottom-item-body">'
+                + '<span class="prd-content-bottom-item-name">' + escapeHtml(name) + '</span>'
+                + '<textarea data-bottom-comment="1" placeholder="이미지 코멘트">' + escapeHtml(comment) + '</textarea>'
+                + '</div>'
+                + '<button type="button" class="prd-content-bottom-item-remove" data-bottom-remove="1">삭제</button>'
+                + '</div>';
+        });
+        $list.html(html);
+        if (html) {
+            $empty.attr('hidden', true);
+        } else {
+            $empty.removeAttr('hidden');
+        }
+        markUsedLibraryItems();
+        renderBottomPreview();
+    }
+
+    function addBottomItem(item, silent) {
+        var url = String((item && item.hosting_url) || '');
+        if (!url) {
+            return;
+        }
+        if (usedBottomUrls()[url]) {
+            if (!silent) {
+                toast2('info', '하단 컨텐츠', '이미 선택된 이미지입니다.');
+            }
+            return;
+        }
+        bottomItems.push({
+            library_idx: parseInt((item && (item.library_idx || item.idx)) || 0, 10) || 0,
+            filename: String((item && item.filename) || ''),
+            hosting_url: url,
+            comment: String((item && item.comment) || ''),
+            width: parseInt((item && item.width) || 0, 10) || 0,
+            height: parseInt((item && item.height) || 0, 10) || 0
+        });
+        renderBottomList();
+    }
+
+    function markUsedLibraryItems() {
+        var used = usedBottomUrls();
+        $('#prd_content_library_list .prd-content-library-item').each(function() {
+            var url = String($(this).attr('data-hosting-url') || '');
+            $(this).toggleClass('is-used', !!used[url]);
+        });
+    }
+
+    function renderImageLibrary(items) {
+        imageLibraryItems = items || [];
+        var $list = $('#prd_content_library_list');
+        var $empty = $('#prd_content_library_empty');
+        var $count = $('#prd_content_library_count');
+        var html = '';
+        var count = 0;
+        imageLibraryItems.forEach(function(item) {
+            var url = String((item && item.hosting_url) || '');
+            var name = String((item && item.filename) || '');
+            var dimension = String((item && item.dimension_label) || '');
+            var fileSize = String((item && item.file_size_label) || '');
+            var meta = String((item && item.meta_label) || '');
+            var idx = parseInt((item && item.idx) || 0, 10) || 0;
+            var width = parseInt((item && item.width) || 0, 10) || 0;
+            var height = parseInt((item && item.height) || 0, 10) || 0;
+            if (!url) {
+                return;
+            }
+            if (!name) {
+                name = url.split('/').pop() || url;
+            }
+            var metaHtml = '';
+            if (dimension || fileSize) {
+                metaHtml = '<span class="prd-content-library-meta">'
+                    + (dimension ? '<span>' + escapeHtml(dimension) + '</span>' : '')
+                    + (fileSize ? '<span>' + escapeHtml(fileSize) + '</span>' : '')
+                    + '</span>';
+            }
+            html += '<button type="button" class="prd-content-library-item" data-library-idx="' + idx + '" data-hosting-url="' + escapeHtml(url) + '" data-filename="' + escapeHtml(name) + '" data-width="' + width + '" data-height="' + height + '" title="' + escapeHtml(name + (meta ? ' · ' + meta : '')) + '">'
+                + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(name) + '">'
+                + '<span class="prd-content-library-name">' + escapeHtml(name) + '</span>'
+                + metaHtml
+                + '</button>';
+            count += 1;
+        });
+        $list.html(html);
+        $count.text(count);
+        if (html) {
+            $list.removeAttr('hidden');
+            $empty.attr('hidden', true);
+        } else {
+            $list.attr('hidden', true);
+            $empty.removeAttr('hidden');
+        }
+        markUsedLibraryItems();
+    }
+
+    function currentBottomPosition() {
+        var selected = $.trim($('input[name="bottom_position"]:checked').val() || '');
+        return selected === 'top' ? 'top' : 'bottom';
+    }
+
+    $(document).on('change.prdDetailContent', 'input[name="bottom_position"]', function() {
+        bottomPosition = currentBottomPosition();
+        renderBottomPreview();
+    });
+
+    function saveBottomContent(saveMode) {
+        return ajaxRequest('/admin/product/detail_content/bottom/save', {
+            prd_pk: prdPk,
+            save_mode: saveMode || 'version',
+            bottom_items: JSON.stringify(bottomItems),
+            bottom_position: currentBottomPosition()
+        });
+    }
+
+    $('#prd_content_library_import_btn').on('click', function() {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/image_library/import', {
+            prd_pk: prdPk
+        }).done(function(res) {
+            if (res && res.success) {
+                renderImageLibrary((res.data && res.data.items) ? res.data.items : []);
+                toast2('success', '이미지 라이브러리', res.message || '라이브러리를 불러왔습니다.');
+            } else {
+                showAlert('이미지 라이브러리', (res && (res.message || res.msg)) || '폴더 이미지를 불러오지 못했습니다.', 'alert2');
+            }
+        }).fail(function(err) {
+            var message = (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : ((err && err.message) ? err.message : '폴더 이미지를 불러오지 못했습니다.');
+            showAlert('이미지 라이브러리', message, 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
+
+    $('#prd_content_library_upload_btn').on('click', function() {
+        if ($(this).prop('disabled')) {
+            return;
+        }
+        $('#prd_content_library_upload_input').val('').trigger('click');
+    });
+
+    $('#prd_content_library_upload_input').on('change', function() {
+        var files = this.files;
+        if (!files || !files.length) {
+            return;
+        }
+        var formData = new FormData();
+        formData.append('prd_pk', prdPk);
+        Array.prototype.forEach.call(files, function(file) {
+            formData.append('images[]', file);
+        });
+        var $btn = $('#prd_content_library_upload_btn');
+        $btn.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/image_library/upload', formData, {
+            processData: false,
+            contentType: false
+        }).done(function(res) {
+            if (res && res.success) {
+                renderImageLibrary((res.data && res.data.items) ? res.data.items : imageLibraryItems);
+                ((res.data && res.data.added) ? res.data.added : []).forEach(function(item) {
+                    addBottomItem(item, true);
+                });
+                toast2('success', '이미지 업로드', res.message || '이미지를 추가했습니다.');
+            } else {
+                showAlert('이미지 업로드', (res && (res.message || res.msg)) || '이미지를 업로드하지 못했습니다.', 'alert2');
+            }
+        }).fail(function(err) {
+            var message = (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : ((err && err.message) ? err.message : '이미지를 업로드하지 못했습니다.');
+            showAlert('이미지 업로드', message, 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
+
+    $(document).on('click.prdDetailContent', '#prd_content_library_list .prd-content-library-item', function() {
+        addBottomItem({
+            library_idx: $(this).attr('data-library-idx'),
+            filename: $(this).attr('data-filename'),
+            hosting_url: $(this).attr('data-hosting-url'),
+            width: $(this).attr('data-width'),
+            height: $(this).attr('data-height')
+        });
+    });
+
+    $(document).on('click.prdDetailContent', '[data-bottom-move]', function() {
+        var index = parseInt($(this).closest('.prd-content-bottom-item').attr('data-bottom-index'), 10);
+        var dir = $(this).attr('data-bottom-move') === 'up' ? -1 : 1;
+        var next = index + dir;
+        if (isNaN(index) || next < 0 || next >= bottomItems.length) {
+            return;
+        }
+        var current = bottomItems[index];
+        bottomItems[index] = bottomItems[next];
+        bottomItems[next] = current;
+        renderBottomList();
+    });
+
+    $(document).on('click.prdDetailContent', '[data-bottom-remove]', function() {
+        var index = parseInt($(this).closest('.prd-content-bottom-item').attr('data-bottom-index'), 10);
+        if (isNaN(index)) {
+            return;
+        }
+        bottomItems.splice(index, 1);
+        renderBottomList();
+    });
+
+    $(document).on('input.prdDetailContent', '[data-bottom-comment]', function() {
+        var index = parseInt($(this).closest('.prd-content-bottom-item').attr('data-bottom-index'), 10);
+        if (isNaN(index) || !bottomItems[index]) {
+            return;
+        }
+        bottomItems[index].comment = $(this).val() || '';
+        renderBottomPreview();
+    });
+
+    $('#prd_content_bottom_draft_btn').on('click', function() {
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+        saveBottomContent('draft').done(function(res) {
+            if (res && res.success) {
+                toast2('success', '하단 컨텐츠', res.message || '임시저장했습니다.');
+            } else {
+                showAlert('하단 컨텐츠', (res && (res.message || res.msg)) || '저장하지 못했습니다.', 'alert2');
+            }
+        }).fail(function(err) {
+            showAlert('하단 컨텐츠', (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : '저장하지 못했습니다.', 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
+
+    $('#prd_content_bottom_save_btn').on('click', function() {
+        var $btn = $(this);
+        $btn.prop('disabled', true);
+        saveBottomContent('version').done(function(res) {
+            if (res && res.success) {
+                toast2('success', '하단 컨텐츠', res.message || '저장했습니다.');
+                if (res.data && res.data.bottom_deploy_version) {
+                    bottomDeployVersion = parseInt(res.data.bottom_deploy_version, 10) || bottomDeployVersion;
+                    $('#prd_content_bottom_deploy_btn').prop('disabled', false);
+                }
+                if (res.data && res.data.bottom_position) {
+                    bottomPosition = res.data.bottom_position === 'top' ? 'top' : 'bottom';
+                    $('input[name="bottom_position"][value="' + bottomPosition + '"]').prop('checked', true);
+                }
+            } else {
+                showAlert('하단 컨텐츠', (res && (res.message || res.msg)) || '저장하지 못했습니다.', 'alert2');
+            }
+        }).fail(function(err) {
+            showAlert('하단 컨텐츠', (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : '저장하지 못했습니다.', 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
+
+    $('#prd_content_bottom_deploy_btn').on('click', function() {
+        var $btn = $(this);
+        if ($btn.prop('disabled')) {
+            return;
+        }
+        var confirmMessage = godoBottomMatchesLocal
+            ? '고도몰에 이미 같은 하단 버전이 있습니다. v' + bottomDeployVersion + '을 다시 배포할까요?'
+            : '현재 하단 버전 v' + bottomDeployVersion + '을 고도몰에 배포할까요?';
+        if (!confirm(confirmMessage)) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/bottom/deploy', {
+            prd_pk: prdPk
+        }).done(function(res) {
+            if (res && res.success) {
+                toast2('success', '하단 배포', res.message || '고도몰에 배포했습니다.');
+                godoBottomMatchesLocal = true;
+            } else {
+                showAlert('하단 배포', formatDeployError(res), 'alert2');
+            }
+        }).fail(function(err) {
+            showAlert('하단 배포', formatDeployError(err), 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
+
+    renderImageLibrary(imageLibraryItems);
+    renderBottomList();
     renderPreview();
     loadPreviewPanelState();
 })();

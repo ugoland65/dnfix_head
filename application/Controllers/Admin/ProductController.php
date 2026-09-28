@@ -27,6 +27,7 @@ use App\Services\OrderGroupService;
 use App\Services\ProductSpecInfoService;
 use App\Services\ProductSpecService;
 use App\Services\ProductDetailContentService;
+use App\Services\ProductImageLibraryService;
 use App\Models\ProductModel;
 use App\Models\ProductCollectionItemModel;
 use App\Models\ProductStockModel;
@@ -118,6 +119,8 @@ class ProductController extends BaseClass
             $s_relation_group_idx = (int)($requestData['s_relation_group_idx'] ?? 0);
             $s_work_task_code = $requestData['s_work_task_code'] ?? null;
             $s_work_task_done = $requestData['s_work_task_done'] ?? null;
+            $s_display_weight_min = $requestData['s_display_weight_min'] ?? null;
+            $s_display_weight_max = $requestData['s_display_weight_max'] ?? null;
 
             //서비스로 넘겨주는 값
             $payload = [
@@ -140,6 +143,8 @@ class ProductController extends BaseClass
                 's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
+                's_display_weight_min' => $s_display_weight_min,
+                's_display_weight_max' => $s_display_weight_max,
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
@@ -179,6 +184,8 @@ class ProductController extends BaseClass
                 's_relation_group_idx' => $s_relation_group_idx,
                 's_work_task_code' => $s_work_task_code,
                 's_work_task_done' => $s_work_task_done,
+                's_display_weight_min' => $s_display_weight_min,
+                's_display_weight_max' => $s_display_weight_max,
                 'rack_code' => $rack_code,
                 'in_stock' => $in_stock,
                 'search_value' => $search_value,
@@ -1023,16 +1030,48 @@ class ProductController extends BaseClass
                 throw new \RuntimeException('업로드할 수집 상품 정보를 찾을 수 없습니다.');
             }
 
-            $sourceImageUrls = [];
+            $sourceImages = [];
             $collectionPageUrl = trim((string)($sourceItem['source_url'] ?? ''));
             foreach ((array)($sourceItem['image_sources'] ?? []) as $imageSource) {
                 $sourceUrl = is_array($imageSource) ? (string)($imageSource['full'] ?? $imageSource['src'] ?? '') : (string)$imageSource;
-                if ($sourceUrl !== '') {
-                    $sourceImageUrls[] = ProductImageHostingService::resolveCollectedImageUrl($sourceUrl, $collectionPageUrl);
+                if ($sourceUrl === '') {
+                    continue;
                 }
+                $sourceImages[] = [
+                    'url' => ProductImageHostingService::resolveCollectedImageUrl($sourceUrl, $collectionPageUrl),
+                    'sort_no' => count($sourceImages) + 1,
+                ];
             }
-            if (empty($sourceImageUrls)) {
+            if ($sourceImages === []) {
                 throw new \RuntimeException('업로드할 수집 이미지가 없습니다.');
+            }
+            $allSourceImageUrls = array_values(array_map(static function (array $image) {
+                return (string)$image['url'];
+            }, $sourceImages));
+
+            $selectedIndexes = $requestData['image_indexes'] ?? [];
+            if (is_string($selectedIndexes)) {
+                $decodedIndexes = json_decode($selectedIndexes, true);
+                $selectedIndexes = is_array($decodedIndexes) ? $decodedIndexes : [];
+            }
+            $selectedIndexes = array_values(array_unique(array_filter(
+                array_map('intval', is_array($selectedIndexes) ? $selectedIndexes : []),
+                static function ($index) {
+                    return $index >= 0;
+                }
+            )));
+            $isSelectedUpload = $selectedIndexes !== [];
+            if ($isSelectedUpload) {
+                $filtered = [];
+                foreach ($selectedIndexes as $index) {
+                    if (isset($sourceImages[$index])) {
+                        $filtered[] = $sourceImages[$index];
+                    }
+                }
+                if ($filtered === []) {
+                    throw new \RuntimeException('선택한 수집 이미지를 찾지 못했습니다.');
+                }
+                $sourceImages = $filtered;
             }
 
             $sourceType = 'maker';
@@ -1057,7 +1096,7 @@ class ProductController extends BaseClass
                 ->first();
             $collectionItem = is_array($collectionItem) ? $collectionItem : ($collectionItem ? $collectionItem->toArray() : null);
 
-            if (!empty($collectionItem) && ($collectionItem['image_upload_status'] ?? '') === 'success') {
+            if (!$isSelectedUpload && !empty($collectionItem) && ($collectionItem['image_upload_status'] ?? '') === 'success') {
                 return response()->json([
                     'success' => true,
                     'already_uploaded' => true,
@@ -1074,8 +1113,8 @@ class ProductController extends BaseClass
                 'source_collected_at' => $sourceCollectedAt,
                 'image_storage_path' => $storagePath,
                 'image_upload_status' => 'uploading',
-                'source_image_urls_json' => json_encode($sourceImageUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                'image_total_count' => count($sourceImageUrls),
+                'source_image_urls_json' => json_encode($allSourceImageUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'image_total_count' => count($allSourceImageUrls),
                 'image_success_count' => 0,
                 'image_failed_count' => 0,
                 'error_message' => null,
@@ -1090,12 +1129,23 @@ class ProductController extends BaseClass
             $result = (new ProductImageHostingService())->uploadCollectionImages([
                 'image_storage_path' => $storagePath,
                 'site_code' => $siteCode,
-                'source_image_urls' => $sourceImageUrls,
+                'source_image_urls' => $sourceImages,
             ]);
+            $hostingUrls = $result['hosting_urls'];
+            if ($isSelectedUpload) {
+                $existingUrls = json_decode((string)($collectionItem['hosting_image_urls_json'] ?? '[]'), true);
+                $existingUrls = is_array($existingUrls) ? array_values(array_filter($existingUrls, 'is_string')) : [];
+                foreach ($hostingUrls as $hostingUrl) {
+                    if (!in_array($hostingUrl, $existingUrls, true)) {
+                        $existingUrls[] = $hostingUrl;
+                    }
+                }
+                $hostingUrls = $existingUrls;
+            }
             $updateData = [
                 'image_upload_status' => $result['status'],
-                'hosting_image_urls_json' => json_encode($result['hosting_urls'], JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                'image_success_count' => $result['success_count'],
+                'hosting_image_urls_json' => json_encode($hostingUrls, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
+                'image_success_count' => count($hostingUrls),
                 'image_failed_count' => $result['failed_count'],
                 'error_message' => $result['failed_count'] > 0
                     ? implode("\n", array_filter(array_map(static function (array $upload) {
@@ -1109,7 +1159,7 @@ class ProductController extends BaseClass
                 'target_table' => 'product_collection_item',
                 'target_pk' => (string)$collectionItem['idx'],
                 'action_mode' => 'image_hosting_upload',
-                'action_summary' => '수집 이미지 이미지호스팅 업로드 (' . $result['success_count'] . '건 성공, ' . $result['failed_count'] . '건 실패)',
+                'action_summary' => ($isSelectedUpload ? '선택한 수집 이미지' : '수집 이미지') . ' 이미지호스팅 업로드 (' . $result['success_count'] . '건 성공, ' . $result['failed_count'] . '건 실패)',
                 'before_json' => [
                     'image_upload_status' => $collectionItem['image_upload_status'] ?? null,
                     'hosting_image_urls_json' => $collectionItem['hosting_image_urls_json'] ?? null,
@@ -1126,7 +1176,9 @@ class ProductController extends BaseClass
             return response()->json([
                 'success' => $result['status'] !== 'failed',
                 'message' => $result['status'] === 'success'
-                    ? '수집 이미지를 이미지 호스팅에 업로드했습니다.'
+                    ? ($isSelectedUpload
+                        ? '선택한 이미지를 이미지 호스팅에 업로드했습니다.'
+                        : '수집 이미지를 이미지 호스팅에 업로드했습니다.')
                     : '일부 이미지 업로드에 실패했습니다.',
                 'data' => $result,
             ]);
@@ -1816,6 +1868,138 @@ class ProductController extends BaseClass
 
 
     /**
+     * 이미지 저장소 폴더를 읽어 상품 컨텐츠 라이브러리에 목록화한다.
+     */
+    public function importProductImageLibrary(Request $request)
+    {
+        try {
+            $prdPk = (int)($request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $result = (new ProductImageLibraryService())->importFromHosting($prdPk);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '라이브러리를 갱신했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 로컬 이미지를 이미지 저장소에 올리고 라이브러리에 추가한다.
+     */
+    public function uploadProductImageLibrary(Request $request)
+    {
+        try {
+            $prdPk = (int)($request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $files = $this->collectUploadedImageFiles();
+            $result = (new ProductImageLibraryService())->uploadToLibrary($prdPk, $files);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '이미지를 업로드했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 하단 컨텐츠 저장
+     */
+    public function saveProductDetailBottomContent(Request $request)
+    {
+        try {
+            $prdPk = (int)($_POST['prd_pk'] ?? $_POST['prd_idx'] ?? $request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $saveMode = trim((string)($_POST['save_mode'] ?? $request->input('save_mode') ?? 'version'));
+            $keepVersion = $saveMode === 'draft';
+            $bottomItems = $this->decodePostedJsonList($_POST['bottom_items'] ?? $request->input('bottom_items') ?? []);
+            $bottomPosition = trim((string)($_POST['bottom_position'] ?? $request->input('bottom_position') ?? 'bottom'));
+
+            $content = (new ProductDetailContentService())->saveBottom(
+                $prdPk,
+                [
+                    'bottom_items' => $bottomItems,
+                    'bottom_position' => $bottomPosition,
+                    'save_mode' => $keepVersion ? 'draft' : 'version',
+                ],
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            return response()->json([
+                'success' => true,
+                'message' => $keepVersion
+                    ? '하단 컨텐츠를 임시저장했습니다. 배포버전은 그대로입니다.'
+                    : '하단 컨텐츠를 새 배포버전으로 저장했습니다.',
+                'data' => $content,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+
+    /**
+     * 하단 컨텐츠를 고도몰에 실배포
+     */
+    public function deployProductDetailBottomContent(Request $request)
+    {
+        try {
+            $prdPk = (int)($_POST['prd_pk'] ?? $_POST['prd_idx'] ?? $request->input('prd_pk') ?? $request->input('prd_idx') ?? 0);
+            $result = (new ProductDetailContentService())->deployBottomToGodo(
+                $prdPk,
+                [
+                    'idx' => AuthAdmin::getSession('sess_idx'),
+                    'name' => AuthAdmin::getSession('sess_name'),
+                ]
+            );
+
+            if (empty($result['ok'])) {
+                return response()->json([
+                    'success' => false,
+                    'message' => (string)($result['message'] ?? '고도몰 하단 배포에 실패했습니다.'),
+                    'stage' => (string)($result['stage'] ?? ''),
+                    'error_code' => (string)($result['error_code'] ?? ''),
+                    'debug' => $result['debug'] ?? [],
+                ], 400);
+            }
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'] ?? '고도몰에 하단 컨텐츠를 배포했습니다.',
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+                'error_code' => 'SERVER_ERROR',
+                'debug' => [
+                    'exception' => get_class($e),
+                    'file' => basename($e->getFile()) . ':' . $e->getLine(),
+                ],
+            ], 400);
+        }
+    }
+
+
+    /**
      * 상품 상세페이지 컨텐츠 저장
      */
     public function saveProductDetailContent(Request $request)
@@ -1943,6 +2127,44 @@ class ProductController extends BaseClass
             $decoded = json_decode(html_entity_decode((string)$raw, ENT_QUOTES, 'UTF-8'), true);
         }
         return is_array($decoded) ? $decoded : [];
+    }
+
+    /**
+     * @return array<int,array{name:string,tmp_name:string,size:int,error:int}>
+     */
+    private function collectUploadedImageFiles(): array
+    {
+        $bag = $_FILES['images'] ?? $_FILES['image'] ?? null;
+        if (!is_array($bag) || !isset($bag['tmp_name'])) {
+            return [];
+        }
+        if (!is_array($bag['tmp_name'])) {
+            if ((int)($bag['error'] ?? 0) === UPLOAD_ERR_NO_FILE || trim((string)($bag['tmp_name'] ?? '')) === '') {
+                return [];
+            }
+            return [[
+                'name' => (string)($bag['name'] ?? ''),
+                'tmp_name' => (string)$bag['tmp_name'],
+                'size' => (int)($bag['size'] ?? 0),
+                'error' => (int)($bag['error'] ?? 0),
+            ]];
+        }
+
+        $files = [];
+        foreach ($bag['tmp_name'] as $index => $tmpName) {
+            $tmpName = (string)$tmpName;
+            $error = (int)($bag['error'][$index] ?? 0);
+            if ($tmpName === '' || $error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $files[] = [
+                'name' => (string)($bag['name'][$index] ?? ''),
+                'tmp_name' => $tmpName,
+                'size' => (int)($bag['size'][$index] ?? 0),
+                'error' => $error,
+            ];
+        }
+        return $files;
     }
 
 
@@ -2399,6 +2621,14 @@ class ProductController extends BaseClass
 
                 case 'set_godo_new_goods_display':
                     $result = $this->productService->setGodoNewGoodsDisplay($requestData);
+                    break;
+
+                case 'delete_godo_categories':
+                    $result = $this->productService->deleteGodoCategories($requestData);
+                    break;
+
+                case 'move_godo_goods_to_category_top':
+                    $result = $this->productService->moveGodoGoodsToCategoryTop($requestData);
                     break;
 
                 case 'unset_product_discontinued':

@@ -238,7 +238,7 @@
     .category-guide-modal {
         position: fixed;
         inset: 0;
-        z-index: 10020;
+        z-index: 99999991;
         display: none;
         align-items: center;
         justify-content: center;
@@ -399,6 +399,30 @@
         margin-bottom: 6px;
     }
     .order-code-text { font-weight: 600; }
+    .prd-godo-category-tools { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; margin-bottom: 8px; }
+    .prd-godo-category-list { display: flex; flex-direction: column; gap: 2px; }
+    .prd-godo-category-row {
+        display: flex;
+        align-items: center;
+        gap: 8px;
+        padding: 4px 6px;
+        border-radius: 4px;
+    }
+    .prd-godo-category-row:hover { background: #f3f4f6; }
+    .prd-godo-category-row label {
+        display: inline-flex;
+        align-items: center;
+        gap: 6px;
+        margin: 0;
+        min-width: 0;
+        flex: 1;
+        cursor: pointer;
+    }
+    .prd-godo-category-row input[type="checkbox"] { margin: 0; }
+    .prd-godo-category-code { color: #9ca3af; font-size: 12px; font-weight: 400; }
+    .prd-godo-category-first-btn { display: inline-flex; visibility: hidden; white-space: nowrap; }
+    .prd-godo-category-row:hover .prd-godo-category-first-btn,
+    .prd-godo-category-row:focus-within .prd-godo-category-first-btn { visibility: visible; }
 
     .preference-tag-list { display: flex; align-items: center; gap: 8px 12px; flex-wrap: wrap; }
     .preference-tag-item { display: inline-flex; align-items: center; gap: 3px; }
@@ -1390,6 +1414,7 @@
                     <?php } ?>
                 </td>
             </tr>
+            
             <tr>
                 <th>작업체크</th>
                 <td>
@@ -1795,7 +1820,7 @@
                             <col />
                         </colgroup>
                         <tr>
-                            <th>상품중량</th>
+                            <th>상품중량<br>(표기중량)</th>
                             <td>
                                 <input type='text' name='cd_weight_1' style='width:80px;' value="<?= $productData['cd_weight_fn']['1'] ?? '' ?>"> g
                                 ※ 제공된 상품 상세페이지에 기재된 상품중량 ( 패키지 미포함 )
@@ -1908,8 +1933,6 @@
             </tr>
 
         </tbody>
-
-
 
         <tbody>
             <tr>
@@ -2116,6 +2139,7 @@
                         $godoCategoryRows = (isset($godoGoods['categories']) && is_array($godoGoods['categories']))
                             ? $godoGoods['categories']
                             : [];
+                        $godoCategorySeen = [];
                         foreach ($godoCategoryRows as $godoCategoryRow) {
                             if (!is_array($godoCategoryRow)) {
                                 continue;
@@ -2124,6 +2148,7 @@
                                 ? $godoCategoryRow['path']
                                 : [];
                             $pathNames = [];
+                            $pathCateCd = '';
                             foreach ($pathRows as $pathRow) {
                                 if (!is_array($pathRow)) {
                                     continue;
@@ -2132,6 +2157,10 @@
                                 if ($cateNm !== '') {
                                     $pathNames[] = $cateNm;
                                 }
+                                $rowCateCd = trim((string)($pathRow['cateCd'] ?? ''));
+                                if ($rowCateCd !== '') {
+                                    $pathCateCd = $rowCateCd;
+                                }
                             }
                             if ($pathNames === []) {
                                 $cateNm = trim((string)($godoCategoryRow['cateNm'] ?? ''));
@@ -2139,11 +2168,27 @@
                                     $pathNames[] = $cateNm;
                                 }
                             }
-                            if ($pathNames !== []) {
-                                $godoCategoryLines[] = implode(' > ', $pathNames);
+                            if ($pathNames === []) {
+                                continue;
                             }
+                            $cateCd = trim((string)($godoCategoryRow['cateCd'] ?? ''));
+                            if ($cateCd === '') {
+                                $cateCd = $pathCateCd;
+                            }
+                            $line = implode(' > ', $pathNames);
+                            $seenKey = $cateCd !== '' ? $cateCd : $line;
+                            if (isset($godoCategorySeen[$seenKey])) {
+                                continue;
+                            }
+                            $godoCategorySeen[$seenKey] = true;
+                            $godoCategoryLines[] = [
+                                'line' => $line,
+                                'cateCd' => $cateCd,
+                            ];
                         }
-                        $godoCategoryLines = array_values(array_unique($godoCategoryLines));
+                        usort($godoCategoryLines, static function (array $a, array $b): int {
+                            return strcmp((string)($a['cateCd'] ?? ''), (string)($b['cateCd'] ?? ''));
+                        });
                     ?>
                     <input type='text' name='cd_godo_code' style='width:200px;' value="<?= htmlspecialchars($godoCodeValue, ENT_QUOTES, 'UTF-8') ?>">
                     <?php if ($godoCodeValue !== '' && $godoCodeValue !== '0') { ?>
@@ -2185,11 +2230,40 @@
                             <tr>
                                 <th>카테고리</th>
                                 <td colspan="3">
-                                    <?php foreach ($godoCategoryLines as $categoryLine) { ?>
-                                        <?php if ($categoryLine !== '') { ?>
-                                            <div><?= htmlspecialchars($categoryLine, ENT_QUOTES, 'UTF-8') ?></div>
-                                        <?php } ?>
-                                    <?php } ?>
+                                    <div class="prd-godo-category-box" data-prd-idx="<?= (int)($productData['CD_IDX'] ?? 0) ?>" data-godo-no="<?= htmlspecialchars($godoGoodsNo !== '' ? $godoGoodsNo : $godoCodeValue, ENT_QUOTES, 'UTF-8') ?>">
+                                        <div class="prd-godo-category-tools">
+                                            <label>
+                                                <input type="checkbox" id="prd_godo_category_check_all">
+                                                전체선택
+                                            </label>
+                                            <button type="button" class="btnstyle1 btnstyle1-sm" id="prd_godo_category_delete_btn">선택 카테고리 삭제</button>
+                                        </div>
+                                        <div class="prd-godo-category-list" id="prd_godo_category_list">
+                                            <?php foreach ($godoCategoryLines as $categoryRow) { ?>
+                                                <?php
+                                                $categoryLine = is_array($categoryRow) ? trim((string)($categoryRow['line'] ?? '')) : trim((string)$categoryRow);
+                                                $categoryCode = is_array($categoryRow) ? trim((string)($categoryRow['cateCd'] ?? '')) : '';
+                                                if ($categoryLine === '' && $categoryCode === '') {
+                                                    continue;
+                                                }
+                                                ?>
+                                                <div class="prd-godo-category-row" data-cate-cd="<?= htmlspecialchars($categoryCode, ENT_QUOTES, 'UTF-8') ?>">
+                                                    <label>
+                                                        <input type="checkbox" name="godo_category_cd[]" value="<?= htmlspecialchars($categoryCode, ENT_QUOTES, 'UTF-8') ?>" <?= $categoryCode === '' ? 'disabled' : '' ?>>
+                                                        <?php if ($categoryLine !== '') { ?>
+                                                            <span class="prd-godo-category-name"><?= htmlspecialchars($categoryLine, ENT_QUOTES, 'UTF-8') ?></span>
+                                                        <?php } ?>
+                                                        <?php if ($categoryCode !== '') { ?>
+                                                            <span class="prd-godo-category-code">(<?= htmlspecialchars($categoryCode, ENT_QUOTES, 'UTF-8') ?>)</span>
+                                                        <?php } ?>
+                                                    </label>
+                                                    <?php if ($categoryCode !== '') { ?>
+                                                        <button type="button" class="btnstyle1 btnstyle1-xs prd-godo-category-first-btn" data-cate-cd="<?= htmlspecialchars($categoryCode, ENT_QUOTES, 'UTF-8') ?>">카테고리 맨첫번째 정렬</button>
+                                                    <?php } ?>
+                                                </div>
+                                            <?php } ?>
+                                        </div>
+                                    </div>
                                 </td>
                             </tr>
                             <?php } ?>
@@ -3003,6 +3077,91 @@
                 });
         }
 
+        function collectSelectedGodoCategoryCodes() {
+            var codes = [];
+            $('#prd_godo_category_list input[name="godo_category_cd[]"]:checked').each(function() {
+                var code = String($(this).val() || '').trim();
+                if (code !== '') {
+                    codes.push(code);
+                }
+            });
+            return codes;
+        }
+
+        function syncGodoCategoryCheckAll() {
+            var $items = $('#prd_godo_category_list input[name="godo_category_cd[]"]:not(:disabled)');
+            var $checked = $items.filter(':checked');
+            var $all = $('#prd_godo_category_check_all');
+            if (!$all.length) {
+                return;
+            }
+            $all.prop('checked', $items.length > 0 && $items.length === $checked.length);
+        }
+
+        function deleteSelectedGodoCategories() {
+            alert('아직 작업중입니다');
+        }
+
+        function moveGodoCategoryFirst(button) {
+            var $box = $('.prd-godo-category-box');
+            var $row = $(button).closest('.prd-godo-category-row');
+            var prdIdx = parseInt(String($box.data('prdIdx') || ''), 10) || 0;
+            var cateCd = String($(button).data('cateCd') || $row.data('cateCd') || '').trim();
+            if (prdIdx <= 0) {
+                alert('상품번호가 없습니다.');
+                return;
+            }
+            if (cateCd === '') {
+                alert('카테고리 코드가 없습니다.');
+                return;
+            }
+            if (!confirm('이상품을 선택한 카테고리로 맨 처음으로 정렬할까요?')) {
+                return;
+            }
+
+            var $button = $(button);
+            if ($button.prop('disabled')) {
+                return;
+            }
+            var originalText = $button.text();
+            $button.prop('disabled', true).text('처리중...');
+
+            ajaxRequest('/admin/product/action', {
+                action_mode: 'move_godo_goods_to_category_top',
+                prd_idx: prdIdx,
+                cate_cd: cateCd,
+                action_url: window.location.pathname + window.location.search
+            }).done(function(res) {
+                if (res && res.success) {
+                    alert(res.message || '지정 카테고리 맨 앞 진열로 이동했습니다.');
+                    location.reload();
+                    return;
+                }
+                showProcessFailModal(
+                    '카테고리 맨앞 정렬 실패',
+                    getFailMessage(res, '카테고리 맨앞 정렬에 실패했습니다.')
+                );
+            }).fail(function(res) {
+                showProcessFailModal(
+                    '카테고리 맨앞 정렬 실패',
+                    getFailMessage(res, '카테고리 맨앞 정렬에 실패했습니다.')
+                );
+            }).always(function() {
+                $button.prop('disabled', false).text(originalText);
+            });
+        }
+
+        function bindGodoCategoryActions() {
+            $('#prd_godo_category_check_all').on('change', function() {
+                $('#prd_godo_category_list input[name="godo_category_cd[]"]:not(:disabled)').prop('checked', $(this).prop('checked'));
+            });
+            $('#prd_godo_category_list').on('change', 'input[name="godo_category_cd[]"]', syncGodoCategoryCheckAll);
+            $('#prd_godo_category_delete_btn').on('click', deleteSelectedGodoCategories);
+            $('#prd_godo_category_list').on('click', '.prd-godo-category-first-btn', function() {
+                moveGodoCategoryFirst(this);
+            });
+        }
+
         function setGodoNewGoodsDisplay(button, prdIdx, acKind, acMode) {
             if (!prdIdx) {
                 alert('상품번호가 없습니다.');
@@ -3198,6 +3357,7 @@
         }
 
         bindGodoSpecialDiscountModal();
+        bindGodoCategoryActions();
 
         return {
             save,

@@ -28,7 +28,13 @@ class ProductImageHostingService
         $remoteBasePath = rtrim((string)$config['remote_base_path'], '/');
         $publicBaseUrl = rtrim((string)$config['public_base_url'], '/');
         $uploads = [];
-        foreach (array_values($sourceImageUrls) as $index => $sourceImageUrl) {
+        foreach (array_values($sourceImageUrls) as $index => $sourceImage) {
+            $sortNo = $index + 1;
+            $sourceImageUrl = $sourceImage;
+            if (is_array($sourceImage)) {
+                $sourceImageUrl = trim((string)($sourceImage['url'] ?? $sourceImage['source_url'] ?? ''));
+                $sortNo = max(1, (int)($sourceImage['sort_no'] ?? $sortNo));
+            }
             $sourceImageUrl = trim((string)$sourceImageUrl);
             $urlParts = parse_url($sourceImageUrl);
             $scheme = strtolower((string)($urlParts['scheme'] ?? ''));
@@ -40,9 +46,9 @@ class ProductImageHostingService
             if (!in_array($extension, ['jpg', 'jpeg', 'png', 'gif', 'webp'], true)) {
                 $extension = 'jpg';
             }
-            $filename = sprintf('%s_%02d.%s', $siteCode, $index + 1, $extension);
+            $filename = sprintf('%s_%02d.%s', $siteCode, $sortNo, $extension);
             $uploads[] = [
-                'sort_no' => $index + 1,
+                'sort_no' => $sortNo,
                 'source_url' => $sourceImageUrl,
                 'remote_path' => $remoteBasePath . $storagePath . $filename,
                 'hosting_url' => $publicBaseUrl . $storagePath . $filename,
@@ -109,6 +115,154 @@ class ProductImageHostingService
             'success_count' => count($successUrls),
             'failed_count' => $failedCount,
         ];
+    }
+
+    /**
+     * 상품 이미지 저장소 폴더의 이미지 파일 목록을 읽는다.
+     *
+     * @param callable|null $needsMeta filename => bool. null이면 전부 크기/해상도를 읽는다.
+     * @return array<int,array{filename:string,hosting_url:string,remote_path:string,file_size:int,width:int,height:int}>
+     */
+    public function listStorageImages(string $storagePath, ?callable $needsMeta = null): array
+    {
+        $config = $this->getConfig();
+        $this->validateConfig($config);
+        $storagePath = $this->normalizeStoragePath($storagePath);
+        $remoteBasePath = rtrim((string)$config['remote_base_path'], '/');
+        $publicBaseUrl = rtrim((string)$config['public_base_url'], '/');
+        $remoteDir = $remoteBasePath . $storagePath;
+
+        $connection = $this->connect($config);
+        try {
+            $names = $this->listRemoteFiles($connection, $remoteDir);
+            $allowed = ['jpg', 'jpeg', 'png', 'gif', 'webp'];
+            $images = [];
+            foreach ($names as $filename) {
+                $extension = strtolower(pathinfo($filename, PATHINFO_EXTENSION));
+                if (!in_array($extension, $allowed, true)) {
+                    continue;
+                }
+                $remotePath = $remoteDir . $filename;
+                $hostingUrl = $publicBaseUrl . $storagePath . $filename;
+                $item = [
+                    'filename' => $filename,
+                    'hosting_url' => $hostingUrl,
+                    'remote_path' => $remotePath,
+                    'file_size' => 0,
+                    'width' => 0,
+                    'height' => 0,
+                ];
+                if ($needsMeta === null || $needsMeta($filename)) {
+                    $meta = $this->inspectRemoteImage($connection, $remotePath, $hostingUrl);
+                    $item['file_size'] = (int)($meta['file_size'] ?? 0);
+                    $item['width'] = (int)($meta['width'] ?? 0);
+                    $item['height'] = (int)($meta['height'] ?? 0);
+                }
+                $images[] = $item;
+            }
+        } finally {
+            $this->disconnect($connection);
+        }
+
+        usort($images, static function (array $a, array $b): int {
+            return strnatcasecmp((string)$a['filename'], (string)$b['filename']);
+        });
+
+        return $images;
+    }
+
+    /**
+     * 로컬 파일을 상품 이미지 저장소에 업로드한다.
+     *
+     * @param array<int,array{name?:string,tmp_name?:string,body?:string,size?:int,error?:int}> $files
+     * @return array<int,array{filename:string,hosting_url:string,remote_path:string,file_size:int,width:int,height:int}>
+     */
+    public function uploadLocalImages(string $storagePath, array $files): array
+    {
+        $config = $this->getConfig();
+        $this->validateConfig($config);
+        $storagePath = $this->normalizeStoragePath($storagePath);
+        $remoteBasePath = rtrim((string)$config['remote_base_path'], '/');
+        $publicBaseUrl = rtrim((string)$config['public_base_url'], '/');
+
+        $connection = $this->connect($config);
+        $uploaded = [];
+        try {
+            $usedNames = [];
+            foreach ($this->listRemoteFiles($connection, $remoteBasePath . $storagePath) as $existingName) {
+                $usedNames[strtolower((string)$existingName)] = true;
+            }
+            foreach ($files as $file) {
+                $error = (int)($file['error'] ?? 0);
+                if ($error !== UPLOAD_ERR_OK && $error !== 0) {
+                    throw new \RuntimeException('이미지 업로드에 실패했습니다.');
+                }
+                $binary = (string)($file['body'] ?? '');
+                if ($binary === '') {
+                    $tmpName = (string)($file['tmp_name'] ?? '');
+                    if ($tmpName === '' || !is_file($tmpName)) {
+                        throw new \RuntimeException('업로드 파일을 읽지 못했습니다.');
+                    }
+                    $binary = (string)file_get_contents($tmpName);
+                }
+                if ($binary === '') {
+                    throw new \RuntimeException('빈 이미지 파일입니다.');
+                }
+                $info = @getimagesizefromstring($binary);
+                if (!is_array($info)) {
+                    throw new \RuntimeException('이미지 파일이 아닙니다.');
+                }
+                $mime = strtolower((string)($info['mime'] ?? ''));
+                $extensionMap = [
+                    'image/jpeg' => 'jpg',
+                    'image/png' => 'png',
+                    'image/gif' => 'gif',
+                    'image/webp' => 'webp',
+                ];
+                if (!isset($extensionMap[$mime])) {
+                    throw new \RuntimeException('jpg, png, gif, webp만 업로드할 수 있습니다.');
+                }
+                $filename = $this->makeUniqueUploadFilename((string)($file['name'] ?? ''), $extensionMap[$mime], $usedNames);
+                $usedNames[strtolower($filename)] = true;
+                $remotePath = $remoteBasePath . $storagePath . $filename;
+                $this->uploadBinary($connection, $remotePath, $binary);
+                $uploaded[] = [
+                    'filename' => $filename,
+                    'hosting_url' => $publicBaseUrl . $storagePath . $filename,
+                    'remote_path' => $remotePath,
+                    'file_size' => strlen($binary),
+                    'width' => (int)($info[0] ?? 0),
+                    'height' => (int)($info[1] ?? 0),
+                ];
+            }
+        } finally {
+            $this->disconnect($connection);
+        }
+
+        return $uploaded;
+    }
+
+    private function makeUniqueUploadFilename(string $originalName, string $extension, array $usedNames): string
+    {
+        $base = strtolower(pathinfo($originalName, PATHINFO_FILENAME));
+        $base = preg_replace('/[^a-z0-9._-]+/', '_', $base) ?? '';
+        $base = trim($base, '._-');
+        if ($base === '' || $base === 'image') {
+            $base = 'upload';
+        }
+        $candidate = $base . '.' . $extension;
+        if (empty($usedNames[strtolower($candidate)])) {
+            return $candidate;
+        }
+        for ($i = 0; $i < 20; $i++) {
+            $candidate = $base . '_' . date('YmdHis') . '_' . strtolower(bin2hex(random_bytes(2))) . '.' . $extension;
+            if (empty($usedNames[strtolower($candidate)])) {
+                return $candidate;
+            }
+            usleep(1000);
+        }
+
+        return $base . '_' . uniqid('', true) . '.' . $extension;
     }
 
     public static function getCollectedImageSourceSites(): array
@@ -335,6 +489,212 @@ class ProductImageHostingService
         if (!$uploaded) {
             throw new \RuntimeException('FTP 이미지 업로드에 실패했습니다.');
         }
+    }
+
+    private function listRemoteFiles(array $connection, string $remoteDir): array
+    {
+        $remoteDir = rtrim($remoteDir, '/') . '/';
+        if (($connection['protocol'] ?? '') === 'sftp') {
+            $sftp = $connection['sftp'] ?? null;
+            if (!$sftp) {
+                throw new \RuntimeException('SFTP 세션이 없습니다.');
+            }
+            $handle = @opendir('ssh2.sftp://' . intval($sftp) . $remoteDir);
+            if (!$handle) {
+                throw new \RuntimeException('이미지 저장소 폴더를 열 수 없습니다.');
+            }
+            $names = [];
+            while (($entry = readdir($handle)) !== false) {
+                if ($entry === '.' || $entry === '..') {
+                    continue;
+                }
+                $names[] = $entry;
+            }
+            closedir($handle);
+            return $names;
+        }
+
+        $ftp = $connection['connection'] ?? null;
+        if (!$ftp) {
+            throw new \RuntimeException('FTP 연결이 없습니다.');
+        }
+
+        $list = @ftp_nlist($ftp, $remoteDir);
+        if ($list === false) {
+            if (!@ftp_chdir($ftp, rtrim($remoteDir, '/'))) {
+                throw new \RuntimeException('이미지 저장소 폴더를 찾을 수 없습니다. 경로를 확인해 주세요.');
+            }
+            $list = @ftp_nlist($ftp, '.');
+            if ($list === false) {
+                return [];
+            }
+        }
+
+        $names = [];
+        foreach ($list as $item) {
+            $name = basename(str_replace('\\', '/', (string)$item));
+            if ($name === '' || $name === '.' || $name === '..') {
+                continue;
+            }
+            $names[] = $name;
+        }
+
+        return array_values(array_unique($names));
+    }
+
+    /**
+     * 원격 이미지의 파일크기와 가로/세로를 읽는다.
+     *
+     * @return array{file_size:int,width:int,height:int}
+     */
+    private function inspectRemoteImage(array $connection, string $remotePath, string $publicUrl = ''): array
+    {
+        $fileSize = $this->getRemoteFileSize($connection, $remotePath);
+        $binary = $this->downloadImageHead($publicUrl, $connection, $remotePath, $fileSize);
+        $width = 0;
+        $height = 0;
+        if ($binary !== '') {
+            $info = @getimagesizefromstring($binary);
+            if (is_array($info)) {
+                $width = (int)($info[0] ?? 0);
+                $height = (int)($info[1] ?? 0);
+            }
+            if ($fileSize <= 0) {
+                $fileSize = strlen($binary);
+            }
+        }
+
+        return [
+            'file_size' => $fileSize,
+            'width' => $width,
+            'height' => $height,
+        ];
+    }
+
+    private function getRemoteFileSize(array $connection, string $remotePath): int
+    {
+        if (($connection['protocol'] ?? '') === 'sftp') {
+            $sftp = $connection['sftp'] ?? null;
+            if (!$sftp) {
+                return 0;
+            }
+            $stat = @stat('ssh2.sftp://' . intval($sftp) . $remotePath);
+            return (int)($stat['size'] ?? 0);
+        }
+
+        $ftp = $connection['connection'] ?? null;
+        if (!$ftp) {
+            return 0;
+        }
+        $size = @ftp_size($ftp, $remotePath);
+
+        return (is_int($size) && $size > 0) ? $size : 0;
+    }
+
+    private function downloadImageHead(string $publicUrl, array $connection, string $remotePath, int &$fileSize): string
+    {
+        $headLimit = 512 * 1024;
+        if ($publicUrl !== '') {
+            $binary = $this->downloadPublicHead($publicUrl, $headLimit, $fileSize);
+            if ($binary !== '') {
+                return $binary;
+            }
+        }
+
+        return $this->downloadRemoteBinary($connection, $remotePath, $fileSize, $headLimit);
+    }
+
+    private function downloadPublicHead(string $publicUrl, int $maxBytes, int &$fileSize): string
+    {
+        $context = stream_context_create([
+            'http' => [
+                'method' => 'GET',
+                'header' => 'Range: bytes=0-' . max(0, $maxBytes - 1) . "\r\n",
+                'timeout' => 12,
+                'follow_location' => 1,
+                'ignore_errors' => true,
+            ],
+            'ssl' => [
+                'verify_peer' => false,
+                'verify_peer_name' => false,
+            ],
+        ]);
+        $binary = @file_get_contents($publicUrl, false, $context);
+        if (!is_string($binary) || $binary === '') {
+            return '';
+        }
+        if (isset($http_response_header[0]) && preg_match('/\s[45]\d\d\s/', (string)$http_response_header[0])) {
+            return '';
+        }
+        if ($fileSize <= 0 && isset($http_response_header) && is_array($http_response_header)) {
+            foreach ($http_response_header as $header) {
+                if (preg_match('/^Content-Range:\s*bytes\s+\d+-\d+\/(\d+)/i', $header, $matches)) {
+                    $fileSize = (int)$matches[1];
+                    break;
+                }
+                if (preg_match('/^Content-Length:\s*(\d+)/i', $header, $matches) && $fileSize <= 0) {
+                    $fileSize = (int)$matches[1];
+                }
+            }
+        }
+        if (strlen($binary) > $maxBytes) {
+            return substr($binary, 0, $maxBytes);
+        }
+
+        return $binary;
+    }
+
+    private function downloadRemoteBinary(array $connection, string $remotePath, int &$fileSize = 0, int $maxBytes = 10485760): string
+    {
+        if (($connection['protocol'] ?? '') === 'sftp') {
+            $sftp = $connection['sftp'] ?? null;
+            if (!$sftp) {
+                return '';
+            }
+            $url = 'ssh2.sftp://' . intval($sftp) . $remotePath;
+            if ($fileSize <= 0) {
+                $stat = @stat($url);
+                $fileSize = (int)($stat['size'] ?? 0);
+            }
+            $handle = @fopen($url, 'rb');
+            if (!$handle) {
+                return '';
+            }
+            $binary = stream_get_contents($handle, $maxBytes);
+            fclose($handle);
+            return is_string($binary) ? $binary : '';
+        }
+
+        $ftp = $connection['connection'] ?? null;
+        if (!$ftp) {
+            return '';
+        }
+        if ($fileSize <= 0) {
+            $size = @ftp_size($ftp, $remotePath);
+            if (is_int($size) && $size > 0) {
+                $fileSize = $size;
+            }
+        }
+        $stream = fopen('php://temp', 'r+');
+        if (!$stream) {
+            return '';
+        }
+        $ok = @ftp_fget($ftp, $stream, $remotePath, FTP_BINARY);
+        if (!$ok) {
+            fclose($stream);
+            return '';
+        }
+        rewind($stream);
+        $binary = stream_get_contents($stream, $maxBytes);
+        fclose($stream);
+        if (!is_string($binary) || $binary === '') {
+            return '';
+        }
+        if ($fileSize <= 0) {
+            $fileSize = strlen($binary);
+        }
+
+        return $binary;
     }
 
     private function createFtpDirectories($connection, string $directory): void

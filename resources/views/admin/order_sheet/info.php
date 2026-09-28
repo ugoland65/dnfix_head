@@ -177,7 +177,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                             <th>통화 환산 환율</th>
                             <td>
                                 ( <span id="currency_conversion_from"><?= $orderSheetInfo['oo_prd_currency'] ?? '' ?></span> -> <span id="currency_conversion_to"><?= $orderSheetInfo['oo_sum_currency'] ?? '' ?></span> ) 환산 환율
-                                <input type="text" name='prd_to_pay_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_to_pay_exchange_rate'] ?? '' ?>">
+                                <input type="text" name='prd_to_pay_exchange_rate' class="" value="<?= $orderSheetInfo['oo_prd_to_pay_exchange_rate'] ?? '' ?>" style="width:100px;">
                                 <div class="admin-guide-text">
                                     ※ 입력은 USD → CNY 기준 환율로 입력해 주세요. (예: 1 USD = 6.8 CNY)<br/>
                                 </div>
@@ -292,7 +292,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>주문서 발송일</th>
                             <td>
-                                <div class="calendar-input"><input type='text' name='order_send_date' value="<?= $orderSheetInfo['oo_date_data']['order_send_date'] ?? '' ?>" autocomplete="off"></div>
+                                <div class="calendar-input" style="z-index: 999999999;"><input type='text' name='order_send_date' value="<?= $orderSheetInfo['oo_date_data']['order_send_date'] ?? '' ?>" autocomplete="off"></div>
                             </td>
                         </tr>
 
@@ -328,7 +328,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>확정 주문 금액</th>
                             <td>
-                                <input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point price-decimal" value="<?= number_format($orderSheetInfo['oo_fn_price'] ?? 0, 2) ?>">
+                                <input type='text' name='oo_fn_price' id='oo_fn_price' class="price price_point price-decimal" value="<?= number_format($orderSheetInfo['oo_fn_price'] ?? 0, 2) ?>" style="width:100px;">
                                 <?= $orderSheetInfo['oo_sum_currency'] ?? '' ?>
                             </td>
                         </tr>
@@ -788,7 +788,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
             <tr>
                 <th>입고</th>
                 <td>
-                    입고일 : <div class="calendar-input" style="display:inline-block;"><input type='text' name='in_date' id='in_date' value="<?= $orderSheetInfo['oo_in_date'] ?? '' ?>" autocomplete="off"></div>
+                    입고일 : <div class="calendar-input" style="z-index: 999999999;"><input type='text' name='in_date' id='in_date' value="<?= $orderSheetInfo['oo_in_date'] ?? '' ?>" autocomplete="off"></div>
                 </td>
             </tr>
 

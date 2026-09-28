@@ -16,6 +16,10 @@ class ProductDetailContentApi extends BaseClass
      * - godo_code (또는 goodsNo)
      * - deploy_version
      * - deploy_version_code
+     * - target=bottom 이거나 배포코드가 PDB- 이면 하단 컨텐츠
+     * - 하단 data: bottom_html, bottom_items, bottom_position, bottom_deploy_version, bottom_deploy_version_code
+     *   (html / goodsBottomDescription 은 같은 goods2-info-block HTML)
+     *   bottom_position: top=본문상단, bottom=본문하단
      * - X-Api-Key 또는 api_key
      */
     public function detailContentApi(Request $request, ProductDetailContentService $service)
@@ -33,11 +37,15 @@ class ProductDetailContentApi extends BaseClass
                 ], 401);
             }
 
-            $result = $service->getGodoSyncPayload([
+            $criteria = [
                 'godo_code' => $this->readParam($request, ['godo_code', 'goodsNo', 'goods_no']),
                 'deploy_version' => $this->readParam($request, ['deploy_version', 'version']),
                 'deploy_version_code' => $this->readParam($request, ['deploy_version_code', 'deploy_code', 'version_code']),
-            ]);
+                'target' => $this->readParam($request, ['target', 'scope', 'content_type']),
+            ];
+            $result = $this->isBottomTarget($criteria)
+                ? $service->getGodoBottomSyncPayload($criteria)
+                : $service->getGodoSyncPayload($criteria);
 
             $status = (int)($result['status'] ?? 500);
             $payload = [
@@ -63,6 +71,16 @@ class ProductDetailContentApi extends BaseClass
                 'message' => '서버 요청 처리 중 오류가 발생했습니다.',
             ], 500);
         }
+    }
+
+    private function isBottomTarget(array $criteria): bool
+    {
+        $target = strtolower(trim((string)($criteria['target'] ?? '')));
+        if (in_array($target, ['bottom', 'pdb', 'goods2', 'goods2-info'], true)) {
+            return true;
+        }
+        $versionCode = strtoupper(trim((string)($criteria['deploy_version_code'] ?? '')));
+        return strpos($versionCode, 'PDB-') === 0;
     }
 
     private function isValidApiKey(Request $request): bool

@@ -980,20 +980,27 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                         <a href="/admin/product/info_collect/images/download?<?= htmlspecialchars(http_build_query(['prd_idx' => $prdIdx, 'collection_index' => $selectedCollectionIndex]), ENT_QUOTES, 'UTF-8') ?>" class="btnstyle1 btnstyle1-sm">이미지 일괄 다운로드</a>
                         <?php if ($imageStoragePath !== '') { ?>
                             <button type="button" id="uploadCollectedImagesToHosting" class="btnstyle1 btnstyle1-primary btnstyle1-sm" data-collection-index="<?= $selectedCollectionIndex ?>">이미지 호스팅 업로드</button>
+                            <button type="button" id="uploadSelectedCollectedImagesToHosting" class="btnstyle1 btnstyle1-sm" data-collection-index="<?= $selectedCollectionIndex ?>">선택한 이미지만 업로드</button>
+                            <label class="collected-product-image-select-all"><input type="checkbox" id="selectAllCollectedImages"> 전체선택</label>
                         <?php } else { ?>
                             <span class="collected-product-upload-disabled">이미지 저장소 설정 후 업로드 가능</span>
                         <?php } ?>
                     </div>
                     <textarea id="collectedProductImageHtml" readonly class="collected-product-image-html"><?= htmlspecialchars($detailImageHtml, ENT_QUOTES, 'UTF-8') ?></textarea>
                     <div class="collected-product-image-list">
-                        <?php foreach ($collectedImages as $collectedImage) { ?>
+                        <?php foreach ($collectedImages as $imageIndex => $collectedImage) { ?>
                             <?php
                             $imageUrl = (string)($collectedImage['url'] ?? '');
                             $imageAlt = trim((string)($collectedImage['alt'] ?? ''));
                             $imageKey = trim((string)($collectedImage['key'] ?? ''));
                             $translatedImageAlt = trim((string)($collectedImage['translated_alt'] ?? ''));
+                            $translatedImageAltText = html_entity_decode($translatedImageAlt, ENT_QUOTES | ENT_HTML5, 'UTF-8');
                             ?>
                             <div class="collected-product-image-item">
+                                <label class="collected-product-image-select">
+                                    <input type="checkbox" class="collected-image-select" value="<?= (int)$imageIndex ?>">
+                                    선택
+                                </label>
                                 <a class="collected-product-image-preview" href="<?= htmlspecialchars($imageUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener noreferrer"><img src="<?= htmlspecialchars($imageProxyUrl($imageUrl), ENT_QUOTES, 'UTF-8') ?>" alt="<?= htmlspecialchars($imageAlt !== '' ? $imageAlt : '수집 상품 이미지', ENT_QUOTES, 'UTF-8') ?>" referrerpolicy="no-referrer" ></a>
                                 <a class="collected-product-image-download" href="<?= htmlspecialchars($imageProxyUrl($imageUrl) . '&download=1', ENT_QUOTES, 'UTF-8') ?>">이미지 다운로드</a>
                                 <?php if ($imageAlt !== '' || $translatedImageAlt !== '') { ?>
@@ -1009,13 +1016,13 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                                                 data-label="이미지 설명"
                                                 data-image-key="<?= htmlspecialchars($imageKey, ENT_QUOTES, 'UTF-8') ?>"
                                                 data-source-alt="<?= htmlspecialchars($imageAlt, ENT_QUOTES, 'UTF-8') ?>"
-                                                data-value="<?= htmlspecialchars($translatedImageAlt, ENT_QUOTES, 'UTF-8') ?>"
+                                                data-value="<?= htmlspecialchars($translatedImageAltText, ENT_QUOTES, 'UTF-8') ?>"
                                             ><?= $translatedImageAlt === '' ? '번역데이터 입력' : '번역 수정' ?></button>
                                         <?php } ?>
                                         <?php if ($translatedImageAlt !== '') { ?>
                                             <div class="collection-translation">
                                                 <span class="collection-translation-label">번역</span>
-                                                <div class="collection-translation-text"><?= htmlspecialchars($translatedImageAlt, ENT_QUOTES, 'UTF-8') ?></div>
+                                                <div class="collection-translation-text"><?= htmlspecialchars($translatedImageAltText, ENT_QUOTES, 'UTF-8') ?></div>
                                             </div>
                                         <?php } ?>
                                     </div>
@@ -1083,7 +1090,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 .product-info-collection-sites label.local_shopping_mall{background:#7c3aed}
 .product-info-collection-heading h2{margin:0 0 6px;font-size:19px;color:#1f2937}.product-info-collection-heading p{margin:0;color:#6b7280;font-size:13px}.product-info-collection-product{flex:0 0 auto;padding:7px 10px;border-radius:5px;background:#f3f6fa;color:#64748b;font-size:12px}.product-info-collection-product strong{color:#334155}
 .product-info-collection label{display:block; color:#fff; }
-.product-info-collection-input{display:flex;gap:8px}.product-info-collection-input input{box-sizing:border-box;flex:1;min-width:0;height:46px;padding:0 14px;border:2px solid #f0b429;border-radius:6px;background:#fff;color:#1f2937;font-size:15px;box-shadow:0 1px 2px rgba(146,64,14,.08)}.product-info-collection-input input::placeholder{color:#b45309;opacity:.72}.product-info-collection-input input:focus{outline:0;border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.28)}.product-info-collection-input button{min-width:90px}.product-info-collection-help{margin:9px 0 0;color:#333;font-size:12px;line-height:1.5}.product-info-collection-help a{color:#333;text-decoration:underline}.product-info-collection-help code{padding:1px 4px;border-radius:3px;background:#f1f5f9;color:#475569}.product-info-collection-validation{margin-top:16px;padding:11px 13px;border-radius:5px;font-size:13px}.product-info-collection-validation.is-success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.product-info-collection-validation.is-error{color:#b91c1c;background:#fef2f2;border:1px solid #fecaca}.product-info-collection-result{margin-top:22px;padding-top:20px;border-top:1px solid #e5e7eb}.product-info-collection-result h3{margin:0 0 9px;font-size:14px;color:#374151}.product-info-collection-result h3 small{margin-left:5px;color:#94a3b8;font-weight:400}.product-info-collection-result pre{max-height:460px;margin:0;padding:14px;overflow:auto;border-radius:6px;background:#0f172a;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,Monaco,monospace}.product-info-collection-loading{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.56);text-align:center}.product-info-collection-loading>div{min-width:280px;padding:28px 36px;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.22);color:#1f2937}.product-info-collection-loading strong{display:block;margin-top:14px;font-size:16px}.product-info-collection-loading p{margin:7px 0 0;color:#64748b;font-size:13px}.product-info-collection-spinner{display:inline-block;width:32px;height:32px;border:4px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:collection-spin .8s linear infinite}@keyframes collection-spin{to{transform:rotate(360deg)}}.collected-product-information{flex:1;min-width:0;max-width:900px;margin-top:20px;border:1px solid #dfe5ed;border-radius:10px;background:#fff;overflow:hidden}.collected-product-information-heading{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:#f8fafc;border-bottom:1px solid #e5e7eb}.collected-product-information-heading h2{margin:0 0 4px;font-size:17px;color:#1e293b}.collected-product-information-heading p,.collected-product-information-heading span{margin:0;color:#64748b;font-size:12px}.collected-product-table{width:100%;border-collapse:collapse}.collected-product-table th,.collected-product-table td{padding:11px 13px;border-bottom:1px solid #edf0f4;text-align:left;vertical-align:top;font-size:13px;line-height:1.55}.collected-product-table th{width:135px;background:#f8fafc;color:#475569;font-weight:600}.collected-product-table td a{color:#2563eb;word-break:break-all}.collected-no-data{color:#b0b8c4}.collected-product-comment{white-space:normal;color:#475569}.collected-product-images{padding:20px}.collected-product-images-title{display:flex;align-items:center;gap:8px;margin-bottom:10px}.collected-product-images-title h3{margin:0;font-size:14px;color:#334155}.collected-product-images-title span{padding:2px 6px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-size:11px}.collected-product-image-html{box-sizing:border-box;width:100%;height:75px;margin-bottom:14px;padding:9px;border:1px solid #d7dee8;border-radius:5px;resize:vertical;font:11px/1.4 Consolas,monospace}.collected-product-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.collected-product-image-list a{display:block;overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list img{display:block;width:100%;aspect-ratio:1;object-fit:contain}@media(max-width:640px){.product-info-collection{padding:20px}.product-info-collection-heading{display:block}.product-info-collection-product{display:inline-block;margin-top:12px}.product-info-collection-input{display:block}.product-info-collection-input button{width:100%;margin-top:8px}.collected-product-information-heading{display:block}.collected-product-information-heading span{display:block;margin-top:6px}.collected-product-table th{width:100px}.collected-product-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
+.product-info-collection-input{display:flex;gap:8px}.product-info-collection-input input{box-sizing:border-box;flex:1;min-width:0;height:46px;padding:0 14px;border:2px solid #f0b429;border-radius:6px;background:#fff;color:#1f2937;font-size:15px;box-shadow:0 1px 2px rgba(146,64,14,.08)}.product-info-collection-input input::placeholder{color:#b45309;opacity:.72}.product-info-collection-input input:focus{outline:0;border-color:#d97706;box-shadow:0 0 0 3px rgba(245,158,11,.28)}.product-info-collection-input button{min-width:90px}.product-info-collection-help{margin:9px 0 0;color:#333;font-size:12px;line-height:1.5}.product-info-collection-help a{color:#333;text-decoration:underline}.product-info-collection-help code{padding:1px 4px;border-radius:3px;background:#f1f5f9;color:#475569}.product-info-collection-validation{margin-top:16px;padding:11px 13px;border-radius:5px;font-size:13px}.product-info-collection-validation.is-success{color:#166534;background:#f0fdf4;border:1px solid #bbf7d0}.product-info-collection-validation.is-error{color:#b91c1c;background:#fef2f2;border:1px solid #fecaca}.product-info-collection-result{margin-top:22px;padding-top:20px;border-top:1px solid #e5e7eb}.product-info-collection-result h3{margin:0 0 9px;font-size:14px;color:#374151}.product-info-collection-result h3 small{margin-left:5px;color:#94a3b8;font-weight:400}.product-info-collection-result pre{max-height:460px;margin:0;padding:14px;overflow:auto;border-radius:6px;background:#0f172a;color:#e2e8f0;white-space:pre-wrap;word-break:break-word;font:12px/1.55 Consolas,Monaco,monospace}.product-info-collection-loading{position:fixed;inset:0;z-index:10000;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.56);text-align:center}.product-info-collection-loading>div{min-width:280px;padding:28px 36px;border-radius:10px;background:#fff;box-shadow:0 18px 40px rgba(0,0,0,.22);color:#1f2937}.product-info-collection-loading strong{display:block;margin-top:14px;font-size:16px}.product-info-collection-loading p{margin:7px 0 0;color:#64748b;font-size:13px}.product-info-collection-spinner{display:inline-block;width:32px;height:32px;border:4px solid #dbeafe;border-top-color:#2563eb;border-radius:50%;animation:collection-spin .8s linear infinite}@keyframes collection-spin{to{transform:rotate(360deg)}}.collected-product-information{flex:1;min-width:0;max-width:900px;margin-top:20px;border:1px solid #dfe5ed;border-radius:10px;background:#fff;overflow:hidden}.collected-product-information-heading{display:flex;justify-content:space-between;align-items:center;padding:18px 22px;background:#f8fafc;border-bottom:1px solid #e5e7eb}.collected-product-information-heading h2{margin:0 0 4px;font-size:17px;color:#1e293b}.collected-product-information-heading p,.collected-product-information-heading span{margin:0;color:#64748b;font-size:12px}.collected-product-table{width:100%;border-collapse:collapse}.collected-product-table th,.collected-product-table td{padding:11px 13px;border-bottom:1px solid #edf0f4;text-align:left;vertical-align:top;font-size:13px;line-height:1.55}.collected-product-table th{width:135px;background:#f8fafc;color:#475569;font-weight:600}.collected-product-table td a{color:#2563eb;word-break:break-all}.collected-no-data{color:#b0b8c4}.collected-product-comment{white-space:normal;color:#475569}.collected-product-images{padding:20px}.collected-product-images-title{display:flex;align-items:center;flex-wrap:wrap;gap:8px;margin-bottom:10px}.collected-product-images-title h3{margin:0;font-size:14px;color:#334155}.collected-product-images-title span{padding:2px 6px;border-radius:10px;background:#eef2ff;color:#4f46e5;font-size:11px}.collected-product-image-html{box-sizing:border-box;width:100%;height:75px;margin-bottom:14px;padding:9px;border:1px solid #d7dee8;border-radius:5px;resize:vertical;font:11px/1.4 Consolas,monospace}.collected-product-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.collected-product-image-list a{display:block;overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list img{display:block;width:100%;aspect-ratio:1;object-fit:contain}@media(max-width:640px){.product-info-collection{padding:20px}.product-info-collection-heading{display:block}.product-info-collection-product{display:inline-block;margin-top:12px}.product-info-collection-input{display:block}.product-info-collection-input button{width:100%;margin-top:8px}.collected-product-information-heading{display:block}.collected-product-information-heading span{display:block;margin-top:6px}.collected-product-table th{width:100px}.collected-product-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .product-info-collection-loading[hidden]{display:none}
 .product-info-collection-cancel{margin-top:16px;min-width:120px;height:36px;padding:0 16px;border:1px solid #cbd5e1;border-radius:6px;background:#fff;color:#334155;font-size:13px;font-weight:700;cursor:pointer}
 .product-info-collection-cancel:hover{background:#f8fafc;border-color:#94a3b8}
@@ -1111,7 +1118,12 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
 .collection-translation-text{display:block;color:#1f2937;line-height:1.55;word-break:break-word}.collection-translation-modal{position:fixed;inset:0;z-index:10001;display:flex;align-items:center;justify-content:center;background:rgba(15,23,42,.55)}.collection-translation-modal[hidden]{display:none}.collection-translation-modal-card{width:min(560px,calc(100% - 32px));padding:20px;border-radius:9px;background:#fff;box-shadow:0 20px 50px rgba(0,0,0,.25)}.collection-translation-modal-heading{display:flex;justify-content:space-between;align-items:center;margin-bottom:14px}.collection-translation-modal-heading h3{margin:0;font-size:16px}.collection-translation-modal-heading button{border:0;background:transparent;color:#64748b;font-size:24px;cursor:pointer}.collection-translation-modal textarea{box-sizing:border-box;width:100%;padding:10px;border:1px solid #cbd5e1;border-radius:5px;resize:vertical;line-height:1.5}.collection-translation-modal-actions{display:flex;justify-content:flex-end;gap:8px;margin-top:14px}
 .collection-source-block{padding:9px 10px;border:1px solid #e2e8f0;border-radius:5px;background:#fff;color:#334155}.collection-action-block{display:flex;gap:6px;margin-top:8px;padding:7px 8px;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collection-action-block .collection-translation-button{margin-top:0}
 .collection-action-log{margin-top:6px;color:#64748b;font-size:11px}.hosted-action-log{margin:0 0 10px}
-.collected-product-image-item{overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}.collected-product-image-list .collected-product-image-preview{display:block;border:0;border-radius:0}.collected-product-image-alt-wrap{padding:8px;background:#fff;border-top:1px solid #edf0f4}
+.collected-product-image-item{position:relative;overflow:hidden;border:1px solid #e2e8f0;border-radius:5px;background:#f8fafc}
+.collected-product-image-item.is-checked{border-color:#2563eb;box-shadow:inset 0 0 0 1px #2563eb}
+.collected-product-image-select{position:absolute;top:6px;left:6px;z-index:2;display:flex;align-items:center;gap:4px;margin:0;padding:3px 7px;border-radius:4px;background:rgba(15,23,42,.78);color:#fff;font-size:11px;font-weight:700;cursor:pointer}
+.collected-product-image-select input{margin:0}
+.collected-product-image-select-all{display:inline-flex;align-items:center;gap:4px;margin:0 0 0 4px;color:#475569;font-size:12px;font-weight:600;cursor:pointer}
+.collected-product-image-select-all input{margin:0}.collected-product-image-list .collected-product-image-preview{display:block;border:0;border-radius:0}.collected-product-image-alt-wrap{padding:8px;background:#fff;border-top:1px solid #edf0f4}
 .collected-product-image-alt{margin:0;color:#475569;font-size:11px;line-height:1.45;word-break:break-word}
 .collected-product-image-alt-wrap .collection-translation-button{margin:6px 0 0}
 .collected-product-image-alt-wrap .collection-translation{margin-top:6px}.collected-product-image-download{display:block;padding:7px;text-align:center;background:#fff;color:#2563eb!important;font-size:11px;text-decoration:none}
@@ -1156,6 +1168,8 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var hostedImageHtmlTextarea = document.getElementById('hostedProductImageHtml');
     var hostedImageList = document.getElementById('hostedProductImageList');
     var uploadImagesButton = document.getElementById('uploadCollectedImagesToHosting');
+    var uploadSelectedImagesButton = document.getElementById('uploadSelectedCollectedImagesToHosting');
+    var selectAllCollectedImages = document.getElementById('selectAllCollectedImages');
     var imageStorageForm = document.getElementById('productImageStorageForm');
     var imageStorageInput = document.getElementById('image_storage_path');
     var imageStorageMessage = document.getElementById('imageStoragePathMessage');
@@ -1716,37 +1730,104 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             if (!window.confirm('수집 이미지를 설정된 이미지 저장소로 일괄 업로드하시겠습니까?')) {
                 return;
             }
-
-            uploadImagesButton.disabled = true;
-            setCollectionLoadingCopy('이미지를 이미지 호스팅에 업로드중입니다.', '완료될때까지 잠시만 기다려주세요.');
-            loadingOverlay.hidden = false;
-            if (loadingCancelButton) {
-                loadingCancelButton.hidden = true;
-            }
-
-            fetch('/admin/product/info_collect/images/upload_hosting', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                body: new URLSearchParams({
-                    prd_idx: productIdx,
-                    collection_index: uploadImagesButton.dataset.collectionIndex || selectedCollectionIndex
-                }).toString()
-            })
-            .then(function (response) { return response.json(); })
-            .then(function (responseData) {
-                if (!responseData.success) {
-                    throw new Error(responseData.message || '이미지 호스팅 업로드에 실패했습니다.');
-                }
-                window.alert(responseData.message || '이미지 호스팅 업로드가 완료되었습니다.');
-                loadCollectionView(selectedCollectionIndex);
-            })
-            .catch(function (error) {
-                window.alert(error.message || '이미지 호스팅 업로드 중 오류가 발생했습니다.');
-                loadingOverlay.hidden = true;
-                uploadImagesButton.disabled = false;
-            });
+            uploadCollectedImagesToHosting([]);
         });
     }
+
+    function selectedCollectedImageIndexes() {
+        return Array.prototype.map.call(document.querySelectorAll('.collected-image-select:checked'), function (input) {
+            return parseInt(input.value, 10);
+        }).filter(function (index) {
+            return !isNaN(index) && index >= 0;
+        });
+    }
+
+    function syncCollectedImageSelection() {
+        var boxes = document.querySelectorAll('.collected-image-select');
+        var checkedCount = 0;
+        Array.prototype.forEach.call(boxes, function (input) {
+            var item = input.closest('.collected-product-image-item');
+            if (item) {
+                item.classList.toggle('is-checked', input.checked);
+            }
+            if (input.checked) {
+                checkedCount += 1;
+            }
+        });
+        if (selectAllCollectedImages) {
+            selectAllCollectedImages.checked = boxes.length > 0 && checkedCount === boxes.length;
+            selectAllCollectedImages.indeterminate = checkedCount > 0 && checkedCount < boxes.length;
+        }
+    }
+
+    function uploadCollectedImagesToHosting(indexes) {
+        var isSelected = Array.isArray(indexes) && indexes.length > 0;
+        var payload = {
+            prd_idx: productIdx,
+            collection_index: (uploadImagesButton && uploadImagesButton.dataset.collectionIndex) || selectedCollectionIndex
+        };
+        if (isSelected) {
+            payload.image_indexes = JSON.stringify(indexes);
+        }
+
+        var buttons = [uploadImagesButton, uploadSelectedImagesButton].filter(Boolean);
+        buttons.forEach(function (button) { button.disabled = true; });
+        setCollectionLoadingCopy(
+            isSelected ? '선택한 이미지를 이미지 호스팅에 업로드중입니다.' : '이미지를 이미지 호스팅에 업로드중입니다.',
+            '완료될때까지 잠시만 기다려주세요.'
+        );
+        loadingOverlay.hidden = false;
+        if (loadingCancelButton) {
+            loadingCancelButton.hidden = true;
+        }
+
+        fetch('/admin/product/info_collect/images/upload_hosting', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+            body: new URLSearchParams(payload).toString()
+        })
+        .then(function (response) { return response.json(); })
+        .then(function (responseData) {
+            if (!responseData.success) {
+                throw new Error(responseData.message || '이미지 호스팅 업로드에 실패했습니다.');
+            }
+            window.alert(responseData.message || '이미지 호스팅 업로드가 완료되었습니다.');
+            loadCollectionView(selectedCollectionIndex);
+        })
+        .catch(function (error) {
+            window.alert(error.message || '이미지 호스팅 업로드 중 오류가 발생했습니다.');
+            loadingOverlay.hidden = true;
+            buttons.forEach(function (button) { button.disabled = false; });
+        });
+    }
+
+    if (uploadSelectedImagesButton) {
+        uploadSelectedImagesButton.addEventListener('click', function () {
+            var indexes = selectedCollectedImageIndexes();
+            if (indexes.length < 1) {
+                window.alert('업로드할 이미지를 선택해 주세요.');
+                return;
+            }
+            if (!window.confirm('선택한 이미지 ' + indexes.length + '장을 이미지 저장소로 업로드하시겠습니까?')) {
+                return;
+            }
+            uploadCollectedImagesToHosting(indexes);
+        });
+    }
+
+    if (selectAllCollectedImages) {
+        selectAllCollectedImages.addEventListener('change', function () {
+            Array.prototype.forEach.call(document.querySelectorAll('.collected-image-select'), function (input) {
+                input.checked = selectAllCollectedImages.checked;
+            });
+            syncCollectedImageSelection();
+        });
+    }
+
+    Array.prototype.forEach.call(document.querySelectorAll('.collected-image-select'), function (input) {
+        input.addEventListener('change', syncCollectedImageSelection);
+    });
+    syncCollectedImageSelection();
 
     form.addEventListener('submit', function (event) {
         event.preventDefault();
