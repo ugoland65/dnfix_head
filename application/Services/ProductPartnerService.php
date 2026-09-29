@@ -1524,22 +1524,9 @@ class ProductPartnerService extends BaseClass
             return;
         }
 
-        $categoryCodes = array_values($categoryCodes);
-        $now = date('Y-m-d H:i:s');
-        foreach ($categoryCodes as $sortOffset => $categoryCode) {
-            ProductCategoryMappingModel::updateOrCreate(
-                [
-                    'product_type' => 'provider',
-                    'product_idx' => $productIdx,
-                    'category_type' => $categoryType,
-                    'category_code' => $categoryCode,
-                ],
-                [
-                    'display_order' => $sortOffset + 1,
-                    'updated_at' => $now,
-                ]
-            );
-        }
+        $categoryCodes = array_values(array_unique(array_filter(array_map('strval', $categoryCodes), static function ($code) {
+            return trim($code) !== '';
+        })));
 
         $deleteQuery = ProductCategoryMappingModel::where('product_type', 'provider')
             ->where('product_idx', $productIdx)
@@ -1548,6 +1535,16 @@ class ProductPartnerService extends BaseClass
             $deleteQuery->whereNotIn('category_code', $categoryCodes);
         }
         $deleteQuery->delete();
+
+        foreach ($categoryCodes as $sortOffset => $categoryCode) {
+            ProductCategoryMappingModel::upsertMapping(
+                'provider',
+                $productIdx,
+                $categoryType,
+                trim((string)$categoryCode),
+                $sortOffset + 1
+            );
+        }
     }
 
     /**

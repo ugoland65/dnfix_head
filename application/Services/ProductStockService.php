@@ -97,7 +97,7 @@ class ProductStockService extends BaseClass
 
         $prdStockList = ProductStockModel::select([
                 'prd_stock.ps_idx', 'prd_stock.ps_rack_code', 'prd_stock.ps_stock',  'prd_stock.is_sale_month',
-                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.cd_size_fn', 'cd.cd_add_img', 'cd.img_mode', 'cd.CD_IMG',
+                'cd.CD_IDX', 'cd.CD_CODE', 'cd.CD_NAME', 'cd.cd_cost_price', 'cd.CD_SIZE', 'cd.cd_size_fn', 'cd.cd_add_img', 'cd.img_mode', 'cd.CD_IMG',
             ])
             ->join('COMPARISON_DB as cd', 'prd_stock.ps_prd_idx', '=', 'cd.CD_IDX', 'LEFT')
             ->whereIn('prd_stock.ps_idx', $ids)
@@ -110,13 +110,22 @@ class ProductStockService extends BaseClass
         foreach ($prdStockList as &$prdStock) {
             $prdStock['cd_size_fn'] = json_decode($prdStock['cd_size_fn'] ?? '{}', true);
             $prdStock['cd_add_img'] = json_decode($prdStock['cd_add_img'] ?? '{}', true);
+            $prdStock['CD_SIZE'] = json_decode($prdStock['CD_SIZE'] ?? '{}', true);
             if (!is_array($prdStock['cd_size_fn'])) {
                 $prdStock['cd_size_fn'] = [];
+            }
+            if (!is_array($prdStock['CD_SIZE'])) {
+                $prdStock['CD_SIZE'] = [];
             }
 
             $_cd_size_w = (float)($prdStock['cd_size_fn']['package']['W'] ?? 0);
             $_cd_size_h = (float)($prdStock['cd_size_fn']['package']['H'] ?? 0);
             $_cd_size_d = (float)($prdStock['cd_size_fn']['package']['D'] ?? 0);
+            if ($_cd_size_w <= 0 || $_cd_size_h <= 0 || $_cd_size_d <= 0) {
+                $_cd_size_w = (float)($prdStock['CD_SIZE']['W'] ?? 0);
+                $_cd_size_h = (float)($prdStock['CD_SIZE']['H'] ?? 0);
+                $_cd_size_d = (float)($prdStock['CD_SIZE']['D'] ?? 0);
+            }
 
             if( !empty($_cd_size_w) || !empty($_cd_size_h) || !empty($_cd_size_d) ){
                 $_cd_size_volume = $_cd_size_w * $_cd_size_h * $_cd_size_d;

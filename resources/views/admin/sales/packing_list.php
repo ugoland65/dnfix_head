@@ -77,7 +77,6 @@
             -webkit-print-color-adjust: exact !important;
             print-color-adjust: exact !important;
         }
-        
         .gift-box-100000 b {
             color: rgb(94, 31, 240) !important;
             -webkit-print-color-adjust: exact !important;
@@ -272,6 +271,18 @@
                 color:rgb(0, 111, 69);
             }
         }
+        .recommend-box{
+            display: inline-block;
+            font-size: 16px;
+            b{
+                font-size: 20px;
+            }
+            .recommend-box-missing{
+                margin-left: 6px;
+                font-size: 14px;
+                font-weight: 700;
+            }
+        }
     }
 
     .order-receiver-info{
@@ -322,6 +333,211 @@ $definedVars = get_defined_vars();
 $packingList = (isset($definedVars['packingList']) && is_array($definedVars['packingList'])) ? $definedVars['packingList'] : [];
 $packingList['data'] = is_array($packingList['data'] ?? null) ? $packingList['data'] : [];
 $packingList['total'] = (int)($packingList['total'] ?? 0);
+
+if (!function_exists('packing_list_package_dims')) {
+    function packing_list_package_dims($source): array
+    {
+        if (!is_array($source)) {
+            return [];
+        }
+
+        $package = $source['cd_size_fn']['package'] ?? [];
+        $cdSize = $source['CD_SIZE'] ?? [];
+        $w = (float)($source['package_w'] ?? ($package['W'] ?? ($cdSize['W'] ?? 0)));
+        $h = (float)($source['package_h'] ?? ($package['H'] ?? ($cdSize['H'] ?? 0)));
+        $d = (float)($source['package_d'] ?? ($package['D'] ?? ($cdSize['D'] ?? 0)));
+        if ($w <= 0 || $h <= 0 || $d <= 0) {
+            return [];
+        }
+
+        return [$w, $h, $d];
+    }
+}
+
+if (!function_exists('packing_list_collect_items')) {
+    function packing_list_collect_items(array $orderGoods): array
+    {
+        $items = [];
+        $missingQty = 0;
+
+        foreach ($orderGoods as $goods) {
+            $qty = max(1, (int)($goods['goodsCnt'] ?? 1));
+            $optionDims = [];
+            $optionMissing = 0;
+            $hasOptionProduct = false;
+
+            foreach ($goods['optionInfo'] ?? [] as $option) {
+                $productData = $option['product_data'] ?? [];
+                if (!is_array($productData) || $productData === []) {
+                    continue;
+                }
+                $hasOptionProduct = true;
+                $dims = packing_list_package_dims($productData);
+                if ($dims) {
+                    $optionDims[] = $dims;
+                } else {
+                    $optionMissing += $qty;
+                }
+            }
+
+            if ($hasOptionProduct) {
+                foreach ($optionDims as $dims) {
+                    for ($i = 0; $i < $qty; $i++) {
+                        $items[] = $dims;
+                    }
+                }
+                $missingQty += $optionMissing;
+                continue;
+            }
+
+            $dims = packing_list_package_dims($goods);
+            if ($dims) {
+                for ($i = 0; $i < $qty; $i++) {
+                    $items[] = $dims;
+                }
+                continue;
+            }
+
+            $missingQty += $qty;
+        }
+
+        return [$items, $missingQty];
+    }
+}
+
+if (!function_exists('packing_list_rotations')) {
+    function packing_list_rotations(array $dims): array
+    {
+        $uniq = [];
+        foreach ([
+            [$dims[0], $dims[1], $dims[2]],
+            [$dims[0], $dims[2], $dims[1]],
+            [$dims[1], $dims[0], $dims[2]],
+            [$dims[1], $dims[2], $dims[0]],
+            [$dims[2], $dims[0], $dims[1]],
+            [$dims[2], $dims[1], $dims[0]],
+        ] as $rotation) {
+            $uniq[implode('x', $rotation)] = $rotation;
+        }
+
+        return array_values($uniq);
+    }
+}
+
+if (!function_exists('packing_list_item_fits')) {
+    function packing_list_item_fits(array $item, array $box): bool
+    {
+        $itemDims = $item;
+        $boxDims = $box;
+        rsort($itemDims, SORT_NUMERIC);
+        rsort($boxDims, SORT_NUMERIC);
+
+        return $itemDims[0] <= $boxDims[0] && $itemDims[1] <= $boxDims[1] && $itemDims[2] <= $boxDims[2];
+    }
+}
+
+if (!function_exists('packing_list_can_pack')) {
+    function packing_list_can_pack(array $items, array $box): bool
+    {
+        foreach ($items as $item) {
+            if (!packing_list_item_fits($item, $box)) {
+                return false;
+            }
+        }
+
+        usort($items, static function ($a, $b) {
+            return ($b[0] * $b[1] * $b[2]) <=> ($a[0] * $a[1] * $a[2]);
+        });
+
+        $spaces = [$box];
+        foreach ($items as $item) {
+            usort($spaces, static function ($a, $b) {
+                return ($b[0] * $b[1] * $b[2]) <=> ($a[0] * $a[1] * $a[2]);
+            });
+
+            $placed = false;
+            foreach ($spaces as $index => $space) {
+                $fitted = null;
+                foreach (packing_list_rotations($item) as $rotation) {
+                    if ($rotation[0] <= $space[0] && $rotation[1] <= $space[1] && $rotation[2] <= $space[2]) {
+                        $fitted = $rotation;
+                        break;
+                    }
+                }
+                if ($fitted === null) {
+                    continue;
+                }
+
+                unset($spaces[$index]);
+                $spaces = array_values($spaces);
+
+                $remainW = $space[0] - $fitted[0];
+                $remainH = $space[1] - $fitted[1];
+                $remainD = $space[2] - $fitted[2];
+                if ($remainW > 0) {
+                    $spaces[] = [$remainW, $space[1], $space[2]];
+                }
+                if ($remainH > 0) {
+                    $spaces[] = [$fitted[0], $remainH, $space[2]];
+                }
+                if ($remainD > 0) {
+                    $spaces[] = [$fitted[0], $fitted[1], $remainD];
+                }
+
+                $placed = true;
+                break;
+            }
+
+            if (!$placed) {
+                $itemVolume = 0;
+                foreach ($items as $packItem) {
+                    $itemVolume += $packItem[0] * $packItem[1] * $packItem[2];
+                }
+
+                return $itemVolume <= ($box[0] * $box[1] * $box[2] * 0.75);
+            }
+        }
+
+        return true;
+    }
+}
+
+if (!function_exists('packing_list_recommend_box')) {
+    function packing_list_recommend_box(array $orderGoods): array
+    {
+        $boxSizes = [
+            'B61' => [250, 170, 150],
+            'B78' => [290, 210, 130],
+            'B99' => [320, 240, 170],
+            'A36' => [350, 270, 180],
+            'C131' => [360, 300, 210],
+            'C221' => [570, 340, 250],
+            'A60' => [500, 350, 290],
+        ];
+
+        [$items, $missingQty] = packing_list_collect_items($orderGoods);
+        if (!$items) {
+            return ['code' => '', 'missing' => $missingQty];
+        }
+
+        uasort($boxSizes, static function ($a, $b) {
+            $volumeCmp = ($a[0] * $a[1] * $a[2]) <=> ($b[0] * $b[1] * $b[2]);
+            if ($volumeCmp !== 0) {
+                return $volumeCmp;
+            }
+
+            return max($a) <=> max($b);
+        });
+
+        foreach ($boxSizes as $code => $size) {
+            if (packing_list_can_pack($items, $size)) {
+                return ['code' => $code, 'missing' => $missingQty];
+            }
+        }
+
+        return ['code' => '', 'missing' => $missingQty, 'overflow' => true];
+    }
+}
 ?>
     <div class="order-print-header">
         <ul>
@@ -388,9 +604,36 @@ $packingList['total'] = (int)($packingList['total'] ?? 0);
                 $goods_column_count = $total_goods_cnt >= 8 ? 3 : 2;
             ?>
             <div style="grid-template-columns: repeat(<?=$goods_column_count?>, 1fr);">
-                <?php 
+                <?php
+                $orderGoods = $order['orderGoods'] ?? [];
+                usort($orderGoods, static function ($a, $b) {
+                    $resolveRack = static function ($goods) {
+                        $rack = trim((string)($goods['rack_code'] ?? ''));
+                        if ($rack !== '') {
+                            return $rack;
+                        }
+                        foreach ($goods['optionInfo'] ?? [] as $option) {
+                            $optionRack = trim((string)($option['product_data']['ps_rack_code'] ?? ''));
+                            if ($optionRack !== '') {
+                                return $optionRack;
+                            }
+                        }
+                        return '';
+                    };
+
+                    $aCode = $resolveRack($a);
+                    $bCode = $resolveRack($b);
+                    $aEmpty = $aCode === '';
+                    $bEmpty = $bCode === '';
+                    if ($aEmpty !== $bEmpty) {
+                        return $aEmpty ? 1 : -1;
+                    }
+
+                    return strnatcasecmp($aCode, $bCode);
+                });
+
                 $count = 0;
-                foreach ($order['orderGoods'] as $goods) { 
+                foreach ($orderGoods as $goods) {
                     $count++;
                 ?>
                 <ul>
@@ -563,6 +806,21 @@ $packingList['total'] = (int)($packingList['total'] ?? 0);
             <?php } elseif($order['settlePrice'] >= 10000) { ?>
                 <p class="gift-box gift-box-10000">사은품 : <b style="font-size:16px;">만원 사은품</b></p>
             <?php } ?>
+
+            <?php $recommendedBox = packing_list_recommend_box($order['orderGoods'] ?? []); ?>
+            <p class="recommend-box">
+                추천박스 :
+                <?php if (!empty($recommendedBox['code'])) { ?>
+                    <b class="recommend-box-code"><?= htmlspecialchars((string)$recommendedBox['code'], ENT_QUOTES, 'UTF-8') ?></b>
+                <?php } elseif (!empty($recommendedBox['overflow'])) { ?>
+                    <b>해당없음</b>
+                <?php } else { ?>
+                    <b>-</b>
+                <?php } ?>
+                <?php if ((int)($recommendedBox['missing'] ?? 0) > 0) { ?>
+                    <span class="recommend-box-missing">+ <?= (int)$recommendedBox['missing'] ?>개 사이즈 없음</span>
+                <?php } ?>
+            </p> 
         </div>
 
         <div class="order-receiver-info">

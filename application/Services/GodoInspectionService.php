@@ -4,7 +4,7 @@ namespace App\Services;
 
 class GodoInspectionService
 {
-    public const INSPECTION_VERSION = '20260907_v1';
+    public const INSPECTION_VERSION = '20260928_v2';
     public const CONTEXT_PRODUCT_SINGLE = 'product_single';
     public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
     public const CONTEXT_PROVIDER_PRODUCT = 'provider_product';
@@ -116,6 +116,7 @@ class GodoInspectionService
         ['sourceCategoryCode' => '02010100', 'cateNm' => '미니 토르소', 'cateCd' => '022007003'],
         ['sourceCategoryCode' => '02010200', 'cateNm' => '라이트 토르소', 'cateCd' => '022007002'],
         ['sourceCategoryCode' => '02010300', 'cateNm' => '리얼 토르소', 'cateCd' => '022007001'],
+        ['sourceCategoryCode' => '02020000', 'cateNm' => '가슴장난감', 'cateCd' => '022005'],
         ['sourceCategoryCode' => '02030000', 'cateNm' => '엉덩이형', 'cateCd' => '022008'],
         ['sourceCategoryCode' => '02060000', 'cateNm' => '하반신형', 'cateCd' => '022010'],
         ['sourceCategoryCode' => '02080000', 'cateNm' => '퍼리/피규어', 'cateCd' => '022012'],
@@ -512,7 +513,7 @@ class GodoInspectionService
                 '전용홀 카테고리 미지정',
                 '전용홀 카테고리 오류',
                 '<span>오나홀 > 전용홀 카테고리가 미지정되어 있습니다.</span>'
-                    . "\n<span>A10 전용홀과 핸디 슬리브는 하나만 지정할 수 있습니다.</span>",
+                    . "\n<span>전용홀은 하나만 지정할 수 있습니다.</span>",
                 '<span>오나홀 > 전용홀 카테고리가 인트라넷 선택값과 일치하지 않습니다.</span>'
                     . "\n<span>전용홀은 중복되지 않으므로 선택한 1개만 유지합니다.</span>",
                 $dedicatedHoleCategoryMap
@@ -1100,7 +1101,8 @@ class GodoInspectionService
     }
 
     /**
-     * 인트라넷 2차 카테고리 코드에 대응하는 고도몰 유형별 카테고리를 찾는다.
+     * 인트라넷 카테고리 코드에 대응하는 고도몰 카테고리를 찾는다.
+     * 정확히 일치하는 코드를 우선하고, 없으면 가장 긴 상위 코드(접두어)를 사용한다.
      */
     private function findTargetCategoryBySourceCategoryCode(array $rows, string $sourceCategoryCode): ?array
     {
@@ -1109,23 +1111,35 @@ class GodoInspectionService
             return null;
         }
 
+        $best = null;
+        $bestLen = -1;
         foreach ($rows as $row) {
-            if (!is_array($row) || trim((string)($row['sourceCategoryCode'] ?? '')) !== $sourceCategoryCode) {
+            if (!is_array($row)) {
                 continue;
             }
 
+            $rowSource = trim((string)($row['sourceCategoryCode'] ?? ''));
             $targetCateCd = trim((string)($row['cateCd'] ?? ''));
-            if ($targetCateCd === '') {
-                return null;
+            if ($rowSource === '' || $targetCateCd === '') {
+                continue;
+            }
+            if ($sourceCategoryCode !== $rowSource && strpos($sourceCategoryCode, $rowSource) !== 0) {
+                continue;
             }
 
-            return [
+            $rowLen = strlen($rowSource);
+            if ($rowLen <= $bestLen) {
+                continue;
+            }
+
+            $bestLen = $rowLen;
+            $best = [
                 'cateNm' => trim((string)($row['cateNm'] ?? '')),
                 'cateCd' => $targetCateCd,
             ];
         }
 
-        return null;
+        return $best;
     }
 
     /**

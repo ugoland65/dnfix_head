@@ -444,7 +444,7 @@
                             </label>
                         <?php } ?>
                     </div>
-                    <p class="additional-category-help">오나홀일 때만 지정합니다. A10 전용홀과 핸디 슬리브는 하나만 선택할 수 있습니다.</p>
+                    <p class="additional-category-help">오나홀일 때만 지정합니다. 전용홀은 하나만 선택할 수 있습니다.</p>
                 </td>
             </tr>
 

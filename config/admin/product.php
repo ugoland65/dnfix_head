@@ -4,7 +4,7 @@
 $prd_kind_name = [
     'ONAHOLE' => "오나홀",
     'TORSO' => "토르소",
-    'BREAST' => "가슴장난감",
+    //'BREAST' => "가슴장난감",
     'VIBRATOR' => "바이브레이터",
     'DILDO' => "딜도",
     'ANAL' => "애널",
@@ -86,16 +86,24 @@ $categories = [
                 'name' => '바닥오나',
                 'children' => []
             ],
+            /*
             [
                 'code' => '01100000',
                 'key' => 'ONAHOLE_BODY_FETISH',
                 'name' => '신체 / 페티쉬',
                 'children' => []
             ],
+            */
             [
                 'code' => '01110000',
                 'key' => 'ONAHOLE_COTTON_TYPE',
                 'name' => '면타입',
+                'children' => []
+            ],
+            [
+                'code' => '01120000',
+                'key' => 'ONAHOLE_DEDICATED_SLEEVE',
+                'name' => '전용홀(고도몰 미지정)',
                 'children' => []
             ],
         ]
@@ -136,7 +144,7 @@ $categories = [
             [
                 'code' => '02040000',
                 'key' => 'BODY_PART',
-                'name' => '신체부위',
+                'name' => '신체부위/페티시',
                 'children' => []
             ],
             [
@@ -824,6 +832,13 @@ $dedicatedHoleCategories = [
         'code' => 'HANDY_SLEEVE',
         'name' => '핸디 슬리브',
         'godo_category_code' => '026009002',
+        'kind_codes' => ['ONAHOLE'],
+        'is_active' => true,
+    ],
+    'LOVENSE_SOLACE_PRO' => [
+        'code' => 'LOVENSE_SOLACE_PRO',
+        'name' => '러벤스 솔라스 프로',
+        'godo_category_code' => '026009003',
         'kind_codes' => ['ONAHOLE'],
         'is_active' => true,
     ],

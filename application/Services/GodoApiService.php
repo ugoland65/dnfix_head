@@ -1383,6 +1383,11 @@ class GodoApiService extends BaseClass {
                         $goods['package_volume'] = $productData[$goods['goodsCd']]['package_volume'];
                         $goods['package_volume_m3'] = $productData[$goods['goodsCd']]['package_volume_m3'];
                         $goods['package_volume_level'] = $productData[$goods['goodsCd']]['package_volume_level'];
+                        $packageSize = $productData[$goods['goodsCd']]['cd_size_fn']['package'] ?? [];
+                        $cdSize = $productData[$goods['goodsCd']]['CD_SIZE'] ?? [];
+                        $goods['package_w'] = (float)($packageSize['W'] ?? ($cdSize['W'] ?? 0));
+                        $goods['package_h'] = (float)($packageSize['H'] ?? ($cdSize['H'] ?? 0));
+                        $goods['package_d'] = (float)($packageSize['D'] ?? ($cdSize['D'] ?? 0));
 
                         $add_img3_filename = $productData[$goods['goodsCd']]['cd_add_img']['add3']['filename'] ?? null;
                         if($add_img3_filename){

@@ -453,13 +453,73 @@ $remainingQty = (int)($remainingQty ?? 0);
             display.textContent = normalizeQuantity(input.value) || '0';
         }
 
+        function isNumpadOpen() {
+            return !modal.hidden;
+        }
+
+        function openNumpad() {
+            updateDisplay();
+            modal.hidden = false;
+        }
+
         function closeNumpad() {
             modal.hidden = true;
         }
 
+        function getViewportHeight() {
+            if (window.visualViewport) {
+                return window.visualViewport.height;
+            }
+            return window.innerHeight;
+        }
+
+        var keyboardCheckTimer = null;
+        var viewportHeightOnFocus = 0;
+        var softwareKeyboardOpened = false;
+        var keyboardShrinkPx = 120;
+        var keyboardWaitMs = 450;
+
+        function markSoftwareKeyboardIfOpened() {
+            if (viewportHeightOnFocus > 0 && getViewportHeight() <= viewportHeightOnFocus - keyboardShrinkPx) {
+                softwareKeyboardOpened = true;
+            }
+        }
+
+        function isTouchDevice() {
+            return window.matchMedia && window.matchMedia('(pointer: coarse)').matches;
+        }
+
+        function scheduleNumpadIfKeyboardMissing() {
+            if (!isTouchDevice() || isNumpadOpen()) {
+                return;
+            }
+            softwareKeyboardOpened = false;
+            viewportHeightOnFocus = getViewportHeight();
+            window.clearTimeout(keyboardCheckTimer);
+            keyboardCheckTimer = window.setTimeout(function() {
+                keyboardCheckTimer = null;
+                if (document.activeElement !== input || isNumpadOpen() || softwareKeyboardOpened) {
+                    return;
+                }
+                input.blur();
+                openNumpad();
+            }, keyboardWaitMs);
+        }
+
+        if (window.visualViewport) {
+            window.visualViewport.addEventListener('resize', markSoftwareKeyboardIfOpened);
+        } else {
+            window.addEventListener('resize', markSoftwareKeyboardIfOpened);
+        }
+
+        input.addEventListener('focus', scheduleNumpadIfKeyboardMissing);
+        input.addEventListener('blur', function() {
+            window.clearTimeout(keyboardCheckTimer);
+            keyboardCheckTimer = null;
+        });
+
         openButton.addEventListener('click', function() {
-            updateDisplay();
-            modal.hidden = false;
+            openNumpad();
         });
 
         modal.addEventListener('click', function(event) {

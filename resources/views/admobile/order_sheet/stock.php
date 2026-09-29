@@ -23,7 +23,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             <span>상품 찾기</span>
         </div>
         <div class="admobile-barcode-input-wrap">
-            <input id="barcode-search-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="바코드 숫자를 입력하세요" autofocus>
+            <input id="barcode-search-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="바코드 숫자를 입력하세요">
             <button type="button" id="barcode-search-clear" aria-label="검색어 지우기">×</button>
             <button type="button" id="barcode-search-button">찾기</button>
         </div>
@@ -108,6 +108,8 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                             data-order-idx="<?= (int)($orderIdx ?? 0) ?>"
                             data-bidx="<?= (int)($unit['bidx'] ?? 0) ?>"
                             data-pidx="<?= (int)($unit['pidx'] ?? 0) ?>"
+                            data-order-qty="<?= (int)($unit['order_qty'] ?? 0) ?>"
+                            data-checked-qty="<?= (int)($unit['checked_total_qty'] ?? 0) ?>"
                             <?= !empty($unit['is_check_complete']) ? 'disabled' : '' ?>
                         ><?= !empty($unit['is_check_complete']) ? '체크완료' : '바로 완료체크' ?></button>
                         <a class="admobile-unit-action-menu__item admobile-unit-action-menu__item--primary" href="/admobile/order/sheet/stock/unit?idx=<?= (int)($orderIdx ?? 0) ?>&amp;bidx=<?= (int)($unit['bidx'] ?? 0) ?>&amp;pidx=<?= (int)($unit['pidx'] ?? 0) ?>">수량체크하기</a>
@@ -263,7 +265,12 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-barcode-result__content h3 { margin: 0; color: #172033; font-size: 17px; line-height: 1.45; }
     .admobile-barcode-result__barcode { margin: 8px 0 0; color: #344054; font-size: 13px; word-break: break-all; }
     .admobile-barcode-result__rack { margin: 5px 0 0; color: #344054; font-size: 13px; font-weight: 700; }
-    .admobile-barcode-result__qty { margin: 8px 0 0; color: #2450a6; font-size: 15px; font-weight: 700; }
+    .admobile-barcode-result__qty { display: flex; gap: 14px; margin: 8px 0 0; }
+    .admobile-barcode-result__qty div { min-width: 0; }
+    .admobile-barcode-result__qty dt { margin-bottom: 2px; color: #667085; font-size: 10px; }
+    .admobile-barcode-result__qty dd { margin: 0; color: #172033; font-size: 16px; font-weight: 800; }
+    .admobile-barcode-result__qty > div:first-child dd { color: #2450a6; }
+    .admobile-barcode-result__qty > div:last-child dd.is-over { color: #b42318; }
     .admobile-inspection-memo-modal[hidden] { display: none; }
     .admobile-inspection-memo-modal { position: fixed; z-index: 1200; inset: 0; display: flex; align-items: flex-end; }
     .admobile-inspection-memo-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .58); }
@@ -295,6 +302,22 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         var search = document.getElementById('barcode-search');
         var searchSentinel = document.getElementById('barcode-search-sentinel');
         var searchTimer;
+        var lastBarcodeInputAt = 0;
+        var barcodeScanGapMs = 400;
+
+        function isNewBarcodeScan() {
+            var now = Date.now();
+            var started = (now - lastBarcodeInputAt) > barcodeScanGapMs;
+            lastBarcodeInputAt = now;
+            return started;
+        }
+
+        function prepareBarcodeRescan() {
+            if (isNewBarcodeScan() && normalizeBarcode(input.value) !== '') {
+                input.value = '';
+                message.textContent = '';
+            }
+        }
 
         if ('IntersectionObserver' in window) {
             new IntersectionObserver(function(entries) {
@@ -309,7 +332,13 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         }
 
         function focusInput() {
-            input.focus();
+            input.focus({ preventScroll: true });
+        }
+
+        function blurInputIfActive() {
+            if (document.activeElement === input) {
+                input.blur();
+            }
         }
 
         function closeModal() {
@@ -327,6 +356,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             var saleStatus = product.sale_status
                 ? '<span class="admobile-stock-sale-status' + saleStatusClass + '">' + escapeHtml(product.sale_status) + '</span>'
                 : '';
+            var remainingQty = Number(product.order_qty || 0) - Number(product.checked_total_qty || 0);
 
             return '<article class="admobile-barcode-result">' +
                 '<div class="admobile-barcode-result__image-wrap">' +
@@ -339,9 +369,13 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                     '<h3>' + escapeHtml(product.product_name || '상품명 없음') + '</h3>' +
                     '<p class="admobile-barcode-result__barcode">바코드: ' + escapeHtml(product.barcode || '-') + '</p>' +
                     '<p class="admobile-barcode-result__rack">랙: ' + escapeHtml(product.ps_rack_code || '-') + '</p>' +
-                    '<p class="admobile-barcode-result__qty">주문수량 ' + Number(product.order_qty || 0).toLocaleString() + '개</p>' +
+                    '<dl class="admobile-barcode-result__qty">' +
+                        '<div><dt>주문수량</dt><dd>' + Number(product.order_qty || 0).toLocaleString() + '개</dd></div>' +
+                        '<div><dt>체크수량</dt><dd>' + Number(product.checked_total_qty || 0).toLocaleString() + '개</dd></div>' +
+                        '<div><dt>남은 수량</dt><dd class="' + (remainingQty < 0 ? 'is-over' : '') + '">' + remainingQty.toLocaleString() + '개</dd></div>' +
+                    '</dl>' +
                     '<nav class="admobile-unit-action-menu" aria-label="상품 작업 메뉴">' +
-                        '<button type="button" class="admobile-unit-action-menu__item" data-complete-check data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '"' + (product.is_check_complete ? ' disabled' : '') + '>' + (product.is_check_complete ? '체크완료' : '바로 완료체크') + '</button>' +
+                        '<button type="button" class="admobile-unit-action-menu__item" data-complete-check data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '" data-order-qty="' + Number(product.order_qty || 0) + '" data-checked-qty="' + Number(product.checked_total_qty || 0) + '"' + (product.is_check_complete ? ' disabled' : '') + '>' + (product.is_check_complete ? '체크완료' : '바로 완료체크') + '</button>' +
                         '<a class="admobile-unit-action-menu__item admobile-unit-action-menu__item--primary" href="/admobile/order/sheet/stock/unit?idx=' + orderIdx + '&bidx=' + Number(product.bidx || 0) + '&pidx=' + Number(product.pidx || 0) + '">수량체크하기</a>' +
                         '<button type="button" class="admobile-unit-action-menu__item" data-memo-open data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '" data-product-name="' + escapeHtml(product.product_name || '') + '" data-memo="' + escapeHtml(product.stock_inspection_memo || '') + '">' + (product.stock_inspection_memo ? '메모 수정' : '메모 작성') + '</button>' +
                     '</nav>' +
@@ -377,17 +411,26 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
 
             resultList.innerHTML = matches.map(renderResult).join('');
             modal.hidden = false;
+            lastBarcodeInputAt = 0;
+            input.blur();
         }
 
         document.getElementById('barcode-search-clear').addEventListener('click', function() {
             input.value = '';
             message.textContent = '';
+            lastBarcodeInputAt = 0;
             focusInput();
         });
 
         document.getElementById('barcode-search-button').addEventListener('click', function() {
             input.blur();
             searchBarcode();
+        });
+
+        input.addEventListener('keydown', function(event) {
+            if (/^[0-9]$/.test(event.key)) {
+                prepareBarcodeRescan();
+            }
         });
 
         input.addEventListener('input', function() {
@@ -417,11 +460,20 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                 && target.matches('input, textarea, select, [contenteditable="true"]');
 
             if (modal.hidden && !isTextEntryTarget && /^[0-9]$/.test(event.key)) {
+                prepareBarcodeRescan();
                 input.value += event.key;
                 focusInput();
                 event.preventDefault();
             }
         });
+
+        document.addEventListener('touchstart', function(event) {
+            if (!event.target.closest('#barcode-search, #barcode-result-modal, #inspection-memo-modal, #product-image-modal')) {
+                blurInputIfActive();
+            }
+        }, { passive: true });
+
+        window.addEventListener('scroll', blurInputIfActive, { passive: true, capture: true });
 
         modal.addEventListener('click', function(event) {
             if (event.target.closest('[data-action="close"]')) {
@@ -587,7 +639,10 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         if (!button || button.disabled) {
             return;
         }
-        if (!window.confirm('남은 수량을 주문수량 기준으로 바로 체크완료 처리하시겠습니까?')) {
+        var orderQty = Number(button.dataset.orderQty || 0);
+        var checkedQty = Number(button.dataset.checkedQty || 0);
+        var remainingQty = orderQty - checkedQty;
+        if (!window.confirm('남은 수량 ' + remainingQty.toLocaleString() + '개를 주문수량 기준으로 바로 체크완료 처리하시겠습니까?')) {
             return;
         }
 
