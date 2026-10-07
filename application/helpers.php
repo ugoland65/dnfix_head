@@ -268,6 +268,31 @@ if (!function_exists('_laravel_dump_render')) {
 }
 
 /**
+ * HTML 출력 이스케이프
+ * DB에 이미 &amp; 로 저장된 값도 화면에 & 로 보이게 한 뒤 다시 이스케이프한다.
+ *
+ * @param mixed $value
+ * @param int $flags
+ * @param string $encoding
+ * @return string
+ */
+if (!function_exists('h')) {
+    function h($value, $flags = ENT_QUOTES, $encoding = 'UTF-8')
+    {
+        $text = (string)$value;
+        for ($i = 0; $i < 3; $i++) {
+            $decoded = html_entity_decode($text, $flags | ENT_HTML5, $encoding);
+            if ($decoded === $text) {
+                break;
+            }
+            $text = $decoded;
+        }
+
+        return htmlspecialchars($text, $flags, $encoding);
+    }
+}
+
+/**
  * 뷰 생성
  * 
  * @param string $template

@@ -7131,6 +7131,17 @@ class ProductService extends BaseClass
             throw new Exception('이미 단종 해제된 상품입니다.');
         }
 
+        $godoDiscontinuedLog = (new InspectionProcessLogService())->getLatestByPrdIdxAndLocation(
+            $idx,
+            InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED
+        );
+        $godoDiscontinuedResult = (isset($godoDiscontinuedLog['result_content']) && is_array($godoDiscontinuedLog['result_content']))
+            ? $godoDiscontinuedLog['result_content']
+            : [];
+        if (!empty($godoDiscontinuedResult['success'])) {
+            throw new Exception('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제를 해야 됩니다. 개발담당자에게 문의해주세요');
+        }
+
         $updateData = [
             'is_discontinued' => 0,
         ];

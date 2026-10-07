@@ -4,6 +4,10 @@
         <span>상품 목록</span>
         <span aria-hidden="true">›</span>
     </a>
+    <a class="admobile-menu-item" href="/admobile/product/grouping">
+        <span>상품 그룹핑</span>
+        <span aria-hidden="true">›</span>
+    </a>
 </section>
 
 <section class="admobile-menu">
@@ -26,5 +30,6 @@
     .admobile-menu { overflow: hidden; margin-bottom: 12px; background: #fff; border: 1px solid #e3e7ee; border-radius: 12px; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
     .admobile-menu h2 { margin: 0; padding: 16px; border-bottom: 1px solid #e3e7ee; font-size: 16px; }
     .admobile-menu-item { display: flex; align-items: center; justify-content: space-between; padding: 17px 16px; color: #172033; font-size: 15px; font-weight: 600; text-decoration: none; }
+    .admobile-menu-item + .admobile-menu-item { border-top: 1px solid #eef1f5; }
     .admobile-menu-item span:last-child { color: #98a2b3; font-size: 24px; font-weight: 400; line-height: 16px; }
 </style>

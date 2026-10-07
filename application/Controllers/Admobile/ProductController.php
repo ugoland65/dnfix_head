@@ -78,7 +78,18 @@ class ProductController extends BaseClass
 
         $productConfig = config('admin.product');
         $returnTo = (string)($request->all()['return_to'] ?? '');
-        if (strpos($returnTo, '/admobile/order/sheet/stock?') !== 0) {
+        $allowedReturnPrefixes = [
+            '/admobile/order/sheet/stock?',
+            '/admobile/product/grouping/view/',
+        ];
+        $isAllowedReturn = false;
+        foreach ($allowedReturnPrefixes as $prefix) {
+            if (strpos($returnTo, $prefix) === 0) {
+                $isAllowedReturn = true;
+                break;
+            }
+        }
+        if (!$isAllowedReturn) {
             $returnTo = '/admobile/product/list';
         }
 

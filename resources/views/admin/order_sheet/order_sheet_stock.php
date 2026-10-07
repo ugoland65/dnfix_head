@@ -60,7 +60,9 @@
                 style="width:220px"
                 value="<?= htmlspecialchars($defaultStockMemo, ENT_QUOTES, 'UTF-8') ?>"
             >
+            <!--
             <button type="button" id="show_type_all" class="btnstyle1 btnstyle1-success btnstyle1-sm" onclick="orderSheetStockPopup.allStock()">재고등록</button>
+        -->
         </div>
         <?php if ($godoApiErrorMessage !== '') { ?>
             <div class="m-t-8" style="color:#dc3545; font-size:12px; white-space:pre-wrap; word-break:break-all; border:1px solid #fecaca; background:#fef2f2; padding:8px 10px;">

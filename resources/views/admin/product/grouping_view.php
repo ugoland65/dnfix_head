@@ -66,6 +66,7 @@
                                             <th class="" style="width:80px;">이미지</th>
                                             <th class="" style="width:50px;">분류</th>
                                             <th class="prd-name">이름</th>
+                                            
                                             <th class="">브랜드</th>
                                             <th class="">공급사</th>
                                             <th class="">코드</th>
@@ -243,6 +244,7 @@
                                             <th class="" style="width:80px;">이미지</th>
                                             <th class="" style="width:50px;">분류</th>
                                             <th class="prd-name">이름</th>
+                                            <th class="">랙코드</th>
                                             <th>최근할인일</th>
                                             <th>판매가<br>원가</th>
                                             <th>재고</th>
@@ -316,6 +318,10 @@
                                                     <?php } ?>
 
                                                 </td>
+
+                                                <!-- 랙코드 -->
+                                                <td class="text-center"><?= $item['ps_rack_code'] ?? '-' ?></td>
+
                                                 <td class="text-center">
                                                     <?php
                                                         $saleDate = $item['ps_sale_date'] ?? null;

@@ -48,6 +48,7 @@ $adminName = trim((string)($auth['ad_name'] ?? ($_ad_name ?? '관리자')));
                 <button type="button" class="admobile-navigation-close" onclick="this.closest('details').removeAttribute('open')">닫기</button>
                 <div class="admobile-navigation-group">상품관리</div>
                 <a href="/admobile/product/list">상품 목록</a>
+                <a href="/admobile/product/grouping">상품 그룹핑</a>
                 <div class="admobile-navigation-group">재고/발주</div>
                 <a href="/admobile/order/sheet/list">주문(발주)</a>
                 <div class="admobile-navigation-group">계정관리</div>

@@ -1557,20 +1557,6 @@
                     <?php
                         $isDiscontinued = !empty($productData['is_discontinued']);
                         $isHandlingStopped = !empty($productData['is_handling_stopped']);
-                    ?>
-                    <?php if ($isDiscontinued) { ?>
-                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>')">단종 해제</button>
-                    <?php } else { ?>
-                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $isHandlingStopped ? 'true' : 'false' ?>)">단종 처리</button>
-                    <?php } ?>
-
-                    <?php if ($isHandlingStopped) { ?>
-                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductHandlingStopped('<?= $productData['CD_IDX'] ?? '' ?>')">취급중단 해제</button>
-                    <?php } else { ?>
-                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductHandlingStopped('<?= $productData['CD_IDX'] ?? '' ?>', <?= $isDiscontinued ? 'true' : 'false' ?>)">취급중단 처리</button>
-                    <?php } ?>
-
-                    <?php
                         $hasGodoCode = (trim((string)($productData['cd_godo_code'] ?? '')) !== '' && trim((string)($productData['cd_godo_code'] ?? '')) !== '0');
                         $godoDiscontinuedLog = (isset($godoDiscontinuedLog) && is_array($godoDiscontinuedLog)) ? $godoDiscontinuedLog : [];
                         $godoDiscontinuedResult = (isset($godoDiscontinuedLog['result_content']) && is_array($godoDiscontinuedLog['result_content']))
@@ -1606,6 +1592,17 @@
                         $holdStockQty = (int)($productData['ps_stock_hold'] ?? 0);
                         $hasRemainingStock = ($currentStockQty > 0 || $holdStockQty > 0);
                     ?>
+                    <?php if ($isDiscontinued) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $godoDiscontinuedSuccess ? 'true' : 'false' ?>)">단종 해제</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $isHandlingStopped ? 'true' : 'false' ?>)">단종 처리</button>
+                    <?php } ?>
+
+                    <?php if ($isHandlingStopped) { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductHandlingStopped('<?= $productData['CD_IDX'] ?? '' ?>')">취급중단 해제</button>
+                    <?php } else { ?>
+                        <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductHandlingStopped('<?= $productData['CD_IDX'] ?? '' ?>', <?= $isDiscontinued ? 'true' : 'false' ?>)">취급중단 처리</button>
+                    <?php } ?>
                     <div class="m-t-8">
                         <?php if ($hasGodoCode) { ?>
                             <button
@@ -3005,7 +3002,11 @@
         /**
          * 상품 단종 해제
          */
-        function unsetProductDiscontinued(prd_idx) {
+        function unsetProductDiscontinued(prd_idx, isGodoDiscontinued) {
+            if (isGodoDiscontinued) {
+                alert('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제를 해야 됩니다. 개발담당자에게 문의해주세요');
+                return;
+            }
 
             var payload = {
                 action_mode: 'unset_product_discontinued',

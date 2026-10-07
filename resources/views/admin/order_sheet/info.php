@@ -426,7 +426,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                                 결제금 : <input type="text" name="pay_price[]" class="price price_point" value="<?= number_format($pay_list['pay_price'] ?? 0) ?>" style="width:80px;"> 원
                                             </li>
                                             <li>
-                                                결제일 : <div class="calendar-input" style="display:inline-block;"><input type="text" name="pay_date[]" value="<?= $pay_list['pay_date'] ?? '' ?>" style="width:80px;" autocomplete="off"></div>
+                                                결제일 : <div class="calendar-input" style="display:inline-block; z-index: 999999999;"><input type="text" name="pay_date[]" value="<?= $pay_list['pay_date'] ?? '' ?>" style="width:80px;" autocomplete="off"></div>
                                             </li>
                                             <li>
                                                 <input type="text" name="pay_memo[]" value="<?= $pay_list['pay_memo'] ?? '' ?>" style="width:250px;" placeholder="메모">
@@ -590,7 +590,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                                     송장번호가 발급되면 바로 특가요청을 진행해주세요.
                                 </div>
 
-                                특가요청일 : <div class="calendar-input m-r-10" style="display:inline-block;"><input type="text" name="express_price_expected_date" id="express_price_expected_date" value="<?= $orderSheetInfo['oo_express_data']['price_expected_date'] ?? '' ?>" autocomplete="off"></div>
+                                특가요청일 : <div class="calendar-input m-r-10" style="display:inline-block; z-index: 999999999;"><input type="text" name="express_price_expected_date" id="express_price_expected_date" value="<?= $orderSheetInfo['oo_express_data']['price_expected_date'] ?? '' ?>" autocomplete="off"></div>
                                 예상 배송비 : <input type='text' name="express_price_expected" id="express_price_expected" class="price price_point" value="<?= number_format($orderSheetInfo['oo_express_data']['price_expected'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;'>원
                             </td>
                         </tr>
@@ -616,7 +616,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>배송비 결제기한</th>
                             <td>
-                                <div class="calendar-input" style="display:inline-block;">
+                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
                                     <input type="text" name="expressApprovalPayment_date" id="expressApprovalPayment_date" value="<?= $orderSheetInfo['oo_approval_date']['express']['approval']['date'] ?? '' ?>" autocomplete="off">
                                 </div>
 
@@ -705,7 +705,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                         <tr>
                             <th>관/부가세 결제기한</th>
                             <td>
-                                <div class="calendar-input" style="display:inline-block;"><input type="text" name="texApprovalPayment_date" id="texApprovalPayment_date" value="<?= $orderSheetInfo['oo_approval_date']['tax']['approval']['date'] ?? '' ?>"></div>
+                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;"><input type="text" name="texApprovalPayment_date" id="texApprovalPayment_date" value="<?= $orderSheetInfo['oo_approval_date']['tax']['approval']['date'] ?? '' ?>"></div>
 
                                 <?php
                                 if (!empty($orderSheetInfo['oo_approval_date']['tax']['approval']['date'])) {
@@ -880,7 +880,7 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 '</select>' +
                 '</li>' +
                 '<li>결제금 : <input type="text" name="pay_price[]" class="price price_point" value="" onkeyUP="GC.commaInput( this.value, this );" style="width:80px;" > 원</li>' +
-                '<li>결제일 : <div class="calendar-input" style="display:inline-block;"><input type="text" name="pay_date[]"  value="" style="width:80px;" ></div></li>' +
+                '<li>결제일 : <div class="calendar-input" style="display:inline-block; z-index: 999999999;"><input type="text" name="pay_date[]"  value="" style="width:80px;" ></div></li>' +
                 '<li><input type="text" name="pay_memo[]" value="" style="width:250px;" placeholder="메모" ></li>' +
                 '<li><button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetReg.addPayListDel(this)" ><i class="fas fa-trash-alt"></i></button></li>' +
                 '</ul>';
