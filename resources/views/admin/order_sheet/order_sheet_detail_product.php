@@ -1,6 +1,9 @@
 <div id="orderSheetRestockOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
     <div class="order-sheet-restock-overlay__message">재입고 알림 요청 수량을 수집하고 있습니다.<br>잠시만 기다려주세요.</div>
 </div>
+<div id="orderSheetExpectedOrderOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
+    <div class="order-sheet-restock-overlay__message">계산을 하고 있습니다.<br>잠시만 기다려주세요.<br>계산중 페이지 이동이나 새로고침은 하지 마세요.</div>
+</div>
 <div class="ospl-wrap">
     <div class="ospl-top">
         <ul>
@@ -21,21 +24,18 @@
                     재입고 알림수 갱신
                 </button>
 
-                <div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
-
-                <?php
-                $lastSavedName = trim((string)($orderGroup['last_saved_admin_name'] ?? ''));
-                $lastSavedId = trim((string)($orderGroup['last_saved_admin_id'] ?? ''));
-                $lastSavedAt = trim((string)($orderGroup['last_saved_at'] ?? ''));
-                $lastSavedLabel = '-';
-                if ($lastSavedName !== '' || $lastSavedId !== '' || $lastSavedAt !== '') {
-                    $lastSavedWho = $lastSavedName !== '' ? $lastSavedName : $lastSavedId;
-                    $lastSavedLabel = trim($lastSavedWho . ($lastSavedAt !== '' ? ' ' . $lastSavedAt : ''));
-                }
-                ?>
-                <span id="group_last_saved" class="m-l-20">최종저장 : <b><?= htmlspecialchars($lastSavedLabel, ENT_QUOTES, 'UTF-8') ?></b></span> 
-
-
+                <span>예상 주문수량 :</span>
+                <select id="os_expected_lookback_months">
+                    <option value="3">최근 3개월</option>
+                    <option value="6" selected>최근 6개월</option>
+                    <option value="12">최근 1년</option>
+                </select>
+                입고예상일
+                <input type="date" id="os_expected_inbound_date">
+                커버종료일
+                <input type="date" id="os_expected_cover_date">
+                <input type="number" id="os_expected_cover_days" value="30" min="0" max="365" class="width-50">일
+                <button type="button" id="os_expected_order_btn" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.calcExpectedOrder()">필요수량 계산</button>
                 <!-- 
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheet.lastInfoReset(this, '<?= $oop_idx ?>')">정보갱신</button>
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-15" onclick="thisCateDel();"">이분류 상품 전부 삭제</button>
@@ -105,6 +105,20 @@
                     <?php } ?>
 
                 <?php } ?>
+
+                <div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
+
+                <?php
+                $lastSavedName = trim((string)($orderGroup['last_saved_admin_name'] ?? ''));
+                $lastSavedId = trim((string)($orderGroup['last_saved_admin_id'] ?? ''));
+                $lastSavedAt = trim((string)($orderGroup['last_saved_at'] ?? ''));
+                $lastSavedLabel = '-';
+                if ($lastSavedName !== '' || $lastSavedId !== '' || $lastSavedAt !== '') {
+                    $lastSavedWho = $lastSavedName !== '' ? $lastSavedName : $lastSavedId;
+                    $lastSavedLabel = trim($lastSavedWho . ($lastSavedAt !== '' ? ' ' . $lastSavedAt : ''));
+                }
+                ?>
+                <span id="group_last_saved" class="m-l-20">최종저장 : <b><?= htmlspecialchars($lastSavedLabel, ENT_QUOTES, 'UTF-8') ?></b></span> 
 
             </div>
 
@@ -177,6 +191,7 @@
 
                 <th>현재고</th>
                 <th>재입고<br>알림수</th>
+                <th>예상<br>주문수량</th>
                 <th>최근 입/출고</th>
                 <th>비고</th>
                 <th>무게</th>
@@ -620,6 +635,11 @@
                         <?php if ($_restock_collected_at !== '' && $_restock_collected_at !== '0000-00-00 00:00:00') { ?>
                             <div style="font-size:11px;"><?= date('y.m.d', strtotime($_restock_collected_at)) ?></div>
                         <?php } ?>
+                    </td>
+
+                    <!-- 예상 주문수량 -->
+                    <td class="text-center os-expected-order-cell" style="width:88px; font-size:11px; line-height:1.45;" data-ps-idx="<?= htmlspecialchars((string)($item['product']['ps_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                        <span class="os-expected-order-empty">-</span>
                     </td>
 
                     <!-- 재입고 알림요청 수량 -->
@@ -1336,6 +1356,198 @@
             });
         }
 
+        var expectedOrderCalculating = false;
+
+        function blockExpectedOrderLeave(event) {
+            if (!expectedOrderCalculating) {
+                return;
+            }
+            event.preventDefault();
+            event.returnValue = "계산중입니다. 페이지 이동이나 새로고침은 하지 마세요.";
+            return event.returnValue;
+        }
+
+        function parseExpectedDate(value) {
+            var parts = String(value || "").split("-");
+            if (parts.length !== 3) {
+                return null;
+            }
+            var date = new Date(Number(parts[0]), Number(parts[1]) - 1, Number(parts[2]));
+            if (isNaN(date.getTime())) {
+                return null;
+            }
+            date.setHours(0, 0, 0, 0);
+            return date;
+        }
+
+        function formatExpectedDate(date) {
+            var month = String(date.getMonth() + 1).padStart(2, "0");
+            var day = String(date.getDate()).padStart(2, "0");
+            return date.getFullYear() + "-" + month + "-" + day;
+        }
+
+        function bindExpectedCoverPeriod() {
+            var $inbound = $("#os_expected_inbound_date");
+            var $coverDate = $("#os_expected_cover_date");
+            var $coverDays = $("#os_expected_cover_days");
+            if (!$inbound.length) {
+                return;
+            }
+
+            var lastEdited = "days";
+
+            function syncFromDays() {
+                var inbound = parseExpectedDate($inbound.val());
+                var days = parseInt($coverDays.val(), 10);
+                if (!inbound || isNaN(days) || days < 0) {
+                    return;
+                }
+                var cover = new Date(inbound.getTime());
+                cover.setDate(cover.getDate() + days);
+                $coverDate.val(formatExpectedDate(cover));
+            }
+
+            function syncFromDate() {
+                var inbound = parseExpectedDate($inbound.val());
+                var cover = parseExpectedDate($coverDate.val());
+                if (!inbound) {
+                    if ($coverDate.val()) {
+                        showAlert("Error", "입고예상일을 먼저 입력해 주세요.", "alert2");
+                        $coverDate.val("");
+                    }
+                    return;
+                }
+                if (!cover) {
+                    return;
+                }
+                var days = Math.round((cover.getTime() - inbound.getTime()) / 86400000);
+                if (days < 0) {
+                    showAlert("Error", "커버종료일은 입고예상일 이후여야 합니다.", "alert2");
+                    $coverDate.val("");
+                    return;
+                }
+                if (days > 365) {
+                    days = 365;
+                }
+                $coverDays.val(String(days));
+            }
+
+            $coverDays.on("input", function() {
+                lastEdited = "days";
+                syncFromDays();
+            });
+            $coverDate.on("change", function() {
+                lastEdited = "date";
+                syncFromDate();
+            });
+            $inbound.on("change", function() {
+                if (lastEdited === "date" && $coverDate.val()) {
+                    syncFromDate();
+                } else {
+                    syncFromDays();
+                }
+            });
+        }
+
+        function renderExpectedOrderCell($cell, row) {
+            if (!row || row.error) {
+                $cell.html('<span style="color:#d60000;">' + $('<div>').text((row && row.error) ? row.error : '계산 실패').html() + '</span>');
+                return;
+            }
+            var orderQty = Number(row.order_qty || 0);
+            var safetyQty = Number(row.safety_qty || 0);
+            var totalQty = Number(row.total_qty || 0);
+            var color = '#ff0000';
+            if (orderQty === 0 && safetyQty === 0) {
+                color = '#aaa';
+            } else if (orderQty === 0) {
+                color = '#1a9b4a';
+            }
+            $cell.html(
+                '<div style="color:' + color + ';">'
+                + '<div>주문수량 <b>' + orderQty + '</b></div>'
+                + '<div>안전재고 <b>' + safetyQty + '</b></div>'
+                + '<div>합수량 <b>' + totalQty + '</b></div>'
+                + '</div>'
+            );
+        }
+
+        function calcExpectedOrder() {
+            if (expectedOrderCalculating) {
+                return;
+            }
+
+            var expectedDate = $.trim($("#os_expected_inbound_date").val() || "");
+            if (!expectedDate) {
+                showAlert("Error", "입고예상일을 입력해 주세요.", "alert2");
+                return;
+            }
+
+            var psIdxList = [];
+            $(".os-expected-order-cell").each(function() {
+                var psIdx = $.trim($(this).attr("data-ps-idx") || "");
+                if (psIdx && psIdxList.indexOf(psIdx) === -1) {
+                    psIdxList.push(psIdx);
+                }
+            });
+            if (!psIdxList.length) {
+                showAlert("Error", "계산할 상품 재고가 없습니다.", "alert2");
+                return;
+            }
+
+            var $button = $("#os_expected_order_btn");
+            var $overlay = $("#orderSheetExpectedOrderOverlay");
+            expectedOrderCalculating = true;
+            window.addEventListener("beforeunload", blockExpectedOrderLeave);
+            $button.prop("disabled", true);
+            $overlay.removeAttr("hidden");
+            $("body").css("overflow", "hidden");
+
+            $.ajax({
+                url: "/admin/order/sheet/expected_order",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    ps_idx: psIdxList,
+                    expected_date: expectedDate,
+                    cover_days: $("#os_expected_cover_days").val(),
+                    lookback_months: $("#os_expected_lookback_months").val()
+                },
+                success: function(res) {
+                    if (!res || res.success !== true || !res.data) {
+                        showAlert("Error", (res && res.message) ? res.message : "예상 주문수량 계산에 실패했습니다.", "alert2");
+                        return;
+                    }
+
+                    $(".os-expected-order-cell").each(function() {
+                        var $cell = $(this);
+                        var psIdx = $.trim($cell.attr("data-ps-idx") || "");
+                        if (!psIdx) {
+                            $cell.html('<span class="os-expected-order-empty">-</span>');
+                            return;
+                        }
+                        renderExpectedOrderCell($cell, res.data[psIdx] || null);
+                    });
+                },
+                error: function(request) {
+                    var message = "예상 주문수량 계산 중 오류가 발생했습니다.";
+                    if (request.responseJSON && request.responseJSON.message) {
+                        message = request.responseJSON.message;
+                    }
+                    showAlert("Error", message, "alert2");
+                },
+                complete: function() {
+                    expectedOrderCalculating = false;
+                    window.removeEventListener("beforeunload", blockExpectedOrderLeave);
+                    $overlay.attr("hidden", true);
+                    $("body").css("overflow", "");
+                    $button.prop("disabled", false);
+                }
+            });
+        }
+
+        bindExpectedCoverPeriod();
+
         return {
             unitFalse,
             soldOut,
@@ -1344,6 +1556,7 @@
             newPayPrice,
             groupSave,
             syncOrderGroupRestockAlertCounts,
+            calcExpectedOrder,
         };
 
     }();

@@ -16,6 +16,7 @@ use App\Services\ProductPartnerApiService;
 use App\Services\PartnersService;
 use App\Services\ProductStockSaleLogService;
 use App\Services\ProductStockService;
+use App\Services\ExpectedInboundOrderService;
 use App\Services\GodoInspectionService;
 use App\Services\GodoApiService;
 use App\Services\InspectionProcessLogService;
@@ -2277,14 +2278,43 @@ class ProductController extends BaseClass
                 $psIdx,
                 $showMode,
                 $requestData['cur_y'] ?? null,
-                $requestData['cur_m'] ?? null
+                $requestData['cur_m'] ?? null,
+                $requestData['lookback_months'] ?? 6
             );
+            $data['expected_date'] = trim((string)($requestData['expected_date'] ?? ''));
+            $data['cover_date'] = trim((string)($requestData['cover_date'] ?? ''));
+            $data['cover_days'] = trim((string)($requestData['cover_days'] ?? '30'));
 
             return view('admin.product.prd_detail_stock_chart', $data);
         } catch (Throwable $e) {
             return view('admin.errors.404', [
                 'message' => $e->getMessage(),
             ])->response(404);
+        }
+    }
+
+    /**
+     * 입고예상일 기준 필요수량
+     */
+    public function expectedInboundOrderQty(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $psIdx = (int)($requestData['ps_idx'] ?? 0);
+            $expectedDate = trim((string)($requestData['expected_date'] ?? ''));
+            $coverDays = $requestData['cover_days'] ?? 30;
+            $lookbackMonths = $requestData['lookback_months'] ?? 6;
+            $result = (new ExpectedInboundOrderService())->calculate($psIdx, $expectedDate, $coverDays, $lookbackMonths);
+
+            return response()->json([
+                'success' => true,
+                'data' => $result,
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
         }
     }
 

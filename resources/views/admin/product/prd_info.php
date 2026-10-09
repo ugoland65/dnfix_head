@@ -462,6 +462,7 @@ $h = static function ($value): string {
 	</ul>
 </div>
 
+<script src="/admin2/js/order_sheet.js?ver=<?= time() ?>"></script>
 <script>
 	const prdInfo = (function() {
 

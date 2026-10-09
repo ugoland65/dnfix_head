@@ -660,7 +660,7 @@ class ProductStockService extends BaseClass
      * @param mixed $curM
      * @return array
      */
-    public function getStockChartPageData(int $prdIdx, int $psIdx, string $showMode = '연간통계', $curY = null, $curM = null): array
+    public function getStockChartPageData(int $prdIdx, int $psIdx, string $showMode = '연간통계', $curY = null, $curM = null, $lookbackMonths = 6): array
     {
         $nowY = (int)date('Y');
         $nowM = (int)date('n');
@@ -678,6 +678,8 @@ class ProductStockService extends BaseClass
         if (!in_array($showMode, ['연간통계', '월간통계'], true)) {
             $showMode = '연간통계';
         }
+
+        $lookbackMonths = $this->normalizeLookbackMonths($lookbackMonths);
 
         $yearlyRows = [];
         $weeklyRows = [];
@@ -855,7 +857,8 @@ class ProductStockService extends BaseClass
             'avg_exclude_current' => $avgExcludeCurrent,
             'order_rows' => $orderRows,
             'inbound_rows' => $inboundRows,
-            'insight' => $this->buildStockChartInsight($psIdx, $inboundRows, $orderRows, $firstInboundDay),
+            'lookback_months' => $lookbackMonths,
+            'insight' => $this->buildStockChartInsight($psIdx, $firstInboundDay, $lookbackMonths),
         ];
     }
 
@@ -893,6 +896,7 @@ class ProductStockService extends BaseClass
                 'O.oo_name',
                 'O.oo_in_date',
                 'O.oo_date_data',
+                'O.oo_price_data',
                 'O.oo_state',
                 'G.oop_name',
                 'M.memo as product_memo',
@@ -921,10 +925,16 @@ class ProductStockService extends BaseClass
                 $orderName = trim((string)($row['oop_name'] ?? ''));
             }
 
+            $dateData = $row['oo_date_data'] ?? null;
             $stateChanged = $this->extractLatestStateChange(
-                $row['oo_date_data'] ?? null,
+                $dateData,
                 (int)($row['oo_state'] ?? 0)
             );
+            $orderDate = $this->extractOrderSendDate($dateData);
+            if ($orderDate === '') {
+                $orderDate = $this->extractStateDate($dateData, 2);
+            }
+            $depositDate = $this->extractDepositDate($row['oo_price_data'] ?? null, $dateData);
             $bidx = (int)($row['bidx'] ?? 0);
             $pidx = (int)($row['pidx'] ?? 0);
             $orderUrl = '';
@@ -947,6 +957,8 @@ class ProductStockService extends BaseClass
                 'state_changed_name' => $stateChanged['name'],
                 'bidx' => $bidx,
                 'pidx' => $pidx,
+                'order_date' => $orderDate,
+                'deposit_date' => $depositDate,
                 'in_date' => $this->formatOrderDate((string)($row['oo_in_date'] ?? '')),
                 'end_date' => $this->extractOrderEndDate($row['oo_date_data'] ?? null),
                 'order_qty' => (int)($row['order_qty'] ?? 0),
@@ -1028,6 +1040,103 @@ class ProductStockService extends BaseClass
         }
 
         return ['date' => '', 'name' => ''];
+    }
+
+    /**
+     * 주문서 발송일
+     *
+     * @param mixed $dateData
+     * @return string
+     */
+    private function extractOrderSendDate($dateData): string
+    {
+        $dateData = $this->decodeOrderDateData($dateData);
+        if ($dateData === null) {
+            return '';
+        }
+
+        return $this->formatOrderDate((string)($dateData['order_send_date'] ?? ''));
+    }
+
+    /**
+     * 입금일. 결제정보의 결제일이 있으면 그 날짜를, 없으면 입금완료 상태 변경일을 사용한다.
+     *
+     * @param mixed $priceData
+     * @param mixed $dateData
+     * @return string
+     */
+    private function extractDepositDate($priceData, $dateData): string
+    {
+        if (is_string($priceData) && $priceData !== '') {
+            $priceData = json_decode($priceData, true);
+        }
+
+        $dates = [];
+        $payList = (is_array($priceData) && is_array($priceData['pay_list'] ?? null)) ? $priceData['pay_list'] : [];
+        foreach ($payList as $pay) {
+            if (!is_array($pay)) {
+                continue;
+            }
+            $formatted = $this->formatOrderDate((string)($pay['pay_date'] ?? ''));
+            if ($formatted !== '' && !in_array($formatted, $dates, true)) {
+                $dates[] = $formatted;
+            }
+        }
+        if (!empty($dates)) {
+            return implode("\n", $dates);
+        }
+
+        return $this->extractStateDate($dateData, 4);
+    }
+
+    /**
+     * 특정 상태로 바뀐 마지막 날짜
+     *
+     * @param mixed $dateData
+     * @param int $targetState
+     * @return string
+     */
+    private function extractStateDate($dateData, int $targetState): string
+    {
+        $dateData = $this->decodeOrderDateData($dateData);
+        if ($dateData === null) {
+            return '';
+        }
+
+        $states = $dateData['state'] ?? [];
+        if (!is_array($states)) {
+            return '';
+        }
+
+        $matchedDate = '';
+        foreach ($states as $state) {
+            if (!is_array($state)) {
+                continue;
+            }
+            if ((int)($state['state_after'] ?? 0) === $targetState) {
+                $matchedDate = $this->formatOrderDate((string)($state['date'] ?? ''));
+            }
+        }
+
+        return $matchedDate;
+    }
+
+    /**
+     * 주문서 날짜 JSON
+     *
+     * @param mixed $dateData
+     * @return array|null
+     */
+    private function decodeOrderDateData($dateData): ?array
+    {
+        if (is_string($dateData) && $dateData !== '') {
+            $dateData = json_decode($dateData, true);
+        }
+        if (!is_array($dateData)) {
+            return null;
+        }
+
+        return $dateData;
     }
 
     /**
@@ -1473,19 +1582,98 @@ class ProductStockService extends BaseClass
     }
 
     /**
+     * 입고예상일 발주에 쓰는 판매 기준값.
+     * monthCount에는 진행 중인 이번 달이 포함되고, 월평균에서는 제외된다.
+     *
+     * @param int $psIdx
+     * @param int $monthCount
+     * @return array
+     */
+    public function getExpectedInboundDemandBasis(int $psIdx, int $monthCount = 6): array
+    {
+        if ($psIdx <= 0) {
+            throw new Exception('재고 정보가 올바르지 않습니다.');
+        }
+
+        $monthCount = max(2, $monthCount);
+        $today = date('Y-m-d');
+        $recentDays = 28;
+        $recentStartDay = date('Y-m-d', strtotime('-' . ($recentDays - 1) . ' days'));
+
+        $currentStock = 0;
+        $stockRow = ProductStockModel::query()
+            ->select(['ps_stock'])
+            ->where('ps_idx', '=', $psIdx)
+            ->first();
+        if ($stockRow) {
+            $stockData = method_exists($stockRow, 'toArray') ? $stockRow->toArray() : (array)$stockRow;
+            $currentStock = (int)($stockData['ps_stock'] ?? 0);
+        }
+
+        $firstInboundDay = $this->getFirstInboundDay($psIdx);
+        $monthStats = $this->getNormalMonthSaleStats($psIdx, $monthCount, $firstInboundDay);
+        $monthlyAvg = (float)($monthStats['monthly_avg'] ?? 0);
+
+        $recentStartTs = strtotime($recentStartDay . ' 00:00:00');
+        $recentUnits = $this->getStockUnitsInRange($psIdx, (int)$recentStartTs, time());
+        $recentPrev = $this->getLastAvailableStockUnitBefore($psIdx, (int)$recentStartTs);
+        $recentPeriods = $this->buildSoldOutPeriods($recentUnits, $recentPrev, $today);
+        $soldOutDays = $this->countSoldOutDaysInRange($recentPeriods, $recentStartDay, $today);
+        $inStockDays = max(0, $recentDays - $soldOutDays);
+
+        $salesRecent = 0;
+        foreach ($recentUnits as $unit) {
+            if (!is_array($unit) || !$this->isSaleUnit($unit)) {
+                continue;
+            }
+            $day = $this->getStockUnitDay($unit);
+            if ($day >= $recentStartDay && $day <= $today) {
+                $salesRecent += (int)($unit['psu_qry'] ?? 0);
+            }
+        }
+
+        $dailyRecent = $inStockDays > 0 ? round($salesRecent / $inStockDays, 2) : 0.0;
+
+        return [
+            'current_stock' => $currentStock,
+            'monthly_avg' => round($monthlyAvg, 1),
+            'sample_months' => (int)($monthStats['sample_months'] ?? 0),
+            'completed_month_window' => $monthCount - 1,
+            'recent_days' => $recentDays,
+            'recent_sales' => $salesRecent,
+            'recent_instock_days' => $inStockDays,
+            'daily_recent' => $dailyRecent,
+        ];
+    }
+
+    /**
+     * 판매 요약에 쓰는 계산개월. 3, 6, 12만 허용한다.
+     *
+     * @param mixed $value
+     * @return int
+     */
+    private function normalizeLookbackMonths($value): int
+    {
+        $months = (int)$value;
+        if (!in_array($months, [3, 6, 12], true)) {
+            return 6;
+        }
+
+        return $months;
+    }
+
+    /**
      * 월평균 기준 판매/발주 요약과 품절 예상
      * - 품절월(입고 없이 한 달 품절)은 평균·미판매에서 제외
      * - 리드: 주문서 작성 1주 + 입고 1주
-     * - 급판매 권장발주는 최근 신규입고 수량(중앙값)을 넘지 않음
      * - 현재고가 1개 이하이면 급판매로 보지 않음 (잔여 1개 판매로 일판매가 과장되는 것 방지)
      *
      * @param int $psIdx
-     * @param array $inboundRows
-     * @param array $orderRows
      * @param string $firstInboundDay
+     * @param int $lookbackMonths
      * @return array
      */
-    private function buildStockChartInsight(int $psIdx, array $inboundRows, array $orderRows, string $firstInboundDay = ''): array
+    private function buildStockChartInsight(int $psIdx, string $firstInboundDay = '', int $lookbackMonths = 6): array
     {
         $today = date('Y-m-d');
         $recentDays = 28;
@@ -1504,7 +1692,8 @@ class ProductStockService extends BaseClass
             $currentStock = (int)($stockData['ps_stock'] ?? 0);
         }
 
-        $monthStats = $this->getNormalMonthSaleStats($psIdx, 12, $firstInboundDay);
+        $lookbackMonths = $this->normalizeLookbackMonths($lookbackMonths);
+        $monthStats = $this->getNormalMonthSaleStats($psIdx, $lookbackMonths + 1, $firstInboundDay);
         $monthlyAvg = (float)($monthStats['monthly_avg'] ?? 0);
         $dailyMonth = $monthlyAvg > 0 ? round($monthlyAvg / 30, 2) : 0.0;
         $sampleMonths = (int)($monthStats['sample_months'] ?? 0);
@@ -1532,7 +1721,6 @@ class ProductStockService extends BaseClass
         $isSurge = $currentStock > 1 && $dailyMonth > 0 && $daily28 >= ($dailyMonth * 1.5);
         $useDaily = $isSurge && $daily28 > 0 ? $daily28 : $dailyMonth;
         $horizonDays = $cycleDays + $leadDays + $safetyDays;
-        $typicalInbound = $this->getTypicalInboundQty($inboundRows);
 
         $coverDays = null;
         $soldOutAt = '';
@@ -1550,16 +1738,10 @@ class ProductStockService extends BaseClass
 
         $baseRecommended = $this->calcRecommendedQty($dailyMonth, $horizonDays, $currentStock);
         $surgeRecommended = $this->calcRecommendedQty($daily28, $horizonDays, $currentStock);
-        $systemRecommended = ($isSurge && $surgeRecommended > 0) ? $surgeRecommended : $baseRecommended;
         $recommended = $baseRecommended;
-        $recommendedCapped = false;
         $recommendDaily = $dailyMonth;
         if ($isSurge && $surgeRecommended > $baseRecommended) {
-            $cap = $typicalInbound > 0
-                ? $typicalInbound
-                : ($baseRecommended > 0 ? $baseRecommended * 3 : $surgeRecommended);
-            $recommended = max($baseRecommended, min($surgeRecommended, $cap));
-            $recommendedCapped = $recommended < $surgeRecommended;
+            $recommended = $surgeRecommended;
             $recommendDaily = $daily28;
         }
         $demandQty = $this->calcDemandQty($recommendDaily, $horizonDays);
@@ -1569,7 +1751,7 @@ class ProductStockService extends BaseClass
 
         return [
             'current_stock' => $currentStock,
-            'lookback_months' => 12,
+            'lookback_months' => $lookbackMonths,
             'sample_months' => $sampleMonths,
             'monthly_avg' => round($monthlyAvg, 1),
             'recent_days' => $recentDays,
@@ -1582,12 +1764,9 @@ class ProductStockService extends BaseClass
             'lead_days' => $leadDays,
             'cycle_days' => $cycleDays,
             'safety_days' => $safetyDays,
-            'typical_inbound' => $typicalInbound,
             'demand_qty' => $demandQty,
             'stock_applied' => $stockApplied,
             'recommended_qty' => $recommended,
-            'system_recommended_qty' => $systemRecommended,
-            'recommended_capped' => $recommendedCapped,
             'cover_days' => $coverDays,
             'soldout_at' => $soldOutAt,
             'forecast_text' => $forecastText,
@@ -1627,33 +1806,6 @@ class ProductStockService extends BaseClass
 
         $recommended = (int)ceil(($dailySale * $horizonDays) - $currentStock);
         return $recommended > 0 ? $recommended : 0;
-    }
-
-    /**
-     * 최근 신규입고 수량의 중앙값
-     *
-     * @param array $inboundRows
-     * @return int
-     */
-    private function getTypicalInboundQty(array $inboundRows): int
-    {
-        $qtys = [];
-        foreach ($inboundRows as $row) {
-            if (!is_array($row)) {
-                continue;
-            }
-            $qty = (int)($row['psu_qry'] ?? 0);
-            if ($qty > 0) {
-                $qtys[] = $qty;
-            }
-        }
-
-        if (empty($qtys)) {
-            return 0;
-        }
-
-        sort($qtys);
-        return (int)$qtys[(int)floor((count($qtys) - 1) / 2)];
     }
 
     /**

@@ -8,6 +8,7 @@ use App\Classes\Request;
 use App\Core\BaseClass;
 use App\Services\OrderSheetService;
 use App\Services\OrderGroupService;
+use App\Services\ExpectedInboundOrderService;
 use App\Utils\Pagination;
 
 class OrderSheetController extends BaseClass 
@@ -330,6 +331,46 @@ class OrderSheetController extends BaseClass
 
         }
         catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 주문서 상품목록의 예상 주문수량 일괄 계산
+     */
+    public function orderSheetExpectedOrder(Request $request)
+    {
+        try {
+            @set_time_limit(180);
+
+            $requestData = $request->all();
+            $psIdxList = $requestData['ps_idx'] ?? [];
+            if (!is_array($psIdxList)) {
+                $psIdxList = [$psIdxList];
+            }
+            $psIdxList = array_values(array_filter(array_map('intval', $psIdxList)));
+            if (!$psIdxList) {
+                throw new Exception('계산할 상품이 없습니다.');
+            }
+            if (count($psIdxList) > 500) {
+                throw new Exception('한 번에 계산할 수 있는 상품은 500개입니다.');
+            }
+
+            $rows = (new ExpectedInboundOrderService())->calculateMany(
+                $psIdxList,
+                (string)($requestData['expected_date'] ?? ''),
+                $requestData['cover_days'] ?? 30,
+                $requestData['lookback_months'] ?? 6
+            );
+
+            return response()->json([
+                'success' => true,
+                'data' => $rows,
+            ]);
+        } catch (Throwable $e) {
             return response()->json([
                 'success' => false,
                 'message' => $e->getMessage(),

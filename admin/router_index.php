@@ -97,6 +97,7 @@ try {
     $router->get('/product/detail_price', ProductController::class, 'prdDetailPricePage'); //상품 디테일 (가격정보)
     $router->get('/product/detail_sale_log', ProductController::class, 'prdDetailSaleLogPage'); //상품 디테일 (할인 로그)
     $router->get('/product/detail_stock_chart', ProductController::class, 'prdDetailStockChartPage'); //상품 디테일 (판매량/발주 요약)
+    $router->get('/product/detail_stock_chart/expected_order', ProductController::class, 'expectedInboundOrderQty'); //입고예상일 필요수량
     $router->get('/product/detail_competitor_product', ProductController::class, 'prdDetailCompetitorProductPage'); //상품 디테일 (경쟁사 판매현황)
     $router->get('/product/detail_relation_group', ProductController::class, 'prdDetailRelationGroupPage'); //상품 디테일 (시리즈/연관그룹)
     $router->get('/product/detail_spec_info', ProductController::class, 'prdDetailSpecInfoPage'); //상품 디테일 (상품 스펙정보)
@@ -183,6 +184,7 @@ try {
     $router->post('/order/sheet/save', OrderSheetController::class, 'orderSheetSave'); //주문서 저장
     $router->post('/order/sheet/action', OrderSheetController::class, 'orderSheetAction'); //주문서 액션
     $router->post('/order/sheet/detail_product', OrderSheetController::class, 'orderSheetDetailProduct'); //주문서 주문 상품목록
+    $router->post('/order/sheet/expected_order', OrderSheetController::class, 'orderSheetExpectedOrder'); //주문서 상품 예상 주문수량
     $router->post('/order/sheet/save_group_product', OrderSheetController::class, 'orderSheetSaveGroupProduct'); //주문서 주문그룹 상품목록
 
     // 주문서 그룹 관리
