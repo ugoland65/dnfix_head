@@ -23,6 +23,7 @@ $prd_kind_name = [
     'SET' => "세트상품",
     'ONLYORDER' => "주문전용상품",
     'REALDOLL' => "리얼돌",
+    'GOODS_GIFT' => "굿즈/기프트",
 ];
 
 // prdDB 상세 카테고리
@@ -636,6 +637,12 @@ $categories = [
                 'children' => []
             ],
         ]
+    ],
+    [
+        'code' => '20000000',
+        'key' => 'GOODS_GIFT',
+        'name' => '굿즈/기프트',
+        'children' => []
     ],
     [
         'code' => '18000000',

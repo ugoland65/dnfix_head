@@ -282,6 +282,8 @@ class ProductImageHostingService
             'bb-order.com' => 'https://bb-order.com/',
             'ridejapan.net' => 'http://ridejapan.net/',
             'yelolab.jp' => 'https://yelolab.jp/',
+            'maccos.jp' => 'https://maccos.jp/',
+            'magiceyes.jp' => 'https://magiceyes.jp/',
         ];
     }
 

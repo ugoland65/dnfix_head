@@ -369,6 +369,21 @@ class ProductSupplierPyApiService
                 'path_error' => '옐로랩 URL은 /products/카테고리/상품코드 형식이어야 합니다.',
                 'identifier_error' => '옐로랩 상품 코드가 올바르지 않습니다.',
             ],
+            'maccos.jp' => [
+                'endpoint' => '/maker-products/maccos/crawl',
+                'identifier_type' => 'path_category_code',
+                'required_path_prefix' => '/maccos_all/',
+                'payload_key' => 'product_pk',
+                'payload_from' => 'collection_url',
+                'path_error' => '막코스재팬 URL은 /maccos_all/카테고리/상품코드 형식이어야 합니다.',
+                'identifier_error' => '막코스재팬 상품 코드가 올바르지 않습니다.',
+            ],
+            'magiceyes.jp' => [
+                'endpoint' => '/maker-products/magiceyes/crawl',
+                'identifier_type' => 'path_php_item',
+                'omit_product_pk' => true,
+                'path_error' => '매직아이즈 URL은 /products/item/상품페이지.php 형식이어야 합니다.',
+            ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
         if ($collector === null) {
@@ -425,6 +440,14 @@ class ProductSupplierPyApiService
             if ($identifier === '') {
                 throw new \InvalidArgumentException((string)($collector['identifier_error'] ?? '상품 코드가 올바르지 않습니다.'));
             }
+        } elseif ($collector['identifier_type'] === 'path_php_item') {
+            if (!preg_match('~^/products/item/([^/]+)\.php/?$~', $path, $phpItemMatches)) {
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
+            }
+            $slug = trim((string)$phpItemMatches[1], '/');
+            if ($slug === '' || $slug === '.' || $slug === '..') {
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
+            }
         }
 
         $matchedProductPk = (int)($data['matched_product_pk'] ?? 0);
@@ -444,9 +467,15 @@ class ProductSupplierPyApiService
             'source_url' => $collectionUrl,
             'requested_at' => (new \DateTimeImmutable('now', new \DateTimeZone('Asia/Seoul')))->format(DATE_ATOM),
         ];
-        $payload[$collector['payload_key']] = ($collector['payload_value_type'] ?? 'string') === 'int'
-            ? (int)$identifier
-            : $identifier;
+        if (empty($collector['omit_product_pk'])) {
+            if (($collector['payload_from'] ?? '') === 'collection_url') {
+                $payload[$collector['payload_key']] = $collectionUrl;
+            } else {
+                $payload[$collector['payload_key']] = ($collector['payload_value_type'] ?? 'string') === 'int'
+                    ? (int)$identifier
+                    : $identifier;
+            }
+        }
         if (($collector['transport'] ?? '') === 'firebase') {
             return $this->requestViaFirebaseWorker(
                 (string)($collector['firebase_type'] ?? 'TIS'),

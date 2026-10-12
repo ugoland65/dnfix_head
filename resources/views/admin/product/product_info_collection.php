@@ -181,6 +181,8 @@ $siteCodeNames = [
     'tis' => 'TIS',
     'ridejapan' => '라이드재팬',
     'yelolab' => '옐로랩',
+    'maccos' => '막코스재팬',
+    'magiceyes' => '매직아이즈',
 ];
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
@@ -453,6 +455,14 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                         <li>
                             <label class="brand">브랜드</label>옐로랩 ex) <a href="https://yelolab.jp" target="_blank" rel="noopener noreferrer">https://yelolab.jp/products/hole/yelo-041</a>
                         </li>
+                        <li>
+                            <label class="brand">브랜드</label>막코스재팬 ex) <a href="https://maccos.jp" target="_blank" rel="noopener noreferrer">https://maccos.jp/maccos_all/onaho/mach-079/</a>
+                        </li>
+                        <li>
+                            <label class="brand">브랜드</label>매직아이즈 ex) <a href="https://magiceyes.jp" target="_blank" rel="noopener noreferrer">https://magiceyes.jp/products/item/-paradox.php</a>
+                        </li>
+
+                        
                         <li>
                             <label class="local_supplier">현지 공급사</label>N.P.G ex) <a href="http://www.nipporigift.net" target="_blank" rel="noopener noreferrer">http://www.nipporigift.net/products/detail.php?product_id=31373</a>
                         </li>
@@ -1914,6 +1924,18 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             var yelolabMatch = url.pathname.match(/^\/products\/[^/]+\/([A-Za-z0-9_-]+)\/?$/);
             if (!yelolabMatch) {
                 showMessage('옐로랩 URL은 /products/카테고리/상품코드 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'maccos.jp') {
+            var maccosMatch = url.pathname.match(/^\/maccos_all\/[^/]+\/([A-Za-z0-9_-]+)\/?$/);
+            if (!maccosMatch) {
+                showMessage('막코스재팬 URL은 /maccos_all/카테고리/상품코드 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'magiceyes.jp') {
+            var magiceyesMatch = url.pathname.match(/^\/products\/item\/([^/]+)\.php\/?$/);
+            if (!magiceyesMatch) {
+                showMessage('매직아이즈 URL은 /products/item/상품페이지.php 형식이어야 합니다.', false);
                 return;
             }
         } else {

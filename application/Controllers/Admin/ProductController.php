@@ -1598,6 +1598,8 @@ class ProductController extends BaseClass
                 'tis' => 'TIS',
                 'ridejapan' => '라이드재팬',
                 'yelolab' => '옐로랩',
+                'maccos' => '막코스재팬',
+                'magiceyes' => '매직아이즈',
             ];
             $siteName = $siteCodeNames[$siteCode] ?? '';
             $siteLabel = $siteCode === ''
