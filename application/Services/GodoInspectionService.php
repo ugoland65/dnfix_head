@@ -4,7 +4,7 @@ namespace App\Services;
 
 class GodoInspectionService
 {
-    public const INSPECTION_VERSION = '20260928_v2';
+    public const INSPECTION_VERSION = '20261014_v3';
     public const CONTEXT_PRODUCT_SINGLE = 'product_single';
     public const CONTEXT_ORDER_SHEET_STOCK = 'order_sheet_stock';
     public const CONTEXT_PROVIDER_PRODUCT = 'provider_product';
@@ -112,6 +112,32 @@ class GodoInspectionService
         ['cateNm' => '16cm 이상', 'cateCd' => '026006004', 'min' => 16, 'max' => null],
     ];
 
+    /**
+     * 콘돔 1차(대분류) 고도몰 카테고리
+     */
+    private const CONDOM_ROOT_CATEGORY = [
+        'cateNm' => '콘돔',
+        'cateCd' => '024',
+    ];
+
+    /**
+     * 콘돔 2차 카테고리 → 고도몰 024005 코드
+     * 인트라넷 상품 구분(0901~0911)과 1:1로 맞춘다.
+     */
+    private const CONDOM_TYPE_CATEGORIES = [
+        ['sourceCategoryCode' => '09010000', 'cateNm' => '일반형 콘돔', 'cateCd' => '024005007'],
+        ['sourceCategoryCode' => '09020000', 'cateNm' => '사정지연', 'cateCd' => '024005002'],
+        ['sourceCategoryCode' => '09030000', 'cateNm' => '얇은/극초박', 'cateCd' => '024005008'],
+        ['sourceCategoryCode' => '09040000', 'cateNm' => '돌출/굴곡', 'cateCd' => '024005009'],
+        ['sourceCategoryCode' => '09050000', 'cateNm' => '향기/발열', 'cateCd' => '024005004'],
+        ['sourceCategoryCode' => '09060000', 'cateNm' => '손가락', 'cateCd' => '024005003'],
+        ['sourceCategoryCode' => '09070000', 'cateNm' => '신소재', 'cateCd' => '024005005'],
+        ['sourceCategoryCode' => '09080000', 'cateNm' => '대용량', 'cateCd' => '024005006'],
+        ['sourceCategoryCode' => '09090000', 'cateNm' => '무꼭지', 'cateCd' => '024005010'],
+        ['sourceCategoryCode' => '09100000', 'cateNm' => '페미돔형', 'cateCd' => '024005011'],
+        ['sourceCategoryCode' => '09110000', 'cateNm' => '야광/팬시', 'cateCd' => '024005001'],
+    ];
+
     private const TORSO_CATEGORIES = [
         ['sourceCategoryCode' => '02010100', 'cateNm' => '미니 토르소', 'cateCd' => '022007003'],
         ['sourceCategoryCode' => '02010200', 'cateNm' => '라이트 토르소', 'cateCd' => '022007002'],
@@ -207,6 +233,7 @@ class GodoInspectionService
         $marginGradeCategoryMap = $this->buildMarginGradeCategoryMap(self::MARGIN_GRADE_CATEGORIES);
         $onaholeHbtiCategoryMap = $this->buildHbtiCategoryMap(self::ONAHOLE_HBTI_CATEGORIES);
         $torsoCategoryMap = $this->buildCategoryMap(self::TORSO_CATEGORIES);
+        $condomTypeCategoryMap = $this->buildCategoryMap(self::CONDOM_TYPE_CATEGORIES);
 
         // 카테고리 코드 트리에서 브랜드 1차/2차 정합성을 점검하기 위한 전처리.
         $brand1Codes = array_keys(self::BRAND1_CATEGORY_LIST);
@@ -321,6 +348,7 @@ class GodoInspectionService
         $currentOnaholeInnerLengthCategories = [];
         $currentMarginGradeCategories = [];
         $currentTorsoCategories = [];
+        $currentCondomTypeCategories = [];
         foreach ($godoCategoryLines as $categoryRow) {
             if (!is_array($categoryRow)) {
                 continue;
@@ -357,6 +385,9 @@ class GodoInspectionService
             if (isset($torsoCategoryMap[$cateCd])) {
                 $currentTorsoCategories[] = ['cateCd' => $cateCd, 'line' => $line];
             }
+            if (strlen($cateCd) === 9 && strpos($cateCd, '024005') === 0) {
+                $currentCondomTypeCategories[] = ['cateCd' => $cateCd, 'line' => $line];
+            }
         }
 
         $targetOnaholeWeightCategory = $this->findTargetCategoryByValue(self::ONAHOLE_WEIGHT_CATEGORIES, $goodsWeightNormalized);
@@ -382,6 +413,14 @@ class GodoInspectionService
         $targetTorsoCategory = $this->findTargetCategoryBySourceCategoryCode(
             self::TORSO_CATEGORIES,
             $cdCategoryCode
+        );
+        $targetCondomTypeCategory = $this->findTargetCategoryBySourceCategoryCode(
+            self::CONDOM_TYPE_CATEGORIES,
+            $cdCategoryCode
+        );
+        $keptCondomTypeCateCdMap = $this->resolveKeptCateCdsFromAdditionalCodes(
+            self::CONDOM_TYPE_CATEGORIES,
+            $additionalCategoryCodes
         );
         $targetOnaholePriceCategory = null;
 
@@ -535,6 +574,42 @@ class GodoInspectionService
                 '<span>취향/태그 카테고리가 인트라넷 선택값과 일치하지 않습니다.</span>'
                     . "\n<span>선택한 태그는 유지하고, 부족한 항목은 추가하며 선택하지 않은 취향/태그는 삭제합니다.</span>",
                 $preferenceTagCategoryMap
+            );
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'CONDOM' && !in_array(self::CONDOM_ROOT_CATEGORY['cateCd'], $categoryCodeList, true)) {
+            $queueAddCategory($categoryAddQueue, self::CONDOM_ROOT_CATEGORY['cateCd'], self::CONDOM_ROOT_CATEGORY['cateNm']);
+            $inspectionIssues[] = [
+                'required' => '필수',
+                'issue' => '콘돔 1차 카테고리 미지정',
+                'solution' => '<span>고도몰 대분류 콘돔(024)이 진열되어 있지 않습니다.</span>'
+                    . "\n추가 카테고리 : <b>" . self::CONDOM_ROOT_CATEGORY['cateNm'] . "</b> ( " . self::CONDOM_ROOT_CATEGORY['cateCd'] . " )",
+            ];
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'CONDOM' && $targetCondomTypeCategory === null) {
+            $inspectionIssues[] = [
+                'required' => '필수',
+                'issue' => '콘돔 2차 카테고리 미지정',
+                'solution' => '<span>인트라넷 콘돔 2차 카테고리가 지정되어 있지 않습니다.</span>',
+            ];
+        }
+
+        if ($isMatchedByGoodsNo && $cdKindCode === 'CONDOM' && $targetCondomTypeCategory !== null) {
+            $this->appendCategoryMismatchIssue(
+                $inspectionIssues,
+                $categoryAddQueue,
+                $categoryDeleteQueue,
+                $queueAddCategory,
+                $currentCondomTypeCategories,
+                (string)($targetCondomTypeCategory['cateCd'] ?? ''),
+                (string)($targetCondomTypeCategory['cateNm'] ?? ''),
+                '콘돔 2차 카테고리 미지정',
+                '콘돔 2차 카테고리 오류',
+                '<span>콘돔 > 2차 카테고리가 지정되어 있지 않습니다.</span>',
+                '<span>콘돔 > 2차 카테고리가 인트라넷 상품 카테고리와 일치하지 않습니다.</span>',
+                $condomTypeCategoryMap,
+                $keptCondomTypeCateCdMap
             );
         }
 
@@ -703,10 +778,17 @@ class GodoInspectionService
             return $formatted;
         };
 
-        $normalizedIntranetCostCompare = $normalizePriceValue($intranetCostPriceNormalized);
+        $costPriceVat = $this->resolveCostPriceVat($item);
+        $intranetGodoCostPriceRaw = $this->resolveIntranetCostForGodoCompare($intranetCostPriceRaw, $costPriceVat);
+        $intranetGodoCostPriceNormalized = $normalizePlain($intranetGodoCostPriceRaw);
+        $normalizedIntranetCostCompare = $normalizePriceValue($intranetGodoCostPriceNormalized);
         $normalizedGodoCostCompare = $normalizePriceValue($godoCostPriceNormalized);
         $hasIntranetCost = ($normalizedIntranetCostCompare !== null && (float)$normalizedIntranetCostCompare > 0);
         $intranetCostLabel = ($contextType === self::CONTEXT_PROVIDER_PRODUCT) ? '주문가' : '책정원가';
+        $intranetCostCompareText = $formatPriceDisplay($intranetGodoCostPriceRaw);
+        if ($costPriceVat === '미포함' && $normalizedIntranetCostCompare !== $normalizePriceValue($intranetCostPriceNormalized)) {
+            $intranetCostCompareText .= ' (VAT 미포함 실제원가, 입력 ' . $formatPriceDisplay($intranetCostPriceRaw) . ')';
+        }
         if ($isMatchedByGoodsNo && !$hasIntranetCost) {
             $inspectionIssues[] = ['required' => '필수', 'issue' => '원가정보 없음', 'solution' => "<span>인트라넷에 {$intranetCostLabel}가 없습니다.</span>"];
         }
@@ -714,7 +796,7 @@ class GodoInspectionService
             $inspectionIssues[] = [
                 'required' => '필수',
                 'issue' => '원가 미입력',
-                'solution' => "<span>고도몰에 원가정보가 미입력되어 있습니다.</span>\n인트라넷 {$intranetCostLabel} : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>",
+                'solution' => "<span>고도몰에 원가정보가 미입력되어 있습니다.</span>\n인트라넷 {$intranetCostLabel} : <b>{$intranetCostCompareText}</b>",
             ];
         }
         if ($isMatchedByGoodsNo && $hasIntranetCost && $normalizedGodoCostCompare !== null && (float)$normalizedGodoCostCompare > 0) {
@@ -723,7 +805,7 @@ class GodoInspectionService
                 $inspectionIssues[] = [
                     'required' => '필수',
                     'issue' => '원가 불일치',
-                    'solution' => "<span>인트라넷 {$intranetCostLabel}와 고도몰 원가값이 틀립니다.</span>\n인트라넷 : <b>{$formatPriceDisplay($intranetCostPriceRaw)}</b>\n고도몰 : <b>{$formatPriceDisplay($godoCostPriceRaw)}</b>",
+                    'solution' => "<span>인트라넷 {$intranetCostLabel}와 고도몰 원가값이 틀립니다.</span>\n인트라넷 : <b>{$intranetCostCompareText}</b>\n고도몰 : <b>{$formatPriceDisplay($godoCostPriceRaw)}</b>",
                 ];
             }
         }
@@ -781,9 +863,53 @@ class GodoInspectionService
             'category_delete_codes_for_sync' => implode(',', array_values(array_unique($categoryDeleteCodeList))),
             'intranet_barcode' => $intranetBarcode,
             'intranet_cost_price_raw' => $intranetCostPriceRaw,
+            'intranet_godo_cost_price' => $intranetGodoCostPriceRaw,
             'intranet_goods_price_raw' => $intranetGoodsPriceRaw,
             'godo_category_lines' => $godoCategoryLines,
         ];
+    }
+
+    /**
+     * 원가 VAT 구분을 꺼낸다. VAT 미포함이면 고도몰 원가는 실제원가다.
+     *
+     * @param array<string,mixed> $item
+     */
+    private function resolveCostPriceVat(array $item): string
+    {
+        $direct = trim((string)($item['cost_price_vat'] ?? ''));
+        if ($direct !== '') {
+            return $direct;
+        }
+
+        $info = $item['cd_cost_price_info'] ?? null;
+        if (is_string($info)) {
+            $decoded = json_decode($info, true);
+            $info = is_array($decoded) ? $decoded : null;
+        }
+        if (!is_array($info)) {
+            return '';
+        }
+
+        return trim((string)($info['VAT'] ?? ''));
+    }
+
+    /**
+     * VAT 미포함 원가는 부가세 10%를 더한 실제원가로 고도몰 원가와 비교한다.
+     */
+    private function resolveIntranetCostForGodoCompare(string $costPriceRaw, string $vatType): string
+    {
+        $normalized = str_replace(',', '', trim($costPriceRaw));
+        $normalized = preg_replace('/\s+/', '', $normalized);
+        if (!is_string($normalized) || !preg_match('/^\d+(\.\d+)?$/', $normalized)) {
+            return $costPriceRaw;
+        }
+
+        $costPrice = (int)$normalized;
+        if ($costPrice <= 0 || trim($vatType) !== '미포함') {
+            return (string)$costPrice;
+        }
+
+        return (string)($costPrice + (int)round($costPrice * 0.1));
     }
 
     /**
@@ -977,6 +1103,9 @@ class GodoInspectionService
             case '취향/태그 카테고리 오류':
             case 'HBTI 카테고리 오류':
             case 'HBTI 카테고리 미지정':
+            case '콘돔 1차 카테고리 미지정':
+            case '콘돔 2차 카테고리 미지정':
+            case '콘돔 2차 카테고리 오류':
             case '토르소 카테고리 미지정':
             case '토르소 카테고리 오류':
             case '내부길이 카테고리 미지정':
@@ -1189,6 +1318,56 @@ class GodoInspectionService
         }
 
         return $targets;
+    }
+
+    /**
+     * 추가 구분으로 지정된 인트라넷 카테고리를 고도몰 코드로 변환한다.
+     * 대표 카테고리 외 추가 구분은 오분류 삭제 대상에서 제외한다.
+     *
+     * @param array<int,array<string,mixed>> $rows
+     * @param mixed $rawCodes
+     * @return array<string,bool>
+     */
+    private function resolveKeptCateCdsFromAdditionalCodes(array $rows, $rawCodes): array
+    {
+        if (is_string($rawCodes)) {
+            $decoded = json_decode($rawCodes, true);
+            $rawCodes = is_array($decoded) ? $decoded : preg_split('/\s*,\s*/', $rawCodes, -1, PREG_SPLIT_NO_EMPTY);
+        }
+        if (!is_array($rawCodes)) {
+            return [];
+        }
+
+        $additionalCodes = [];
+        foreach ($rawCodes as $rawCode) {
+            $code = trim((string)$rawCode);
+            if ($code !== '') {
+                $additionalCodes[] = $code;
+            }
+        }
+        if ($additionalCodes === []) {
+            return [];
+        }
+
+        $keepCateCdMap = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $sourceCode = trim((string)($row['sourceCategoryCode'] ?? ''));
+            $cateCd = trim((string)($row['cateCd'] ?? ''));
+            if ($sourceCode === '' || $cateCd === '') {
+                continue;
+            }
+            foreach ($additionalCodes as $additionalCode) {
+                if ($additionalCode === $sourceCode || strpos($additionalCode, $sourceCode) === 0) {
+                    $keepCateCdMap[$cateCd] = true;
+                    break;
+                }
+            }
+        }
+
+        return $keepCateCdMap;
     }
 
     /**
@@ -1519,6 +1698,8 @@ class GodoInspectionService
             self::ONAHOLE_HBTI_CATEGORIES,
             self::ONAHOLE_INNER_LENGTH_CATEGORIES,
             self::TORSO_CATEGORIES,
+            self::CONDOM_TYPE_CATEGORIES,
+            [self::CONDOM_ROOT_CATEGORY],
             self::MARGIN_GRADE_CATEGORIES,
         ];
 

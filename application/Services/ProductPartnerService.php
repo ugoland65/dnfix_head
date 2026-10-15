@@ -2276,7 +2276,7 @@ class ProductPartnerService extends BaseClass
                 $columnUpdates['godo_goods_model_no'] = trim((string)($item['barcode'] ?? ''));
             }
             if (isset($godoIssueNames['원가 미입력']) || isset($godoIssueNames['원가 불일치'])) {
-                $intranetCost = $normalizeNumeric((string)($item['cost_price'] ?? ''));
+                $intranetCost = $normalizeNumeric((string)($inspectionContext['intranet_godo_cost_price'] ?? ($item['cost_price'] ?? '')));
                 if ($intranetCost !== '') {
                     $columnUpdates['godo_cost_price'] = $intranetCost;
                 }

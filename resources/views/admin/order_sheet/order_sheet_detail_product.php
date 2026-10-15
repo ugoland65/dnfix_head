@@ -24,18 +24,32 @@
                     재입고 알림수 갱신
                 </button>
 
-                <span>예상 주문수량 :</span>
-                <select id="os_expected_lookback_months">
-                    <option value="3">최근 3개월</option>
-                    <option value="6" selected>최근 6개월</option>
-                    <option value="12">최근 1년</option>
-                </select>
-                입고예상일
-                <input type="date" id="os_expected_inbound_date">
-                커버종료일
-                <input type="date" id="os_expected_cover_date">
-                <input type="number" id="os_expected_cover_days" value="30" min="0" max="365" class="width-50">일
-                <button type="button" id="os_expected_order_btn" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.calcExpectedOrder()">필요수량 계산</button>
+                <span class="os-expected-order-anchor">
+                    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm m-l-5" onclick="orderSheetDetailPrd.toggleExpectedOrderLayer()">예상 주문수량</button>
+                    <span id="os_expected_order_condition" class="os-expected-order-condition"></span>
+                    <div id="os_expected_order_layer" class="os-expected-order-layer" hidden>
+                        <button type="button" class="os-expected-order-layer__backdrop" aria-label="닫기" onclick="orderSheetDetailPrd.toggleExpectedOrderLayer(false)"></button>
+                        <div class="os-expected-order-layer__panel" role="dialog" aria-labelledby="os_expected_order_title">
+                            <div class="os-expected-order-layer__head">
+                                <span id="os_expected_order_title">예상 주문수량</span>
+                                <button type="button" class="os-expected-order-layer__close" aria-label="닫기" onclick="orderSheetDetailPrd.toggleExpectedOrderLayer(false)">×</button>
+                            </div>
+                            <div class="os-expected-order-layer__form">
+                                <select id="os_expected_lookback_months">
+                                    <option value="3">최근 3개월</option>
+                                    <option value="6" selected>최근 6개월</option>
+                                    <option value="12">최근 1년</option>
+                                </select>
+                                입고예상일
+                                <input type="date" id="os_expected_inbound_date">
+                                커버종료일
+                                <input type="date" id="os_expected_cover_date">
+                                <input type="number" id="os_expected_cover_days" value="30" min="0" max="365" class="width-50">일
+                                <button type="button" id="os_expected_order_btn" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.calcExpectedOrder()">필요수량 계산</button>
+                            </div>
+                        </div>
+                    </div>
+                </span>
                 <!-- 
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheet.lastInfoReset(this, '<?= $oop_idx ?>')">정보갱신</button>
 				<button type="button" id="" class="btnstyle1 btnstyle1-inverse btnstyle1-xs m-l-15" onclick="thisCateDel();"">이분류 상품 전부 삭제</button>
@@ -638,7 +652,7 @@
                     </td>
 
                     <!-- 예상 주문수량 -->
-                    <td class="text-center os-expected-order-cell" style="width:88px; font-size:11px; line-height:1.45;" data-ps-idx="<?= htmlspecialchars((string)($item['product']['ps_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                    <td class="text-center os-expected-order-cell" style="width:108px; font-size:11px; line-height:1.45; white-space:nowrap;" data-ps-idx="<?= htmlspecialchars((string)($item['product']['ps_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">
                         <span class="os-expected-order-empty">-</span>
                     </td>
 
@@ -1457,19 +1471,62 @@
             var orderQty = Number(row.order_qty || 0);
             var safetyQty = Number(row.safety_qty || 0);
             var totalQty = Number(row.total_qty || 0);
+            var incomingQty = Number(row.incoming_qty || 0);
             var color = '#ff0000';
             if (orderQty === 0 && safetyQty === 0) {
                 color = '#aaa';
             } else if (orderQty === 0) {
                 color = '#1a9b4a';
             }
-            $cell.html(
-                '<div style="color:' + color + ';">'
-                + '<div>주문수량 <b>' + orderQty + '</b></div>'
-                + '<div>안전재고 <b>' + safetyQty + '</b></div>'
-                + '<div>합수량 <b>' + totalQty + '</b></div>'
-                + '</div>'
-            );
+            var html = '<div style="color:' + color + ';">';
+            if (incomingQty > 0) {
+                html += '<div>(입고예정 : <b>' + incomingQty + '</b>)</div>';
+            }
+            html += '<div>주문수량 : <b>' + orderQty + '</b></div>'
+                + '<div>안전재고 : <b>' + safetyQty + '</b></div>'
+                + '<div>합수량 : <b>' + totalQty + '</b></div>'
+                + '</div>';
+            $cell.html(html);
+        }
+
+        function showExpectedOrderCondition() {
+            var lookback = $.trim($("#os_expected_lookback_months option:selected").text() || "");
+            var inbound = $.trim($("#os_expected_inbound_date").val() || "");
+            var coverDate = $.trim($("#os_expected_cover_date").val() || "");
+            var coverDays = $.trim($("#os_expected_cover_days").val() || "");
+            var parts = [];
+            if (lookback) {
+                parts.push(lookback);
+            }
+            if (inbound) {
+                parts.push("입고예상일 " + inbound);
+            }
+            if (coverDate) {
+                parts.push("커버종료일 " + coverDate);
+            }
+            if (coverDays !== "") {
+                parts.push(coverDays + "일");
+            }
+            $("#os_expected_order_condition").text(parts.join(" · "));
+        }
+
+        function toggleExpectedOrderLayer(forceOpen) {
+            if (expectedOrderCalculating) {
+                return;
+            }
+            var $layer = $("#os_expected_order_layer");
+            if (!$layer.length) {
+                return;
+            }
+            var willOpen = typeof forceOpen === "boolean" ? forceOpen : $layer.is("[hidden]");
+            var $wrap = $layer.closest(".ospl-wrap");
+            if (willOpen) {
+                $layer.removeAttr("hidden");
+                $wrap.addClass("is-expected-open");
+            } else {
+                $layer.attr("hidden", "hidden");
+                $wrap.removeClass("is-expected-open");
+            }
         }
 
         function calcExpectedOrder() {
@@ -1497,6 +1554,7 @@
 
             var $button = $("#os_expected_order_btn");
             var $overlay = $("#orderSheetExpectedOrderOverlay");
+            var calcSucceeded = false;
             expectedOrderCalculating = true;
             window.addEventListener("beforeunload", blockExpectedOrderLeave);
             $button.prop("disabled", true);
@@ -1528,6 +1586,8 @@
                         }
                         renderExpectedOrderCell($cell, res.data[psIdx] || null);
                     });
+                    showExpectedOrderCondition();
+                    calcSucceeded = true;
                 },
                 error: function(request) {
                     var message = "예상 주문수량 계산 중 오류가 발생했습니다.";
@@ -1542,6 +1602,9 @@
                     $overlay.attr("hidden", true);
                     $("body").css("overflow", "");
                     $button.prop("disabled", false);
+                    if (calcSucceeded) {
+                        toggleExpectedOrderLayer(false);
+                    }
                 }
             });
         }
@@ -1557,6 +1620,7 @@
             groupSave,
             syncOrderGroupRestockAlertCounts,
             calcExpectedOrder,
+            toggleExpectedOrderLayer,
         };
 
     }();

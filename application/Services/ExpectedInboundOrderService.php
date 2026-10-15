@@ -9,7 +9,8 @@ use Throwable;
  * 입고예상일 기준 잔여수량과 발주 필요수량.
  *
  * 잔여수량 = 현재고 - (적용 일판매 × 입고까지 일수)
- * 필요수량 = 적용 일판매 × (입고까지 일수 + 커버기간) - 현재고
+ * 필요수량 = 적용 일판매 × (입고까지 일수 + 커버기간) - 현재고 - 입고예정
+ * 입고예정은 입금완료 주문의 수량이다.
  * 추천안전재고 = 적용 일판매 × 7일. 필요수량과 따로 표시한다.
  * 일판매는 선택한 기간의 정상월 월평균이고, 급판매이면 최근 28일 일판매를 쓴다.
  */
@@ -54,6 +55,11 @@ class ExpectedInboundOrderService
         }
 
         $currentStock = (int)($basis['current_stock'] ?? 0);
+        $incomingQty = max(0, (int)($basis['incoming_qty'] ?? 0));
+        $incomingWritingQty = max(0, (int)($basis['incoming_writing_qty'] ?? 0));
+        $incomingPaidQty = max(0, (int)($basis['incoming_paid_qty'] ?? 0));
+        $incomingOrders = is_array($basis['incoming_orders'] ?? null) ? $basis['incoming_orders'] : [];
+        $availableStock = $currentStock + $incomingQty;
         $monthlyAvg = (float)($basis['monthly_avg'] ?? 0);
         $dailyMonth = $monthlyAvg > 0 ? round($monthlyAvg / 30, 2) : 0.0;
         $dailyRecent = (float)($basis['daily_recent'] ?? 0);
@@ -76,13 +82,13 @@ class ExpectedInboundOrderService
         $safetySurge = $this->demandQty($dailyRecent, self::SAFETY_DAYS);
         $safetyQty = $this->demandQty($useDaily, self::SAFETY_DAYS);
 
-        $remainMonth = $currentStock - $demandMonthUntil;
-        $remainSurge = $currentStock - $demandSurgeUntil;
-        $remainQty = $currentStock - $demandUseUntil;
+        $remainMonth = $availableStock - $demandMonthUntil;
+        $remainSurge = $availableStock - $demandSurgeUntil;
+        $remainQty = $availableStock - $demandUseUntil;
 
-        $orderMonth = max(0, $demandMonth - $currentStock);
-        $orderSurge = max(0, $demandSurge - $currentStock);
-        $orderQty = max(0, $demandUse - $currentStock);
+        $orderMonth = max(0, $demandMonth - $availableStock);
+        $orderSurge = max(0, $demandSurge - $availableStock);
+        $orderQty = max(0, $demandUse - $availableStock);
 
         return [
             'expected_date' => $expectedDate,
@@ -91,6 +97,11 @@ class ExpectedInboundOrderService
             'cover_days' => $coverDays,
             'horizon_days' => $horizonDays,
             'current_stock' => $currentStock,
+            'incoming_qty' => $incomingQty,
+            'incoming_writing_qty' => $incomingWritingQty,
+            'incoming_paid_qty' => $incomingPaidQty,
+            'incoming_orders' => $incomingOrders,
+            'available_stock' => $availableStock,
             'sample_months' => $sampleMonths,
             'completed_month_window' => (int)($basis['completed_month_window'] ?? self::DEFAULT_LOOKBACK_MONTHS),
             'monthly_avg' => round($monthlyAvg, 1),
@@ -130,7 +141,8 @@ class ExpectedInboundOrderService
                 $isSurge,
                 $remainQty,
                 $safetyQty,
-                $orderQty
+                $orderQty,
+                $incomingQty
             ),
         ];
     }
@@ -170,6 +182,7 @@ class ExpectedInboundOrderService
                     'order_qty' => $orderQty,
                     'safety_qty' => $safetyQty,
                     'total_qty' => $orderQty + $safetyQty,
+                    'incoming_qty' => (int)($row['incoming_qty'] ?? 0),
                 ];
             } catch (Throwable $e) {
                 $results[$key] = [
@@ -281,6 +294,7 @@ class ExpectedInboundOrderService
      * @param int $remainQty
      * @param int $safetyQty
      * @param int $orderQty
+     * @param int $incomingQty
      * @return string
      */
     private function buildSummary(
@@ -297,7 +311,8 @@ class ExpectedInboundOrderService
         bool $isSurge,
         int $remainQty,
         int $safetyQty,
-        int $orderQty
+        int $orderQty,
+        int $incomingQty
     ): string {
         $basisText = $isSurge
             ? '최근 ' . $recentDays . '일 일판매 ' . $dailyRecent . '개(급판매)'
@@ -310,6 +325,6 @@ class ExpectedInboundOrderService
 
         return '입고예상일 ' . $expectedDate . '까지 ' . $daysUntil . '일, 커버 ' . $coverDays . '일. '
             . $monthText . ' 월평균 ' . round($monthlyAvg, 1) . '건. '
-            . $basisText . ' 기준 현재고 ' . $currentStock . '개의 입고일 잔여는 ' . $remainQty . '개, 필요수량은 ' . $orderQty . '개 + 안전재고 ' . $safetyQty . '개입니다.';
+            . $basisText . ' 기준 현재고 ' . $currentStock . '개, 입고예정 ' . $incomingQty . '개를 포함한 입고일 잔여는 ' . $remainQty . '개, 필요수량은 ' . $orderQty . '개 + 안전재고 ' . $safetyQty . '개입니다.';
     }
 }

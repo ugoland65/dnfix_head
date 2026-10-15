@@ -11,6 +11,10 @@
 .stock-chart-expected-result table { margin-top: 0; }
 .stock-chart-expected-applied { background: #f3f7ff; }
 .stock-chart-expected-note { margin-top: 6px; }
+.stock-chart-incoming-note { margin-top: 8px; padding: 8px 10px; background: #fff7e6; border: 1px solid #ffd591; font-size: 13px; line-height: 1.5; }
+.stock-chart-incoming-note ul { margin: 4px 0 0; padding-left: 18px; }
+.stock-chart-order-incoming > td { background: #fff7e6 !important; }
+.stock-chart-incoming-badge { display: inline-block; margin-top: 3px; padding: 0 4px; font-size: 11px; color: #ad6800; background: #fff1d6; }
 </style>
 
 
@@ -241,9 +245,15 @@
     </tr>
     <?php if (!empty($order_rows) && is_array($order_rows)) { ?>
         <?php foreach ($order_rows as $row) { ?>
-            <tr>
+            <?php $isIncomingOrder = (int)($row['order_state'] ?? 0) === 4; ?>
+            <tr class="<?= $isIncomingOrder ? 'stock-chart-order-incoming' : '' ?>">
                 <td><?= htmlspecialchars((string)($row['order_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
-                <td class="text-center"><?= htmlspecialchars((string)($row['order_state_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '-' ?></td>
+                <td class="text-center">
+                    <?= htmlspecialchars((string)($row['order_state_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?: '-' ?>
+                    <?php if ($isIncomingOrder) { ?>
+                        <div class="stock-chart-incoming-badge">입고예정 반영</div>
+                    <?php } ?>
+                </td>
                 <td class="text-center">
                     <?php
                         $stateChangedAt = trim((string)($row['state_changed_at'] ?? ''));
@@ -498,6 +508,13 @@ var prdInfoStockChart = function() {
             html += this.renderExpectedRow('일판매', this.formatQty(data.daily_month) + '개', this.formatQty(data.daily_recent) + '개', monthClass, surgeClass);
             html += this.renderExpectedRow('현재고', this.formatQty(data.current_stock) + '개', this.formatQty(data.current_stock) + '개', monthClass, surgeClass);
             html += this.renderExpectedRow(
+                '입고예정',
+                this.formatQty(data.incoming_qty) + '개',
+                this.formatQty(data.incoming_qty) + '개',
+                monthClass,
+                surgeClass
+            );
+            html += this.renderExpectedRow(
                 '입고까지 ' + this.formatQty(data.days_until) + '일 판매',
                 this.formatQty(data.demand_month_until) + '개',
                 this.formatQty(data.demand_surge_until) + '개',
@@ -522,12 +539,35 @@ var prdInfoStockChart = function() {
             );
             html += '</table>';
             html += '<div class="admin-guide-text stock-chart-expected-note">';
-            html += monthNote + '. 필요수량 = 입고까지 판매 + 커버 판매 − 현재고. ';
+            html += monthNote + '. 필요수량 = 입고까지 판매 + 커버 판매 − 현재고 − 입고예정. ';
             html += '안전재고는 커버가 끝난 뒤 ' + this.formatQty(data.safety_days) + '일치이며 필요수량과 따로 표기합니다.';
             if (useSurge) {
                 html += ' 최근 ' + this.formatQty(data.recent_days) + '일 판매가 월평균의 1.5배 이상이라 급판매를 적용했습니다.';
             }
             html += '</div>';
+            html += this.renderIncomingNote(data);
+            html += '</div>';
+            return html;
+        },
+        renderIncomingNote: function(data) {
+            var incoming = Number(data.incoming_qty || 0);
+            var paid = Number(data.incoming_paid_qty || 0);
+            var orders = Array.isArray(data.incoming_orders) ? data.incoming_orders : [];
+            var html = '<div class="stock-chart-incoming-note">';
+            if (incoming > 0) {
+                html += '<b>입금완료 ' + this.formatQty(paid) + '개가 필요수량 계산에 포함되었습니다.</b>';
+                html += '<div>입금완료 수량을 현재고와 함께 빼고 필요수량을 구했습니다.</div>';
+                html += '<ul>';
+                orders.forEach(function(order) {
+                    var name = String(order.order_name || '주문서');
+                    var state = String(order.order_state_text || '');
+                    var qty = Number(order.order_qty || 0);
+                    html += '<li>' + $('<div>').text(name).html() + ' · ' + $('<div>').text(state).html() + ' · ' + prdInfoStockChart.formatQty(qty) + '개</li>';
+                });
+                html += '</ul>';
+            } else {
+                html += '입금완료 주문이 없습니다. 입고예정 0개로 계산했습니다.';
+            }
             html += '</div>';
             return html;
         },

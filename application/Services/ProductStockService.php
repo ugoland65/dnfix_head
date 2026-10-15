@@ -981,6 +981,75 @@ class ProductStockService extends BaseClass
     }
 
     /**
+     * 아직 입고 전인 발주 수량. 입금완료만 들어올 예정 수량으로 본다.
+     *
+     * @param int $prdIdx
+     * @return array{incoming_qty:int,writing_qty:int,paid_qty:int,orders:array}
+     */
+    public function getIncomingOrderSupply(int $prdIdx): array
+    {
+        $empty = [
+            'incoming_qty' => 0,
+            'writing_qty' => 0,
+            'paid_qty' => 0,
+            'orders' => [],
+        ];
+        if ($prdIdx <= 0) {
+            return $empty;
+        }
+
+        $rows = OrderPrdUnitModel::query()
+            ->from('order_prd_unit as U')
+            ->leftJoin('ona_order as O', 'O.oo_idx', '=', 'U.order_idx')
+            ->select([
+                'U.order_idx',
+                'U.order_qty',
+                'O.oo_name',
+                'O.oo_state',
+            ])
+            ->where('U.pidx', '=', $prdIdx)
+            ->where('U.order_qty', '>', 0)
+            ->where('U.is_order_failed', '=', 0)
+            ->where('O.oo_state', '=', 4)
+            ->orderBy('U.idx', 'DESC')
+            ->get()
+            ->toArray();
+
+        if (!is_array($rows) || empty($rows)) {
+            return $empty;
+        }
+
+        $paidQty = 0;
+        $orders = [];
+        foreach ($rows as $row) {
+            if (!is_array($row)) {
+                continue;
+            }
+            $state = (int)($row['oo_state'] ?? 0);
+            $qty = (int)($row['order_qty'] ?? 0);
+            if ($qty <= 0 || $state !== 4) {
+                continue;
+            }
+            $paidQty += $qty;
+            $orderName = trim((string)($row['oo_name'] ?? ''));
+            $orders[] = [
+                'order_idx' => (int)($row['order_idx'] ?? 0),
+                'order_name' => $orderName,
+                'order_state' => $state,
+                'order_state_text' => $this->getOrderSheetStateText($state),
+                'order_qty' => $qty,
+            ];
+        }
+
+        return [
+            'incoming_qty' => $paidQty,
+            'writing_qty' => 0,
+            'paid_qty' => $paidQty,
+            'orders' => $orders,
+        ];
+    }
+
+    /**
      * 주문서 상태 표시명
      *
      * @param int $state
@@ -1601,8 +1670,9 @@ class ProductStockService extends BaseClass
         $recentStartDay = date('Y-m-d', strtotime('-' . ($recentDays - 1) . ' days'));
 
         $currentStock = 0;
+        $stockData = [];
         $stockRow = ProductStockModel::query()
-            ->select(['ps_stock'])
+            ->select(['ps_stock', 'ps_prd_idx'])
             ->where('ps_idx', '=', $psIdx)
             ->first();
         if ($stockRow) {
@@ -1633,9 +1703,15 @@ class ProductStockService extends BaseClass
         }
 
         $dailyRecent = $inStockDays > 0 ? round($salesRecent / $inStockDays, 2) : 0.0;
+        $prdIdx = (int)($stockData['ps_prd_idx'] ?? 0);
+        $incoming = $this->getIncomingOrderSupply($prdIdx);
 
         return [
             'current_stock' => $currentStock,
+            'incoming_qty' => (int)$incoming['incoming_qty'],
+            'incoming_writing_qty' => (int)$incoming['writing_qty'],
+            'incoming_paid_qty' => (int)$incoming['paid_qty'],
+            'incoming_orders' => $incoming['orders'],
             'monthly_avg' => round($monthlyAvg, 1),
             'sample_months' => (int)($monthStats['sample_months'] ?? 0),
             'completed_month_window' => $monthCount - 1,

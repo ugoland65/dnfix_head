@@ -251,7 +251,16 @@
             <tr>
                 <th>정가</th>
                 <td>
-                    <input type='text' name="cd_fixed_price" id="cd_fixed_price" value="<?= number_format($productData['cd_fixed_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;'> 원
+                    <input type='text' name="cd_fixed_price" id="cd_fixed_price" value="<?= number_format($productData['cd_fixed_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this ); prdInfoPrice.syncFixedPriceDiscount();" style='width:100px;'> 원
+                    <div id="fixed_price_discount_box" class="m-t-6" style="display:none;">
+                        할인가
+                        <input type="text" id="fixed_price_discount_rate" value="" style="width:60px;" onkeyup="if(event.key!=='Enter'){ prdInfoPrice.clearFixedPriceDiscountResult(); }" onkeydown="if(event.key==='Enter'){ event.preventDefault(); prdInfoPrice.calculateFixedPriceDiscount(); }"> %
+                        <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="prdInfoPrice.calculateFixedPriceDiscount();">계산하기</button>
+                        <span id="fixed_price_discount_result" class="m-l-10" style="display:none;">
+                            <b id="fixed_price_discount_amount"></b>원
+                            <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-sm m-l-5" onclick="prdInfoPrice.applyFixedPriceDiscount();">적용하기</button>
+                        </span>
+                    </div>
                 </td>
             </tr>
 
@@ -276,6 +285,7 @@
                         <input type='text' name="cd_cost_price" id="cd_cost_price" value="<?= number_format($productData['cd_cost_price'] ?? 0) ?>" onkeyUP="GC.commaInput( this.value, this );" style='width:100px;'> 원
                         <label class="m-l-20"><input type="radio" name="cd_cost_price_vat" value="포함" <?php if (($productData['cd_cost_price_info']['VAT'] ?? '') == "포함") echo "checked"; ?>> VAT 포함</label>
                         <label><input type="radio" name="cd_cost_price_vat" value="미포함" <?php if (($productData['cd_cost_price_info']['VAT'] ?? '') == "미포함") echo "checked"; ?>> VAT 미포함</label>
+                        <span id="cost_price_vat_included_text" class="m-l-5" style="display:none; color:#2563eb; font-weight:600;"></span>
                     </div>
                     <div class="m-t-6">
                         <textarea name="cd_cost_price_memo" style="height:80px;" placeholder="원가 메모"><?= $productData['cd_cost_price_memo'] ?? '' ?></textarea>
@@ -287,8 +297,11 @@
                 <th>고도몰 업데이트</th>
                 <td>
                     <button type="button" class="btnstyle1 btnstyle1-success btnstyle1-md" onclick="prdInfoPrice.costSaveAndGodoUpdate(this);" data-goods-no="<?= htmlspecialchars((string)($productData['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">판매가,원가 고도몰 업데이트</button>
+                    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-md m-l-5" onclick="prdInfoPrice.costSaveAndGodoUpdate(this, true);" data-goods-no="<?= htmlspecialchars((string)($productData['cd_godo_code'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">판매가,원가,정가 고도몰 업데이트</button>
                     <div class="admin-guide-text">
-                        - 판매가와, 원가를 입력후 고도몰 업데이트 버튼을 클릭하면 판매가와, 원가가 고도몰에 업데이트 됩니다.<br>
+                        - 판매가와 원가를 입력한 뒤 고도몰 업데이트 버튼을 클릭하면 판매가와 원가가 고도몰에 업데이트 됩니다.<br>
+                        - 판매가, 원가, 정가 버튼을 누르면 정가까지 함께 업데이트 됩니다.<br>
+                        - VAT가 미포함이고 실제원가가 계산되면, 고도몰 원가는 입력 원가가 아니라 실제원가(VAT 포함)로 업데이트 됩니다.<br>
                         - 마진그룹 카테고리도 자동으로 설정됩니다.
                     </div>
                 </td>
@@ -625,6 +638,8 @@
 
     var prdInfoPrice = function() {
 
+        var fixedPriceDiscountAmount = null;
+        var lastFixedPriceForDiscount = null;
         var yen = <?= $yen ?? 1000 ?>;
         var yen_cn = <?= $yen_cn ?? 193 ?>;
         var kg_p = <?= $kg_p ?? 6000 ?>;
@@ -1026,8 +1041,8 @@
         }
 
         function updateSaleMarginSummary() {
-            var salePrice = GC.uncomma($("#cd_sale_price").val() || "0");
-            var costPrice = GC.uncomma($("#cd_cost_price").val() || "0");
+            var salePrice = Number(GC.uncomma($("#cd_sale_price").val() || "0"));
+            var costPrice = getGodoUploadCostPrice();
             var deliveryFee = getDeliveryFeeByType();
             var summaryHtml = "";
             var grade = "";
@@ -1057,6 +1072,37 @@
                 badgeClass += " grade-" + grade;
             }
             $("#margin_grade_badge").attr("class", badgeClass).text(grade || "-");
+        }
+
+        function getVatIncludedCostPrice(costPrice) {
+            return costPrice + Math.round(costPrice * 0.1);
+        }
+
+        function getGodoUploadCostPrice() {
+            var costPrice = Number(GC.uncomma($("#cd_cost_price").val() || "0"));
+            if (!isFinite(costPrice) || costPrice <= 0) {
+                return 0;
+            }
+
+            var vatType = $("input[name='cd_cost_price_vat']:checked").val() || "";
+            if (vatType === "미포함") {
+                return getVatIncludedCostPrice(costPrice);
+            }
+
+            return costPrice;
+        }
+
+        function updateCostPriceVatIncluded() {
+            var $text = $("#cost_price_vat_included_text");
+            var costPrice = Number(GC.uncomma($("#cd_cost_price").val() || "0"));
+            var vatType = $("input[name='cd_cost_price_vat']:checked").val() || "";
+
+            if (!isFinite(costPrice) || costPrice <= 0 || vatType !== "미포함") {
+                $text.hide().text("");
+                return;
+            }
+
+            $text.text("실제원가 " + GC.comma(getVatIncludedCostPrice(costPrice)) + "원").show();
         }
 
         /**
@@ -1121,10 +1167,12 @@
 
         /**
          * 매입정보 저장 + 고도몰 판매가/원가 업데이트
+         * includeFixedPrice가 true이면 정가도 함께 업데이트한다.
          * @param {HTMLElement} buttonEl
+         * @param {boolean} includeFixedPrice
          * @returns {boolean}
          */
-        function costSaveAndGodoUpdate(buttonEl) {
+        function costSaveAndGodoUpdate(buttonEl, includeFixedPrice) {
 
             var goodsNo = String($(buttonEl).data("goods-no") || "").trim();
             if (!goodsNo) {
@@ -1146,13 +1194,39 @@
                 return false;
             }
 
+            var godoCostPrice = getGodoUploadCostPrice();
+            if (!godoCostPrice) {
+                $("#cd_cost_price").focus();
+                alert("원가 값을 입력해주세요.");
+                return false;
+            }
+
+            var fixedPrice = "";
+            if (includeFixedPrice) {
+                fixedPrice = GC.uncomma($("#cd_fixed_price").val() || "");
+                if (!fixedPrice || Number(fixedPrice) <= 0) {
+                    $("#cd_fixed_price").focus();
+                    alert("정가 값을 입력해주세요.");
+                    return false;
+                }
+            }
+
             var marginGroup = String($("#margin_grade_badge").text() || "").trim().toUpperCase();
+
+            var costPriceText = "원가 : " + GC.comma(godoCostPrice);
+            if (Number(godoCostPrice) !== Number(costPrice)) {
+                costPriceText += " (VAT 포함 실제원가)";
+            }
 
             var confirmMessage =
                 "현재 페이지를 저장하고\n" +
                 "고도몰 상품코드 : #" + goodsNo + "에\n" +
                 "판매가 : " + GC.comma(salePrice) + "\n" +
-                "원가 : " + GC.comma(costPrice) + "를 변경 업데이트를 진행하시겠습니까?";
+                costPriceText;
+            if (includeFixedPrice) {
+                confirmMessage += "\n정가 : " + GC.comma(fixedPrice);
+            }
+            confirmMessage += "를 변경 업데이트를 진행하시겠습니까?";
 
             if (!confirm(confirmMessage)) {
                 return false;
@@ -1161,6 +1235,9 @@
             var formData = $("#prd_price_form").serializeArray();
             formData.push({ name: "goods_no", value: goodsNo });
             formData.push({ name: "margin_group", value: marginGroup });
+            if (includeFixedPrice) {
+                formData.push({ name: "include_fixed_price", value: "1" });
+            }
 
             $.ajax({
                 url: "/admin/product/saveProductPriceAndGodoUpdate",
@@ -1242,11 +1319,70 @@
             }
         }
 
+        function syncFixedPriceDiscount() {
+            var fixedPrice = Number(GC.uncomma($("#cd_fixed_price").val() || "0"));
+            if (!isFinite(fixedPrice) || fixedPrice <= 0) {
+                $("#fixed_price_discount_box").hide();
+                clearFixedPriceDiscountResult();
+                lastFixedPriceForDiscount = 0;
+                return;
+            }
+
+            $("#fixed_price_discount_box").show();
+            if (lastFixedPriceForDiscount !== null && lastFixedPriceForDiscount !== fixedPrice) {
+                clearFixedPriceDiscountResult();
+            }
+            lastFixedPriceForDiscount = fixedPrice;
+        }
+
+        function clearFixedPriceDiscountResult() {
+            fixedPriceDiscountAmount = null;
+            $("#fixed_price_discount_result").hide();
+            $("#fixed_price_discount_amount").text("");
+        }
+
+        function calculateFixedPriceDiscount() {
+            var fixedPrice = Number(GC.uncomma($("#cd_fixed_price").val() || "0"));
+            if (!isFinite(fixedPrice) || fixedPrice <= 0) {
+                $("#cd_fixed_price").focus();
+                alert("정가를 입력해주세요.");
+                return false;
+            }
+
+            var rateRaw = String($("#fixed_price_discount_rate").val() || "").replace(/,/g, "").replace(/%/g, "").trim();
+            var rate = Number(rateRaw);
+            if (rateRaw === "" || !isFinite(rate) || rate <= 0 || rate >= 100) {
+                $("#fixed_price_discount_rate").focus();
+                alert("할인율은 0보다 크고 100보다 작은 숫자만 입력해주세요.");
+                clearFixedPriceDiscountResult();
+                return false;
+            }
+
+            fixedPriceDiscountAmount = Math.round(fixedPrice * (100 - rate) / 100);
+            $("#fixed_price_discount_amount").text(GC.comma(fixedPriceDiscountAmount));
+            $("#fixed_price_discount_result").show();
+        }
+
+        function applyFixedPriceDiscount() {
+            if (fixedPriceDiscountAmount === null || fixedPriceDiscountAmount <= 0) {
+                alert("계산하기를 먼저 눌러주세요.");
+                return false;
+            }
+
+            $("#cd_sale_price").val(GC.comma(fixedPriceDiscountAmount));
+            prdInfoPrice.updateSaleMarginSummary();
+        }
+
         return {
 
             costCalculationNew,
             salePriceCalculation,
             updateSaleMarginSummary,
+            updateCostPriceVatIncluded,
+            syncFixedPriceDiscount,
+            clearFixedPriceDiscountResult,
+            calculateFixedPriceDiscount,
+            applyFixedPriceDiscount,
             updateDeliveryTypeRecommendation,
             costSave,
             costSaveAndGodoUpdate,
@@ -1296,6 +1432,8 @@
                     var numericOrderPrice = GC.uncomma(v);
                     if (numericOrderPrice) {
                         $("#cd_cost_price").val(GC.comma(numericOrderPrice));
+                        prdInfoPrice.updateCostPriceVatIncluded();
+                        prdInfoPrice.updateSaleMarginSummary();
                     }
                 }
 
@@ -1309,6 +1447,7 @@
                 $("#estimated_selling_price").val(GC.comma(v));
                 prdInfoPrice.salePriceCalculation();
                 prdInfoPrice.updateSaleMarginSummary();
+                prdInfoPrice.updateCostPriceVatIncluded();
 
             },
 
@@ -1419,8 +1558,15 @@
         prdInfoPrice.refreshAdditionalCostSummary();
         prdInfoPrice.updateDeliveryTypeRecommendation();
         prdInfoPrice.updateSaleMarginSummary();
+        prdInfoPrice.syncFixedPriceDiscount();
+        prdInfoPrice.updateCostPriceVatIncluded();
 
         $("#cd_cost_price").on("keyup change", function() {
+            prdInfoPrice.updateSaleMarginSummary();
+            prdInfoPrice.updateCostPriceVatIncluded();
+        });
+        $("input[name='cd_cost_price_vat']").on("change", function() {
+            prdInfoPrice.updateCostPriceVatIncluded();
             prdInfoPrice.updateSaleMarginSummary();
         });
 

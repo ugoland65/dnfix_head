@@ -4550,6 +4550,23 @@ class ProductService extends BaseClass
     }
 
     /**
+     * VAT 미포함 원가는 부가세 10%를 더한 실제원가로 고도몰에 올린다.
+     *
+     * @param string $costPriceRaw
+     * @param string $vatType
+     * @return string
+     */
+    private function resolveGodoUploadCostPrice($costPriceRaw, $vatType)
+    {
+        $costPrice = (int)$costPriceRaw;
+        if ($costPrice <= 0 || trim($vatType) !== '미포함') {
+            return (string)$costPrice;
+        }
+
+        return (string)($costPrice + (int)round($costPrice * 0.1));
+    }
+
+    /**
      * 상품 매입정보 저장 후 고도몰 판매가/원가를 업데이트한다.
      *
      * @param array $postData
@@ -4578,21 +4595,36 @@ class ProductService extends BaseClass
             throw new Exception('원가 값이 올바르지 않습니다.');
         }
 
+        $godoCostPriceRaw = $this->resolveGodoUploadCostPrice(
+            $costPriceRaw,
+            (string)($postData['cd_cost_price_vat'] ?? '')
+        );
+
         $marginGroup = strtoupper(trim((string)($postData['margin_group'] ?? '')));
         if (!preg_match('/^[A-I]$/', $marginGroup)) {
-            $marginInfo = $this->calculateMarginInfo((int)$salePriceRaw, (int)$costPriceRaw);
+            $marginInfo = $this->calculateMarginInfo((int)$salePriceRaw, (int)$godoCostPriceRaw);
             $marginGroup = strtoupper(trim((string)($marginInfo['margin_grade'] ?? '')));
         }
         if ($marginGroup === '') {
             $marginGroup = 'I';
         }
 
+        $includeFixedPrice = in_array((string)($postData['include_fixed_price'] ?? ''), ['1', 'true', 'Y'], true);
+        $fixedPriceRaw = null;
+        if ($includeFixedPrice) {
+            $fixedPriceRaw = str_replace(',', '', trim((string)($postData['cd_fixed_price'] ?? '')));
+            if ($fixedPriceRaw === '' || !preg_match('/^\d+$/', $fixedPriceRaw) || (int)$fixedPriceRaw <= 0) {
+                throw new Exception('정가 값이 올바르지 않습니다.');
+            }
+        }
+
         $godoApiService = new GodoApiService();
         $godoResponse = $godoApiService->updateGodoGoodsPrice(
             $goodsNo,
             $salePriceRaw,
-            $costPriceRaw,
-            $marginGroup
+            $godoCostPriceRaw,
+            $marginGroup,
+            $fixedPriceRaw
         );
 
         // 일반 매입정보 수정 로그(update_price)와 별도로,
@@ -4603,13 +4635,16 @@ class ProductService extends BaseClass
                 'goods_no' => $goodsNo,
                 'sale_price' => null,
                 'cost_price' => null,
+                'fixed_price' => null,
                 'margin_group' => null,
                 'godo_result' => null,
             ];
             $godoLogAfter = [
                 'goods_no' => $goodsNo,
                 'sale_price' => (int)$salePriceRaw,
-                'cost_price' => (int)$costPriceRaw,
+                'cost_price' => (int)$godoCostPriceRaw,
+                'entered_cost_price' => (int)$costPriceRaw,
+                'fixed_price' => $fixedPriceRaw === null ? null : (int)$fixedPriceRaw,
                 'margin_group' => $marginGroup,
                 'godo_result' => 'success',
                 'godo_response' => $godoResponse,
@@ -4621,7 +4656,9 @@ class ProductService extends BaseClass
                 'target_table' => 'COMPARISON_DB',
                 'target_pk' => (string)$targetIdx,
                 'action_mode' => 'update_price_godo',
-                'action_summary' => '상품 매입정보 수정 + 고도몰 판매가/원가 업데이트 완료',
+                'action_summary' => $includeFixedPrice
+                    ? '상품 매입정보 수정 + 고도몰 판매가/원가/정가 업데이트 완료'
+                    : '상품 매입정보 수정 + 고도몰 판매가/원가 업데이트 완료',
                 'before_json' => $godoLogBefore,
                 'after_json' => $godoLogAfter,
                 'diff_json' => $adminActionLogService->buildDiff($godoLogBefore, $godoLogAfter),
@@ -4633,7 +4670,9 @@ class ProductService extends BaseClass
 
         return [
             'success' => true,
-            'message' => '현재 페이지 저장 후 고도몰 판매가/원가 업데이트를 완료했습니다.',
+            'message' => $includeFixedPrice
+                ? '현재 페이지 저장 후 고도몰 판매가/원가/정가 업데이트를 완료했습니다.'
+                : '현재 페이지 저장 후 고도몰 판매가/원가 업데이트를 완료했습니다.',
             'idx' => (int)($saveResult['idx'] ?? 0),
             'margin_group' => $marginGroup,
             'godo_response' => $godoResponse,
@@ -7339,6 +7378,7 @@ class ProductService extends BaseClass
                 'A.cd_hbti',
                 'A.cd_sale_price',
                 'A.cd_cost_price',
+                'A.cd_cost_price_info',
                 'A.cd_godo_code',
                 'A.cd_weight_fn',
                 'B.ps_idx',
@@ -7447,6 +7487,7 @@ class ProductService extends BaseClass
             'cd_hbti' => (string)($product['cd_hbti'] ?? ''),
             'goods_price' => (string)($product['cd_sale_price'] ?? ''),
             'cost_price' => (string)($product['cd_cost_price'] ?? ''),
+            'cd_cost_price_info' => $product['cd_cost_price_info'] ?? '',
             'goods_weight' => (string)($cdWeightData['1'] ?? 0),
             'inner_length' => (string)($product['CD_SIZE2'] ?? ''),
             'margin_per' => (float)($marginInfo['margin_per'] ?? 0),
@@ -7602,7 +7643,7 @@ class ProductService extends BaseClass
                 $columnUpdates['godo_goods_model_no'] = trim((string)($item['barcode'] ?? ''));
             }
             if (isset($godoIssueNames['원가 미입력']) || isset($godoIssueNames['원가 불일치'])) {
-                $intranetCost = $normalizeNumeric((string)($item['cost_price'] ?? ''));
+                $intranetCost = $normalizeNumeric((string)($inspectionContext['intranet_godo_cost_price'] ?? ($item['cost_price'] ?? '')));
                 if ($intranetCost !== '') {
                     $columnUpdates['godo_cost_price'] = $intranetCost;
                 }

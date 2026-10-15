@@ -19,8 +19,15 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     <div id="barcode-search-sentinel" class="admobile-barcode-search-sentinel" aria-hidden="true"></div>
     <section id="barcode-search" class="admobile-barcode-search" aria-label="바코드 상품 찾기">
         <div class="admobile-barcode-search__heading">
-            <label for="barcode-search-input">바코드 뒷자리 검색</label>
-            <span>상품 찾기</span>
+            <div class="admobile-barcode-search__title">
+                <label for="barcode-search-input">바코드 뒷자리 검색</label>
+                <button type="button" id="barcode-scanner-toggle" class="admobile-scanner-toggle is-on" role="switch" aria-checked="true" aria-label="바코드 스캐너">
+                    <span class="admobile-scanner-toggle__name">스캐너</span>
+                    <span class="admobile-scanner-toggle__track" aria-hidden="true"><span class="admobile-scanner-toggle__thumb"></span></span>
+                    <span class="admobile-scanner-toggle__state">ON</span>
+                </button>
+            </div>
+            <span class="admobile-barcode-search__badge">상품 찾기</span>
         </div>
         <div class="admobile-barcode-input-wrap">
             <input id="barcode-search-input" type="text" inputmode="numeric" pattern="[0-9]*" autocomplete="off" placeholder="바코드 숫자를 입력하세요">
@@ -50,7 +57,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         <?php } ?>
 
         <?php foreach ($stockUnits as $unit) { ?>
-            <article class="admobile-stock-card" data-inspection-status="<?= !empty($unit['is_check_complete']) ? 'complete' : 'pending' ?>">
+            <article class="admobile-stock-card" data-pidx="<?= (int)($unit['pidx'] ?? 0) ?>" data-inspection-status="<?= !empty($unit['is_check_complete']) ? 'complete' : 'pending' ?>">
                 <div class="admobile-stock-image-wrap">
                     <?php if (!empty($unit['sale_status'])) { ?>
                         <span class="admobile-stock-sale-status<?= ($unit['sale_status'] ?? '') === '신상주문' ? ' is-new-order' : (($unit['sale_status'] ?? '') === '구매대행' ? ' is-purchase-agent' : '') ?>"><?= htmlspecialchars((string)$unit['sale_status'], ENT_QUOTES, 'UTF-8') ?></span>
@@ -78,7 +85,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                     <?php } ?>
                     <h3><?= htmlspecialchars((string)($unit['product_name'] ?: '상품명 없음'), ENT_QUOTES, 'UTF-8') ?></h3>
                     <p class="admobile-stock-barcode">바코드 <b><?= htmlspecialchars((string)($unit['barcode'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></b></p>
-                    <p class="admobile-stock-barcode">랙  <b><?= htmlspecialchars((string)($unit['ps_rack_code'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></b></p>
+                    <p class="admobile-stock-barcode">랙  <b data-rack-display><?= htmlspecialchars((string)($unit['ps_rack_code'] ?: '-'), ENT_QUOTES, 'UTF-8') ?></b></p>
                     <dl>
                         <div>
                             <dt>주문수량</dt>
@@ -153,6 +160,28 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     </section>
 </div>
 
+<div id="barcode-rack-modal" class="admobile-product-rack-modal" hidden>
+    <div class="admobile-product-rack-modal__backdrop" data-action="close"></div>
+    <section class="admobile-product-rack-modal__content" role="dialog" aria-modal="true" aria-labelledby="barcode-rack-title">
+        <form id="barcode-rack-form">
+            <div class="admobile-product-rack-modal__heading">
+                <div>
+                    <p id="barcode-rack-product">재고 · 주문</p>
+                    <h2 id="barcode-rack-title">랙 코드 변경</h2>
+                </div>
+                <button type="button" data-action="close" aria-label="랙 코드 변경 닫기">×</button>
+            </div>
+            <label for="barcode-rack-input">새 랙 코드</label>
+            <input id="barcode-rack-input" type="text" maxlength="100" autocomplete="off" placeholder="예) A-01-02">
+            <p id="barcode-rack-message" class="admobile-product-rack-modal__message" aria-live="polite"></p>
+            <div class="admobile-product-rack-modal__actions">
+                <button type="button" data-action="close">취소</button>
+                <button type="submit">저장</button>
+            </div>
+        </form>
+    </section>
+</div>
+
 <div id="inspection-memo-modal" class="admobile-inspection-memo-modal" hidden>
     <div class="admobile-inspection-memo-modal__backdrop" data-action="close"></div>
     <section class="admobile-inspection-memo-modal__content" role="dialog" aria-modal="true" aria-labelledby="inspection-memo-title">
@@ -193,9 +222,17 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-stock-refresh { position: fixed; z-index: 30; right: 0; bottom: 0; left: 0; width: 100%; padding: 15px 12px calc(15px + env(safe-area-inset-bottom)); border: 0; background: #3056a8; color: #fff; font: inherit; font-size: 15px; font-weight: 700; }
     .admobile-barcode-search-sentinel { height: 1px; margin-top: -1px; }
     .admobile-barcode-search { position: sticky; z-index: 40; top: 0; margin: 0 -16px 12px; padding: 13px 16px; border: 1px solid #cbd6ee; border-radius: 10px; background: #f7f9ff; transition: padding .18s ease, border-radius .18s ease, background .18s ease, box-shadow .18s ease; }
-    .admobile-barcode-search__heading { display: flex; align-items: center; justify-content: space-between; margin-bottom: 7px; }
+    .admobile-barcode-search__heading { display: flex; align-items: center; justify-content: space-between; gap: 8px; margin-bottom: 7px; }
+    .admobile-barcode-search__title { display: flex; align-items: center; gap: 8px; min-width: 0; }
     .admobile-barcode-search__heading label { color: #2c4d92; font-size: 13px; font-weight: 700; }
-    .admobile-barcode-search__heading span { padding: 3px 6px; border-radius: 999px; background: #e4ebfb; color: #526a9d; font-size: 10px; font-weight: 700; }
+    .admobile-barcode-search__badge { flex: 0 0 auto; padding: 3px 6px; border-radius: 999px; background: #e4ebfb; color: #526a9d; font-size: 10px; font-weight: 700; }
+    .admobile-scanner-toggle { display: inline-flex; flex: 0 0 auto; align-items: center; gap: 5px; padding: 0; border: 0; background: transparent; color: #2c4d92; font: inherit; font-size: 11px; font-weight: 800; }
+    .admobile-scanner-toggle__track { position: relative; width: 36px; height: 20px; border-radius: 999px; background: #c5cedd; transition: background .18s ease; }
+    .admobile-scanner-toggle__thumb { position: absolute; top: 2px; left: 2px; width: 16px; height: 16px; border-radius: 50%; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .22); transition: transform .18s ease; }
+    .admobile-scanner-toggle.is-on { color: #17803d; }
+    .admobile-scanner-toggle.is-on .admobile-scanner-toggle__track { background: #1f9d4e; }
+    .admobile-scanner-toggle.is-on .admobile-scanner-toggle__thumb { transform: translateX(16px); }
+    .admobile-scanner-toggle__state { min-width: 20px; }
     .admobile-barcode-input-wrap { display: flex; overflow: hidden; border: 1px solid #aab9d6; border-radius: 7px; background: #fff; }
     .admobile-barcode-input-wrap input { width: 100%; min-width: 0; padding: 11px 10px; border: 0; color: #172033; font-size: 18px; font-weight: 700; letter-spacing: 1px; outline: 0; }
     .admobile-barcode-input-wrap button { border: 0; border-left: 1px solid #e2e8f3; background: #fff; color: #667085; }
@@ -204,8 +241,11 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-barcode-search-message { min-height: 16px; margin: 8px 0 0; color: #b42318; font-size: 12px; }
     .admobile-barcode-search.is-stuck { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; border-width: 0 0 1px; border-radius: 0; background: #172b4d; box-shadow: 0 4px 12px rgba(16, 24, 40, .18); }
     .admobile-barcode-search.is-stuck .admobile-barcode-search__heading { margin-bottom: 4px; }
-    .admobile-barcode-search.is-stuck .admobile-barcode-search__heading label { color: #fff; font-size: 11px; }
-    .admobile-barcode-search.is-stuck .admobile-barcode-search__heading span { background: rgba(255, 255, 255, .15); color: #dce7ff; }
+    .admobile-barcode-search.is-stuck .admobile-barcode-search__heading label,
+    .admobile-barcode-search.is-stuck .admobile-scanner-toggle { color: #fff; font-size: 11px; }
+    .admobile-barcode-search.is-stuck .admobile-barcode-search__badge { background: rgba(255, 255, 255, .15); color: #dce7ff; }
+    .admobile-barcode-search.is-stuck .admobile-scanner-toggle.is-on { color: #b7f0c8; }
+    .admobile-barcode-search.is-stuck .admobile-scanner-toggle.is-on .admobile-scanner-toggle__track { background: #3dcc6e; }
     .admobile-barcode-search.is-stuck .admobile-barcode-input-wrap input { padding-top: 9px; padding-bottom: 9px; font-size: 16px; }
     .admobile-barcode-search.is-stuck .admobile-barcode-search-message { min-height: 0; margin: 5px 0 0; color: #ffd1cc; }
     .admobile-stock-summary { display: flex; flex-wrap: wrap; gap: 8px; margin-bottom: 12px; color: #667085; font-size: 12px; }
@@ -264,13 +304,27 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
     .admobile-barcode-result__brand { margin: 0 0 4px; color: #667085; font-size: 12px; }
     .admobile-barcode-result__content h3 { margin: 0; color: #172033; font-size: 17px; line-height: 1.45; }
     .admobile-barcode-result__barcode { margin: 8px 0 0; color: #344054; font-size: 13px; word-break: break-all; }
-    .admobile-barcode-result__rack { margin: 5px 0 0; color: #344054; font-size: 13px; font-weight: 700; }
+    .admobile-barcode-result__rack { display: inline-flex; align-items: center; margin: 5px 0 0; padding: 4px 8px; border: 1px solid #8fa5d3; border-radius: 6px; background: #fff; color: #173d8f; font: inherit; font-size: 13px; font-weight: 700; }
+    .admobile-product-rack-modal[hidden] { display: none; }
+    .admobile-product-rack-modal { position: fixed; z-index: 1300; inset: 0; display: flex; align-items: flex-end; }
+    .admobile-product-rack-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .58); }
+    .admobile-product-rack-modal__content { position: relative; width: 100%; padding: 20px 16px calc(16px + env(safe-area-inset-bottom)); border-radius: 18px 18px 0 0; background: #fff; }
+    .admobile-product-rack-modal__heading { display: flex; align-items: flex-start; justify-content: space-between; gap: 12px; }
+    .admobile-product-rack-modal__heading p { margin: 0 0 3px; color: #667085; font-size: 12px; font-weight: 700; }
+    .admobile-product-rack-modal__heading h2 { margin: 0; color: #172033; font-size: 19px; }
+    .admobile-product-rack-modal__heading button { width: 34px; height: 34px; border: 0; border-radius: 50%; background: #f2f4f7; color: #344054; font-size: 23px; line-height: 1; }
+    .admobile-product-rack-modal label { display: block; margin: 18px 0 7px; color: #344054; font-size: 13px; font-weight: 700; }
+    .admobile-product-rack-modal input { width: 100%; padding: 13px; border: 1px solid #8fa5d3; border-radius: 8px; color: #172033; font: inherit; font-family: monospace; font-size: 20px; font-weight: 700; letter-spacing: .5px; outline-color: #3056a8; }
+    .admobile-product-rack-modal__message { min-height: 16px; margin: 8px 0 0; color: #b42318; font-size: 12px; }
+    .admobile-product-rack-modal__actions { display: grid; grid-template-columns: 88px 1fr; gap: 8px; margin-top: 10px; }
+    .admobile-product-rack-modal__actions button { min-height: 46px; border: 0; border-radius: 8px; background: #eef1f5; color: #475467; font: inherit; font-size: 14px; font-weight: 700; }
+    .admobile-product-rack-modal__actions button[type="submit"] { background: #3056a8; color: #fff; }
     .admobile-barcode-result__qty { display: flex; gap: 14px; margin: 8px 0 0; }
     .admobile-barcode-result__qty div { min-width: 0; }
     .admobile-barcode-result__qty dt { margin-bottom: 2px; color: #667085; font-size: 10px; }
     .admobile-barcode-result__qty dd { margin: 0; color: #172033; font-size: 16px; font-weight: 800; }
     .admobile-barcode-result__qty > div:first-child dd { color: #2450a6; }
-    .admobile-barcode-result__qty > div:last-child dd.is-over { color: #b42318; }
+    .admobile-barcode-result__qty dd.is-over { color: #b42318; }
     .admobile-inspection-memo-modal[hidden] { display: none; }
     .admobile-inspection-memo-modal { position: fixed; z-index: 1200; inset: 0; display: flex; align-items: flex-end; }
     .admobile-inspection-memo-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .58); }
@@ -304,6 +358,29 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         var searchTimer;
         var lastBarcodeInputAt = 0;
         var barcodeScanGapMs = 400;
+        var scannerToggle = document.getElementById('barcode-scanner-toggle');
+        var scannerStorageKey = 'admobile-barcode-scanner-on';
+        var scannerOn = true;
+        try {
+            scannerOn = window.localStorage.getItem(scannerStorageKey) !== '0';
+        } catch (error) {
+            scannerOn = true;
+        }
+
+        function setScannerOn(on) {
+            scannerOn = !!on;
+            scannerToggle.classList.toggle('is-on', scannerOn);
+            scannerToggle.setAttribute('aria-checked', scannerOn ? 'true' : 'false');
+            scannerToggle.querySelector('.admobile-scanner-toggle__state').textContent = scannerOn ? 'ON' : 'OFF';
+            try {
+                window.localStorage.setItem(scannerStorageKey, scannerOn ? '1' : '0');
+            } catch (error) {}
+        }
+
+        setScannerOn(scannerOn);
+        scannerToggle.addEventListener('click', function() {
+            setScannerOn(!scannerOn);
+        });
 
         function isNewBarcodeScan() {
             var now = Date.now();
@@ -313,6 +390,9 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         }
 
         function prepareBarcodeRescan() {
+            if (!scannerOn) {
+                return;
+            }
             if (isNewBarcodeScan() && normalizeBarcode(input.value) !== '') {
                 input.value = '';
                 message.textContent = '';
@@ -368,11 +448,12 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
                     (product.brand_name ? '<p class="admobile-barcode-result__brand">' + escapeHtml(product.brand_name) + '</p>' : '') +
                     '<h3>' + escapeHtml(product.product_name || '상품명 없음') + '</h3>' +
                     '<p class="admobile-barcode-result__barcode">바코드: ' + escapeHtml(product.barcode || '-') + '</p>' +
-                    '<p class="admobile-barcode-result__rack">랙: ' + escapeHtml(product.ps_rack_code || '-') + '</p>' +
+                    '<button type="button" class="admobile-barcode-result__rack" data-rack-edit data-pidx="' + Number(product.pidx || 0) + '" data-rack-code="' + escapeHtml(product.ps_rack_code || '') + '" data-product-name="' + escapeHtml(product.product_name || '') + '">랙: ' + escapeHtml(product.ps_rack_code || '-') + '</button>' +
                     '<dl class="admobile-barcode-result__qty">' +
                         '<div><dt>주문수량</dt><dd>' + Number(product.order_qty || 0).toLocaleString() + '개</dd></div>' +
                         '<div><dt>체크수량</dt><dd>' + Number(product.checked_total_qty || 0).toLocaleString() + '개</dd></div>' +
                         '<div><dt>남은 수량</dt><dd class="' + (remainingQty < 0 ? 'is-over' : '') + '">' + remainingQty.toLocaleString() + '개</dd></div>' +
+                        '<div><dt>현재고</dt><dd>' + Number(product.stock_qty || 0).toLocaleString() + '개</dd></div>' +
                     '</dl>' +
                     '<nav class="admobile-unit-action-menu" aria-label="상품 작업 메뉴">' +
                         '<button type="button" class="admobile-unit-action-menu__item" data-complete-check data-order-idx="' + orderIdx + '" data-bidx="' + Number(product.bidx || 0) + '" data-pidx="' + Number(product.pidx || 0) + '" data-order-qty="' + Number(product.order_qty || 0) + '" data-checked-qty="' + Number(product.checked_total_qty || 0) + '"' + (product.is_check_complete ? ' disabled' : '') + '>' + (product.is_check_complete ? '체크완료' : '바로 완료체크') + '</button>' +
@@ -459,7 +540,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             var isTextEntryTarget = target instanceof HTMLElement
                 && target.matches('input, textarea, select, [contenteditable="true"]');
 
-            if (modal.hidden && !isTextEntryTarget && /^[0-9]$/.test(event.key)) {
+            if (scannerOn && modal.hidden && !isTextEntryTarget && /^[0-9]$/.test(event.key)) {
                 prepareBarcodeRescan();
                 input.value += event.key;
                 focusInput();
@@ -468,7 +549,7 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
         });
 
         document.addEventListener('touchstart', function(event) {
-            if (!event.target.closest('#barcode-search, #barcode-result-modal, #inspection-memo-modal, #product-image-modal')) {
+            if (!event.target.closest('#barcode-search, #barcode-result-modal, #barcode-rack-modal, #inspection-memo-modal, #product-image-modal')) {
                 blurInputIfActive();
             }
         }, { passive: true });
@@ -479,6 +560,97 @@ $pendingUnitCount = count($stockUnits) - $completedUnitCount;
             if (event.target.closest('[data-action="close"]')) {
                 closeModal();
             }
+        });
+
+        var rackModal = document.getElementById('barcode-rack-modal');
+        var rackForm = document.getElementById('barcode-rack-form');
+        var rackInput = document.getElementById('barcode-rack-input');
+        var rackMessage = document.getElementById('barcode-rack-message');
+        var rackProduct = document.getElementById('barcode-rack-product');
+        var rackPrdIdx = 0;
+
+        function closeRackModal() {
+            rackModal.hidden = true;
+            rackPrdIdx = 0;
+        }
+
+        function applyRackCode(prdIdx, rackCode) {
+            products.forEach(function(product) {
+                if (Number(product.pidx || 0) === prdIdx) {
+                    product.ps_rack_code = rackCode;
+                }
+            });
+            document.querySelectorAll('[data-rack-edit]').forEach(function(button) {
+                if (Number(button.dataset.pidx || 0) !== prdIdx) {
+                    return;
+                }
+                button.dataset.rackCode = rackCode;
+                button.textContent = '랙: ' + (rackCode || '-');
+            });
+            document.querySelectorAll('.admobile-stock-card').forEach(function(card) {
+                if (Number(card.dataset.pidx || 0) !== prdIdx) {
+                    return;
+                }
+                var display = card.querySelector('[data-rack-display]');
+                if (display) {
+                    display.textContent = rackCode || '-';
+                }
+            });
+        }
+
+        resultList.addEventListener('click', function(event) {
+            var button = event.target.closest('[data-rack-edit]');
+            if (!button) {
+                return;
+            }
+            rackPrdIdx = Number(button.dataset.pidx || 0);
+            rackInput.value = button.dataset.rackCode || '';
+            rackProduct.textContent = button.dataset.productName || '재고 · 주문';
+            rackMessage.textContent = '';
+            rackModal.hidden = false;
+            window.setTimeout(function() { rackInput.focus(); }, 100);
+        });
+
+        rackModal.addEventListener('click', function(event) {
+            if (event.target.closest('[data-action="close"]')) {
+                closeRackModal();
+            }
+        });
+
+        rackForm.addEventListener('submit', function(event) {
+            event.preventDefault();
+            if (rackPrdIdx <= 0) {
+                rackMessage.textContent = '상품 정보가 없습니다.';
+                return;
+            }
+            var saveButton = rackForm.querySelector('[type="submit"]');
+            var prdIdx = rackPrdIdx;
+            saveButton.disabled = true;
+            rackMessage.textContent = '';
+
+            fetch('/admobile/product/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({
+                    action_mode: 'rack_code_update',
+                    prd_idx: prdIdx,
+                    rack_code: rackInput.value
+                })
+            })
+                .then(function(response) { return response.json(); })
+                .then(function(result) {
+                    if (!result.success) {
+                        throw new Error(result.message || '랙 코드 변경에 실패했습니다.');
+                    }
+                    applyRackCode(prdIdx, result.rack_code || '');
+                    closeRackModal();
+                })
+                .catch(function(error) {
+                    rackMessage.textContent = error.message;
+                })
+                .finally(function() {
+                    saveButton.disabled = false;
+                });
         });
     })();
 </script>

@@ -22,7 +22,11 @@
 	$from_record = ($pn - 1) * $list_num;
     $counter = $total_count - (($pn - 1) * $list_num);
 
-	$_query = "select * from ona_order ".$_where." ORDER BY oo_sort desc limit ".$from_record.", ".$list_num;
+	if( $_mode == "연관" ){
+		$_query = "select * from ona_order ".$_where." ORDER BY oo_idx desc";
+	}else{
+		$_query = "select * from ona_order ".$_where." ORDER BY oo_sort desc limit ".$from_record.", ".$list_num;
+	}
 	$_result = sql_query_error($_query);
 
 ?>

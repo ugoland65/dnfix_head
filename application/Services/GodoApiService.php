@@ -1866,7 +1866,7 @@ class GodoApiService extends BaseClass {
      * @param string $costPrice 원가
      * @return array
      */
-    public function updateGodoGoodsPrice($goodsNo, $salePrice, $costPrice, $marginGroup) 
+    public function updateGodoGoodsPrice($goodsNo, $salePrice, $costPrice, $marginGroup, $fixedPrice = null) 
     {
 
         if(empty($goodsNo)){
@@ -1903,16 +1903,23 @@ class GodoApiService extends BaseClass {
         }
         $costPrice = (string)((int)$costPriceRaw);
 
-        $apiUrl = 'https://showdang.co.kr/dnfix/api/goods_api.php?mode=goodsPriceUpdate&goodsNo='.$goodsNo.'&salePrice='.$salePrice.'&costPrice='.$costPrice.'&marginGroup='.$marginGroup;
-        $response = HttpClient::getData($apiUrl);
-        $responseData = json_decode($response, true);
-
-        //dd($responseData);
-        if(!is_array($responseData)){
-            throw new \Exception('고도몰 API 응답 파싱 실패');
+        $query = [
+            'mode' => 'goodsPriceUpdate',
+            'goodsNo' => $goodsNo,
+            'salePrice' => $salePrice,
+            'costPrice' => $costPrice,
+            'marginGroup' => $marginGroup,
+        ];
+        if ($fixedPrice !== null && trim((string)$fixedPrice) !== '') {
+            $fixedPriceRaw = str_replace(',', '', trim((string)$fixedPrice));
+            if (!preg_match('/^\d+$/', $fixedPriceRaw) || (int)$fixedPriceRaw <= 0) {
+                throw new \Exception('정가는 0보다 큰 숫자만 입력 가능합니다.');
+            }
+            $query['fixedPrice'] = (string)((int)$fixedPriceRaw);
         }
 
-        return $responseData;
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query($query);
+        return $this->requestGodoGoodsApi($apiUrl);
     }
 
 
