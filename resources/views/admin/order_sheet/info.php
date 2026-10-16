@@ -200,6 +200,63 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
         </tr>
 
         <tr>
+            <th>주문예상일 (발주)</th>
+            <td>
+                <?php
+                    $expectedOrderDateValue = trim((string)($orderSheetInfo['oo_expected_order_date'] ?? ''));
+                    if (strlen($expectedOrderDateValue) >= 10) {
+                        $expectedOrderDateValue = substr($expectedOrderDateValue, 0, 10);
+                    }
+                ?>
+                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                    <input type="text" name="oo_expected_order_date" id="oo_expected_order_date" value="<?= htmlspecialchars($expectedOrderDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                </div>
+            </td>
+        </tr>
+
+        <tr>
+            <th>입고예상일</th>
+            <td>
+                <?php
+                    $expectedInDateValue = trim((string)($orderSheetInfo['oo_expected_in_date'] ?? ''));
+                    if (strlen($expectedInDateValue) >= 10) {
+                        $expectedInDateValue = substr($expectedInDateValue, 0, 10);
+                    }
+                    $coverDaysInput = $orderSheetInfo['oo_cover_days'] ?? '';
+                    if ($coverDaysInput === null || $coverDaysInput === '') {
+                        $coverDaysInput = '';
+                    } else {
+                        $coverDaysInput = (int)$coverDaysInput;
+                    }
+                    $coverEndDateValue = trim((string)($orderSheetInfo['oo_cover_end_date'] ?? ''));
+                    if (strlen($coverEndDateValue) >= 10) {
+                        $coverEndDateValue = substr($coverEndDateValue, 0, 10);
+                    }
+                    if ($coverEndDateValue === '' && $expectedInDateValue !== '' && $coverDaysInput !== '') {
+                        $coverEndDate = DateTime::createFromFormat('Y-m-d', $expectedInDateValue);
+                        if ($coverEndDate instanceof DateTime) {
+                            $coverEndDate->modify('+' . $coverDaysInput . ' days');
+                            $coverEndDateValue = $coverEndDate->format('Y-m-d');
+                        }
+                    }
+                ?>
+                입고예상일
+                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                    <input type="text" name="oo_expected_in_date" id="oo_expected_in_date" value="<?= htmlspecialchars($expectedInDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                </div>
+                &nbsp;&nbsp;
+                커버종료일
+                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                    <input type="text" name="oo_cover_end_date" id="oo_cover_end_date" value="<?= htmlspecialchars($coverEndDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                </div>
+                &nbsp;&nbsp;
+                커버일
+                <input type="number" name="oo_cover_days" id="oo_cover_days" value="<?= $coverDaysInput ?>" min="0" max="365" style="width:60px;">일
+
+            </td>
+        </tr>
+
+        <tr>
             <th>메모</th>
             <td>
                 <textarea name="oo_memo" style="height:70px"><?= $orderSheetInfo['oo_memo'] ?? '' ?></textarea>
@@ -908,6 +965,10 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 return false;
             }
 
+            if (syncOrderSheetCoverBeforeSave() === false) {
+                return false;
+            }
+
             var formData = $("#orderSheetForm").serialize();
 
             ajaxRequest('/admin/order/sheet/save', formData)
@@ -1513,6 +1574,110 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
         }
 
 
+        var orderSheetCoverMode = "days";
+
+        function parseOrderSheetDate(value) {
+            var match = String(value || "").trim().match(/^(\d{4})-(\d{2})-(\d{2})$/);
+            if (!match) {
+                return null;
+            }
+            var year = Number(match[1]);
+            var month = Number(match[2]);
+            var day = Number(match[3]);
+            var date = new Date(year, month - 1, day);
+            if (date.getFullYear() !== year || date.getMonth() !== month - 1 || date.getDate() !== day) {
+                return null;
+            }
+            return date;
+        }
+
+        function formatOrderSheetDate(date) {
+            var month = String(date.getMonth() + 1);
+            var day = String(date.getDate());
+            if (month.length < 2) {
+                month = "0" + month;
+            }
+            if (day.length < 2) {
+                day = "0" + day;
+            }
+            return date.getFullYear() + "-" + month + "-" + day;
+        }
+
+        function diffOrderSheetDays(startDate, endDate) {
+            var start = new Date(startDate.getFullYear(), startDate.getMonth(), startDate.getDate());
+            var end = new Date(endDate.getFullYear(), endDate.getMonth(), endDate.getDate());
+            return Math.round((end.getTime() - start.getTime()) / 86400000);
+        }
+
+        function addOrderSheetDays(date, days) {
+            var next = new Date(date.getFullYear(), date.getMonth(), date.getDate());
+            next.setDate(next.getDate() + days);
+            return next;
+        }
+
+        function syncOrderSheetCoverFromDate() {
+            var inboundDate = parseOrderSheetDate($("#oo_expected_in_date").val());
+            var coverDateText = $.trim($("#oo_cover_end_date").val());
+            if (coverDateText === "") {
+                $("#oo_cover_days").val("");
+                return true;
+            }
+            var coverDate = parseOrderSheetDate(coverDateText);
+            if (!coverDate) {
+                return false;
+            }
+            if (!inboundDate) {
+                alert("입고예상일을 먼저 입력해 주세요.");
+                $("#oo_cover_end_date").val("");
+                return false;
+            }
+            var days = diffOrderSheetDays(inboundDate, coverDate);
+            if (days < 0) {
+                alert("커버종료일은 입고예상일 이후여야 합니다.");
+                $("#oo_cover_end_date").val("");
+                return false;
+            }
+            if (days > 365) {
+                alert("커버일은 365일 이하로 입력해 주세요.");
+                $("#oo_cover_end_date").val("");
+                return false;
+            }
+            $("#oo_cover_days").val(String(days));
+            return true;
+        }
+
+        function syncOrderSheetCoverFromDays() {
+            var inboundDate = parseOrderSheetDate($("#oo_expected_in_date").val());
+            var daysText = $.trim($("#oo_cover_days").val());
+            if (daysText === "") {
+                $("#oo_cover_end_date").val("");
+                return true;
+            }
+            if (!/^\d+$/.test(daysText)) {
+                return false;
+            }
+            var days = parseInt(daysText, 10);
+            if (days > 365) {
+                alert("커버일은 365일 이하로 입력해 주세요.");
+                return false;
+            }
+            if (!inboundDate) {
+                return false;
+            }
+            $("#oo_cover_end_date").val(formatOrderSheetDate(addOrderSheetDays(inboundDate, days)));
+            return true;
+        }
+
+        function syncOrderSheetCoverBeforeSave() {
+            if (orderSheetCoverMode === "date" && $.trim($("#oo_cover_end_date").val()) !== "") {
+                return syncOrderSheetCoverFromDate();
+            }
+            if ($.trim($("#oo_cover_days").val()) !== "") {
+                return syncOrderSheetCoverFromDays();
+            }
+            return true;
+        }
+
         $(function() {
 
             $('.calendar-input input').datepicker(clareCalendar);
@@ -1539,6 +1704,21 @@ $_os_pay_mode_list = ["계좌송금", "모인", "카드결제", "예치금"];
                 updateExpressTrackingButton();
             });
             $('input[name="express_number"]').on('input', updateExpressTrackingButton);
+            $("#oo_expected_in_date").on("change", function() {
+                if (orderSheetCoverMode === "date" && $.trim($("#oo_cover_end_date").val()) !== "") {
+                    syncOrderSheetCoverFromDate();
+                } else {
+                    syncOrderSheetCoverFromDays();
+                }
+            });
+            $("#oo_cover_end_date").on("change", function() {
+                orderSheetCoverMode = "date";
+                syncOrderSheetCoverFromDate();
+            });
+            $("#oo_cover_days").on("input change", function() {
+                orderSheetCoverMode = "days";
+                syncOrderSheetCoverFromDays();
+            });
 
             $(document).on('input', 'input.price', function() {
                 var value = $(this).val();

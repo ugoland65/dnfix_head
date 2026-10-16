@@ -40,11 +40,37 @@
                                     <option value="6" selected>최근 6개월</option>
                                     <option value="12">최근 1년</option>
                                 </select>
+                                <?php
+                                    $expectedInDateValue = trim((string)($orderSheet['oo_expected_in_date'] ?? ''));
+                                    if (strlen($expectedInDateValue) >= 10) {
+                                        $expectedInDateValue = substr($expectedInDateValue, 0, 10);
+                                    }
+                                    $coverEndDateValue = trim((string)($orderSheet['oo_cover_end_date'] ?? ''));
+                                    if (strlen($coverEndDateValue) >= 10) {
+                                        $coverEndDateValue = substr($coverEndDateValue, 0, 10);
+                                    }
+                                    $coverDaysRaw = $orderSheet['oo_cover_days'] ?? '';
+                                    $coverDaysInput = ($coverDaysRaw === null || $coverDaysRaw === '') ? '' : (string)(int)$coverDaysRaw;
+                                    if ($coverDaysInput === '' && $expectedInDateValue !== '' && $coverEndDateValue !== '') {
+                                        $coverStart = \DateTime::createFromFormat('Y-m-d', $expectedInDateValue);
+                                        $coverEnd = \DateTime::createFromFormat('Y-m-d', $coverEndDateValue);
+                                        if ($coverStart instanceof \DateTime && $coverEnd instanceof \DateTime && $coverEnd >= $coverStart) {
+                                            $coverDaysInput = (string)(int)$coverStart->diff($coverEnd)->days;
+                                        }
+                                    }
+                                    if ($coverDaysInput === '') {
+                                        $coverDaysInput = '30';
+                                    }
+                                ?>
                                 입고예상일
-                                <input type="date" id="os_expected_inbound_date">
+                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                                    <input type="text" id="os_expected_inbound_date" value="<?= htmlspecialchars($expectedInDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                                </div>
                                 커버종료일
-                                <input type="date" id="os_expected_cover_date">
-                                <input type="number" id="os_expected_cover_days" value="30" min="0" max="365" class="width-50">일
+                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                                    <input type="text" id="os_expected_cover_date" value="<?= htmlspecialchars($coverEndDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
+                                </div>
+                                <input type="number" id="os_expected_cover_days" value="<?= htmlspecialchars($coverDaysInput, ENT_QUOTES, 'UTF-8') ?>" min="0" max="365" class="width-50">일
                                 <button type="button" id="os_expected_order_btn" class="btnstyle1 btnstyle1-primary btnstyle1-sm" onclick="orderSheetDetailPrd.calcExpectedOrder()">필요수량 계산</button>
                             </div>
                         </div>
@@ -123,14 +149,14 @@
                 <div id="group_state" class="m-l-20 group-state normal">state : 보기중</div>
 
                 <?php
-                $lastSavedName = trim((string)($orderGroup['last_saved_admin_name'] ?? ''));
-                $lastSavedId = trim((string)($orderGroup['last_saved_admin_id'] ?? ''));
-                $lastSavedAt = trim((string)($orderGroup['last_saved_at'] ?? ''));
-                $lastSavedLabel = '-';
-                if ($lastSavedName !== '' || $lastSavedId !== '' || $lastSavedAt !== '') {
-                    $lastSavedWho = $lastSavedName !== '' ? $lastSavedName : $lastSavedId;
-                    $lastSavedLabel = trim($lastSavedWho . ($lastSavedAt !== '' ? ' ' . $lastSavedAt : ''));
-                }
+                    $lastSavedName = trim((string)($orderGroup['last_saved_admin_name'] ?? ''));
+                    $lastSavedId = trim((string)($orderGroup['last_saved_admin_id'] ?? ''));
+                    $lastSavedAt = trim((string)($orderGroup['last_saved_at'] ?? ''));
+                    $lastSavedLabel = '-';
+                    if ($lastSavedName !== '' || $lastSavedId !== '' || $lastSavedAt !== '') {
+                        $lastSavedWho = $lastSavedName !== '' ? $lastSavedName : $lastSavedId;
+                        $lastSavedLabel = trim($lastSavedWho . ($lastSavedAt !== '' ? ' ' . $lastSavedAt : ''));
+                    }
                 ?>
                 <span id="group_last_saved" class="m-l-20">최종저장 : <b><?= htmlspecialchars($lastSavedLabel, ENT_QUOTES, 'UTF-8') ?></b></span> 
 
@@ -1406,6 +1432,14 @@
             var $coverDays = $("#os_expected_cover_days");
             if (!$inbound.length) {
                 return;
+            }
+
+            if ($.fn.datepicker && typeof clareCalendar !== "undefined") {
+                $inbound.add($coverDate).each(function() {
+                    if (!$(this).hasClass("hasDatepicker")) {
+                        $(this).datepicker(clareCalendar);
+                    }
+                });
             }
 
             var lastEdited = "days";

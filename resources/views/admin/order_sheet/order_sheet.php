@@ -85,6 +85,50 @@ $convertedKrw = $displayExchangeRate > 0
                 <?php if (!empty($orderSheetMain['oo_form_idx'])) { ?>
                     <button type="button" class="btnstyle1 btnstyle1-sm" onclick="orderSheetForm.view('<?= $orderSheetMain['oo_form_idx'] ?>')">주문서 폼 : <?= $orderSheetMain['oog_name'] ?? '' ?></button>
                 <?php } ?>
+
+                <?php
+                    $formatOrderSheetDate = static function ($value): string {
+                        $text = trim((string)$value);
+                        if (strlen($text) >= 10) {
+                            $text = substr($text, 0, 10);
+                        }
+                        return $text;
+                    };
+                    $expectedOrderDateText = $formatOrderSheetDate($orderSheetMain['oo_expected_order_date'] ?? '');
+                    $expectedInDateText = $formatOrderSheetDate($orderSheetMain['oo_expected_in_date'] ?? '');
+                    $coverEndDateText = $formatOrderSheetDate($orderSheetMain['oo_cover_end_date'] ?? '');
+                    $coverDaysRaw = $orderSheetMain['oo_cover_days'] ?? '';
+                    $coverDaysText = ($coverDaysRaw === null || $coverDaysRaw === '') ? '' : (string)(int)$coverDaysRaw;
+                    $orderDateData = json_decode((string)($orderSheetMain['oo_date_data'] ?? ''), true);
+                    if (!is_array($orderDateData)) {
+                        $orderDateData = [];
+                    }
+                    $orderSendDateText = $formatOrderSheetDate($orderDateData['order_send_date'] ?? '');
+                    $coverText = '-';
+                    if ($coverEndDateText !== '' && $coverDaysText !== '') {
+                        $coverText = $coverEndDateText . ' (' . $coverDaysText . '일)';
+                    } elseif ($coverEndDateText !== '') {
+                        $coverText = $coverEndDateText;
+                    } elseif ($coverDaysText !== '') {
+                        $coverText = $coverDaysText . '일';
+                    }
+                ?>
+                <?php if ($expectedOrderDateText !== '' || $expectedInDateText !== '' || $coverEndDateText !== '' || $coverDaysText !== '' || $orderSendDateText !== '') { ?>
+                    <span style="margin-left:12px; font-size:13px; font-weight:500;">
+                        <?php if ($expectedOrderDateText !== '') { ?>
+                            주문예상일 (발주) : <b><?= htmlspecialchars($expectedOrderDateText, ENT_QUOTES, 'UTF-8') ?></b>
+                        <?php } ?>
+                        <?php if ($expectedInDateText !== '') { ?>
+                            &nbsp;&nbsp;입고예상일 : <b><?= htmlspecialchars($expectedInDateText, ENT_QUOTES, 'UTF-8') ?></b>
+                        <?php } ?>
+                        <?php if ($coverEndDateText !== '' || $coverDaysText !== '') { ?>
+                            &nbsp;&nbsp;커버종료일 : <b><?= htmlspecialchars($coverText, ENT_QUOTES, 'UTF-8') ?></b>
+                        <?php } ?>
+                        <?php if ($orderSendDateText !== '') { ?>
+                            &nbsp;&nbsp;주문서 발송일 : <b><?= htmlspecialchars($orderSendDateText, ENT_QUOTES, 'UTF-8') ?></b>
+                        <?php } ?>
+                    </span>
+                <?php } ?>
             <?php } ?>
 
         </div>

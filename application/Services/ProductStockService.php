@@ -12,6 +12,11 @@ use App\Core\AuthAdmin;
 use App\Services\AdminActionLogService;
 class ProductStockService extends BaseClass 
 {
+    /** 최근 일판매가 월평균의 이 배율 이상이면 급판매로 본다. */
+    public const SURGE_RATIO = 1.5;
+
+    /** 급판매 속도를 절반 반영하는 데 필요한 최근 판매수량. */
+    public const SURGE_PRIOR_SALES = 10;
 
     /**
      * 재고코드 생성
@@ -1743,6 +1748,7 @@ class ProductStockService extends BaseClass
      * - 품절월(입고 없이 한 달 품절)은 평균·미판매에서 제외
      * - 리드: 주문서 작성 1주 + 입고 1주
      * - 현재고가 1개 이하이면 급판매로 보지 않음 (잔여 1개 판매로 일판매가 과장되는 것 방지)
+     * - 급판매여도 최근 판매수량 / (최근 판매수량 + 기준수량)만큼만 최근 일판매를 반영
      *
      * @param int $psIdx
      * @param string $firstInboundDay
@@ -1794,8 +1800,9 @@ class ProductStockService extends BaseClass
         }
 
         $daily28 = $inStockDays28 > 0 ? round($sales28 / $inStockDays28, 2) : 0.0;
-        $isSurge = $currentStock > 1 && $dailyMonth > 0 && $daily28 >= ($dailyMonth * 1.5);
-        $useDaily = $isSurge && $daily28 > 0 ? $daily28 : $dailyMonth;
+        $surge = self::resolveAppliedSurgeDaily($dailyMonth, $daily28, $sales28, $currentStock);
+        $isSurge = $surge['is_surge'];
+        $useDaily = (float)$surge['use_daily'];
         $horizonDays = $cycleDays + $leadDays + $safetyDays;
 
         $coverDays = null;
@@ -1808,17 +1815,17 @@ class ProductStockService extends BaseClass
         } else {
             $coverDays = (int)floor($currentStock / $useDaily);
             $soldOutAt = date('Y-m-d', strtotime('+' . $coverDays . ' days'));
-            $dailyLabel = $isSurge ? '최근 ' . $recentDays . '일 일판매' : '월평균 일판매';
+            $dailyLabel = $isSurge ? '적용 일판매' : '월평균 일판매';
             $forecastText = '현재고 ' . $currentStock . '개가 ' . $dailyLabel . ' ' . $useDaily . '개 기준으로 약 ' . $coverDays . '일 후 품절 예정입니다.';
         }
 
         $baseRecommended = $this->calcRecommendedQty($dailyMonth, $horizonDays, $currentStock);
-        $surgeRecommended = $this->calcRecommendedQty($daily28, $horizonDays, $currentStock);
+        $surgeRecommended = $this->calcRecommendedQty($useDaily, $horizonDays, $currentStock);
         $recommended = $baseRecommended;
         $recommendDaily = $dailyMonth;
         if ($isSurge && $surgeRecommended > $baseRecommended) {
             $recommended = $surgeRecommended;
-            $recommendDaily = $daily28;
+            $recommendDaily = $useDaily;
         }
         $demandQty = $this->calcDemandQty($recommendDaily, $horizonDays);
         $stockApplied = $currentStock > 0 && $demandQty > 0;
@@ -1836,6 +1843,9 @@ class ProductStockService extends BaseClass
             'daily_28' => $daily28,
             'use_daily' => $useDaily,
             'is_surge' => $isSurge,
+            'surge_sales' => (int)$surge['surge_sales'],
+            'surge_prior' => (int)$surge['surge_prior'],
+            'surge_weight' => (float)$surge['surge_weight'],
             'lost_sale_90' => $lostSale,
             'lead_days' => $leadDays,
             'cycle_days' => $cycleDays,
@@ -1847,6 +1857,38 @@ class ProductStockService extends BaseClass
             'soldout_at' => $soldOutAt,
             'forecast_text' => $forecastText,
             'need_order_soon' => $needOrderSoon,
+        ];
+    }
+
+    /**
+     * 급판매 속도를 최근 판매수량만큼만 반영한다.
+     * 적용 일판매 = 월평균 + (최근 일판매 - 월평균) × 최근판매 / (최근판매 + 기준수량)
+     * 현재고가 1개 이하면 급판매로 보지 않는다.
+     *
+     * @param float $dailyMonth
+     * @param float $dailyRecent
+     * @param int $recentSales
+     * @param int $currentStock
+     * @return array
+     */
+    public static function resolveAppliedSurgeDaily(float $dailyMonth, float $dailyRecent, int $recentSales, int $currentStock): array
+    {
+        $prior = self::SURGE_PRIOR_SALES;
+        $recentSales = max(0, $recentSales);
+        $isSurge = $currentStock > 1 && $dailyMonth > 0 && $dailyRecent >= ($dailyMonth * self::SURGE_RATIO);
+        $weight = 0.0;
+        $useDaily = $dailyMonth;
+        if ($isSurge && $dailyRecent > 0) {
+            $weight = $recentSales / ($recentSales + $prior);
+            $useDaily = round($dailyMonth + (($dailyRecent - $dailyMonth) * $weight), 2);
+        }
+
+        return [
+            'is_surge' => $isSurge,
+            'use_daily' => $useDaily,
+            'surge_weight' => round($weight, 4),
+            'surge_prior' => $prior,
+            'surge_sales' => $recentSales,
         ];
     }
 

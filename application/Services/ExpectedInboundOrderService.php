@@ -12,12 +12,11 @@ use Throwable;
  * 필요수량 = 적용 일판매 × (입고까지 일수 + 커버기간) - 현재고 - 입고예정
  * 입고예정은 입금완료 주문의 수량이다.
  * 추천안전재고 = 적용 일판매 × 7일. 필요수량과 따로 표시한다.
- * 일판매는 선택한 기간의 정상월 월평균이고, 급판매이면 최근 28일 일판매를 쓴다.
+ * 일판매는 선택한 기간의 정상월 월평균이고, 급판매이면 최근 판매수량 비중만큼만 최근 일판매를 반영한다.
  */
 class ExpectedInboundOrderService
 {
     private const DEFAULT_LOOKBACK_MONTHS = 6;
-    private const SURGE_RATIO = 1.5;
     private const DEFAULT_COVER_DAYS = 30;
     private const SAFETY_DAYS = 7;
 
@@ -63,23 +62,28 @@ class ExpectedInboundOrderService
         $monthlyAvg = (float)($basis['monthly_avg'] ?? 0);
         $dailyMonth = $monthlyAvg > 0 ? round($monthlyAvg / 30, 2) : 0.0;
         $dailyRecent = (float)($basis['daily_recent'] ?? 0);
+        $recentSales = max(0, (int)($basis['recent_sales'] ?? 0));
         $recentDays = (int)($basis['recent_days'] ?? 28);
         $sampleMonths = (int)($basis['sample_months'] ?? 0);
         $daysUntil = $this->diffDays($today, $expectedDate);
         $coverDays = $this->normalizeCoverDays($coverDays);
         $horizonDays = $daysUntil + $coverDays;
 
-        $isSurge = $currentStock > 1 && $dailyMonth > 0 && $dailyRecent >= ($dailyMonth * self::SURGE_RATIO);
-        $useDaily = ($isSurge && $dailyRecent > 0) ? $dailyRecent : $dailyMonth;
+        $surge = ProductStockService::resolveAppliedSurgeDaily($dailyMonth, $dailyRecent, $recentSales, $currentStock);
+        $isSurge = (bool)$surge['is_surge'];
+        $useDaily = (float)$surge['use_daily'];
+        $surgeWeight = (float)$surge['surge_weight'];
+        $surgePrior = (int)$surge['surge_prior'];
+        $surgeColumnDaily = $isSurge ? $useDaily : $dailyRecent;
 
         $demandMonthUntil = $this->demandQty($dailyMonth, $daysUntil);
-        $demandSurgeUntil = $this->demandQty($dailyRecent, $daysUntil);
+        $demandSurgeUntil = $this->demandQty($surgeColumnDaily, $daysUntil);
         $demandUseUntil = $this->demandQty($useDaily, $daysUntil);
         $demandMonth = $this->demandQty($dailyMonth, $horizonDays);
-        $demandSurge = $this->demandQty($dailyRecent, $horizonDays);
+        $demandSurge = $this->demandQty($surgeColumnDaily, $horizonDays);
         $demandUse = $this->demandQty($useDaily, $horizonDays);
         $safetyMonth = $this->demandQty($dailyMonth, self::SAFETY_DAYS);
-        $safetySurge = $this->demandQty($dailyRecent, self::SAFETY_DAYS);
+        $safetySurge = $this->demandQty($surgeColumnDaily, self::SAFETY_DAYS);
         $safetyQty = $this->demandQty($useDaily, self::SAFETY_DAYS);
 
         $remainMonth = $availableStock - $demandMonthUntil;
@@ -108,6 +112,10 @@ class ExpectedInboundOrderService
             'daily_month' => $dailyMonth,
             'recent_days' => $recentDays,
             'daily_recent' => $dailyRecent,
+            'daily_surge_column' => $surgeColumnDaily,
+            'surge_sales' => $recentSales,
+            'surge_prior' => $surgePrior,
+            'surge_weight' => $surgeWeight,
             'is_surge' => $isSurge,
             'use_daily' => $useDaily,
             'applied_basis' => $isSurge ? 'surge' : 'month',
@@ -139,6 +147,10 @@ class ExpectedInboundOrderService
                 $recentDays,
                 $dailyRecent,
                 $isSurge,
+                $recentSales,
+                $useDaily,
+                $surgeWeight,
+                $surgePrior,
                 $remainQty,
                 $safetyQty,
                 $orderQty,
@@ -291,6 +303,10 @@ class ExpectedInboundOrderService
      * @param int $recentDays
      * @param float $dailyRecent
      * @param bool $isSurge
+     * @param int $recentSales
+     * @param float $useDaily
+     * @param float $surgeWeight
+     * @param int $surgePrior
      * @param int $remainQty
      * @param int $safetyQty
      * @param int $orderQty
@@ -309,13 +325,17 @@ class ExpectedInboundOrderService
         int $recentDays,
         float $dailyRecent,
         bool $isSurge,
+        int $recentSales,
+        float $useDaily,
+        float $surgeWeight,
+        int $surgePrior,
         int $remainQty,
         int $safetyQty,
         int $orderQty,
         int $incomingQty
     ): string {
         $basisText = $isSurge
-            ? '최근 ' . $recentDays . '일 일판매 ' . $dailyRecent . '개(급판매)'
+            ? '최근 ' . $recentDays . '일 판매 ' . $recentSales . '개를 기준 ' . $surgePrior . '개 대비 ' . (int)round($surgeWeight * 100) . '% 반영한 적용 일판매 ' . $useDaily . '개(관측 일판매 ' . $dailyRecent . '개)'
             : '월평균 일판매 ' . $dailyMonth . '개';
 
         $monthText = '최근 ' . $lookbackMonths . '개월';

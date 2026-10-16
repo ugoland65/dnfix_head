@@ -1708,6 +1708,56 @@ class OrderSheetService
         $pay_fee = (double)str_replace(',', '', $data['pay_fee'] ?? '0'); // 결제 수수료
         $in_date = trim((string)($data['in_date'] ?? '')); //입고일
         $inDateColumnValue = ($in_date === '') ? null : $in_date;
+        $expectedOrderDate = trim((string)($data['oo_expected_order_date'] ?? ''));
+        if ($expectedOrderDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expectedOrderDate)) {
+            throw new Exception('주문예상일 형식이 올바르지 않습니다.');
+        }
+        $expectedOrderDateValue = ($expectedOrderDate === '') ? null : $expectedOrderDate;
+        $expectedInDate = trim((string)($data['oo_expected_in_date'] ?? ''));
+        if ($expectedInDate !== '' && !preg_match('/^\d{4}-\d{2}-\d{2}$/', $expectedInDate)) {
+            throw new Exception('입고예상일 형식이 올바르지 않습니다.');
+        }
+        $expectedInDateValue = ($expectedInDate === '') ? null : $expectedInDate;
+        $coverDaysRaw = trim((string)($data['oo_cover_days'] ?? ''));
+        $coverDaysValue = null;
+        if ($coverDaysRaw !== '') {
+            if (!preg_match('/^\d+$/', $coverDaysRaw)) {
+                throw new Exception('커버일은 0 이상의 정수로 입력해 주세요.');
+            }
+            $coverDaysValue = (int)$coverDaysRaw;
+            if ($coverDaysValue > 365) {
+                throw new Exception('커버일은 365일 이하로 입력해 주세요.');
+            }
+        }
+        $coverEndDate = trim((string)($data['oo_cover_end_date'] ?? ''));
+        if ($coverEndDate !== '') {
+            if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $coverEndDate)) {
+                throw new Exception('커버종료일 형식이 올바르지 않습니다.');
+            }
+            if ($expectedInDate === '') {
+                throw new Exception('커버종료일을 계산하려면 입고예상일을 입력해 주세요.');
+            }
+            $coverStart = \DateTime::createFromFormat('Y-m-d', $expectedInDate);
+            $coverEnd = \DateTime::createFromFormat('Y-m-d', $coverEndDate);
+            if (!$coverStart || $coverStart->format('Y-m-d') !== $expectedInDate || !$coverEnd || $coverEnd->format('Y-m-d') !== $coverEndDate) {
+                throw new Exception('커버종료일 형식이 올바르지 않습니다.');
+            }
+            if ($coverEnd < $coverStart) {
+                throw new Exception('커버종료일은 입고예상일 이후여야 합니다.');
+            }
+            $coverDaysValue = (int)$coverStart->diff($coverEnd)->days;
+            if ($coverDaysValue > 365) {
+                throw new Exception('커버일은 365일 이하로 입력해 주세요.');
+            }
+        }
+        $coverEndDateValue = ($coverEndDate === '') ? null : $coverEndDate;
+        if ($coverEndDateValue === null && $expectedInDateValue !== null && $coverDaysValue !== null) {
+            $coverStartFromDays = \DateTime::createFromFormat('Y-m-d', $expectedInDate);
+            if ($coverStartFromDays instanceof \DateTime) {
+                $coverStartFromDays->modify('+' . $coverDaysValue . ' days');
+                $coverEndDateValue = $coverStartFromDays->format('Y-m-d');
+            }
+        }
         $oo_price_kr = (double)str_replace(',', '', $data['oo_price_kr'] ?? '0'); // 최종 합계 결제액
 
         //가격변동사항
@@ -1824,6 +1874,10 @@ class OrderSheetService
             'oo_sum_price' => $oo_sum_price ?? 0, //주문 결제 가격
             'oo_prd_to_pay_exchange_rate' => $prd_to_pay_exchange_rate ?? 0, //환산 환율
             'oo_in_date' => $inDateColumnValue, //입고일
+            'oo_expected_order_date' => $expectedOrderDateValue, //주문예상일
+            'oo_expected_in_date' => $expectedInDateValue, //입고예상일
+            'oo_cover_end_date' => $coverEndDateValue, //커버종료일
+            'oo_cover_days' => $coverDaysValue, //커버일
             'reg' => $reg ?? '',
             'created_by' => $created_by,
             'created_name' => $created_name ?? '',
@@ -2471,7 +2525,10 @@ class OrderSheetService
                 'oo_prd_currency',
                 'oo_sum_currency',
                 'oo_sum_exchange_rate',
-                'oo_prd_to_pay_exchange_rate'
+                'oo_prd_to_pay_exchange_rate',
+                'oo_expected_in_date',
+                'oo_cover_end_date',
+                'oo_cover_days'
                 ])
             ->where('oo_idx', '=', $oo_idx)
             ->first();

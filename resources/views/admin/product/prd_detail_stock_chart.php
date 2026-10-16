@@ -78,6 +78,10 @@
             <b><?= $insightDaily28 ?></b> 개/일
             <?php if (!empty($insight['is_surge'])) { ?>
                 <div><b style="color:#d4380d;">급판매</b></div>
+                <div class="stock-chart-stock-applied-calc">
+                    반영 <?= (int)round(((float)($insight['surge_weight'] ?? 0)) * 100) ?>%
+                    · <?= $insight['use_daily'] ?? 0 ?>개/일
+                </div>
             <?php } ?>
         </td>
         <td class="text-center">
@@ -106,8 +110,13 @@
 <div class="admin-guide-text m-t-6">
     <?= htmlspecialchars((string)($insight['forecast_text'] ?? ''), ENT_QUOTES, 'UTF-8') ?>
     월평균은 선택한 최근 <?= $lookbackMonths ?>개월 중 품절월·입고전을 뺀 기간입니다.
-    권장발주 = 월평균 일판매 × (발주주기 <?= (int)($insight['cycle_days'] ?? 30) ?>일 + 입고리드 <?= (int)($insight['lead_days'] ?? 14) ?>일) − 현재고.
+    권장발주 = 적용 일판매 × (발주주기 <?= (int)($insight['cycle_days'] ?? 30) ?>일 + 입고리드 <?= (int)($insight['lead_days'] ?? 14) ?>일) − 현재고.
+    급판매가 아니면 적용 일판매는 월평균 일판매입니다.
+    급판매이면 최근 판매수량 / (최근 판매수량 + <?= (int)($insight['surge_prior'] ?? 10) ?>개)만큼만 최근 일판매를 반영합니다.
     현재고가 1개 이하이면 급판매로 보지 않습니다.
+    <?php if (!empty($insight['is_surge'])) { ?>
+        최근 판매 <?= (int)($insight['surge_sales'] ?? 0) ?>개라 반영 비중 <?= (int)round(((float)($insight['surge_weight'] ?? 0)) * 100) ?>%, 적용 일판매 <?= $insight['use_daily'] ?? 0 ?>개로 계산했습니다.
+    <?php } ?>
     입고리드는 주문서 작성 1주 + 입고 1주(14일)로 고정합니다. 입고가 없던 품절월과 최초입고 이전 월은 평균·미판매에서 제외합니다.
     <?php if (!empty($insight['need_order_soon'])) { ?>
         <b style="color:#d4380d;">재고 지속일이 리드일보다 짧아 이번 주기 발주가 필요합니다.</b>
@@ -505,7 +514,8 @@ var prdInfoStockChart = function() {
             html += '<th class="' + monthClass + '">월평균' + (useSurge ? '' : ' · 적용') + '</th>';
             html += '<th class="' + surgeClass + '">급판매' + (useSurge ? ' · 적용' : '') + '</th>';
             html += '</tr>';
-            html += this.renderExpectedRow('일판매', this.formatQty(data.daily_month) + '개', this.formatQty(data.daily_recent) + '개', monthClass, surgeClass);
+            var surgeDaily = useSurge ? data.use_daily : (data.daily_surge_column || data.daily_recent);
+            html += this.renderExpectedRow('일판매', this.formatQty(data.daily_month) + '개', this.formatQty(surgeDaily) + '개', monthClass, surgeClass);
             html += this.renderExpectedRow('현재고', this.formatQty(data.current_stock) + '개', this.formatQty(data.current_stock) + '개', monthClass, surgeClass);
             html += this.renderExpectedRow(
                 '입고예정',
@@ -542,7 +552,9 @@ var prdInfoStockChart = function() {
             html += monthNote + '. 필요수량 = 입고까지 판매 + 커버 판매 − 현재고 − 입고예정. ';
             html += '안전재고는 커버가 끝난 뒤 ' + this.formatQty(data.safety_days) + '일치이며 필요수량과 따로 표기합니다.';
             if (useSurge) {
-                html += ' 최근 ' + this.formatQty(data.recent_days) + '일 판매가 월평균의 1.5배 이상이라 급판매를 적용했습니다.';
+                var surgePercent = Math.round(Number(data.surge_weight || 0) * 100);
+                html += ' 최근 ' + this.formatQty(data.recent_days) + '일 관측 일판매 ' + this.formatQty(data.daily_recent) + '개는 월평균의 1.5배 이상입니다.';
+                html += ' 최근 판매 ' + this.formatQty(data.surge_sales) + '개라 기준 ' + this.formatQty(data.surge_prior || 10) + '개 대비 ' + surgePercent + '%만 반영해 적용 일판매 ' + this.formatQty(data.use_daily) + '개로 계산했습니다.';
             }
             html += '</div>';
             html += this.renderIncomingNote(data);

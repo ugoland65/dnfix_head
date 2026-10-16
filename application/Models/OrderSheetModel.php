@@ -33,6 +33,10 @@ class OrderSheetModel extends BaseModel
             'oo_date_data', //주문서 상태 변경 내역
             'oo_price_kr', //최종 합계 결제액
             'oo_in_date', //입고일
+            'oo_expected_order_date', //주문예상일
+            'oo_expected_in_date', //입고예상일
+            'oo_cover_end_date', //커버종료일
+            'oo_cover_days', //커버일
             'reg', //등록일시
             'created_by', //등록자 PK
             'created_name', //등록자 이름            
