@@ -1437,11 +1437,32 @@ class ProductController extends BaseClass
                     if (!is_array($sizeData)) {
                         continue;
                     }
-                    $value = json_encode([
+                    $packageSize = [
                         'W' => trim((string)($sizeData['W'] ?? '')),
                         'H' => trim((string)($sizeData['H'] ?? '')),
                         'D' => trim((string)($sizeData['D'] ?? '')),
-                    ], JSON_UNESCAPED_UNICODE);
+                    ];
+                    $value = json_encode($packageSize, JSON_UNESCAPED_UNICODE);
+                    if (isset($updateData['cd_size_fn'])) {
+                        $decodedSizeFn = json_decode((string)$updateData['cd_size_fn'], true);
+                        $sizeFn = is_array($decodedSizeFn) ? $decodedSizeFn : [];
+                    } else {
+                        $sizeFn = $product['cd_size_fn'] ?? [];
+                        if (is_string($sizeFn)) {
+                            $decodedSizeFn = json_decode($sizeFn, true);
+                            $sizeFn = is_array($decodedSizeFn) ? $decodedSizeFn : [];
+                        }
+                    }
+                    if (!is_array($sizeFn)) {
+                        $sizeFn = [];
+                    }
+                    $sizeFn['package'] = $packageSize;
+                    $encodedSizeFn = json_encode($sizeFn, JSON_UNESCAPED_UNICODE);
+                    $updateData['cd_size_fn'] = $encodedSizeFn;
+                    $before['cd_size_fn'] = is_array($product['cd_size_fn'] ?? null)
+                        ? json_encode($product['cd_size_fn'], JSON_UNESCAPED_UNICODE)
+                        : (string)($product['cd_size_fn'] ?? '');
+                    $after['cd_size_fn'] = $encodedSizeFn;
                 } elseif ($field === 'cd_weight_1' || $field === 'cd_weight_2') {
                     $weightKey = $field === 'cd_weight_1' ? '1' : '2';
                     if (isset($updateData['cd_weight_fn'])) {

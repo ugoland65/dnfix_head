@@ -31,6 +31,10 @@ class CompetitorController extends BaseClass
             $requestData = $request->all();
 
             $s_match_status = $requestData['s_match_status'] ?? 'all_match';
+            $s_match_source = strtolower(trim((string)($requestData['s_match_source'] ?? '')));
+            if (!in_array($s_match_source, ['auto', 'manual'], true)) {
+                $s_match_source = '';
+            }
             $site = $requestData['s_site'] ?? null;
             $s_keyword_mode = $requestData['s_keyword_mode'] ?? 'name';
             $s_keyword = $requestData['s_keyword'] ?? '';
@@ -57,6 +61,7 @@ class CompetitorController extends BaseClass
                     'site' => $site,
                     'status' => $s_status,
                     'match_status' => $s_match_status,
+                    'match_source' => $s_match_source,
                     'keyword_mode' => $s_keyword_mode,
                     'keyword' => $s_keyword,
                     'sort_mode' => $s_sort_mode,
@@ -233,6 +238,7 @@ class CompetitorController extends BaseClass
                 'competitor_data' => $competitor_data,
                 'CompetitorProductApiData' => $CompetitorProductApiData,
                 's_match_status' => $s_match_status,
+                's_match_source' => $s_match_source,
                 'site' => $site,
                 's_keyword_mode' => $s_keyword_mode,
                 's_keyword' => $s_keyword,

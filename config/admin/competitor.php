@@ -35,6 +35,13 @@ $competitor_data = [
         'free_shipping_threshold' => 30000,
         'shipping_fee' => 2500,
     ],
+    'aashop' => [
+        'name' => 'AA샵',
+        'code' => 'aashop',
+        'shipping_method' => '금액별무료배송',
+        'free_shipping_threshold' => 40000,
+        'shipping_fee' => 2000,
+    ],
     'domaedoll' => [
         'name' => '도매돌',
         'code' => 'domaedoll',

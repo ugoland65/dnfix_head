@@ -48,6 +48,13 @@
                         <option value="match_excluded" <?=$s_match_status == 'match_excluded' ? 'selected' : ''?>>매칭제외</option>
 					</select>
 				</ul>
+                <ul>
+					<select name="s_match_source" id="s_match_source">
+						<option value="" <?= ($s_match_source ?? '') === '' ? 'selected' : '' ?>>매칭구분</option>
+                        <option value="auto" <?= ($s_match_source ?? '') === 'auto' ? 'selected' : '' ?>>자동매칭</option>
+                        <option value="manual" <?= ($s_match_source ?? '') === 'manual' ? 'selected' : '' ?>>직접매칭</option>
+					</select>
+				</ul>
                 <ul class="m-l-10">
 					<select name="s_keyword_mode" id="s_keyword_mode" >
                         <option value="name" <?=$s_keyword_mode == 'name' ? 'selected' : ''?>>상품명</option>
@@ -171,14 +178,27 @@
                                 <?php foreach (($row['event_tags_json'] ?? []) as $eventTag) { ?>
                                     <?php
                                         $eventTag = trim((string)$eventTag);
-                                        $eventTagColor = '#6b7280';
-                                        if ($eventTag === '일일특가') {
-                                            $eventTagColor = '#7c3aed';
-                                        } elseif ($eventTag === '품절') {
-                                            $eventTagColor = '#dc2626';
+                                        if ($eventTag === '') {
+                                            continue;
                                         }
+                                        $eventTagPath = parse_url($eventTag, PHP_URL_PATH);
+                                        $isEventTagImage = preg_match('#^https?://#i', $eventTag) === 1
+                                            && is_string($eventTagPath)
+                                            && preg_match('#\.(png|jpe?g|gif|webp|svg|bmp|avif)$#i', $eventTagPath) === 1;
                                     ?>
-                                    <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:<?= $eventTagColor ?>; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php if ($isEventTagImage) { ?>
+                                        <img src="<?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?>" alt="" style="display:inline-block; max-height:18px; margin-right:3px; vertical-align:middle;">
+                                    <?php } else { ?>
+                                        <?php
+                                            $eventTagColor = '#6b7280';
+                                            if ($eventTag === '일일특가') {
+                                                $eventTagColor = '#7c3aed';
+                                            } elseif ($eventTag === '품절') {
+                                                $eventTagColor = '#dc2626';
+                                            }
+                                        ?>
+                                        <span style="display:inline-block; margin-right:3px; padding:1px 4px; color:#fff; background:<?= $eventTagColor ?>; border-radius:3px; font-size:11px;"><?= htmlspecialchars($eventTag, ENT_QUOTES, 'UTF-8') ?></span>
+                                    <?php } ?>
                                 <?php } ?>
                                 <?php $displayName = str_replace(['&middot;', '&#183;', '&#xB7;', '·'], '', (string)($row['name'] ?? '')); ?>
                                 <p><b><a href="javascript:goCompetitorProductEdit('<?= $row['site'] ?>', '<?= $row['prd_pk'] ?>');"><?= htmlspecialchars($displayName, ENT_QUOTES, 'UTF-8') ?></a></b></p>
@@ -306,6 +326,21 @@
                                 $rowMatchedCdIdxList = array_values(array_unique($rowMatchedCdIdxList));
                                 $rowMatchedCount = count($rowMatchedCdIdxList);
                                 $rowMatchedCdIdxCsv = implode(',', $rowMatchedCdIdxList);
+                                $rowMatchSourceList = [];
+                                $rowMatchSource = strtolower(trim((string)($row['match_source'] ?? '')));
+                                if ($rowMatchSource !== '') {
+                                    $rowMatchSourceList[] = $rowMatchSource;
+                                }
+                                foreach ($rowMatchedItems as $rowMatchedItem) {
+                                    if (!is_array($rowMatchedItem)) {
+                                        continue;
+                                    }
+                                    $itemMatchSource = strtolower(trim((string)($rowMatchedItem['match_source'] ?? '')));
+                                    if ($itemMatchSource !== '') {
+                                        $rowMatchSourceList[] = $itemMatchSource;
+                                    }
+                                }
+                                $rowMatchSourceList = array_values(array_unique($rowMatchSourceList));
                             ?>
                             <td class="text-left">
                                 <button
@@ -325,6 +360,17 @@
                                     <div class="m-t-3">
                                         <span class="text-green">매칭완료</span>
                                     </div>
+                                <?php } ?>
+                                <?php if (in_array('auto', $rowMatchSourceList, true)) { ?>
+                                    <div class="m-t-3">
+                                        <span style="display:inline-block; padding:1px 6px; border-radius:3px; background:#d4380d; color:#fff; font-size:11px; font-weight:700;">자동매칭</span>
+                                    </div>
+                                <?php } ?>
+                                <?php if (in_array('manual', $rowMatchSourceList, true)) { ?>
+                                    <div class="m-t-3" style="font-size:12px; color:#98a2b3;">직접매칭</div>
+                                <?php } ?>
+                                <?php if (in_array('skip', $rowMatchSourceList, true)) { ?>
+                                    <div class="m-t-3" style="font-size:12px; color:#98a2b3;">skip</div>
                                 <?php } ?>
                             </td>
 
@@ -1494,6 +1540,7 @@ $(function(){
         var fields = {
             's_site': $("#s_site").val(),
             's_match_status': $("#s_match_status").val(),
+            's_match_source': $("#s_match_source").val(),
             's_keyword_mode': $("#s_keyword_mode").val(),
             's_keyword': $("#s_keyword").val(),
             's_status': $("#s_status").val(),
@@ -1531,7 +1578,7 @@ $(function(){
         $("#searchBtn").trigger('click');
     });
 
-    $("#s_status, #s_match_status, #s_keyword_mode").on('change', function() {
+    $("#s_status, #s_match_status, #s_match_source, #s_keyword_mode").on('change', function() {
         $("#searchBtn").trigger('click');
     });
 
