@@ -12,6 +12,30 @@ $latest_modify_date = (string)($latest_modify_date ?? '');
 $h = static function ($value): string {
     return htmlspecialchars((string)$value, ENT_QUOTES, 'UTF-8');
 };
+$imageStoragePath = trim((string)($prd_data['CD_IMAGE_STORAGE_PATH'] ?? ''));
+$imageStorageNational = strtolower(trim((string)($prd_data['cd_national'] ?? '')));
+$imageStorageNationalCodeMap = ['jp' => 'JP', 'cn' => 'CN', 'kr' => 'KR'];
+$imageStorageNationalMissing = $imageStorageNational === '';
+$imageStorageNationalCode = $imageStorageNationalCodeMap[$imageStorageNational] ?? 'ETC';
+$imageStorageNationalOptions = [
+    ['name' => '일본', 'code' => 'jp'],
+    ['name' => '중국', 'code' => 'cn'],
+    ['name' => '한국', 'code' => 'kr'],
+    ['name' => '달러', 'code' => 'dollar'],
+];
+$imageStorageBrandEnglish = trim((string)($prd_data['BD_NAME_EN'] ?? ''));
+$imageStorageBrandEnglish = html_entity_decode($imageStorageBrandEnglish, ENT_QUOTES | ENT_HTML5, 'UTF-8');
+$imageStorageBrandEnglish = str_replace(["'", '’', '‘', '`'], '', $imageStorageBrandEnglish);
+$imageStorageBrandName = '브랜드영문이름';
+if ($imageStorageBrandEnglish !== '') {
+    $imageStorageBrandWords = preg_split('/[^A-Za-z0-9]+/', $imageStorageBrandEnglish, -1, PREG_SPLIT_NO_EMPTY);
+    if (!empty($imageStorageBrandWords)) {
+        $imageStorageBrandName = lcfirst(implode('', array_map(static function (string $word): string {
+            return ucfirst(strtolower($word));
+        }, $imageStorageBrandWords)));
+    }
+}
+$recommendedImageStoragePath = '/goods/' . $imageStorageNationalCode . '/' . $imageStorageBrandName . '/' . $prd_idx . '/';
 ?>
 <style>
 	.supplier-match-wrap {
@@ -71,6 +95,31 @@ $h = static function ($value): string {
 		color: #6b7280;
 		text-align: left;
 	}
+	.prd-image-storage-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
+	.prd-image-storage-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+	.prd-image-storage-badge.is-empty { color: #92400e; background: #fef3c7; }
+	.prd-image-storage-badge.is-set { color: #166534; background: #dcfce7; }
+	.prd-image-storage-path { max-width: 220px; overflow: hidden; color: #374151; font-family: Consolas, Monaco, monospace; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
+	.prd-image-storage-modal[hidden] { display: none; }
+	.prd-image-storage-modal { position: fixed; z-index: 12000; inset: 0; display: flex; align-items: center; justify-content: center; padding: 18px; }
+	.prd-image-storage-modal__backdrop { position: absolute; inset: 0; background: rgba(15, 23, 42, .45); }
+	.prd-image-storage-modal__panel { position: relative; width: min(100%, 560px); padding: 18px 18px 16px; border-radius: 10px; background: #fff; box-shadow: 0 16px 40px rgba(15, 23, 42, .2); }
+	.prd-image-storage-modal__head { display: flex; align-items: center; justify-content: space-between; gap: 12px; margin-bottom: 8px; }
+	.prd-image-storage-modal__head h2 { margin: 0; font-size: 16px; color: #111827; }
+	.prd-image-storage-modal__panel > p { margin: 0; color: #6b7280; font-size: 12px; line-height: 1.5; }
+	.prd-image-storage-modal__form { display: flex; gap: 8px; margin-top: 14px; }
+	.prd-image-storage-modal__form input { box-sizing: border-box; flex: 1; min-width: 0; height: 38px; padding: 0 10px; border: 1px solid #cbd5e1; border-radius: 5px; font-size: 13px; }
+	.prd-image-storage-modal__help { margin-top: 8px !important; }
+	.prd-image-storage-modal__help code { padding: 1px 4px; border-radius: 3px; background: #f1f5f9; }
+	.prd-image-storage-modal__message { margin-top: 10px; padding: 9px 11px; border-radius: 5px; font-size: 12px; }
+	.prd-image-storage-modal__message[hidden] { display: none; }
+	.prd-image-storage-modal__message.is-success { color: #166534; background: #dcfce7; }
+	.prd-image-storage-modal__message.is-error { color: #b91c1c; background: #fee2e2; }
+	.prd-image-storage-national { margin-top: 12px; padding: 10px 12px; border: 1px solid #fde68a; border-radius: 8px; background: #fffbeb; }
+	.prd-image-storage-national[hidden] { display: none; }
+	.prd-image-storage-national strong { display: block; margin-bottom: 4px; color: #92400e; font-size: 13px; }
+	.prd-image-storage-national p { margin: 0 0 8px; color: #92400e; font-size: 12px; }
+	.prd-image-storage-national label { margin-right: 10px; color: #111827; font-size: 13px; }
 	.supplier-unmatched-badge {
 		display: inline-flex;
 		align-items: center;
@@ -339,14 +388,14 @@ $h = static function ($value): string {
 			</ul>
 			<?php if (!empty($prd_data['ps_idx'])) { ?>
 				<?php if (!empty($prd_data['cd_national'])) { ?>
-					<ul>
+					<ul id="prd_national_status">
 						<dl>
 							<dt>매입 방식</dt>
 							<dd><b><?= $h($cd_national_label) ?></b></dd>
 						</dl>
 					</ul>
 				<?php }else{ ?>
-					<ul class="warning-text">
+					<ul id="prd_national_status" class="warning-text">
 						<i class="fas fa-exclamation-triangle"></i>
 						<p>매입방식 미등록</p>
 						<p>매입방식 등록해주세요.</p>
@@ -424,10 +473,26 @@ $h = static function ($value): string {
 			<?php } else { ?>
 				<ul class="warning-text">
 					<i class="fas fa-exclamation-triangle"></i>
-					<p>아직 고도몰 상품번호가 등록되지 않았습니다.</p>
-					<p>고도몰 상품번호 등록해주세요.</p>
+					<p>고도몰 상품번호</p>
+					<p>미등록 상태</p>
 				</ul>
 			<?php } ?>
+
+			<ul>
+				<dl>
+					<dt>이미지 저장소</dt>
+					<dd>
+						<span class="prd-image-storage-status">
+							<span id="prd_image_storage_badge" class="prd-image-storage-badge <?= $imageStoragePath === '' ? 'is-empty' : 'is-set' ?>">
+								<?= $imageStoragePath === '' ? '미등록' : '등록' ?>
+							</span>
+							<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_open"><?= $imageStoragePath === '' ? '등록' : '수정' ?></button>
+							<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_manage">관리</button>
+						</span>
+					</dd>
+				</dl>
+			</ul>
+
 
 			<ul class="right">
 				<dl>
@@ -462,6 +527,37 @@ $h = static function ($value): string {
 	</ul>
 </div>
 
+<div id="prd_image_storage_modal" class="prd-image-storage-modal" hidden>
+	<div class="prd-image-storage-modal__backdrop" data-image-storage-close="1"></div>
+	<section class="prd-image-storage-modal__panel" role="dialog" aria-modal="true" aria-labelledby="prd_image_storage_modal_title">
+		<div class="prd-image-storage-modal__head">
+			<h2 id="prd_image_storage_modal_title">이미지 저장소 설정</h2>
+			<button type="button" class="btnstyle1 btnstyle1-xs" data-image-storage-close="1">닫기</button>
+		</div>
+		<p>이 상품의 이미지는 설정한 경로에만 업로드됩니다.</p>
+		<div id="prd_image_storage_national" class="prd-image-storage-national" <?= $imageStorageNationalMissing ? '' : 'hidden' ?>>
+			<strong>수입국가</strong>
+			<p>수입국가가 없어 추천 경로가 ETC입니다. 여기서 선택하면 추천 경로와 상품 정보에 함께 저장됩니다.</p>
+			<?php foreach ($imageStorageNationalOptions as $nationalOption) { ?>
+				<label>
+					<input type="radio" name="prd_image_storage_national" value="<?= $h($nationalOption['code']) ?>">
+					<?= $h($nationalOption['name']) ?>(<?= $h($nationalOption['code']) ?>)
+				</label>
+			<?php } ?>
+		</div>
+		<form id="prd_image_storage_form" class="prd-image-storage-modal__form">
+			<input type="text" id="prd_image_storage_input" value="<?= $h($imageStoragePath) ?>" autocomplete="off" aria-label="이미지 저장소 경로">
+			<button type="submit" class="btnstyle1 btnstyle1-primary">저장</button>
+		</form>
+		<p class="prd-image-storage-modal__help">경로는 <code>/</code>로 시작해야 하며, 상품마다 중복될 수 없습니다.</p>
+		<p class="prd-image-storage-modal__help">/goods/<code>국가코드</code>/<code>업체명(영문)</code>/<code>상품 고유번호</code>/</p>
+		<p class="prd-image-storage-modal__help">추천 저장소 : <b id="prd_image_storage_recommended"><?= $h($recommendedImageStoragePath) ?></b>
+			<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_use_recommended">사용하기</button>
+		</p>
+		<div id="prd_image_storage_message" class="prd-image-storage-modal__message" hidden aria-live="polite"></div>
+	</section>
+</div>
+
 <script src="/admin2/js/order_sheet.js?ver=<?= time() ?>"></script>
 <script>
 	const prdInfo = (function() {
@@ -470,6 +566,12 @@ $h = static function ($value): string {
 		var ps_idx = "<?= $h($prd_data['ps_idx'] ?? '') ?>";
 		var stockModifyWindow;
 		var activeModeStorageKey = 'prd_info_active_mode:' + prd_idx + ':' + ps_idx;
+		var currentModeKey = '';
+		var imageStoragePath = <?= json_encode($imageStoragePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+		var imageStorageNational = <?= json_encode($imageStorageNational, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+		var imageStorageBrandName = <?= json_encode($imageStorageBrandName, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+		var recommendedImageStoragePath = <?= json_encode($recommendedImageStoragePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
+		var imageStorageNationalLabels = { jp: '일본수입', cn: '중국수입', kr: '한국사입', dollar: '달러' };
 
 		function resolveMode(modeKey) {
 			modeKey = String(modeKey || '').trim();
@@ -521,6 +623,7 @@ $h = static function ($value): string {
 		}
 
 		function mode(pn, modeKey) {
+			currentModeKey = modeKey;
 
 			$(".crm-menu ul").removeClass('active');
 			$("#crm_menu_" + modeKey).addClass('active');
@@ -875,6 +978,136 @@ $h = static function ($value): string {
 				stockModifyWindow.close();
 			},
 
+			bindImageStorageModal: function() {
+				var $modal = $('#prd_image_storage_modal');
+				var $input = $('#prd_image_storage_input');
+				var $message = $('#prd_image_storage_message');
+				if (!$modal.length) {
+					return;
+				}
+
+				function showStorageMessage(text, isError) {
+					$message.text(text || '')
+						.removeClass('is-success is-error')
+						.addClass(isError ? 'is-error' : 'is-success');
+					if (text) {
+						$message.removeAttr('hidden');
+					} else {
+						$message.attr('hidden', true);
+					}
+				}
+
+				function closeStorageModal() {
+					$modal.attr('hidden', true);
+				}
+
+				function nationalPathCode(code) {
+					var map = { jp: 'JP', cn: 'CN', kr: 'KR' };
+					return map[code] || 'ETC';
+				}
+
+				function buildRecommendedPath(nationalCode) {
+					return '/goods/' + nationalPathCode(nationalCode) + '/' + imageStorageBrandName + '/' + prd_idx + '/';
+				}
+
+				function renderNationalStatus(code) {
+					var label = imageStorageNationalLabels[code] || '';
+					var $status = $('#prd_national_status');
+					if (!$status.length || label === '') {
+						return;
+					}
+					$status.removeClass('warning-text').html(
+						'<dl><dt>매입 방식</dt><dd><b></b></dd></dl>'
+					);
+					$status.find('b').text(label);
+				}
+
+				function renderStorageStatus(path) {
+					imageStoragePath = path || '';
+					var $badge = $('#prd_image_storage_badge');
+					var $button = $('#prd_image_storage_open');
+					if (imageStoragePath === '') {
+						$badge.text('미등록').removeClass('is-set').addClass('is-empty');
+						$button.text('등록');
+						return;
+					}
+					$badge.text('등록').removeClass('is-empty').addClass('is-set');
+					$button.text('수정');
+				}
+
+				$(document).off('click.prdImageStorageManage').on('click.prdImageStorageManage', '#prd_image_storage_manage', function() {
+					window.__prdContentOpenTab = 'images';
+					mode('', 'content');
+				});
+
+				$(document).off('click.prdImageStorageOpen').on('click.prdImageStorageOpen', '#prd_image_storage_open', function() {
+					$input.val(imageStoragePath);
+					showStorageMessage('', false);
+					$modal.removeAttr('hidden');
+					$input.trigger('focus');
+				});
+
+				$modal.off('click.prdImageStorage').on('click.prdImageStorage', '[data-image-storage-close]', function() {
+					closeStorageModal();
+				});
+
+				$(document).off('change.prdImageStorageNational').on('change.prdImageStorageNational', 'input[name="prd_image_storage_national"]', function() {
+					var previousPath = recommendedImageStoragePath;
+					imageStorageNational = String($(this).val() || '');
+					recommendedImageStoragePath = buildRecommendedPath(imageStorageNational);
+					$('#prd_image_storage_recommended').text(recommendedImageStoragePath);
+					var currentPath = $.trim($input.val() || '');
+					if (currentPath === '' || currentPath === previousPath) {
+						$input.val(recommendedImageStoragePath);
+					}
+				});
+
+				$('#prd_image_storage_use_recommended').off('click.prdImageStorage').on('click.prdImageStorage', function() {
+					$input.val(recommendedImageStoragePath).trigger('focus');
+				});
+
+				$(document).off('keydown.prdImageStorage').on('keydown.prdImageStorage', function(e) {
+					if (e.key === 'Escape' && !$modal.attr('hidden')) {
+						closeStorageModal();
+					}
+				});
+
+				$('#prd_image_storage_form').off('submit.prdImageStorage').on('submit.prdImageStorage', function(event) {
+					event.preventDefault();
+					var storagePath = $.trim($input.val() || '').replace(/\/{2,}/g, '/');
+					if (!/^\/[A-Za-z0-9._/-]*$/.test(storagePath)) {
+						showStorageMessage('이미지 저장소 경로는 /로 시작하고 영문, 숫자, . _ - /만 사용할 수 있습니다.', true);
+						return;
+					}
+					var selectedNational = String($('input[name="prd_image_storage_national"]:checked').val() || '');
+					var $submit = $(this).find('button[type="submit"]');
+					$submit.prop('disabled', true);
+					ajaxRequest('/admin/product/info_collect/image_storage_path/save', {
+						prd_idx: prd_idx,
+						image_storage_path: storagePath,
+						cd_national: selectedNational
+					}).done(function(res) {
+						if (res && res.success) {
+							renderStorageStatus(res.image_storage_path || storagePath);
+							if (res.cd_national) {
+								imageStorageNational = res.cd_national;
+								$('#prd_image_storage_national').attr('hidden', true);
+								renderNationalStatus(res.cd_national);
+							}
+							closeStorageModal();
+							mode('', currentModeKey || getInitialMode());
+							return;
+						}
+						showStorageMessage((res && (res.message || res.msg)) || '이미지 저장소 경로를 저장하지 못했습니다.', true);
+					}).fail(function(err) {
+						var message = (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : '이미지 저장소 경로를 저장하지 못했습니다.';
+						showStorageMessage(message, true);
+					}).always(function() {
+						$submit.prop('disabled', false);
+					});
+				});
+			},
+
 			bindSettingsMenu: function() {
 				var $btn = $('#prd_settings_btn');
 				var $layer = $('#prd_settings_layer');
@@ -934,6 +1167,7 @@ $h = static function ($value): string {
 
 		prdInfo.restoreActiveMode();
 		prdInfo.bindSettingsMenu();
+		prdInfo.bindImageStorageModal();
 		$('.crm-body').each(function(){
 			$(this).toggleClass('has-top-menu', $(this).find('.crm-top-menu-wrap').length > 0);
 		});

@@ -1,6 +1,114 @@
 <div id="orderSheetRestockOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
     <div class="order-sheet-restock-overlay__message">재입고 알림 요청 수량을 수집하고 있습니다.<br>잠시만 기다려주세요.</div>
 </div>
+<?php
+    $orderSelectMismatches = (isset($orderGroupProduct['order_select_mismatch']) && is_array($orderGroupProduct['order_select_mismatch']))
+        ? $orderGroupProduct['order_select_mismatch']
+        : [];
+    $formatOrderMismatchQty = static function ($qty): string {
+        if ($qty === null || $qty === '') {
+            return '없음';
+        }
+        $qtyNumber = (float)$qty;
+        return number_format($qtyNumber, ($qtyNumber == floor($qtyNumber)) ? 0 : 2);
+    };
+?>
+<?php if (!empty($orderSelectMismatches)) { ?>
+<style>
+.order-select-mismatch{position:fixed;inset:0;z-index:1200;background:rgba(15,23,42,.45);display:flex;align-items:center;justify-content:center;padding:24px;}
+.order-select-mismatch[hidden]{display:none;}
+.order-select-mismatch__panel{width:min(640px,100%);max-height:min(70vh,560px);overflow:auto;background:#fff;border-radius:8px;box-shadow:0 16px 40px rgba(15,23,42,.25);padding:18px 20px 16px;}
+.order-select-mismatch__title{margin:0 0 8px;font-size:16px;color:#b91c1c;}
+.order-select-mismatch__desc{margin:0 0 12px;font-size:13px;line-height:1.5;color:#374151;}
+.order-select-mismatch__list{margin:0;padding:0;list-style:none;}
+.order-select-mismatch__list li{padding:8px 0;border-top:1px solid #e5e7eb;font-size:13px;line-height:1.45;}
+.order-select-mismatch__list b{color:#111827;}
+.order-select-mismatch__reason{color:#b91c1c;}
+.order-select-mismatch__other{margin-top:2px;color:#1d4ed8;}
+.order-select-mismatch__actions{display:flex;gap:8px;margin-top:14px;}
+.order-select-mismatch__delete{margin-top:6px;}
+</style>
+<div class="order-select-mismatch" role="dialog" aria-modal="true" aria-labelledby="orderSelectMismatchTitle">
+    <div class="order-select-mismatch__panel">
+        <h3 id="orderSelectMismatchTitle" class="order-select-mismatch__title">주문상품과 선택 데이터가 다릅니다</h3>
+        <p class="order-select-mismatch__desc">이 그룹 화면에 보이는 주문상품과 주문서에 저장된 선택 상품이 일치하지 않습니다.</p>
+        <ul class="order-select-mismatch__list">
+            <?php
+            $missingOnScreenPidxList = [];
+            $missingOnScreenOtherGroupLabels = [];
+            $missingOnScreenOtherHasSelect = false;
+            foreach ($orderSelectMismatches as $mismatchRow) {
+                $mismatchName = trim((string)($mismatchRow['name'] ?? ''));
+                if ($mismatchName === '') {
+                    $mismatchName = '상품명 없음';
+                }
+                $mismatchCode = trim((string)($mismatchRow['code'] ?? ''));
+                $mismatchType = (string)($mismatchRow['type'] ?? '');
+                if ($mismatchType === 'missing_on_screen') {
+                    $mismatchReason = '선택 데이터에는 있으나 화면에 없습니다.';
+                } elseif ($mismatchType === 'missing_in_select') {
+                    $mismatchReason = '화면에는 주문수량이 있으나 선택 데이터에는 없습니다.';
+                } else {
+                    $mismatchReason = '선택 수량과 화면 수량이 다릅니다.';
+                }
+                $selectCount = (int)($mismatchRow['select_count'] ?? 0);
+                $mismatchPidx = (int)($mismatchRow['pidx'] ?? 0);
+                if ($mismatchType === 'missing_on_screen' && $mismatchPidx > 0) {
+                    $missingOnScreenPidxList[] = $mismatchPidx;
+                }
+            ?>
+            <li>
+                <b><?= htmlspecialchars($mismatchName, ENT_QUOTES, 'UTF-8') ?></b>
+                (<?= $mismatchPidx ?><?= $mismatchCode !== '' ? ' / ' . htmlspecialchars($mismatchCode, ENT_QUOTES, 'UTF-8') : '' ?>)
+                <div>선택 수량 <?= $formatOrderMismatchQty($mismatchRow['select_qty'] ?? 0) ?> / 화면 수량 <?= $formatOrderMismatchQty($mismatchRow['screen_qty'] ?? null) ?></div>
+                <div class="order-select-mismatch__reason"><?= htmlspecialchars($mismatchReason, ENT_QUOTES, 'UTF-8') ?><?= $selectCount > 1 ? ' 선택 데이터에 ' . $selectCount . '건 있습니다.' : '' ?></div>
+                <?php
+                $otherGroupGuideLabels = [];
+                $otherGroupHasSelect = false;
+                if ($mismatchType === 'missing_on_screen') {
+                    $otherGroups = (isset($mismatchRow['other_groups']) && is_array($mismatchRow['other_groups'])) ? $mismatchRow['other_groups'] : [];
+                ?>
+                    <?php if (empty($otherGroups)) { ?>
+                        <div class="order-select-mismatch__other">다른 그룹에는 없습니다.</div>
+                    <?php } else { ?>
+                        <?php foreach ($otherGroups as $otherGroup) {
+                            $otherGroupLabel = trim((string)($otherGroup['name'] ?? ''));
+                            if ($otherGroupLabel === '') {
+                                $otherGroupLabel = '그룹 ' . (string)($otherGroup['oop_idx'] ?? '');
+                            }
+                            $otherGroupGuide = $otherGroupLabel . ' (' . (string)($otherGroup['oop_idx'] ?? '') . ')';
+                            $otherGroupGuideLabels[] = $otherGroupGuide;
+                            $missingOnScreenOtherGroupLabels[$otherGroupGuide] = $otherGroupGuide;
+                            $otherGroupParts = [];
+                            if (!empty($otherGroup['in_catalog'])) {
+                                $otherGroupParts[] = '상품목록';
+                            }
+                            if (array_key_exists('select_qty', $otherGroup) && $otherGroup['select_qty'] !== null) {
+                                $otherGroupParts[] = '선택 수량 ' . $formatOrderMismatchQty($otherGroup['select_qty']);
+                                $otherGroupHasSelect = true;
+                                $missingOnScreenOtherHasSelect = true;
+                            }
+                        ?>
+                        <div class="order-select-mismatch__other">다른 그룹 <?= htmlspecialchars($otherGroupLabel, ENT_QUOTES, 'UTF-8') ?> (<?= htmlspecialchars((string)($otherGroup['oop_idx'] ?? ''), ENT_QUOTES, 'UTF-8') ?>) : <?= htmlspecialchars(implode(', ', $otherGroupParts), ENT_QUOTES, 'UTF-8') ?></div>
+                        <?php } ?>
+                        <div class="order-select-mismatch__other">복구하면 <?= htmlspecialchars(implode(', ', $otherGroupGuideLabels), ENT_QUOTES, 'UTF-8') ?>에서 제거한 뒤 이 그룹 선택 데이터로 복구됩니다.</div>
+                    <?php } ?>
+                <?php } ?>
+                <?php if ($mismatchType === 'missing_on_screen' && $mismatchPidx > 0) { ?>
+                    <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-xs order-select-mismatch__delete" data-other-groups="<?= htmlspecialchars(implode(', ', $otherGroupGuideLabels), ENT_QUOTES, 'UTF-8') ?>" data-other-has-select="<?= $otherGroupHasSelect ? '1' : '0' ?>" onclick="orderSheetDetailPrd.restoreMissingSelectProducts('<?= (int)($oo_idx ?? 0) ?>', '<?= (int)($oop_idx ?? 0) ?>', [<?= $mismatchPidx ?>], this)">선택 데이터로 복구</button>
+                <?php } ?>
+            </li>
+            <?php } ?>
+        </ul>
+        <div class="order-select-mismatch__actions">
+            <?php if (count($missingOnScreenPidxList) > 1) { ?>
+                <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" data-other-groups="<?= htmlspecialchars(implode(', ', array_values($missingOnScreenOtherGroupLabels)), ENT_QUOTES, 'UTF-8') ?>" data-other-has-select="<?= $missingOnScreenOtherHasSelect ? '1' : '0' ?>" onclick="orderSheetDetailPrd.restoreMissingSelectProducts('<?= (int)($oo_idx ?? 0) ?>', '<?= (int)($oop_idx ?? 0) ?>', [<?= implode(',', $missingOnScreenPidxList) ?>], this)">화면에 없는 선택 상품 모두 복구</button>
+            <?php } ?>
+            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm order-select-mismatch__close" onclick="this.closest('.order-select-mismatch').hidden = true;">확인</button>
+        </div>
+    </div>
+</div>
+<?php } ?>
 <div id="orderSheetExpectedOrderOverlay" class="order-sheet-restock-overlay" hidden aria-live="assertive">
     <div class="order-sheet-restock-overlay__message">계산을 하고 있습니다.<br>잠시만 기다려주세요.<br>계산중 페이지 이동이나 새로고침은 하지 마세요.</div>
 </div>
@@ -63,11 +171,11 @@
                                     }
                                 ?>
                                 입고예상일
-                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                                <div class="calendar-input" style="display:inline-block;">
                                     <input type="text" id="os_expected_inbound_date" value="<?= htmlspecialchars($expectedInDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
                                 </div>
                                 커버종료일
-                                <div class="calendar-input" style="display:inline-block; z-index: 999999999;">
+                                <div class="calendar-input" style="display:inline-block;">
                                     <input type="text" id="os_expected_cover_date" value="<?= htmlspecialchars($coverEndDateValue, ENT_QUOTES, 'UTF-8') ?>" autocomplete="off">
                                 </div>
                                 <input type="number" id="os_expected_cover_days" value="<?= htmlspecialchars($coverDaysInput, ENT_QUOTES, 'UTF-8') ?>" min="0" max="365" class="width-50">일
@@ -323,15 +431,6 @@
                             <div class="m-t-3"><?= htmlspecialchars($orderFormCode, ENT_QUOTES, 'UTF-8') ?></div>
                         <?php } ?>
 
-                        <?php if (($orderSheet['oo_state'] ?? 0) > 1 && ($item['selpd']['qty'] ?? 0) > 1) { ?>
-                            <div class="m-t-5">
-                                <?php if (isset($item['is_false']) && $item['is_false'] == "ok") { ?>
-                                    <button type="button" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?= $item['idx'] ?>', '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>','on','<?= $form_view ?? '' ?>')">결품복원</button>
-                                <?php } else { ?>
-                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?= $item['idx'] ?>', '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>','out','<?= $form_view ?? '' ?>')">결품처리</button>
-                                <?php } ?>
-                            </div>
-                        <?php } ?>
                     </td>
 
                     <!-- 상품 바코드 -->
@@ -405,6 +504,18 @@
 
                     <!-- 상품처리 -->
                     <td>
+
+                        <?php if (($orderSheet['oo_state'] ?? 0) > 1 && ($item['selpd']['qty'] ?? 0) > 1) { ?>
+                            <div class="">
+                                <?php if (isset($item['is_false']) && $item['is_false'] == "ok") { ?>
+                                    <button type="button" class="btnstyle1 btnstyle1-inverse btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?= $item['idx'] ?>', '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>','on','<?= $form_view ?? '' ?>')">결품복원</button>
+                                <?php } else { ?>
+                                    <button type="button" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.unitFalse(this,'<?= $item['idx'] ?>', '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>','out','<?= $form_view ?? '' ?>')">결품처리</button>
+                                <?php } ?>
+                            </div>
+                        <?php } ?>
+
+                        <?php /*
                         <div>
                             <?php if ($item['product']['is_discontinued'] == 0) { ?>
                                 <button type="button" id="soldOut_out_<?= $item['idx'] ?? '' ?>" class="btnstyle1 btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>', '<?= $item['product']['CD_IDX'] ?? '' ?>','out')">단종처리</button>
@@ -412,6 +523,7 @@
                                 <button type="button" id="soldOut_on_<?= $item['idx'] ?? '' ?>" class="btnstyle1 btnstyle1-danger btnstyle1-xs" onclick="orderSheetDetailPrd.soldOut(this, '<?= $oo_idx ?? '' ?>', '<?= $oop_idx ?? '' ?>', '<?= $item['product']['CD_IDX'] ?? '' ?>','on')">단종해제</button>
                             <?php } ?>
                         </div>
+                        <?php */ ?>
                     </td>
 
                     <!-- 주문메모 -->
@@ -1643,6 +1755,76 @@
             });
         }
 
+        function restoreMissingSelectProducts(ooIdx, oopIdx, pidxList, button) {
+            if (!Array.isArray(pidxList) || !pidxList.length) {
+                showAlert("Info", "복구할 선택 상품이 없습니다.", "alert2");
+                return;
+            }
+            var $button = $(button);
+            var otherGroups = $button.attr("data-other-groups") || "";
+            var confirmMessage = "선택 데이터에 있는 상품을 이 그룹 화면에 복구할까요?";
+            if (otherGroups !== "") {
+                confirmMessage += "\n다른 그룹 " + otherGroups + "에 있는 상품입니다.\n해당 그룹에서 제거한 뒤 이 그룹 선택 데이터로 복구합니다.";
+                if ($button.attr("data-other-has-select") === "1") {
+                    confirmMessage += "\n해당 그룹에 있는 이 주문서의 선택 수량도 함께 제거됩니다.";
+                }
+            }
+            if (!confirm(confirmMessage)) {
+                return;
+            }
+
+            $button.prop("disabled", true);
+            $.ajax({
+                url: "/admin/order/sheet/action",
+                type: "POST",
+                dataType: "json",
+                data: {
+                    action_mode: "orderSheetRestoreMissingSelectProducts",
+                    oo_idx: ooIdx,
+                    oop_idx: oopIdx,
+                    pidx: pidxList
+                },
+                success: function(res) {
+                    if (!res || res.success !== true) {
+                        $button.prop("disabled", false);
+                        showAlert("Error", (res && (res.message || res.msg)) ? (res.message || res.msg) : "선택 데이터 복구에 실패했습니다.", "alert2");
+                        return;
+                    }
+                    if (typeof GC !== "undefined" && GC.comma && res.oo_sum_price !== undefined) {
+                        $("#oprice_allsum").html(GC.comma(res.oo_sum_price ?? 0));
+                        $("#oprice_sum_goods").html(GC.comma(res.oo_sum_goods ?? 0));
+                        $("#oprice_sum_qty").html(GC.comma(res.oo_sum_qty ?? 0));
+                        $("#oprice_sum_weight").html(GC.comma(res.oo_sum_weight ?? 0) + "g");
+                    }
+                    if (typeof GC !== "undefined" && GC.comma) {
+                        $("#oprice_sum_goods_" + oopIdx).html(GC.comma(res.group_sum_goods ?? 0));
+                        if (res.group_sums) {
+                            $.each(res.group_sums, function(groupIdx, groupSum) {
+                                $("#oprice_sum_goods_" + groupIdx).html(GC.comma(groupSum.item ?? 0));
+                                $("#group_side_sum_qty_" + groupIdx).html(GC.comma(groupSum.qty ?? 0)).data("value", groupSum.qty ?? 0);
+                            });
+                        }
+                    }
+                    $("#group_side_sum_qty_" + oopIdx).data("value", res.group_sum_qty ?? 0);
+                    if (window.orderSheetDetail && typeof window.orderSheetDetail.updateGroupProductCount === "function" && res.group_counts) {
+                        $.each(res.group_counts, function(groupIdx, totalCount) {
+                            window.orderSheetDetail.updateGroupProductCount(groupIdx, totalCount);
+                        });
+                    }
+                    showToast(res.message || "선택 데이터로 복구했습니다.", new Date().toLocaleTimeString());
+                    if (window.orderSheetDetail && typeof window.orderSheetDetail.PrdListReload === "function") {
+                        window.orderSheetDetail.PrdListReload(true);
+                    } else {
+                        location.reload();
+                    }
+                },
+                error: function() {
+                    $button.prop("disabled", false);
+                    showAlert("Error", "선택 데이터 복구 중 오류가 발생했습니다.", "alert2");
+                }
+            });
+        }
+
         bindExpectedCoverPeriod();
 
         return {
@@ -1655,6 +1837,7 @@
             syncOrderGroupRestockAlertCounts,
             calcExpectedOrder,
             toggleExpectedOrderLayer,
+            restoreMissingSelectProducts,
         };
 
     }();

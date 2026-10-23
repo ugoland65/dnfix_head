@@ -3,21 +3,6 @@ $viewData = get_defined_vars();
 $prdIdx = (string)($viewData['prd_idx'] ?? '');
 $productData = is_array($viewData['productData'] ?? null) ? $viewData['productData'] : [];
 $imageStoragePath = trim((string)($productData['CD_IMAGE_STORAGE_PATH'] ?? ''));
-$imageStorageNationalCodeMap = ['jp' => 'JP', 'cn' => 'CN', 'kr' => 'KR'];
-$imageStorageNationalCode = $imageStorageNationalCodeMap[strtolower((string)($productData['cd_national'] ?? ''))] ?? 'ETC';
-$brandEnglishName = trim((string)($productData['BD_NAME_EN'] ?? ''));
-$brandEnglishName = html_entity_decode($brandEnglishName, ENT_QUOTES | ENT_HTML5, 'UTF-8');
-$brandEnglishName = str_replace(["'", '’', '‘', '`'], '', $brandEnglishName);
-$imageStorageBrandName = '브랜드영문이름';
-if ($brandEnglishName !== '') {
-    $brandWords = preg_split('/[^A-Za-z0-9]+/', $brandEnglishName, -1, PREG_SPLIT_NO_EMPTY);
-    if (!empty($brandWords)) {
-        $imageStorageBrandName = lcfirst(implode('', array_map(static function (string $word): string {
-            return ucfirst(strtolower($word));
-        }, $brandWords)));
-    }
-}
-$recommendedImageStoragePath = '/goods/' . $imageStorageNationalCode . '/' . $imageStorageBrandName . '/' . $prdIdx . '/';
 $hostingImageUrls = is_array($viewData['hostingImageUrls'] ?? null) ? $viewData['hostingImageUrls'] : [];
 $hostingCollectionItemIdx = (int)($viewData['hostingCollectionItemIdx'] ?? 0);
 $collectionItemData = is_array($viewData['collectionItemData'] ?? null) ? $viewData['collectionItemData'] : [];
@@ -502,33 +487,6 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             </div>
         </section>
 
-        <section class="product-image-storage-setting">
-            <div>
-                <h2>이미지 호스팅 저장소 설정</h2>
-                <p>이 상품의 수집 이미지는 설정한 경로에만 업로드됩니다.</p>
-            </div>
-
-            <?php if ($imageStoragePath === '') { ?>
-                <p class="product-image-storage-notice">이미지 저장소 설정을 완료해주세요.</p>
-            <?php } else { ?>
-                <p class="product-image-storage-current">저장된 이미지 저장소: <strong id="imageStoragePathCurrent"><?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?></strong> <button type="button" id="editImageStoragePath" class="btnstyle1 btnstyle1-xs">수정</button></p>
-            <?php } ?>
-
-            <form id="productImageStorageForm" class="product-image-storage-form" <?= $imageStoragePath !== '' ? 'hidden' : '' ?>>
-                <input type="text" id="image_storage_path" value="<?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?>" placeholder="" autocomplete="off">
-                <button type="submit" class="btnstyle1 btnstyle1-primary">저장</button>
-            </form>
-
-            <div id="productImageStorageHelp" <?= $imageStoragePath !== '' ? 'hidden' : '' ?>>
-                <p class="product-image-storage-help">경로는 <code>/</code>로 시작해야 하며, 상품마다 중복될 수 없습니다.</p>
-                <p class="product-image-storage-help">/goods/<code>국가코드</code>/<code>업체명(영문)</code>/<code>상품 고유번호</code>/</p>
-
-                추천 저장소 : <b><?= htmlspecialchars($recommendedImageStoragePath, ENT_QUOTES, 'UTF-8') ?></b>
-                <button type="button" id="useRecommendedImageStoragePath" class="btnstyle1 btnstyle1-xs">사용하기</button>
-            </div>
-            <div id="imageStoragePathMessage" class="product-image-storage-message" hidden aria-live="polite"></div>
-        </section>
-
         <?php if (!empty($collectionItem)) { ?>
         <div class="product-collection-layout">
         <nav class="collection-record-list" aria-label="수집 데이터 목록">
@@ -993,7 +951,7 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                             <button type="button" id="uploadSelectedCollectedImagesToHosting" class="btnstyle1 btnstyle1-sm" data-collection-index="<?= $selectedCollectionIndex ?>">선택한 이미지만 업로드</button>
                             <label class="collected-product-image-select-all"><input type="checkbox" id="selectAllCollectedImages"> 전체선택</label>
                         <?php } else { ?>
-                            <span class="collected-product-upload-disabled">이미지 저장소 설정 후 업로드 가능</span>
+                            <span class="collected-product-upload-disabled">상단 이미지 저장소 등록 후 업로드 가능</span>
                         <?php } ?>
                     </div>
                     <textarea id="collectedProductImageHtml" readonly class="collected-product-image-html"><?= htmlspecialchars($detailImageHtml, ENT_QUOTES, 'UTF-8') ?></textarea>
@@ -1146,9 +1104,6 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     border:1px solid #bbf7d0;border-radius:10px;background:#f0fdf4}.hosted-product-images-title{display:flex;align-items:center;gap:8px;margin-bottom:12px}.hosted-product-images-title h2{margin:0;font-size:16px;color:#166534}.hosted-product-images-title span{padding:2px 7px;border-radius:10px;background:#bbf7d0;color:#166534;font-size:11px}.hosted-product-image-list{display:grid;grid-template-columns:repeat(4,minmax(0,1fr));gap:10px}.hosted-product-image-list a{display:block;overflow:hidden;border:1px solid #86efac;border-radius:5px;background:#fff}.hosted-product-image-list img{display:block;width:100%;aspect-ratio:1;object-fit:contain}@media(max-width:640px){.hosted-product-image-list{grid-template-columns:repeat(2,minmax(0,1fr))}}
 .hosted-product-image-labels{display:flex;align-items:center;gap:4px;min-width:0;padding:6px 7px;border-bottom:1px solid #dcfce7;font-size:10px}.hosted-product-image-labels span{flex:0 0 auto;padding:2px 4px;border-radius:3px;background:#dcfce7;color:#166534;font-weight:700}.hosted-product-image-labels strong{min-width:0;overflow:hidden;color:#334155;text-overflow:ellipsis;white-space:nowrap;font-weight:600}
 .hosted-product-images-help{margin:0 0 10px;color:#64748b;font-size:12px}.hosted-product-image-list a[draggable="true"]{cursor:grab}.hosted-product-image-list a.is-dragging{opacity:.4}.hosted-product-image-list a.is-drop-target{outline:2px dashed #16a34a;outline-offset:2px}
-.product-image-storage-setting{max-width:900px;margin-top:20px;padding:20px 22px;border:1px solid #dfe5ed;border-radius:10px;background:#fff}.product-image-storage-setting h2{margin:0 0 4px;font-size:16px;color:#1e293b}.product-image-storage-setting p{margin:0;color:#64748b;font-size:12px}.product-image-storage-notice{margin-top:14px!important;padding:9px 11px;border-radius:5px;color:#92400e!important;background:#fef3c7}.product-image-storage-form{display:flex;gap:8px;margin-top:14px}.product-image-storage-form input{box-sizing:border-box;flex:1;height:38px;padding:0 10px;border:1px solid #cbd5e1;border-radius:5px;font-size:13px}.product-image-storage-help{margin-top:7px!important}.product-image-storage-help code{padding:1px 4px;border-radius:3px;background:#f1f5f9}.product-image-storage-message{margin-top:10px;padding:9px 11px;border-radius:5px;font-size:12px}.product-image-storage-message.is-success{color:#166534;background:#dcfce7}.product-image-storage-message.is-error{color:#b91c1c;background:#fee2e2}
-.product-image-storage-current{margin-top:14px!important;padding:9px 11px;border-radius:5px;color:#166534!important;background:#dcfce7}.product-image-storage-current strong{font-family:Consolas,monospace}
-.product-image-storage-form[hidden],#productImageStorageHelp[hidden]{display:none}
 </style>
 <script>
 (function () {
@@ -1180,12 +1135,6 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
     var uploadImagesButton = document.getElementById('uploadCollectedImagesToHosting');
     var uploadSelectedImagesButton = document.getElementById('uploadSelectedCollectedImagesToHosting');
     var selectAllCollectedImages = document.getElementById('selectAllCollectedImages');
-    var imageStorageForm = document.getElementById('productImageStorageForm');
-    var imageStorageInput = document.getElementById('image_storage_path');
-    var imageStorageMessage = document.getElementById('imageStoragePathMessage');
-    var editImageStorageButton = document.getElementById('editImageStoragePath');
-    var imageStorageHelp = document.getElementById('productImageStorageHelp');
-    var useRecommendedImageStoragePathButton = document.getElementById('useRecommendedImageStoragePath');
     var translationModal = document.getElementById('collectionTranslationModal');
     var translationModalTitle = document.getElementById('collectionTranslationModalTitle');
     var translationInput = document.getElementById('collectionTranslationInput');
@@ -1490,21 +1439,6 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
         });
     });
 
-    if (editImageStorageButton) {
-        editImageStorageButton.addEventListener('click', function () {
-            imageStorageForm.hidden = false;
-            imageStorageHelp.hidden = false;
-            imageStorageInput.focus();
-        });
-    }
-
-    if (useRecommendedImageStoragePathButton) {
-        useRecommendedImageStoragePathButton.addEventListener('click', function () {
-            imageStorageInput.value = <?= json_encode($recommendedImageStoragePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?>;
-            imageStorageInput.focus();
-        });
-    }
-
     function closeTranslationModal() {
         translationModal.hidden = true;
         translationField = '';
@@ -1584,46 +1518,6 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             window.alert(error.message || '번역 저장 중 오류가 발생했습니다.');
         });
     });
-
-    if (imageStorageForm) {
-        imageStorageForm.addEventListener('submit', function (event) {
-            event.preventDefault();
-            var storagePath = imageStorageInput.value.trim().replace(/\/{2,}/g, '/');
-            if (!/^\/[A-Za-z0-9._/-]*$/.test(storagePath)) {
-                imageStorageMessage.textContent = '이미지 저장소 경로는 /로 시작하고 영문, 숫자, . _ - /만 사용할 수 있습니다.';
-                imageStorageMessage.className = 'product-image-storage-message is-error';
-                imageStorageMessage.hidden = false;
-                return;
-            }
-
-            fetch('/admin/product/info_collect/image_storage_path/save', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
-                body: new URLSearchParams({
-                    prd_idx: productIdx,
-                    image_storage_path: storagePath
-                }).toString()
-            })
-            .then(function (response) { return response.json(); })
-            .then(function (responseData) {
-                if (!responseData.success) {
-                    throw new Error(responseData.message || '이미지 저장소 경로 저장에 실패했습니다.');
-                }
-                imageStorageMessage.textContent = responseData.message;
-                imageStorageMessage.className = 'product-image-storage-message is-success';
-                imageStorageMessage.hidden = false;
-                imageStorageInput.value = responseData.image_storage_path;
-                setTimeout(function () {
-                    loadCollectionView(selectedCollectionIndex);
-                }, 400);
-            })
-            .catch(function (error) {
-                imageStorageMessage.textContent = error.message || '이미지 저장소 경로 저장 중 오류가 발생했습니다.';
-                imageStorageMessage.className = 'product-image-storage-message is-error';
-                imageStorageMessage.hidden = false;
-            });
-        });
-    }
 
     if (copyImageHtmlButton && imageHtmlTextarea) {
         copyImageHtmlButton.addEventListener('click', function () {

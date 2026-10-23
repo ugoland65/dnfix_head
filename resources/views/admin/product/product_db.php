@@ -488,6 +488,8 @@
                                 <th>표기중량<br>실무게</th>
                                 <th>패키지 사이즈</th>
                                 <th>플라스틱<br>함유량</th>
+                                <th>등록</th>
+                                <th>수정</th>
                                 <th>관리</th>
                                 <th>삭제</th>
 
@@ -735,6 +737,57 @@
                                         <?php } else { ?>
                                             -
                                         <?php } ?>
+                                    </td>
+                                    <?php
+                                        $cdRegData = json_decode((string)($product['cd_reg'] ?? ''), true);
+                                        if (!is_array($cdRegData)) {
+                                            $cdRegData = [];
+                                        }
+                                        $regInfo = (isset($cdRegData['reg']['info']) && is_array($cdRegData['reg']['info']))
+                                            ? $cdRegData['reg']['info']
+                                            : [];
+                                        $modifyList = $cdRegData['modify'] ?? [];
+                                        $latestModify = [];
+                                        if (isset($modifyList['name']) || isset($modifyList['date'])) {
+                                            $latestModify = $modifyList;
+                                        } elseif (is_array($modifyList) && isset($modifyList[0]) && is_array($modifyList[0])) {
+                                            $latestModify = $modifyList[0];
+                                        }
+
+                                        $formatProductAuditDate = static function ($dateValue): string {
+                                            $dateText = trim((string)$dateValue);
+                                            if ($dateText === '' || $dateText === '0' || $dateText === '0000-00-00' || $dateText === '0000-00-00 00:00:00') {
+                                                return '';
+                                            }
+                                            $timestamp = strtotime($dateText);
+                                            if ($timestamp === false) {
+                                                return '';
+                                            }
+                                            if (date('Y', $timestamp) === date('Y')) {
+                                                return date('m-d H:i', $timestamp);
+                                            }
+                                            return date('y.m.d H:i', $timestamp);
+                                        };
+
+                                        $regDateText = $formatProductAuditDate($product['cd_reg_time'] ?? '');
+                                        if ($regDateText === '') {
+                                            $regDateText = $formatProductAuditDate($regInfo['date'] ?? '');
+                                        }
+                                        $regNameText = trim((string)($regInfo['name'] ?? ''));
+
+                                        $modDateText = $formatProductAuditDate($product['cd_update_time'] ?? '');
+                                        if ($modDateText === '') {
+                                            $modDateText = $formatProductAuditDate($latestModify['date'] ?? '');
+                                        }
+                                        $modNameText = trim((string)($latestModify['name'] ?? ''));
+                                    ?>
+                                    <td class="text-center" style="font-size:12px; line-height:1.4;">
+                                        <?= $regDateText !== '' ? htmlspecialchars($regDateText, ENT_QUOTES, 'UTF-8') : '-' ?><br>
+                                        <?= $regNameText !== '' ? htmlspecialchars($regNameText, ENT_QUOTES, 'UTF-8') : '-' ?>
+                                    </td>
+                                    <td class="text-center" style="font-size:12px; line-height:1.4;">
+                                        <?= $modDateText !== '' ? htmlspecialchars($modDateText, ENT_QUOTES, 'UTF-8') : '-' ?><br>
+                                        <?= $modNameText !== '' ? htmlspecialchars($modNameText, ENT_QUOTES, 'UTF-8') : '-' ?>
                                     </td>
                                     <td class="text-center">
                                         <button
@@ -2151,10 +2204,21 @@ function select_all() {
                     location.reload();
                 })
                 .fail(function(xhr) {
-                    var message = xhr && xhr.responseJSON && xhr.responseJSON.message
-                        ? xhr.responseJSON.message
-                        : '삭제 처리 중 서버 오류가 발생했습니다.';
-                    alert(message);
+                    var message = '';
+                    var responseBody = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+                    if (!responseBody && xhr && typeof xhr.responseText === 'string' && xhr.responseText !== '') {
+                        try {
+                            responseBody = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            responseBody = null;
+                        }
+                    }
+                    if (responseBody && (responseBody.message || responseBody.msg)) {
+                        message = responseBody.message || responseBody.msg;
+                    } else if (xhr && typeof xhr.message === 'string') {
+                        message = xhr.message;
+                    }
+                    alert(message || '삭제 처리 중 서버 오류가 발생했습니다.');
                 })
                 .always(function() {
                     $button.prop('disabled', false);

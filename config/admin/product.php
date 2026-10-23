@@ -642,7 +642,14 @@ $categories = [
         'code' => '20000000',
         'key' => 'GOODS_GIFT',
         'name' => '굿즈/기프트',
-        'children' => []
+        'children' => [
+            [
+                'code' => '20010000',
+                'key' => 'GOODS_GIFT_NON_SALE',
+                'name' => '비매품',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '18000000',

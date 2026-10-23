@@ -6,6 +6,7 @@ use App\Auth\AdmobileSession;
 use App\Classes\Request;
 use App\Core\BaseClass;
 use App\Services\ProductService;
+use App\Services\RackService;
 use App\Utils\Pagination;
 
 class ProductController extends BaseClass
@@ -33,6 +34,7 @@ class ProductController extends BaseClass
             'in_stock' => $inStock,
             's_sale_status' => trim((string)($requestData['s_sale_status'] ?? '')),
             'search_value' => trim((string)($requestData['search_value'] ?? '')),
+            'rack_code' => trim((string)($requestData['rack_code'] ?? '')),
             'sort_mode' => 'idx',
         ]);
 
@@ -43,6 +45,7 @@ class ProductController extends BaseClass
             5
         );
         $productConfig = config('admin.product');
+        $rackCode = trim((string)($requestData['rack_code'] ?? ''));
 
         return view('admobile.product.list', [
             'productList' => $productList['data'] ?? [],
@@ -50,6 +53,8 @@ class ProductController extends BaseClass
             'inStock' => $inStock,
             'saleStatus' => trim((string)($requestData['s_sale_status'] ?? '')),
             'searchValue' => trim((string)($requestData['search_value'] ?? '')),
+            'rackCode' => $rackCode,
+            'rackGroups' => $this->rackGroupsForLookup(),
             'saleStatusOptions' => $productConfig['sale_status_options'] ?? [],
             'paginationHtml' => $pagination->renderLinks(),
         ])->extends('admobile.layout.layout', [
@@ -181,5 +186,50 @@ class ProductController extends BaseClass
         } catch (\Throwable $e) {
             return response()->json(['success' => false, 'message' => $e->getMessage()], 400);
         }
+    }
+
+    /**
+     * 랙조회 모달용 그룹. 첫 글자 A/B/C, 나머지는 기타.
+     *
+     * @return array{A: string[], B: string[], C: string[], ETC: string[]}
+     */
+    private function rackGroupsForLookup(): array
+    {
+        $groups = [
+            'A' => [],
+            'B' => [],
+            'C' => [],
+            'ETC' => [],
+        ];
+
+        try {
+            $rackList = (new RackService())->getRackList();
+        } catch (\Throwable $e) {
+            return $groups;
+        }
+
+        $codes = [];
+        foreach ($rackList as $rack) {
+            $code = trim((string)($rack['code'] ?? ''));
+            if ($code !== '') {
+                $codes[$code] = $code;
+            }
+        }
+
+        $codes = array_values($codes);
+        usort($codes, 'strnatcasecmp');
+
+        foreach ($codes as $code) {
+            $first = function_exists('mb_substr')
+                ? mb_strtoupper(mb_substr($code, 0, 1, 'UTF-8'), 'UTF-8')
+                : strtoupper(substr($code, 0, 1));
+            if ($first === 'A' || $first === 'B' || $first === 'C') {
+                $groups[$first][] = $code;
+            } else {
+                $groups['ETC'][] = $code;
+            }
+        }
+
+        return $groups;
     }
 }

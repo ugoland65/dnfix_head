@@ -19,6 +19,8 @@ use App\Models\ProductLabelModel;
 use App\Models\ProductLabelMappingModel;
 use App\Models\ProductCategoryMappingModel;
 use App\Models\OrderSheetProductMemoModel;
+use App\Models\OrderPrdUnitModel;
+use App\Models\OrderPrdUnitInspectionModel;
 use App\Classes\DB;
 
 class OrderSheetService
@@ -2961,6 +2963,270 @@ class OrderSheetService
         $orderGroupProduct['oop_data_total_sum_price'] = round($oopDataTotalSumPrice, 2);
         $orderGroupProduct['oop_data_total_weight_sum_kg'] = round($oopDataTotalWeightSumKg, 3);
 
+        $selectByPidx = [];
+        foreach ($orderSheet['oo_json'] as $groupRow) {
+            if (!is_array($groupRow) || (string)($groupRow['bidx'] ?? '') !== (string)$oop_idx) {
+                continue;
+            }
+            $groupSelpd = $groupRow['selpd'] ?? [];
+            if (!is_array($groupSelpd)) {
+                continue;
+            }
+            foreach ($groupSelpd as $selpdRow) {
+                if (!is_array($selpdRow)) {
+                    continue;
+                }
+                $selectPidx = (int)($selpdRow['pidx'] ?? 0);
+                if ($selectPidx <= 0) {
+                    continue;
+                }
+                if (!isset($selectByPidx[$selectPidx])) {
+                    $selectByPidx[$selectPidx] = [
+                        'qty' => 0.0,
+                        'count' => 0,
+                    ];
+                }
+                $selectByPidx[$selectPidx]['qty'] += $toFloat($selpdRow['qty'] ?? 0);
+                $selectByPidx[$selectPidx]['count']++;
+            }
+        }
+
+        $screenByPidx = [];
+        foreach ($orderGroupProduct['oop_data'] as $screenItem) {
+            if (!is_array($screenItem)) {
+                continue;
+            }
+            $screenPidx = (int)($screenItem['idx'] ?? 0);
+            if ($screenPidx <= 0 || isset($screenByPidx[$screenPidx])) {
+                continue;
+            }
+            $screenSelpd = (isset($screenItem['selpd']) && is_array($screenItem['selpd'])) ? $screenItem['selpd'] : [];
+            $screenByPidx[$screenPidx] = [
+                'qty' => $toFloat($screenSelpd['qty'] ?? 0),
+                'name' => trim((string)($screenItem['product']['CD_NAME'] ?? ($screenItem['pname'] ?? ''))),
+                'code' => trim((string)($screenItem['product']['CD_CODE'] ?? ($screenItem['jan'] ?? ''))),
+            ];
+        }
+
+        $orderSelectMismatches = [];
+        $comparedPidx = [];
+        foreach ($selectByPidx as $selectPidx => $selectRow) {
+            $selectQty = (float)$selectRow['qty'];
+            $screenRow = $screenByPidx[$selectPidx] ?? null;
+            $screenQty = $screenRow === null ? null : (float)$screenRow['qty'];
+            $qtyMatches = $screenRow !== null && abs($selectQty - $screenQty) < 0.0001;
+            if ($qtyMatches && (int)$selectRow['count'] <= 1) {
+                $comparedPidx[$selectPidx] = true;
+                continue;
+            }
+            if ($selectQty <= 0 && ($screenRow === null || $screenQty <= 0)) {
+                $comparedPidx[$selectPidx] = true;
+                continue;
+            }
+
+            $mismatchType = 'qty_mismatch';
+            if ($screenRow === null) {
+                $mismatchType = 'missing_on_screen';
+            } elseif ($selectQty <= 0 && $screenQty > 0) {
+                $mismatchType = 'missing_in_select';
+            }
+            $orderSelectMismatches[] = [
+                'pidx' => $selectPidx,
+                'name' => $screenRow['name'] ?? '',
+                'code' => $screenRow['code'] ?? '',
+                'type' => $mismatchType,
+                'select_qty' => $selectQty,
+                'screen_qty' => $screenQty,
+                'select_count' => (int)$selectRow['count'],
+            ];
+            $comparedPidx[$selectPidx] = true;
+        }
+        foreach ($screenByPidx as $screenPidx => $screenRow) {
+            if (isset($comparedPidx[$screenPidx]) || (float)$screenRow['qty'] <= 0) {
+                continue;
+            }
+            $orderSelectMismatches[] = [
+                'pidx' => $screenPidx,
+                'name' => $screenRow['name'],
+                'code' => $screenRow['code'],
+                'type' => 'missing_in_select',
+                'select_qty' => 0.0,
+                'screen_qty' => (float)$screenRow['qty'],
+                'select_count' => 0,
+            ];
+        }
+
+        $unnamedPidx = [];
+        foreach ($orderSelectMismatches as $mismatchRow) {
+            if (trim((string)$mismatchRow['name']) === '') {
+                $unnamedPidx[] = (int)$mismatchRow['pidx'];
+            }
+        }
+        if (!empty($unnamedPidx)) {
+            $mismatchProducts = ProductModel::query()
+                ->select(['CD_IDX', 'CD_NAME', 'CD_CODE'])
+                ->whereIn('CD_IDX', array_values(array_unique($unnamedPidx)))
+                ->get()
+                ->toArray();
+            $mismatchProductMap = [];
+            foreach ($mismatchProducts as $mismatchProduct) {
+                $mismatchProductMap[(int)($mismatchProduct['CD_IDX'] ?? 0)] = $mismatchProduct;
+            }
+            foreach ($orderSelectMismatches as &$mismatchRow) {
+                $mismatchProduct = $mismatchProductMap[(int)$mismatchRow['pidx']] ?? null;
+                if (!is_array($mismatchProduct)) {
+                    continue;
+                }
+                if (trim((string)$mismatchRow['name']) === '') {
+                    $mismatchRow['name'] = trim((string)($mismatchProduct['CD_NAME'] ?? ''));
+                }
+                if (trim((string)$mismatchRow['code']) === '') {
+                    $mismatchRow['code'] = trim((string)($mismatchProduct['CD_CODE'] ?? ''));
+                }
+            }
+            unset($mismatchRow);
+        }
+
+        $missingScreenPidx = [];
+        foreach ($orderSelectMismatches as $mismatchRow) {
+            if (($mismatchRow['type'] ?? '') === 'missing_on_screen' && (int)($mismatchRow['pidx'] ?? 0) > 0) {
+                $missingScreenPidx[(int)$mismatchRow['pidx']] = (int)$mismatchRow['pidx'];
+            }
+        }
+        $otherGroupNames = [];
+        $otherGroupProducts = [];
+        $otherSelectByPidx = [];
+        if (!empty($missingScreenPidx)) {
+            $otherOopIdx = [];
+            foreach ($orderSheet['oo_json'] as $groupRow) {
+                if (!is_array($groupRow)) {
+                    continue;
+                }
+                $groupOopIdx = trim((string)($groupRow['bidx'] ?? ''));
+                if ($groupOopIdx === '' || $groupOopIdx === (string)$oop_idx) {
+                    continue;
+                }
+                $otherOopIdx[$groupOopIdx] = $groupOopIdx;
+                $groupSelpd = $groupRow['selpd'] ?? [];
+                if (!is_array($groupSelpd)) {
+                    continue;
+                }
+                foreach ($groupSelpd as $selpdRow) {
+                    if (!is_array($selpdRow)) {
+                        continue;
+                    }
+                    $otherPidx = (int)($selpdRow['pidx'] ?? 0);
+                    if ($otherPidx <= 0 || !isset($missingScreenPidx[$otherPidx])) {
+                        continue;
+                    }
+                    if (!isset($otherSelectByPidx[$otherPidx][$groupOopIdx])) {
+                        $otherSelectByPidx[$otherPidx][$groupOopIdx] = 0.0;
+                    }
+                    $otherSelectByPidx[$otherPidx][$groupOopIdx] += $toFloat($selpdRow['qty'] ?? 0);
+                }
+            }
+
+            $formRow = OrderSheetModel::query()
+                ->from('ona_order as A')
+                ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+                ->where('A.oo_idx', '=', (int)$oo_idx)
+                ->select(['B.oog_brand'])
+                ->first();
+            $formRow = $formRow ? (is_array($formRow) ? $formRow : $formRow->toArray()) : [];
+            $formBrand = json_decode((string)($formRow['oog_brand'] ?? '[]'), true);
+            if (!is_array($formBrand)) {
+                $formBrand = json_decode('[' . trim((string)($formRow['oog_brand'] ?? '')) . ']', true);
+            }
+            if (is_array($formBrand)) {
+                foreach ($formBrand as $brandRow) {
+                    if (!is_array($brandRow)) {
+                        continue;
+                    }
+                    $brandOopIdx = trim((string)($brandRow['oop_idx'] ?? ''));
+                    if ($brandOopIdx === '') {
+                        continue;
+                    }
+                    $brandName = trim((string)($brandRow['name'] ?? ''));
+                    if ($brandName !== '') {
+                        $otherGroupNames[$brandOopIdx] = $brandName;
+                    }
+                    if ($brandOopIdx !== (string)$oop_idx) {
+                        $otherOopIdx[$brandOopIdx] = $brandOopIdx;
+                    }
+                }
+            }
+
+            if (!empty($otherOopIdx)) {
+                $otherGroupRows = OrderGroupProductModel::query()
+                    ->select(['oop_idx', 'oop_name', 'oop_data'])
+                    ->whereIn('oop_idx', array_values($otherOopIdx))
+                    ->get()
+                    ->toArray();
+                foreach ($otherGroupRows as $otherGroupRow) {
+                    $otherIdx = trim((string)($otherGroupRow['oop_idx'] ?? ''));
+                    if ($otherIdx === '' || $otherIdx === (string)$oop_idx) {
+                        continue;
+                    }
+                    if (trim((string)($otherGroupNames[$otherIdx] ?? '')) === '') {
+                        $otherName = trim((string)($otherGroupRow['oop_name'] ?? ''));
+                        $otherGroupNames[$otherIdx] = $otherName !== '' ? $otherName : ('그룹 ' . $otherIdx);
+                    }
+                    $otherOopData = json_decode((string)($otherGroupRow['oop_data'] ?? '[]'), true);
+                    if (!is_array($otherOopData)) {
+                        $otherOopData = json_decode('[' . trim((string)($otherGroupRow['oop_data'] ?? '')) . ']', true);
+                    }
+                    if (!is_array($otherOopData)) {
+                        $otherOopData = [];
+                    }
+                    foreach ($otherOopData as $otherProductRow) {
+                        if (!is_array($otherProductRow)) {
+                            continue;
+                        }
+                        $otherProductIdx = (int)($otherProductRow['idx'] ?? 0);
+                        if ($otherProductIdx > 0 && isset($missingScreenPidx[$otherProductIdx])) {
+                            $otherGroupProducts[$otherProductIdx][$otherIdx] = true;
+                        }
+                    }
+                }
+            }
+
+            foreach ($orderSelectMismatches as &$mismatchRow) {
+                if (($mismatchRow['type'] ?? '') !== 'missing_on_screen') {
+                    continue;
+                }
+                $mismatchPidx = (int)($mismatchRow['pidx'] ?? 0);
+                $otherGroups = [];
+                $checkedOtherIdx = $otherOopIdx;
+                foreach (array_keys($otherSelectByPidx[$mismatchPidx] ?? []) as $selectOopIdx) {
+                    $checkedOtherIdx[(string)$selectOopIdx] = (string)$selectOopIdx;
+                }
+                foreach (array_keys($otherGroupProducts[$mismatchPidx] ?? []) as $catalogOopIdx) {
+                    $checkedOtherIdx[(string)$catalogOopIdx] = (string)$catalogOopIdx;
+                }
+                foreach ($checkedOtherIdx as $checkedIdx) {
+                    if ($checkedIdx === (string)$oop_idx) {
+                        continue;
+                    }
+                    $inCatalog = !empty($otherGroupProducts[$mismatchPidx][$checkedIdx]);
+                    $hasSelect = array_key_exists($checkedIdx, $otherSelectByPidx[$mismatchPidx] ?? []);
+                    if (!$inCatalog && !$hasSelect) {
+                        continue;
+                    }
+                    $otherGroups[] = [
+                        'oop_idx' => $checkedIdx,
+                        'name' => trim((string)($otherGroupNames[$checkedIdx] ?? '')) !== ''
+                            ? $otherGroupNames[$checkedIdx]
+                            : ('그룹 ' . $checkedIdx),
+                        'in_catalog' => $inCatalog,
+                        'select_qty' => $hasSelect ? (float)$otherSelectByPidx[$mismatchPidx][$checkedIdx] : null,
+                    ];
+                }
+                $mismatchRow['other_groups'] = $otherGroups;
+            }
+            unset($mismatchRow);
+        }
+        $orderGroupProduct['order_select_mismatch'] = $orderSelectMismatches;
+
         $result = [
             'orderSheet' => $orderSheet,
             'orderGroup' => $matchedOrderGroup,
@@ -3082,6 +3348,1174 @@ class OrderSheetService
             'memo' => $memo,
             'msg' => '메모가 저장되었습니다.',
         ];
+    }
+
+
+    /**
+     * 폼그룹 화면에는 없고 선택 데이터에만 남은 상품을 이 주문서의 선택 데이터에서 삭제한다.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function orderSheetRemoveMissingSelectProducts(array $data): array
+    {
+        $ooIdx = (int)($data['oo_idx'] ?? 0);
+        $oopIdx = trim((string)($data['oop_idx'] ?? ''));
+        $rawPidx = $data['pidx'] ?? [];
+        if (!is_array($rawPidx)) {
+            $rawPidx = preg_split('/\s*,\s*/', trim((string)$rawPidx)) ?: [];
+        }
+
+        $pidxMap = [];
+        foreach ($rawPidx as $pidxValue) {
+            $pidx = (int)$pidxValue;
+            if ($pidx > 0) {
+                $pidxMap[$pidx] = $pidx;
+            }
+        }
+        $pidxList = array_values($pidxMap);
+        if ($ooIdx <= 0 || $oopIdx === '' || empty($pidxList)) {
+            throw new Exception('삭제할 선택 상품 정보가 없습니다.');
+        }
+
+        $toFloat = static function ($value): float {
+            if (is_string($value)) {
+                $value = preg_replace('/[,\s]/', '', $value);
+            }
+            return is_numeric($value) ? (float)$value : 0.0;
+        };
+
+        $orderRow = OrderSheetModel::query()
+            ->select([
+                'oo_idx',
+                'oo_import',
+                'oo_prd_currency',
+                'oo_sum_currency',
+                'oo_prd_to_pay_exchange_rate',
+                'oo_json',
+                'oo_false',
+                'oo_price_data',
+            ])
+            ->where('oo_idx', '=', $ooIdx)
+            ->first();
+        $orderRow = $orderRow ? $orderRow->toArray() : [];
+        if (empty($orderRow)) {
+            throw new Exception('주문서를 찾을 수 없습니다.');
+        }
+
+        $groupRow = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->where('oop_idx', '=', $oopIdx)
+            ->first();
+        $groupRow = $groupRow ? $groupRow->toArray() : [];
+        $groupProducts = json_decode((string)($groupRow['oop_data'] ?? '[]'), true);
+        if (!is_array($groupProducts)) {
+            $groupProducts = [];
+        }
+        $groupProductIdx = [];
+        foreach ($groupProducts as $groupProduct) {
+            if (!is_array($groupProduct)) {
+                continue;
+            }
+            $groupIdx = (int)($groupProduct['idx'] ?? 0);
+            if ($groupIdx > 0) {
+                $groupProductIdx[$groupIdx] = true;
+            }
+        }
+        foreach ($pidxList as $pidx) {
+            if (isset($groupProductIdx[$pidx])) {
+                throw new Exception('그룹 화면에 있는 상품은 선택 데이터에서 삭제할 수 없습니다. 상품 ' . $pidx);
+            }
+        }
+
+        $ooJson = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
+        if (!is_array($ooJson)) {
+            $ooJson = [];
+        }
+
+        $removedLines = [];
+        $removedByGroupKey = [];
+        $groupChanged = false;
+        $firstGroupSum = null;
+        foreach ($ooJson as $key => $group) {
+            if (!is_array($group) || (string)($group['bidx'] ?? '') !== $oopIdx) {
+                continue;
+            }
+            $selpd = $group['selpd'] ?? [];
+            if (!is_array($selpd)) {
+                $selpd = [];
+            }
+
+            $keptSelpd = [];
+            $removedHere = [];
+            foreach ($selpd as $selpdRow) {
+                if (!is_array($selpdRow)) {
+                    $keptSelpd[] = $selpdRow;
+                    continue;
+                }
+                $selpdPidx = (int)($selpdRow['pidx'] ?? 0);
+                if ($selpdPidx > 0 && isset($pidxMap[$selpdPidx])) {
+                    $removedHere[] = $selpdRow;
+                    continue;
+                }
+                $keptSelpd[] = $selpdRow;
+            }
+            if (empty($removedHere)) {
+                if ($firstGroupSum === null) {
+                    $firstGroupSum = [
+                        'item' => (int)($group['item'] ?? 0),
+                        'qty' => $toFloat($group['qty'] ?? 0),
+                    ];
+                }
+                continue;
+            }
+
+            $sumItem = 0;
+            $sumQty = 0.0;
+            $sumPrice = 0.0;
+            foreach ($keptSelpd as $keptRow) {
+                if (!is_array($keptRow) || !empty($keptRow['false'])) {
+                    continue;
+                }
+                $keptQty = $toFloat($keptRow['qty'] ?? 0);
+                if ($keptQty <= 0) {
+                    continue;
+                }
+                $sumItem++;
+                $sumQty += $keptQty;
+                $sumPrice += $toFloat($keptRow['price'] ?? 0) * $keptQty;
+            }
+
+            $ooJson[$key]['selpd'] = array_values($keptSelpd);
+            $ooJson[$key]['item'] = $sumItem;
+            $ooJson[$key]['qty'] = $sumQty;
+            $ooJson[$key]['price'] = $sumPrice;
+            if ($firstGroupSum === null) {
+                $firstGroupSum = [
+                    'item' => $sumItem,
+                    'qty' => $sumQty,
+                ];
+            }
+            $removedByGroupKey[$key] = $removedHere;
+            foreach ($removedHere as $removedRow) {
+                $removedLines[] = $removedRow;
+            }
+            $groupChanged = true;
+        }
+        if (!$groupChanged || empty($removedLines)) {
+            throw new Exception('삭제할 선택 데이터가 없습니다.');
+        }
+
+        $removedPidx = [];
+        foreach ($removedLines as $removedRow) {
+            $removedPidx[(int)($removedRow['pidx'] ?? 0)] = (int)($removedRow['pidx'] ?? 0);
+        }
+        $removedPidx = array_values(array_filter($removedPidx));
+
+        $productRows = ProductModel::query()
+            ->select(['CD_IDX', 'cd_weight_fn', 'cd_size_fn'])
+            ->whereIn('CD_IDX', $removedPidx)
+            ->get()
+            ->toArray();
+        $productMeasure = [];
+        foreach ($productRows as $productRow) {
+            $weightData = json_decode((string)($productRow['cd_weight_fn'] ?? '{}'), true);
+            $sizeData = json_decode((string)($productRow['cd_size_fn'] ?? '{}'), true);
+            if (!is_array($weightData)) {
+                $weightData = [];
+            }
+            if (!is_array($sizeData)) {
+                $sizeData = [];
+            }
+            $weight = $toFloat($weightData['3'] ?? 0);
+            if ($weight <= 0) {
+                $weight = max($toFloat($weightData['1'] ?? 0), $toFloat($weightData['2'] ?? 0));
+            }
+            $invoiceSize = (isset($sizeData['invoice']) && is_array($sizeData['invoice'])) ? $sizeData['invoice'] : [];
+            $productMeasure[(int)($productRow['CD_IDX'] ?? 0)] = [
+                'weight' => $weight,
+                'cbm' => $toFloat($invoiceSize['cbm'] ?? 0),
+            ];
+        }
+
+        foreach ($removedByGroupKey as $key => $groupRemovedLines) {
+            $removedWeight = 0.0;
+            $removedCbm = 0.0;
+            $removedFalseCount = 0;
+            $removedFalseQty = 0.0;
+            $removedFalsePrice = 0.0;
+            $removedFalseWeight = 0.0;
+            foreach ($groupRemovedLines as $removedRow) {
+                $removedQty = $toFloat($removedRow['qty'] ?? 0);
+                $removedPrice = $toFloat($removedRow['price'] ?? 0) * $removedQty;
+                $measure = $productMeasure[(int)($removedRow['pidx'] ?? 0)] ?? ['weight' => 0.0, 'cbm' => 0.0];
+                $lineWeight = $measure['weight'] * $removedQty;
+                $lineCbm = $measure['cbm'] * $removedQty;
+                if (!empty($removedRow['false'])) {
+                    $removedFalseCount++;
+                    $removedFalseQty += $removedQty;
+                    $removedFalsePrice += $removedPrice;
+                    $removedFalseWeight += $lineWeight;
+                    continue;
+                }
+                $removedWeight += $lineWeight;
+                $removedCbm += $lineCbm;
+            }
+
+            $group = $ooJson[$key] ?? [];
+            if (!is_array($group)) {
+                continue;
+            }
+            $ooJson[$key]['weight'] = max(0, $toFloat($group['weight'] ?? 0) - $removedWeight);
+            $ooJson[$key]['cbm'] = max(0, $toFloat($group['cbm'] ?? 0) - $removedCbm);
+            if ($removedFalseCount > 0) {
+                $ooJson[$key]['false'] = max(0, (int)($group['false'] ?? 0) - $removedFalseCount);
+                $ooJson[$key]['false_sum_qty'] = max(0, $toFloat($group['false_sum_qty'] ?? 0) - $removedFalseQty);
+                $ooJson[$key]['false_sum_price'] = max(0, $toFloat($group['false_sum_price'] ?? 0) - $removedFalsePrice);
+                $ooJson[$key]['false_sum_weight'] = max(0, $toFloat($group['false_sum_weight'] ?? 0) - $removedFalseWeight);
+            }
+        }
+
+        $ooFalseRaw = trim((string)($orderRow['oo_false'] ?? ''));
+        $ooFalse = json_decode($ooFalseRaw === '' ? '[]' : $ooFalseRaw, true);
+        if (!is_array($ooFalse)) {
+            $ooFalse = json_decode('[' . $ooFalseRaw . ']', true);
+        }
+        if (!is_array($ooFalse)) {
+            $ooFalse = [];
+        }
+        $remainingSelpdPidx = [];
+        foreach ($ooJson as $group) {
+            if (!is_array($group) || !is_array($group['selpd'] ?? null)) {
+                continue;
+            }
+            foreach ($group['selpd'] as $selpdRow) {
+                if (!is_array($selpdRow)) {
+                    continue;
+                }
+                $remainingPidx = (int)($selpdRow['pidx'] ?? 0);
+                if ($remainingPidx > 0) {
+                    $remainingSelpdPidx[$remainingPidx] = true;
+                }
+            }
+        }
+        $keptFalse = [];
+        foreach ($ooFalse as $falseRow) {
+            if (!is_array($falseRow)) {
+                continue;
+            }
+            $falsePidx = (int)($falseRow['pidx'] ?? 0);
+            if ($falsePidx > 0 && isset($pidxMap[$falsePidx]) && !isset($remainingSelpdPidx[$falsePidx])) {
+                continue;
+            }
+            $keptFalse[] = $falseRow;
+        }
+
+        $ooSumGoods = 0;
+        $ooSumQty = 0.0;
+        $ooSumWeight = 0.0;
+        $ooSumPrice = 0.0;
+        $ooSumCbm = 0.0;
+        foreach ($ooJson as $group) {
+            if (!is_array($group)) {
+                continue;
+            }
+            $ooSumGoods += (int)($group['item'] ?? 0);
+            $ooSumQty += $toFloat($group['qty'] ?? 0);
+            $ooSumWeight += $toFloat($group['weight'] ?? 0);
+            $ooSumPrice += $toFloat($group['price'] ?? 0);
+            $ooSumCbm += $toFloat($group['cbm'] ?? 0);
+            $falseCount = (int)($group['false'] ?? 0);
+            if ($falseCount > 0) {
+                $ooSumGoods -= $falseCount;
+                $ooSumQty -= $toFloat($group['false_sum_qty'] ?? 0);
+                $ooSumWeight -= $toFloat($group['false_sum_weight'] ?? 0);
+                $ooSumPrice -= $toFloat($group['false_sum_price'] ?? 0);
+                $ooSumCbm -= $toFloat($group['false_sum_cbm'] ?? 0);
+            }
+        }
+        $ooSumGoods = max(0, $ooSumGoods);
+        $ooSumQty = max(0, $ooSumQty);
+        $ooSumWeight = max(0, $ooSumWeight);
+        $ooSumPrice = max(0, $ooSumPrice);
+        $ooSumCbm = max(0, $ooSumCbm);
+
+        $currencyToCode = static function ($currency): string {
+            $raw = strtoupper(trim((string)$currency));
+            if ($raw === '원') return 'KRW';
+            if ($raw === '엔') return 'JPY';
+            if ($raw === '위안') return 'CNY';
+            if ($raw === '달러') return 'USD';
+            return $raw;
+        };
+        $savedOoSumPrice = $ooSumPrice;
+        $prdCurrencyCode = $currencyToCode($orderRow['oo_prd_currency'] ?? '');
+        $sumCurrencyCode = $currencyToCode($orderRow['oo_sum_currency'] ?? '');
+        $prdToPayExchangeRate = $toFloat($orderRow['oo_prd_to_pay_exchange_rate'] ?? 0);
+        if (
+            trim((string)($orderRow['oo_import'] ?? '')) !== '국내' &&
+            $prdCurrencyCode !== '' &&
+            $sumCurrencyCode !== '' &&
+            $prdCurrencyCode !== $sumCurrencyCode &&
+            $prdToPayExchangeRate > 0
+        ) {
+            $savedOoSumPrice = round($ooSumPrice / $prdToPayExchangeRate, 2);
+        }
+
+        $ooPriceData = json_decode((string)($orderRow['oo_price_data'] ?? '{}'), true);
+        if (!is_array($ooPriceData)) {
+            $ooPriceData = [];
+        }
+        $ooPriceData['prd_sum_price'] = $ooSumPrice;
+
+        $encodedOoJson = json_encode(array_values($ooJson), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $encodedOoFalse = json_encode(array_values($keptFalse), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        $encodedOoPriceData = json_encode($ooPriceData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encodedOoJson === false || $encodedOoFalse === false || $encodedOoPriceData === false) {
+            throw new Exception('선택 데이터 저장에 실패했습니다.');
+        }
+
+        $pidxInOtherGroup = [];
+        foreach ($ooJson as $otherGroup) {
+            if (!is_array($otherGroup) || (string)($otherGroup['bidx'] ?? '') === $oopIdx) {
+                continue;
+            }
+            $otherSelpd = $otherGroup['selpd'] ?? [];
+            if (!is_array($otherSelpd)) {
+                continue;
+            }
+            foreach ($otherSelpd as $otherSelpdRow) {
+                if (!is_array($otherSelpdRow)) {
+                    continue;
+                }
+                $otherPidx = (int)($otherSelpdRow['pidx'] ?? 0);
+                if ($otherPidx > 0 && in_array($otherPidx, $removedPidx, true)) {
+                    $pidxInOtherGroup[$otherPidx] = true;
+                }
+            }
+        }
+        $otherGroupIdx = [];
+        $formRow = OrderSheetModel::query()
+            ->from('ona_order as A')
+            ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+            ->where('A.oo_idx', '=', $ooIdx)
+            ->select(['B.oog_brand'])
+            ->first();
+        $formRow = $formRow ? (is_array($formRow) ? $formRow : $formRow->toArray()) : [];
+        $formBrand = json_decode((string)($formRow['oog_brand'] ?? '[]'), true);
+        if (!is_array($formBrand)) {
+            $formBrand = json_decode('[' . trim((string)($formRow['oog_brand'] ?? '')) . ']', true);
+        }
+        if (is_array($formBrand)) {
+            foreach ($formBrand as $brandRow) {
+                if (!is_array($brandRow)) {
+                    continue;
+                }
+                $brandOopIdx = trim((string)($brandRow['oop_idx'] ?? ''));
+                if ($brandOopIdx !== '' && $brandOopIdx !== $oopIdx) {
+                    $otherGroupIdx[$brandOopIdx] = $brandOopIdx;
+                }
+            }
+        }
+        foreach ($ooJson as $otherGroup) {
+            if (!is_array($otherGroup)) {
+                continue;
+            }
+            $otherBidx = trim((string)($otherGroup['bidx'] ?? ''));
+            if ($otherBidx !== '' && $otherBidx !== $oopIdx) {
+                $otherGroupIdx[$otherBidx] = $otherBidx;
+            }
+        }
+        if (!empty($otherGroupIdx)) {
+            $otherGroupRows = OrderGroupProductModel::query()
+                ->select(['oop_idx', 'oop_data'])
+                ->whereIn('oop_idx', array_values($otherGroupIdx))
+                ->get()
+                ->toArray();
+            foreach ($otherGroupRows as $otherGroupRow) {
+                $otherOopData = json_decode((string)($otherGroupRow['oop_data'] ?? '[]'), true);
+                if (!is_array($otherOopData)) {
+                    $otherOopData = json_decode('[' . trim((string)($otherGroupRow['oop_data'] ?? '')) . ']', true);
+                }
+                if (!is_array($otherOopData)) {
+                    continue;
+                }
+                foreach ($otherOopData as $otherProductRow) {
+                    if (!is_array($otherProductRow)) {
+                        continue;
+                    }
+                    $otherProductIdx = (int)($otherProductRow['idx'] ?? 0);
+                    if ($otherProductIdx > 0 && in_array($otherProductIdx, $removedPidx, true)) {
+                        $pidxInOtherGroup[$otherProductIdx] = true;
+                    }
+                }
+            }
+        }
+
+        $unitRows = OrderPrdUnitModel::query()
+            ->select(['idx', 'pidx', 'stock_inspection_data', 'stock_inspection_memo'])
+            ->where('order_idx', '=', $ooIdx)
+            ->where('bidx', '=', (int)$oopIdx)
+            ->whereIn('pidx', $removedPidx)
+            ->get()
+            ->toArray();
+        $unitIdxList = [];
+        foreach ($unitRows as $unitRow) {
+            $unitIdx = (int)($unitRow['idx'] ?? 0);
+            if ($unitIdx > 0) {
+                $unitIdxList[] = $unitIdx;
+            }
+        }
+        $inspectedUnitIdxList = [];
+        $checkedByUnitIdx = [];
+        if (!empty($unitIdxList)) {
+            $inspectionRows = OrderPrdUnitInspectionModel::query()
+                ->select(['order_prd_unit_idx', 'checked_qty'])
+                ->whereIn('order_prd_unit_idx', $unitIdxList)
+                ->get()
+                ->toArray();
+            foreach ($inspectionRows as $inspectionRow) {
+                $inspectionUnitIdx = (int)($inspectionRow['order_prd_unit_idx'] ?? 0);
+                $checkedByUnitIdx[$inspectionUnitIdx] = ($checkedByUnitIdx[$inspectionUnitIdx] ?? 0)
+                    + (int)($inspectionRow['checked_qty'] ?? 0);
+            }
+        }
+        foreach ($unitRows as $unitRow) {
+            $unitIdx = (int)($unitRow['idx'] ?? 0);
+            $inspectionData = $unitRow['stock_inspection_data'] ?? [];
+            if (is_string($inspectionData)) {
+                $inspectionData = json_decode($inspectionData, true);
+            }
+            $hasInspection = ($checkedByUnitIdx[$unitIdx] ?? 0) > 0
+                || (is_array($inspectionData) && !empty($inspectionData))
+                || trim((string)($unitRow['stock_inspection_memo'] ?? '')) !== '';
+            if (!$hasInspection) {
+                continue;
+            }
+            $unitPidx = (int)($unitRow['pidx'] ?? 0);
+            if (empty($pidxInOtherGroup[$unitPidx])) {
+                throw new Exception('입고 검수 이력이 있는 상품은 선택 데이터에서 삭제할 수 없습니다. 상품 ' . $unitPidx);
+            }
+            if ($unitIdx > 0) {
+                $inspectedUnitIdxList[] = $unitIdx;
+            }
+        }
+
+        $beforeData = $this->getOrderSheetForLog($ooIdx);
+        DB::transaction(function () use (
+            $ooIdx,
+            $encodedOoJson,
+            $encodedOoFalse,
+            $encodedOoPriceData,
+            $ooSumGoods,
+            $ooSumQty,
+            $ooSumWeight,
+            $savedOoSumPrice,
+            $ooSumCbm,
+            $unitIdxList,
+            $inspectedUnitIdxList
+        ) {
+            OrderSheetModel::query()
+                ->where('oo_idx', '=', $ooIdx)
+                ->update([
+                    'oo_json' => $encodedOoJson,
+                    'oo_false' => $encodedOoFalse,
+                    'oo_price_data' => $encodedOoPriceData,
+                    'oo_sum_goods' => $ooSumGoods,
+                    'oo_sum_qty' => $ooSumQty,
+                    'oo_sum_weight' => $ooSumWeight,
+                    'oo_sum_price' => $savedOoSumPrice,
+                    'oo_sum_cbm' => $ooSumCbm,
+                ]);
+
+            if (!empty($inspectedUnitIdxList)) {
+                OrderPrdUnitInspectionModel::query()
+                    ->whereIn('order_prd_unit_idx', $inspectedUnitIdxList)
+                    ->delete();
+            }
+            if (!empty($unitIdxList)) {
+                OrderPrdUnitModel::query()
+                    ->whereIn('idx', $unitIdxList)
+                    ->delete();
+            }
+        });
+        $afterData = $this->getOrderSheetForLog($ooIdx);
+        $this->writeOrderSheetActionLog(
+            $ooIdx,
+            'remove_missing_select_products',
+            '화면에 없는 선택 상품 삭제',
+            $beforeData,
+            $afterData
+        );
+
+        return [
+            'success' => true,
+            'message' => '화면에 없는 선택 상품 ' . count($removedPidx) . '개를 선택 데이터에서 삭제했습니다.',
+            'msg' => '완료',
+            'removed_count' => count($removedPidx),
+            'group_sum_goods' => (int)($firstGroupSum['item'] ?? 0),
+            'group_sum_qty' => $firstGroupSum['qty'] ?? 0,
+            'oo_sum_goods' => $ooSumGoods,
+            'oo_sum_qty' => $ooSumQty,
+            'oo_sum_weight' => $ooSumWeight,
+            'oo_sum_price' => $savedOoSumPrice,
+        ];
+    }
+
+
+    /**
+     * 선택 데이터에는 있고 그룹 화면에는 없는 상품을 이 그룹 상품목록으로 되돌린다.
+     * 다른 그룹에 있으면 그 그룹에서 제거한 뒤 복구한다.
+     *
+     * @param array $data
+     * @return array
+     */
+    public function orderSheetRestoreMissingSelectProducts(array $data): array
+    {
+        $ooIdx = (int)($data['oo_idx'] ?? 0);
+        $oopIdx = trim((string)($data['oop_idx'] ?? ''));
+        $rawPidx = $data['pidx'] ?? [];
+        if (!is_array($rawPidx)) {
+            $rawPidx = preg_split('/\s*,\s*/', trim((string)$rawPidx)) ?: [];
+        }
+
+        $pidxMap = [];
+        foreach ($rawPidx as $pidxValue) {
+            $pidx = (int)$pidxValue;
+            if ($pidx > 0) {
+                $pidxMap[$pidx] = $pidx;
+            }
+        }
+        $pidxList = array_values($pidxMap);
+        if ($ooIdx <= 0 || $oopIdx === '' || empty($pidxList)) {
+            throw new Exception('복구할 선택 상품 정보가 없습니다.');
+        }
+
+        $toFloat = static function ($value): float {
+            if (is_string($value)) {
+                $value = preg_replace('/[,\s]/', '', $value);
+            }
+            return is_numeric($value) ? (float)$value : 0.0;
+        };
+
+        $orderRow = OrderSheetModel::query()
+            ->select([
+                'oo_idx',
+                'oo_import',
+                'oo_prd_currency',
+                'oo_sum_currency',
+                'oo_prd_to_pay_exchange_rate',
+                'oo_json',
+                'oo_false',
+                'oo_price_data',
+            ])
+            ->where('oo_idx', '=', $ooIdx)
+            ->first();
+        $orderRow = $orderRow ? $orderRow->toArray() : [];
+        if (empty($orderRow)) {
+            throw new Exception('주문서를 찾을 수 없습니다.');
+        }
+
+        $currentGroupRow = OrderGroupProductModel::query()
+            ->select(['oop_idx', 'oop_data'])
+            ->where('oop_idx', '=', $oopIdx)
+            ->first();
+        $currentGroupRow = $currentGroupRow ? $currentGroupRow->toArray() : [];
+        if (empty($currentGroupRow)) {
+            throw new Exception('주문그룹을 찾을 수 없습니다.');
+        }
+        $currentData = $this->decodeOrderFormJsonList($currentGroupRow['oop_data'] ?? '');
+        $currentIdx = [];
+        foreach ($currentData as $currentRow) {
+            $currentProductIdx = (int)($currentRow['idx'] ?? 0);
+            if ($currentProductIdx > 0) {
+                $currentIdx[$currentProductIdx] = true;
+            }
+        }
+        foreach ($pidxList as $pidx) {
+            if (isset($currentIdx[$pidx])) {
+                throw new Exception('이미 이 그룹 화면에 있는 상품입니다. 상품 ' . $pidx);
+            }
+        }
+
+        $ooJson = json_decode((string)($orderRow['oo_json'] ?? '[]'), true);
+        if (!is_array($ooJson)) {
+            $ooJson = [];
+        }
+        $selectPidx = [];
+        foreach ($ooJson as $group) {
+            if (!is_array($group) || (string)($group['bidx'] ?? '') !== $oopIdx || !is_array($group['selpd'] ?? null)) {
+                continue;
+            }
+            foreach ($group['selpd'] as $selpdRow) {
+                if (!is_array($selpdRow)) {
+                    continue;
+                }
+                $selpdPidx = (int)($selpdRow['pidx'] ?? 0);
+                if ($selpdPidx > 0 && isset($pidxMap[$selpdPidx])) {
+                    $selectPidx[$selpdPidx] = true;
+                }
+            }
+        }
+        foreach ($pidxList as $pidx) {
+            if (empty($selectPidx[$pidx])) {
+                throw new Exception('이 그룹 선택 데이터에 없는 상품은 복구할 수 없습니다. 상품 ' . $pidx);
+            }
+        }
+
+        $otherGroupIdx = [];
+        $otherGroupNames = [];
+        $formRow = OrderSheetModel::query()
+            ->from('ona_order as A')
+            ->leftJoin('ona_order_group as B', 'B.oog_idx', '=', 'A.oo_form_idx')
+            ->where('A.oo_idx', '=', $ooIdx)
+            ->select(['B.oog_brand'])
+            ->first();
+        $formRow = $formRow ? (is_array($formRow) ? $formRow : $formRow->toArray()) : [];
+        $formBrand = $this->decodeOrderFormJsonList($formRow['oog_brand'] ?? '');
+        foreach ($formBrand as $brandRow) {
+            $brandOopIdx = trim((string)($brandRow['oop_idx'] ?? ''));
+            if ($brandOopIdx === '') {
+                continue;
+            }
+            $brandName = trim((string)($brandRow['name'] ?? ''));
+            if ($brandName !== '') {
+                $otherGroupNames[$brandOopIdx] = $brandName;
+            }
+            if ($brandOopIdx !== $oopIdx) {
+                $otherGroupIdx[$brandOopIdx] = $brandOopIdx;
+            }
+        }
+        foreach ($ooJson as $group) {
+            if (!is_array($group)) {
+                continue;
+            }
+            $groupOopIdx = trim((string)($group['bidx'] ?? ''));
+            if ($groupOopIdx !== '' && $groupOopIdx !== $oopIdx) {
+                $otherGroupIdx[$groupOopIdx] = $groupOopIdx;
+            }
+        }
+
+        $otherGroupData = [];
+        if (!empty($otherGroupIdx)) {
+            $otherGroupRows = OrderGroupProductModel::query()
+                ->select(['oop_idx', 'oop_name', 'oop_data'])
+                ->whereIn('oop_idx', array_values($otherGroupIdx))
+                ->get()
+                ->toArray();
+            foreach ($otherGroupRows as $otherGroupRow) {
+                $otherIdx = trim((string)($otherGroupRow['oop_idx'] ?? ''));
+                if ($otherIdx === '' || $otherIdx === $oopIdx) {
+                    continue;
+                }
+                if (trim((string)($otherGroupNames[$otherIdx] ?? '')) === '') {
+                    $otherName = trim((string)($otherGroupRow['oop_name'] ?? ''));
+                    $otherGroupNames[$otherIdx] = $otherName !== '' ? $otherName : ('그룹 ' . $otherIdx);
+                }
+                $otherGroupData[$otherIdx] = $this->decodeOrderFormJsonList($otherGroupRow['oop_data'] ?? '');
+            }
+        }
+
+        $restoredRows = [];
+        $removedGroupNames = [];
+        $changedOtherData = [];
+        foreach ($pidxList as $pidx) {
+            $movedRow = null;
+            foreach ($otherGroupData as $otherIdx => $rows) {
+                $keptRows = [];
+                $removedHere = false;
+                foreach ($rows as $row) {
+                    if ((int)($row['idx'] ?? 0) === $pidx) {
+                        if ($movedRow === null) {
+                            $movedRow = $row;
+                        }
+                        $removedHere = true;
+                        continue;
+                    }
+                    $keptRows[] = $row;
+                }
+                if ($removedHere) {
+                    $otherGroupData[$otherIdx] = $keptRows;
+                    $changedOtherData[$otherIdx] = $keptRows;
+                    $removedGroupNames[$otherIdx] = $otherGroupNames[$otherIdx] ?? ('그룹 ' . $otherIdx);
+                }
+            }
+            if ($movedRow === null) {
+                $movedRow = [
+                    'idx' => (string)$pidx,
+                    'stockidx' => '',
+                    'om' => '',
+                    'last' => '',
+                    'last_data' => '',
+                    'state' => 'on',
+                ];
+            }
+            unset($movedRow['selpd'], $movedRow['product'], $movedRow['false_data'], $movedRow['is_false']);
+            $movedRow['idx'] = (string)$pidx;
+            $restoredRows[] = $movedRow;
+        }
+
+        $missingStockPidx = [];
+        foreach ($restoredRows as $restoredRow) {
+            if (trim((string)($restoredRow['stockidx'] ?? '')) === '') {
+                $missingStockPidx[] = (int)$restoredRow['idx'];
+            }
+        }
+        if (!empty($missingStockPidx)) {
+            $stockRows = ProductStockModel::query()
+                ->select(['ps_idx', 'ps_prd_idx'])
+                ->whereIn('ps_prd_idx', array_values(array_unique($missingStockPidx)))
+                ->get()
+                ->toArray();
+            $stockByPidx = [];
+            foreach ($stockRows as $stockRow) {
+                $stockPidx = (int)($stockRow['ps_prd_idx'] ?? 0);
+                if ($stockPidx > 0 && !isset($stockByPidx[$stockPidx])) {
+                    $stockByPidx[$stockPidx] = (string)($stockRow['ps_idx'] ?? '');
+                }
+            }
+            foreach ($restoredRows as &$restoredRow) {
+                $restoredPidx = (int)($restoredRow['idx'] ?? 0);
+                if (trim((string)($restoredRow['stockidx'] ?? '')) === '' && isset($stockByPidx[$restoredPidx])) {
+                    $restoredRow['stockidx'] = $stockByPidx[$restoredPidx];
+                }
+            }
+            unset($restoredRow);
+        }
+
+        $currentFiltered = [];
+        foreach ($currentData as $currentRow) {
+            if (isset($pidxMap[(int)($currentRow['idx'] ?? 0)])) {
+                continue;
+            }
+            $currentFiltered[] = $currentRow;
+        }
+        $currentData = array_merge($restoredRows, $currentFiltered);
+
+        $removedByGroupKey = [];
+        foreach ($ooJson as $key => $group) {
+            if (!is_array($group) || (string)($group['bidx'] ?? '') === $oopIdx || !is_array($group['selpd'] ?? null)) {
+                continue;
+            }
+            $keptSelpd = [];
+            $removedHere = [];
+            foreach ($group['selpd'] as $selpdRow) {
+                if (is_array($selpdRow) && isset($pidxMap[(int)($selpdRow['pidx'] ?? 0)])) {
+                    $removedHere[] = $selpdRow;
+                    continue;
+                }
+                $keptSelpd[] = $selpdRow;
+            }
+            if (empty($removedHere)) {
+                continue;
+            }
+            $sumItem = 0;
+            $sumQty = 0.0;
+            $sumPrice = 0.0;
+            foreach ($keptSelpd as $keptRow) {
+                if (!is_array($keptRow) || !empty($keptRow['false'])) {
+                    continue;
+                }
+                $keptQty = $toFloat($keptRow['qty'] ?? 0);
+                if ($keptQty <= 0) {
+                    continue;
+                }
+                $sumItem++;
+                $sumQty += $keptQty;
+                $sumPrice += $toFloat($keptRow['price'] ?? 0) * $keptQty;
+            }
+            $ooJson[$key]['selpd'] = array_values($keptSelpd);
+            $ooJson[$key]['item'] = $sumItem;
+            $ooJson[$key]['qty'] = $sumQty;
+            $ooJson[$key]['price'] = $sumPrice;
+            $removedByGroupKey[$key] = $removedHere;
+            $removedBidx = trim((string)($group['bidx'] ?? ''));
+            if ($removedBidx !== '') {
+                $removedGroupNames[$removedBidx] = $otherGroupNames[$removedBidx] ?? ('그룹 ' . $removedBidx);
+            }
+        }
+
+        $orderChanged = !empty($removedByGroupKey);
+        $encodedOoJson = null;
+        $encodedOoFalse = null;
+        $encodedOoPriceData = null;
+        $ooSumGoods = null;
+        $ooSumQty = null;
+        $ooSumWeight = null;
+        $savedOoSumPrice = null;
+        $ooSumCbm = null;
+        if ($orderChanged) {
+            $productRows = ProductModel::query()
+                ->select(['CD_IDX', 'cd_weight_fn', 'cd_size_fn'])
+                ->whereIn('CD_IDX', $pidxList)
+                ->get()
+                ->toArray();
+            $productMeasure = [];
+            foreach ($productRows as $productRow) {
+                $weightData = json_decode((string)($productRow['cd_weight_fn'] ?? '{}'), true);
+                $sizeData = json_decode((string)($productRow['cd_size_fn'] ?? '{}'), true);
+                if (!is_array($weightData)) {
+                    $weightData = [];
+                }
+                if (!is_array($sizeData)) {
+                    $sizeData = [];
+                }
+                $weight = $toFloat($weightData['3'] ?? 0);
+                if ($weight <= 0) {
+                    $weight = max($toFloat($weightData['1'] ?? 0), $toFloat($weightData['2'] ?? 0));
+                }
+                $invoiceSize = (isset($sizeData['invoice']) && is_array($sizeData['invoice'])) ? $sizeData['invoice'] : [];
+                $productMeasure[(int)($productRow['CD_IDX'] ?? 0)] = [
+                    'weight' => $weight,
+                    'cbm' => $toFloat($invoiceSize['cbm'] ?? 0),
+                ];
+            }
+            foreach ($removedByGroupKey as $key => $groupRemovedLines) {
+                $removedWeight = 0.0;
+                $removedCbm = 0.0;
+                $removedFalseCount = 0;
+                $removedFalseQty = 0.0;
+                $removedFalsePrice = 0.0;
+                $removedFalseWeight = 0.0;
+                $removedFalseCbm = 0.0;
+                foreach ($groupRemovedLines as $removedRow) {
+                    $removedQty = $toFloat($removedRow['qty'] ?? 0);
+                    $measure = $productMeasure[(int)($removedRow['pidx'] ?? 0)] ?? ['weight' => 0.0, 'cbm' => 0.0];
+                    $lineWeight = $measure['weight'] * $removedQty;
+                    $lineCbm = $measure['cbm'] * $removedQty;
+                    if (!empty($removedRow['false'])) {
+                        $removedFalseCount++;
+                        $removedFalseQty += $removedQty;
+                        $removedFalsePrice += $toFloat($removedRow['price'] ?? 0) * $removedQty;
+                        $removedFalseWeight += $lineWeight;
+                        $removedFalseCbm += $lineCbm;
+                        continue;
+                    }
+                    $removedWeight += $lineWeight;
+                    $removedCbm += $lineCbm;
+                }
+                $group = $ooJson[$key] ?? [];
+                if (!is_array($group)) {
+                    continue;
+                }
+                $ooJson[$key]['weight'] = max(0, $toFloat($group['weight'] ?? 0) - $removedWeight);
+                $ooJson[$key]['cbm'] = max(0, $toFloat($group['cbm'] ?? 0) - $removedCbm);
+                if ($removedFalseCount > 0) {
+                    $ooJson[$key]['false'] = max(0, (int)($group['false'] ?? 0) - $removedFalseCount);
+                    $ooJson[$key]['false_sum_qty'] = max(0, $toFloat($group['false_sum_qty'] ?? 0) - $removedFalseQty);
+                    $ooJson[$key]['false_sum_price'] = max(0, $toFloat($group['false_sum_price'] ?? 0) - $removedFalsePrice);
+                    $ooJson[$key]['false_sum_weight'] = max(0, $toFloat($group['false_sum_weight'] ?? 0) - $removedFalseWeight);
+                    $ooJson[$key]['false_sum_cbm'] = max(0, $toFloat($group['false_sum_cbm'] ?? 0) - $removedFalseCbm);
+                }
+            }
+
+            $ooSumGoods = 0;
+            $ooSumQty = 0.0;
+            $ooSumWeight = 0.0;
+            $ooSumPrice = 0.0;
+            $ooSumCbm = 0.0;
+            foreach ($ooJson as $group) {
+                if (!is_array($group)) {
+                    continue;
+                }
+                $ooSumGoods += (int)($group['item'] ?? 0);
+                $ooSumQty += $toFloat($group['qty'] ?? 0);
+                $ooSumWeight += $toFloat($group['weight'] ?? 0);
+                $ooSumPrice += $toFloat($group['price'] ?? 0);
+                $ooSumCbm += $toFloat($group['cbm'] ?? 0);
+                $falseCount = (int)($group['false'] ?? 0);
+                if ($falseCount > 0) {
+                    $ooSumGoods -= $falseCount;
+                    $ooSumQty -= $toFloat($group['false_sum_qty'] ?? 0);
+                    $ooSumWeight -= $toFloat($group['false_sum_weight'] ?? 0);
+                    $ooSumPrice -= $toFloat($group['false_sum_price'] ?? 0);
+                    $ooSumCbm -= $toFloat($group['false_sum_cbm'] ?? 0);
+                }
+            }
+            $ooSumGoods = max(0, $ooSumGoods);
+            $ooSumQty = max(0, $ooSumQty);
+            $ooSumWeight = max(0, $ooSumWeight);
+            $ooSumPrice = max(0, $ooSumPrice);
+            $ooSumCbm = max(0, $ooSumCbm);
+
+            $currencyToCode = static function ($currency): string {
+                $raw = strtoupper(trim((string)$currency));
+                if ($raw === '원') return 'KRW';
+                if ($raw === '엔') return 'JPY';
+                if ($raw === '위안') return 'CNY';
+                if ($raw === '달러') return 'USD';
+                return $raw;
+            };
+            $savedOoSumPrice = $ooSumPrice;
+            $prdCurrencyCode = $currencyToCode($orderRow['oo_prd_currency'] ?? '');
+            $sumCurrencyCode = $currencyToCode($orderRow['oo_sum_currency'] ?? '');
+            $prdToPayExchangeRate = $toFloat($orderRow['oo_prd_to_pay_exchange_rate'] ?? 0);
+            if (
+                trim((string)($orderRow['oo_import'] ?? '')) !== '국내' &&
+                $prdCurrencyCode !== '' &&
+                $sumCurrencyCode !== '' &&
+                $prdCurrencyCode !== $sumCurrencyCode &&
+                $prdToPayExchangeRate > 0
+            ) {
+                $savedOoSumPrice = round($ooSumPrice / $prdToPayExchangeRate, 2);
+            }
+
+            $ooPriceData = json_decode((string)($orderRow['oo_price_data'] ?? '{}'), true);
+            if (!is_array($ooPriceData)) {
+                $ooPriceData = [];
+            }
+            $ooPriceData['prd_sum_price'] = $ooSumPrice;
+            $encodedOoJson = json_encode(array_values($ooJson), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $encodedOoPriceData = json_encode($ooPriceData, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            $encodedOoFalse = (string)($orderRow['oo_false'] ?? '[]');
+            if ($encodedOoJson === false || $encodedOoPriceData === false) {
+                throw new Exception('주문서 선택 데이터 저장에 실패했습니다.');
+            }
+        }
+
+        $encodedGroupData = [];
+        $encodedCurrent = json_encode(array_values($currentData), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($encodedCurrent === false) {
+            throw new Exception('그룹 상품 저장에 실패했습니다.');
+        }
+        $encodedGroupData[$oopIdx] = $encodedCurrent;
+        foreach ($changedOtherData as $otherIdx => $rows) {
+            $encodedOther = json_encode(array_values($rows), JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+            if ($encodedOther === false) {
+                throw new Exception('다른 그룹 상품 저장에 실패했습니다.');
+            }
+            $encodedGroupData[(string)$otherIdx] = $encodedOther;
+        }
+
+        $currentUnits = OrderPrdUnitModel::query()
+            ->select(['idx', 'pidx', 'stock_inspection_data', 'stock_inspection_memo'])
+            ->where('order_idx', '=', $ooIdx)
+            ->where('bidx', '=', (int)$oopIdx)
+            ->whereIn('pidx', $pidxList)
+            ->get()
+            ->toArray();
+        $currentUnitByPidx = [];
+        foreach ($currentUnits as $unitRow) {
+            $unitPidx = (int)($unitRow['pidx'] ?? 0);
+            if ($unitPidx > 0 && !isset($currentUnitByPidx[$unitPidx])) {
+                $currentUnitByPidx[$unitPidx] = $unitRow;
+            }
+        }
+        $otherUnits = [];
+        if (!empty($otherGroupIdx)) {
+            $otherUnits = OrderPrdUnitModel::query()
+                ->select(['idx', 'bidx', 'pidx', 'stock_inspection_data', 'stock_inspection_memo'])
+                ->where('order_idx', '=', $ooIdx)
+                ->whereIn('bidx', array_map('intval', array_values($otherGroupIdx)))
+                ->whereIn('pidx', $pidxList)
+                ->get()
+                ->toArray();
+        }
+        $unitIdxForCheck = [];
+        foreach ($currentUnits as $unitRow) {
+            $unitIdx = (int)($unitRow['idx'] ?? 0);
+            if ($unitIdx > 0) {
+                $unitIdxForCheck[] = $unitIdx;
+            }
+        }
+        foreach ($otherUnits as $unitRow) {
+            $unitIdx = (int)($unitRow['idx'] ?? 0);
+            if ($unitIdx > 0) {
+                $unitIdxForCheck[] = $unitIdx;
+            }
+        }
+        $checkedByUnitIdx = [];
+        if (!empty($unitIdxForCheck)) {
+            $inspectionRows = OrderPrdUnitInspectionModel::query()
+                ->select(['order_prd_unit_idx', 'checked_qty'])
+                ->whereIn('order_prd_unit_idx', $unitIdxForCheck)
+                ->get()
+                ->toArray();
+            foreach ($inspectionRows as $inspectionRow) {
+                $inspectionUnitIdx = (int)($inspectionRow['order_prd_unit_idx'] ?? 0);
+                $checkedByUnitIdx[$inspectionUnitIdx] = ($checkedByUnitIdx[$inspectionUnitIdx] ?? 0)
+                    + (int)($inspectionRow['checked_qty'] ?? 0);
+            }
+        }
+        $unitHasInspection = static function (array $unitRow) use ($checkedByUnitIdx): bool {
+            $unitIdx = (int)($unitRow['idx'] ?? 0);
+            $inspectionData = $unitRow['stock_inspection_data'] ?? [];
+            if (is_string($inspectionData)) {
+                $inspectionData = json_decode($inspectionData, true);
+            }
+            return ($checkedByUnitIdx[$unitIdx] ?? 0) > 0
+                || (is_array($inspectionData) && !empty($inspectionData))
+                || trim((string)($unitRow['stock_inspection_memo'] ?? '')) !== '';
+        };
+
+        $unitMoveIdx = [];
+        $unitDeleteIdx = [];
+        $inspectionMove = [];
+        $inspectionCopy = [];
+        foreach ($otherUnits as $otherUnit) {
+            $otherUnitIdx = (int)($otherUnit['idx'] ?? 0);
+            $otherPidx = (int)($otherUnit['pidx'] ?? 0);
+            if ($otherUnitIdx <= 0 || $otherPidx <= 0) {
+                continue;
+            }
+            if (!isset($currentUnitByPidx[$otherPidx])) {
+                $unitMoveIdx[] = $otherUnitIdx;
+                $currentUnitByPidx[$otherPidx] = $otherUnit;
+                continue;
+            }
+            $currentUnit = $currentUnitByPidx[$otherPidx];
+            $currentUnitIdx = (int)($currentUnit['idx'] ?? 0);
+            $otherInspection = $otherUnit['stock_inspection_data'] ?? [];
+            if (is_string($otherInspection)) {
+                $otherInspection = json_decode($otherInspection, true);
+            }
+            if ($currentUnitIdx > 0 && !$unitHasInspection($currentUnit) && $unitHasInspection($otherUnit)) {
+                $inspectionMove[$otherUnitIdx] = $currentUnitIdx;
+                $inspectionCopy[$currentUnitIdx] = [
+                    'stock_inspection_data' => is_array($otherInspection) ? $otherInspection : [],
+                    'stock_inspection_memo' => (string)($otherUnit['stock_inspection_memo'] ?? ''),
+                ];
+                $currentUnit['stock_inspection_data'] = is_array($otherInspection) ? $otherInspection : [];
+                $currentUnit['stock_inspection_memo'] = (string)($otherUnit['stock_inspection_memo'] ?? '');
+                $currentUnitByPidx[$otherPidx] = $currentUnit;
+                $checkedByUnitIdx[$currentUnitIdx] = ($checkedByUnitIdx[$currentUnitIdx] ?? 0) + ($checkedByUnitIdx[$otherUnitIdx] ?? 0);
+            }
+            $unitDeleteIdx[] = $otherUnitIdx;
+        }
+
+        $beforeData = $this->getOrderSheetForLog($ooIdx);
+        DB::transaction(function () use (
+            $encodedGroupData,
+            $orderChanged,
+            $ooIdx,
+            $encodedOoJson,
+            $encodedOoPriceData,
+            $ooSumGoods,
+            $ooSumQty,
+            $ooSumWeight,
+            $savedOoSumPrice,
+            $ooSumCbm,
+            $unitMoveIdx,
+            $unitDeleteIdx,
+            $inspectionMove,
+            $inspectionCopy,
+            $oopIdx
+        ) {
+            foreach ($encodedGroupData as $groupOopIdx => $encodedData) {
+                OrderGroupProductModel::query()
+                    ->where('oop_idx', '=', $groupOopIdx)
+                    ->update([
+                        'oop_data' => $encodedData,
+                    ]);
+            }
+
+            if ($orderChanged) {
+                OrderSheetModel::query()
+                    ->where('oo_idx', '=', $ooIdx)
+                    ->update([
+                        'oo_json' => $encodedOoJson,
+                        'oo_price_data' => $encodedOoPriceData,
+                        'oo_sum_goods' => $ooSumGoods,
+                        'oo_sum_qty' => $ooSumQty,
+                        'oo_sum_weight' => $ooSumWeight,
+                        'oo_sum_price' => $savedOoSumPrice,
+                        'oo_sum_cbm' => $ooSumCbm,
+                    ]);
+            }
+
+            foreach ($inspectionCopy as $currentUnitIdx => $inspectionData) {
+                OrderPrdUnitModel::query()
+                    ->where('idx', '=', (int)$currentUnitIdx)
+                    ->update([
+                        'stock_inspection_data' => json_encode($inspectionData['stock_inspection_data'], JSON_UNESCAPED_UNICODE),
+                        'stock_inspection_memo' => $inspectionData['stock_inspection_memo'],
+                    ]);
+            }
+            foreach ($inspectionMove as $fromUnitIdx => $toUnitIdx) {
+                OrderPrdUnitInspectionModel::query()
+                    ->where('order_prd_unit_idx', '=', (int)$fromUnitIdx)
+                    ->update([
+                        'order_prd_unit_idx' => (int)$toUnitIdx,
+                    ]);
+            }
+            if (!empty($unitDeleteIdx)) {
+                OrderPrdUnitInspectionModel::query()
+                    ->whereIn('order_prd_unit_idx', $unitDeleteIdx)
+                    ->delete();
+                OrderPrdUnitModel::query()
+                    ->whereIn('idx', $unitDeleteIdx)
+                    ->delete();
+            }
+            if (!empty($unitMoveIdx)) {
+                OrderPrdUnitModel::query()
+                    ->whereIn('idx', $unitMoveIdx)
+                    ->update([
+                        'bidx' => (int)$oopIdx,
+                    ]);
+            }
+        });
+        $afterData = $this->getOrderSheetForLog($ooIdx);
+        $this->writeOrderSheetActionLog(
+            $ooIdx,
+            'restore_missing_select_products',
+            '화면에 없는 선택 상품 복구',
+            $beforeData,
+            $afterData
+        );
+
+        $groupCounts = [];
+        $groupCounts[$oopIdx] = count($currentData);
+        foreach ($changedOtherData as $otherIdx => $rows) {
+            $groupCounts[(string)$otherIdx] = count($rows);
+        }
+        $groupSums = [];
+        foreach ($removedByGroupKey as $key => $removedLines) {
+            $group = $ooJson[$key] ?? [];
+            $groupBidx = trim((string)($group['bidx'] ?? ''));
+            if ($groupBidx === '') {
+                continue;
+            }
+            $groupSums[$groupBidx] = [
+                'item' => (int)($group['item'] ?? 0),
+                'qty' => $group['qty'] ?? 0,
+            ];
+        }
+        $currentGroupSum = ['item' => 0, 'qty' => 0];
+        foreach ($ooJson as $group) {
+            if (!is_array($group) || (string)($group['bidx'] ?? '') !== $oopIdx) {
+                continue;
+            }
+            $currentGroupSum = [
+                'item' => (int)($group['item'] ?? 0),
+                'qty' => $toFloat($group['qty'] ?? 0),
+            ];
+            break;
+        }
+
+        $removedNames = array_values($removedGroupNames);
+        $message = '선택 상품 ' . count($pidxList) . '개를 이 그룹 선택 데이터로 복구했습니다.';
+        if (!empty($removedNames)) {
+            $message = implode(', ', $removedNames) . '에서 제거한 뒤 ' . $message;
+        }
+
+        $result = [
+            'success' => true,
+            'message' => $message,
+            'msg' => '완료',
+            'restored_count' => count($pidxList),
+            'removed_groups' => $removedNames,
+            'group_counts' => $groupCounts,
+            'group_sums' => $groupSums,
+            'group_sum_goods' => (int)$currentGroupSum['item'],
+            'group_sum_qty' => $currentGroupSum['qty'],
+        ];
+        if ($orderChanged) {
+            $result['oo_sum_goods'] = $ooSumGoods;
+            $result['oo_sum_qty'] = $ooSumQty;
+            $result['oo_sum_weight'] = $ooSumWeight;
+            $result['oo_sum_price'] = $savedOoSumPrice;
+        }
+        return $result;
     }
 
 
@@ -3834,25 +5268,79 @@ class OrderSheetService
         if (!is_array($ooJson)) {
             $ooJson = [];
         }
+
+        $parseQty = static function ($value): float {
+            if (is_string($value)) {
+                $value = preg_replace('/[,\s]/', '', $value);
+            }
+            return is_numeric($value) ? (float)$value : 0.0;
+        };
+        $sumBySelpd = static function (array $selpdRows) use ($parseQty): array {
+            $sumItem = 0;
+            $sumQty = 0.0;
+            $sumPrice = 0.0;
+            foreach ($selpdRows as $row) {
+                if (!is_array($row)) {
+                    continue;
+                }
+                $qty = $parseQty($row['qty'] ?? 0);
+                if ($qty <= 0) {
+                    continue;
+                }
+                $sumItem++;
+                $sumQty += $qty;
+                $sumPrice += ($parseQty($row['price'] ?? 0) * $qty);
+            }
+            return [
+                'item' => $sumItem,
+                'qty' => $sumQty,
+                'price' => $sumPrice,
+            ];
+        };
+
         foreach ($ooJson as $groupRow) {
-            if (
-                !is_array($groupRow)
-                || (string)($groupRow['bidx'] ?? '') !== $fromOopIdx
-                || !is_array($groupRow['selpd'] ?? null)
-            ) {
+            if (!is_array($groupRow) || (string)($groupRow['bidx'] ?? '') !== $fromOopIdx) {
                 continue;
             }
-            foreach ($groupRow['selpd'] as $selpdRow) {
+            $selpdRows = $groupRow['selpd'] ?? [];
+            if (!is_array($selpdRows)) {
+                continue;
+            }
+            foreach ($selpdRows as $selpdRow) {
                 if (
                     is_array($selpdRow)
                     && (string)($selpdRow['pidx'] ?? '') === $pidx
-                    && (float)($selpdRow['qty'] ?? 0) > 0
+                    && $parseQty($selpdRow['qty'] ?? 0) > 0
                 ) {
                     throw new Exception('주문수량이 담겨있습니다. 주문수량을 비워야 그룹이동이 가능합니다');
                 }
             }
-            break;
         }
+
+        $blockingUnits = OrderPrdUnitModel::query()
+            ->select(['order_idx', 'order_qty'])
+            ->where('bidx', '=', (int)$fromOopIdx)
+            ->where('pidx', '=', (int)$pidx)
+            ->where('order_qty', '>', 0)
+            ->get()
+            ->toArray();
+        if (!empty($blockingUnits)) {
+            $blockingOrderIds = [];
+            foreach ($blockingUnits as $unitRow) {
+                $blockingOrderId = (int)($unitRow['order_idx'] ?? 0);
+                if ($blockingOrderId > 0) {
+                    $blockingOrderIds[$blockingOrderId] = $blockingOrderId;
+                }
+            }
+            $blockingOrderIds = array_values($blockingOrderIds);
+            $shownOrderIds = array_slice($blockingOrderIds, 0, 5);
+            $orderLabel = implode(', ', $shownOrderIds);
+            if (count($blockingOrderIds) > count($shownOrderIds)) {
+                $orderLabel .= ' 외 ' . (count($blockingOrderIds) - count($shownOrderIds)) . '건';
+            }
+            throw new Exception('주문수량이 남아 있는 주문서가 있어 그룹이동할 수 없습니다. 주문서 ' . $orderLabel);
+        }
+
         $fromData = array_values($fromData);
 
         // 대상 그룹 중복 제거 후 최상단 삽입
@@ -3869,111 +5357,100 @@ class OrderSheetService
         array_unshift($toFiltered, $movingRow);
         $toData = $toFiltered;
 
-        OrderGroupProductModel::query()
-            ->where('oop_idx', '=', $fromOopIdx)
-            ->update([
-                'oop_data' => json_encode($fromData, JSON_UNESCAPED_UNICODE),
-            ]);
-        OrderGroupProductModel::query()
-            ->where('oop_idx', '=', $toOopIdx)
-            ->update([
-                'oop_data' => json_encode($toData, JSON_UNESCAPED_UNICODE),
-            ]);
+        $ooJsonChanged = false;
+        foreach ($ooJson as $key => $groupRow) {
+            if (!is_array($groupRow) || (string)($groupRow['bidx'] ?? '') !== $fromOopIdx) {
+                continue;
+            }
+            $fromSelpd = $groupRow['selpd'] ?? [];
+            if (!is_array($fromSelpd)) {
+                continue;
+            }
 
-        // 주문 selpd 데이터가 있으면 동일하게 그룹 이동
-        if (!empty($orderRow)) {
-            $fromGroupKey = null;
-            $toGroupKey = null;
-            foreach ($ooJson as $key => $groupRow) {
-                if (!is_array($groupRow)) {
+            $keptSelpd = [];
+            $removedSelpd = false;
+            foreach ($fromSelpd as $selpdRow) {
+                if (is_array($selpdRow) && (string)($selpdRow['pidx'] ?? '') === $pidx) {
+                    $removedSelpd = true;
                     continue;
                 }
-                $bidx = (string)($groupRow['bidx'] ?? '');
-                if ($bidx === $fromOopIdx) {
-                    $fromGroupKey = $key;
-                } elseif ($bidx === $toOopIdx) {
-                    $toGroupKey = $key;
-                }
+                $keptSelpd[] = $selpdRow;
+            }
+            if (!$removedSelpd) {
+                continue;
             }
 
-            if ($fromGroupKey !== null && $toGroupKey !== null) {
-                $fromSelpd = $ooJson[$fromGroupKey]['selpd'] ?? [];
-                $toSelpd = $ooJson[$toGroupKey]['selpd'] ?? [];
-                if (!is_array($fromSelpd)) $fromSelpd = [];
-                if (!is_array($toSelpd)) $toSelpd = [];
-
-                $movedSelpd = null;
-                foreach ($fromSelpd as $selpdKey => $selpdRow) {
-                    if (!is_array($selpdRow)) {
-                        continue;
-                    }
-                    if ((string)($selpdRow['pidx'] ?? '') === $pidx) {
-                        $movedSelpd = $selpdRow;
-                        unset($fromSelpd[$selpdKey]);
-                        break;
-                    }
-                }
-                $fromSelpd = array_values($fromSelpd);
-
-                if ($movedSelpd !== null) {
-                    $toSelpdFiltered = [];
-                    foreach ($toSelpd as $selpdRow) {
-                        if (!is_array($selpdRow)) {
-                            continue;
-                        }
-                        if ((string)($selpdRow['pidx'] ?? '') === $pidx) {
-                            continue;
-                        }
-                        $toSelpdFiltered[] = $selpdRow;
-                    }
-                    array_unshift($toSelpdFiltered, $movedSelpd);
-                    $toSelpd = $toSelpdFiltered;
-
-                    $sumBySelpd = static function (array $selpdRows): array {
-                        $sumItem = 0;
-                        $sumQty = 0;
-                        $sumPrice = 0.0;
-                        foreach ($selpdRows as $row) {
-                            if (!is_array($row)) {
-                                continue;
-                            }
-                            $qty = (float)($row['qty'] ?? 0);
-                            if ($qty <= 0) {
-                                continue;
-                            }
-                            $sumItem++;
-                            $sumQty += $qty;
-                            $sumPrice += ((float)($row['price'] ?? 0) * $qty);
-                        }
-                        return [
-                            'item' => $sumItem,
-                            'qty' => $sumQty,
-                            'price' => $sumPrice,
-                        ];
-                    };
-
-                    $fromSum = $sumBySelpd($fromSelpd);
-                    $toSum = $sumBySelpd($toSelpd);
-
-                    $ooJson[$fromGroupKey]['selpd'] = $fromSelpd;
-                    $ooJson[$toGroupKey]['selpd'] = $toSelpd;
-
-                    $ooJson[$fromGroupKey]['item'] = $fromSum['item'];
-                    $ooJson[$fromGroupKey]['qty'] = $fromSum['qty'];
-                    $ooJson[$fromGroupKey]['price'] = $fromSum['price'];
-
-                    $ooJson[$toGroupKey]['item'] = $toSum['item'];
-                    $ooJson[$toGroupKey]['qty'] = $toSum['qty'];
-                    $ooJson[$toGroupKey]['price'] = $toSum['price'];
-
-                    OrderSheetModel::query()
-                        ->where('oo_idx', '=', $ooIdx)
-                        ->update([
-                            'oo_json' => json_encode($ooJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
-                        ]);
-                }
-            }
+            $fromSum = $sumBySelpd($keptSelpd);
+            $ooJson[$key]['selpd'] = array_values($keptSelpd);
+            $ooJson[$key]['item'] = $fromSum['item'];
+            $ooJson[$key]['qty'] = $fromSum['qty'];
+            $ooJson[$key]['price'] = $fromSum['price'];
+            $ooJsonChanged = true;
         }
+
+        $encodedOoJson = json_encode($ooJson, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES);
+        if ($ooJsonChanged && $encodedOoJson === false) {
+            throw new Exception('주문서 주문정보 저장에 실패했습니다.');
+        }
+
+        DB::transaction(function () use ($fromOopIdx, $toOopIdx, $fromData, $toData, $ooIdx, $pidx, $ooJsonChanged, $encodedOoJson) {
+            OrderGroupProductModel::query()
+                ->where('oop_idx', '=', $fromOopIdx)
+                ->update([
+                    'oop_data' => json_encode($fromData, JSON_UNESCAPED_UNICODE),
+                ]);
+            OrderGroupProductModel::query()
+                ->where('oop_idx', '=', $toOopIdx)
+                ->update([
+                    'oop_data' => json_encode($toData, JSON_UNESCAPED_UNICODE),
+                ]);
+
+            if ($ooJsonChanged) {
+                OrderSheetModel::query()
+                    ->where('oo_idx', '=', $ooIdx)
+                    ->update([
+                        'oo_json' => $encodedOoJson,
+                    ]);
+            }
+
+            $sourceUnits = OrderPrdUnitModel::query()
+                ->select(['idx'])
+                ->where('order_idx', '=', $ooIdx)
+                ->where('bidx', '=', (int)$fromOopIdx)
+                ->where('pidx', '=', (int)$pidx)
+                ->get()
+                ->toArray();
+            if (empty($sourceUnits)) {
+                return;
+            }
+
+            $targetUnit = OrderPrdUnitModel::query()
+                ->select(['idx'])
+                ->where('order_idx', '=', $ooIdx)
+                ->where('bidx', '=', (int)$toOopIdx)
+                ->where('pidx', '=', (int)$pidx)
+                ->first();
+            $targetUnit = $targetUnit ? (is_array($targetUnit) ? $targetUnit : $targetUnit->toArray()) : [];
+
+            foreach ($sourceUnits as $sourceUnit) {
+                $sourceUnitIdx = (int)($sourceUnit['idx'] ?? 0);
+                if ($sourceUnitIdx <= 0) {
+                    continue;
+                }
+                if (!empty($targetUnit)) {
+                    OrderPrdUnitModel::query()
+                        ->where('idx', '=', $sourceUnitIdx)
+                        ->delete();
+                    continue;
+                }
+                OrderPrdUnitModel::query()
+                    ->where('idx', '=', $sourceUnitIdx)
+                    ->update([
+                        'bidx' => (int)$toOopIdx,
+                    ]);
+                $targetUnit = ['idx' => $sourceUnitIdx];
+            }
+        });
 
         return [
             'success' => true,

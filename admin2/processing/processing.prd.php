@@ -582,11 +582,13 @@ if( $_a_mode == "prd_reg" ){
 		$_cd_reg_data = [];
 	}
 
-	if( !isset($_cd_reg_data['modify']) || empty($_cd_reg_data['modify']) ){
-		$_cd_reg_data['modify'] = array( $_reg_d );
-	}else{
-		array_unshift($_cd_reg_data['modify'], $_reg_d);
+	if( !isset($_cd_reg_data['reg']) || empty($_cd_reg_data['reg']) ){
+		$_cd_reg_data['reg'] = array(
+			"mode" => "v3",
+			"info" => $_reg_d
+		);
 	}
+	$_cd_reg_data['modify'] = array( $_reg_d );
 
 	$_cd_reg = json_encode($_cd_reg_data, JSON_UNESCAPED_UNICODE);
 

@@ -19,6 +19,8 @@ $inspectionLocationCode = $isProviderInspection
     ? 'provider_product_godo_inspection'
     : 'product_single_godo_inspection';
 $inspectionHistoryRows = (isset($inspectionHistoryRows) && is_array($inspectionHistoryRows)) ? $inspectionHistoryRows : [];
+$godoApiErrorMessage = trim((string)($godoApiErrorMessage ?? ''));
+$godoGoodsLoaded = ($godoApiErrorMessage === '' && $goodsNo !== '');
 
 $godoInspectionService = new \App\Services\GodoInspectionService();
 $inspectionVersion = trim((string)($inspectionVersion ?? $godoInspectionService->getInspectionVersion()));
@@ -109,6 +111,17 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
 .inspection-warning-body { min-width: 0; }
 .inspection-warning-body strong { display: block; margin-bottom: 3px; color: #9a3412; }
 .inspection-warning-body p { margin: 0; color: #7c2d12; }
+.inspection-api-error {
+    margin-bottom: 10px;
+    padding: 10px 12px;
+    border: 1px solid #fecaca;
+    border-left: 4px solid #dc2626;
+    border-radius: 6px;
+    background: #fef2f2;
+    color: #991b1b;
+    line-height: 1.55;
+}
+.inspection-api-error strong { display: block; margin-bottom: 3px; }
 </style>
 
 <div class="inspection-wrap">
@@ -137,8 +150,12 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
         </div>
     </div>
 
-    <?php if (!empty($godoApiErrorMessage)) { ?>
-        <div style="margin-bottom:8px; color:#dc3545;">고도몰 정보 조회 실패: <?= htmlspecialchars((string)$godoApiErrorMessage, ENT_QUOTES, 'UTF-8') ?></div>
+    <?php if (!$godoGoodsLoaded) { ?>
+        <div class="inspection-api-error" role="alert">
+            <strong>고도몰 상품 정보를 불러오지 못했습니다.</strong>
+            <div><?= htmlspecialchars($godoApiErrorMessage !== '' ? $godoApiErrorMessage : '고도몰 API 응답에서 상품 정보를 확인하지 못했습니다.', ENT_QUOTES, 'UTF-8') ?></div>
+            <div>상품 정보를 불러온 뒤에 체크항목 일괄 검수 처리를 할 수 있습니다.</div>
+        </div>
     <?php } ?>
 
     <?php if ($isMatchedByGoodsNo) { ?>
@@ -151,7 +168,7 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
     <?php } ?>
 
     <?php if (!empty($inspectionIssues)) { ?>
-        <form id="single_godo_inspection_form">
+        <form id="single_godo_inspection_form" data-godo-loaded="<?= $godoGoodsLoaded ? '1' : '0' ?>" data-godo-error="<?= htmlspecialchars($godoApiErrorMessage !== '' ? $godoApiErrorMessage : '고도몰 API에서 상품 정보를 불러오지 못했습니다.', ENT_QUOTES, 'UTF-8') ?>">
         <input type="hidden" name="action_mode" value="process_single_godo_inspection">
         <input type="hidden" name="prd_idx" value="<?= $prdIdx ?>">
         <input type="hidden" name="ps_idx" value="<?= $psIdx ?>">
@@ -192,11 +209,13 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
                     </td>
                     <td class="inspection-checklist-td"><?= nl2br($solutionEscaped, false) ?></td>
                     <td class="inspection-checklist-td">
-                        <?php if ($isAutoProcessable) { ?>
+                        <?php if ($isAutoProcessable && $godoGoodsLoaded) { ?>
                             <label style="display:block; margin-bottom:4px;">
                                 <input type="checkbox" name="selected_issues[]" value="<?= htmlspecialchars($issueName, ENT_QUOTES, 'UTF-8') ?>" checked>
                                 검수처리 대상
                             </label>
+                        <?php } elseif ($isAutoProcessable) { ?>
+                            <div style="margin-bottom:4px; color:#9ca3af;">상품 정보를 불러온 뒤 검수처리할 수 있습니다.</div>
                         <?php } else { ?>
                             <div style="margin-bottom:4px; color:#9ca3af;">자동처리 대상 아님</div>
                         <?php } ?>
@@ -210,7 +229,7 @@ $godoCategoryName = implode(', ', array_values(array_unique($godoCategoryNames))
         </table>
 
         <div class="m-t-10 text-center">
-            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-md" onclick="singleGodoInspection.processSelected()">체크항목 일괄 검수 처리</button>
+            <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-md" onclick="singleGodoInspection.processSelected()" <?= $godoGoodsLoaded ? '' : 'disabled' ?>>체크항목 일괄 검수 처리</button>
         </div>
 
         </form>
@@ -454,6 +473,10 @@ var singleGodoInspection = (function () {
             var $form = $('#single_godo_inspection_form');
             if (!$form.length) {
                 alert('처리할 항목이 없습니다.');
+                return;
+            }
+            if ($form.attr('data-godo-loaded') !== '1') {
+                alert($form.attr('data-godo-error') || '고도몰 API에서 상품 정보를 불러오지 못했습니다.');
                 return;
             }
             if ($form.find('input[name="selected_issues[]"]').length < 1) {

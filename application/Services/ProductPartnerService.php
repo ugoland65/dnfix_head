@@ -2072,6 +2072,15 @@ class ProductPartnerService extends BaseClass
             }
         }
 
+        if ($godoApiErrorMessage === '') {
+            if ($godoCode === '' || $godoCode === '0') {
+                $godoApiErrorMessage = '고도몰 상품번호가 없어 상품 정보를 조회할 수 없습니다.';
+            } elseif (empty($godoGoods) || trim((string)($godoGoods['goodsNo'] ?? '')) === '') {
+                $godoApiErrorMessage = '삭제된 상품이거나 고도몰 코드를 잘못 입력했을 수 있습니다.';
+            }
+        }
+        $godoGoodsLoaded = ($godoApiErrorMessage === '');
+
         $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
         $cdKindCode = $this->normalizeProviderKindCode((string)($product['kind'] ?? ''));
         $cdCategoryCode = trim((string)($product['category_code'] ?? ''));
@@ -2142,8 +2151,9 @@ class ProductPartnerService extends BaseClass
         return [
             'item' => $item,
             'godoApiErrorMessage' => $godoApiErrorMessage,
-            'godoInfoLoadedAt' => date('Y-m-d H:i:s'),
-            'godoInfoLoadMs' => (int)round((microtime(true) - $godoApiStartAt) * 1000),
+            'godoGoodsLoaded' => $godoGoodsLoaded,
+            'godoInfoLoadedAt' => $godoGoodsLoaded ? date('Y-m-d H:i:s') : '',
+            'godoInfoLoadMs' => $godoGoodsLoaded ? (int)round((microtime(true) - $godoApiStartAt) * 1000) : 0,
         ];
     }
 
@@ -2181,6 +2191,10 @@ class ProductPartnerService extends BaseClass
 
         $inspectionData = $this->getSingleProductGodoInspectionData($prdIdx);
         $item = (array)($inspectionData['item'] ?? []);
+        $godoApiErrorMessage = trim((string)($inspectionData['godoApiErrorMessage'] ?? ''));
+        if ($godoApiErrorMessage !== '' || trim((string)($item['godo_goods_no'] ?? '')) === '') {
+            throw new Exception($godoApiErrorMessage !== '' ? $godoApiErrorMessage : '고도몰 API에서 상품 정보를 불러오지 못했습니다.');
+        }
         $godoInspectionService = new GodoInspectionService();
         $inspectionVersion = $godoInspectionService->getInspectionVersion();
         $inspectionContext = $godoInspectionService->buildInspectionContext(

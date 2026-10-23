@@ -59,7 +59,7 @@ class ProductImageLibraryService
 
         $storagePath = trim((string)($product['CD_IMAGE_STORAGE_PATH'] ?? ''));
         if ($storagePath === '') {
-            throw new Exception('이미지 저장소 경로가 없습니다. 상품 정보수집에서 먼저 설정해 주세요.');
+            throw new Exception('이미지 저장소 경로가 없습니다. 상품 정보 상단의 이미지 저장소에서 먼저 등록해 주세요.');
         }
 
         $existingRows = $this->getLibrary($prdPk);
@@ -201,7 +201,7 @@ class ProductImageLibraryService
 
         $storagePath = trim((string)($product['CD_IMAGE_STORAGE_PATH'] ?? ''));
         if ($storagePath === '') {
-            throw new Exception('이미지 저장소 경로가 없습니다. 상품 정보수집에서 먼저 설정해 주세요.');
+            throw new Exception('이미지 저장소 경로가 없습니다. 상품 정보 상단의 이미지 저장소에서 먼저 등록해 주세요.');
         }
 
         $uploaded = (new ProductImageHostingService())->uploadLocalImages($storagePath, $files);

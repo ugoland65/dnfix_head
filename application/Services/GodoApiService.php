@@ -2220,6 +2220,46 @@ class GodoApiService extends BaseClass {
         return $responseData;
     }
 
+    /**
+     * 고도몰 단종 복구
+     * 검수 로그에 남은 삭제 카테고리와 아이콘을 다시 넣는다.
+     *
+     * @param string|int $goodsNo
+     * @param array $snapshot
+     * @param string $discontinuedMode discontinued|sales_end
+     * @return array
+     */
+    public function restoreGodoProductDiscontinued($goodsNo, array $snapshot, $discontinuedMode = 'discontinued')
+    {
+        $goodsNo = trim((string)$goodsNo);
+        if ($goodsNo === '' || !preg_match('/^\d+$/', $goodsNo)) {
+            throw new \Exception('상품번호는 숫자만 입력 가능합니다.');
+        }
+
+        $discontinuedMode = strtolower(trim((string)$discontinuedMode));
+        if ($discontinuedMode !== 'sales_end') {
+            $discontinuedMode = 'discontinued';
+        }
+
+        $query = [
+            'mode' => 'discontinuedRestore',
+            'goodsNo' => $goodsNo,
+            'discontinuedMode' => $discontinuedMode,
+            'deletedCategories' => json_encode($snapshot['deletedCategories'] ?? [], JSON_UNESCAPED_UNICODE),
+            'addedCategoryCds' => json_encode($snapshot['addedCategoryCds'] ?? [], JSON_UNESCAPED_UNICODE),
+            'keptCategoryCds' => json_encode($snapshot['keptCategoryCds'] ?? [], JSON_UNESCAPED_UNICODE),
+            'deletedGoodsIconCds' => json_encode($snapshot['deletedGoodsIconCds'] ?? [], JSON_UNESCAPED_UNICODE),
+            'goodsIconCreated' => !empty($snapshot['goodsIconCreated']) ? '1' : '0',
+            'soldOutFl' => 'n',
+            'restockFl' => 'y',
+            'goodsPriceString' => '',
+        ];
+
+        $apiUrl = self::GODO_GOODS_API_URL . '?' . http_build_query($query);
+
+        return $this->requestGodoGoodsApi($apiUrl);
+    }
+
 
     private function getGodoGoodsApiAuthHeaders()
     {

@@ -1573,6 +1573,24 @@
                         }
                         $godoDiscontinuedAt = trim((string)($godoDiscontinuedLog['executed_at'] ?? ''));
 
+                        $godoDiscontinuedRestoreLog = (isset($godoDiscontinuedRestoreLog) && is_array($godoDiscontinuedRestoreLog)) ? $godoDiscontinuedRestoreLog : [];
+                        $godoDiscontinuedRestoreResult = (isset($godoDiscontinuedRestoreLog['result_content']) && is_array($godoDiscontinuedRestoreLog['result_content']))
+                            ? $godoDiscontinuedRestoreLog['result_content']
+                            : [];
+                        $godoDiscontinuedRestoreSuccess = !empty($godoDiscontinuedRestoreResult['success']);
+                        $godoDiscontinuedLogIdx = (int)($godoDiscontinuedLog['ipl_idx'] ?? 0);
+                        $godoDiscontinuedRestoreLogIdx = (int)($godoDiscontinuedRestoreLog['ipl_idx'] ?? 0);
+                        $godoDiscontinuedRestored = $godoDiscontinuedRestoreSuccess && $godoDiscontinuedRestoreLogIdx > $godoDiscontinuedLogIdx;
+                        $godoDiscontinuedActive = $godoDiscontinuedSuccess && !$godoDiscontinuedRestored;
+                        if ($godoDiscontinuedRestored) {
+                            $godoDiscontinuedStatus = '복구완료';
+                            $godoDiscontinuedBy = trim((string)($godoDiscontinuedRestoreLog['executor_admin_name'] ?? ''));
+                            if ($godoDiscontinuedBy === '') {
+                                $godoDiscontinuedBy = trim((string)($godoDiscontinuedRestoreLog['executor_admin_id'] ?? ''));
+                            }
+                            $godoDiscontinuedAt = trim((string)($godoDiscontinuedRestoreLog['executed_at'] ?? ''));
+                        }
+
                         $godoHandlingStoppedLog = (isset($godoHandlingStoppedLog) && is_array($godoHandlingStoppedLog)) ? $godoHandlingStoppedLog : [];
                         $godoHandlingStoppedResult = (isset($godoHandlingStoppedLog['result_content']) && is_array($godoHandlingStoppedLog['result_content']))
                             ? $godoHandlingStoppedLog['result_content']
@@ -1593,7 +1611,7 @@
                         $hasRemainingStock = ($currentStockQty > 0 || $holdStockQty > 0);
                     ?>
                     <?php if ($isDiscontinued) { ?>
-                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $godoDiscontinuedSuccess ? 'true' : 'false' ?>)">단종 해제</button>
+                        <button type="button" class="btnstyle1 btnstyle1-info btnstyle1-sm" onclick="prdDetailBasicForm.unsetProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $godoDiscontinuedActive ? 'true' : 'false' ?>)">단종 해제</button>
                     <?php } else { ?>
                         <button type="button" class="btnstyle1 btnstyle1-sm" onclick="prdDetailBasicForm.setProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $isHandlingStopped ? 'true' : 'false' ?>)">단종 처리</button>
                     <?php } ?>
@@ -1607,9 +1625,9 @@
                         <?php if ($hasGodoCode) { ?>
                             <button
                                 type="button"
-                                class="btnstyle1 <?= $godoDiscontinuedSuccess ? 'btnstyle1-info' : '' ?> btnstyle1-sm"
-                                onclick="prdDetailBasicForm.setGodoProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $godoDiscontinuedSuccess ? 'true' : 'false' ?>, <?= $isHandlingStopped ? 'true' : 'false' ?>, <?= $currentStockQty ?>, <?= $holdStockQty ?>)"
-                            >고도몰 단종처리</button>
+                                class="btnstyle1 <?= $godoDiscontinuedActive ? 'btnstyle1-info' : '' ?> btnstyle1-sm"
+                                onclick="prdDetailBasicForm.setGodoProductDiscontinued('<?= $productData['CD_IDX'] ?? '' ?>', <?= $godoDiscontinuedActive ? 'true' : 'false' ?>, <?= $isHandlingStopped ? 'true' : 'false' ?>, <?= $currentStockQty ?>, <?= $holdStockQty ?>)"
+                            ><?= $godoDiscontinuedActive ? '고도몰 단종해제' : '고도몰 단종처리' ?></button>
                             <button
                                 type="button"
                                 class="btnstyle1 <?= $godoHandlingStoppedSuccess ? 'btnstyle1-info' : '' ?> btnstyle1-sm"
@@ -1619,7 +1637,7 @@
                             <button type="button" class="btnstyle1 btnstyle1-sm" disabled>고도몰 단종처리</button>
                             <button type="button" class="btnstyle1 btnstyle1-sm" disabled>고도몰 취급중단처리</button>
                         <?php } ?>
-                        <div class="m-t-4" style="font-size:12px; line-height:1.5; color:<?= $godoDiscontinuedSuccess ? '#15803d' : (!empty($godoDiscontinuedLog) ? '#dc3545' : '#6b7280') ?>;">
+                        <div class="m-t-4" style="font-size:12px; line-height:1.5; color:<?= ($godoDiscontinuedActive || $godoDiscontinuedRestored) ? '#15803d' : (!empty($godoDiscontinuedLog) ? '#dc3545' : '#6b7280') ?>;">
                             고도몰 단종: <b><?= htmlspecialchars($godoDiscontinuedStatus, ENT_QUOTES, 'UTF-8') ?></b>
                             <?php if ($godoDiscontinuedAt !== '') { ?>
                                 <span><?= htmlspecialchars($godoDiscontinuedAt, ENT_QUOTES, 'UTF-8') ?><?= $godoDiscontinuedBy !== '' ? ' · ' . htmlspecialchars($godoDiscontinuedBy, ENT_QUOTES, 'UTF-8') : '' ?></span>
@@ -1633,7 +1651,7 @@
                             <?php if (!$hasGodoCode) { ?>
                                 <div>고도몰 상품번호가 없어 처리할 수 없습니다.</div>
                             <?php } elseif ($hasRemainingStock) { ?>
-                                <div>현재 재고 또는 보류 재고가 남아 있어 처리할 수 없습니다. (현재고: <?= number_format($currentStockQty) ?>, 보류: <?= number_format($holdStockQty) ?>)</div>
+                                <div>현재 재고 또는 보류 재고가 남아 있어 새로 단종·취급중단 처리할 수 없습니다. (현재고: <?= number_format($currentStockQty) ?>, 보류: <?= number_format($holdStockQty) ?>)<?= $godoDiscontinuedActive ? ' 고도몰 단종해제는 재고와 관계없이 진행할 수 있습니다.' : '' ?></div>
                             <?php } ?>
                         </div>
                     </div>
@@ -1642,6 +1660,7 @@
                         - 단종: 더 이상 생산하지 않아 판매중단 / 취급중단: 기타 이유로 더 이상 사입하지 않아 판매중단
                         <br>- 두 상태는 동시에 지정할 수 없습니다.
                         <br>- 고도몰 단종처리는 인트라넷 단종 + 고도몰 판매가 문구 [단종상품]
+                        <br>- 고도몰 단종처리가 완료되면 같은 버튼이 고도몰 단종해제로 바뀝니다. 해제 전에 복구되는 항목과 복구되지 않는 항목을 확인합니다.
                         <br>- 고도몰 취급중단처리는 인트라넷 취급중단 + 고도몰 판매가 문구 [판매종료]
                     </div>
                 </td>
@@ -2907,6 +2926,11 @@
          * 인트라넷 + 고도몰 단종 처리
          */
         function setGodoProductDiscontinued(prd_idx, alreadyDone, switchFromHandlingStopped, currentStockQty, holdStockQty) {
+            if (alreadyDone) {
+                restoreGodoProductDiscontinued(prd_idx);
+                return;
+            }
+
             var stockQty = parseInt(currentStockQty, 10) || 0;
             var holdQty = parseInt(holdStockQty, 10) || 0;
             if (stockQty > 0 || holdQty > 0) {
@@ -2915,9 +2939,7 @@
             }
 
             var confirmMessage = '정말 고도몰 단종처리를 진행하시겠습니까?\n더 이상 생산하지 않아 판매를 중단합니다.\n상품은 품절되고 카테고리는 삭제되며, 판매가 문구는 [단종상품]으로 표기됩니다.';
-            if (alreadyDone) {
-                confirmMessage = '이미 고도몰 단종 처리된 상품입니다. 다시 처리할까요?\n상품은 품절되고 카테고리는 삭제되며, 판매가 문구는 [단종상품]으로 표기됩니다.';
-            } else if (switchFromHandlingStopped) {
+            if (switchFromHandlingStopped) {
                 confirmMessage = '정말 고도몰 단종처리를 진행하시겠습니까?\n취급중단이 해제되고 단종으로 변경됩니다.\n상품은 품절되고 카테고리는 삭제되며, 판매가 문구는 [단종상품]으로 표기됩니다.';
             }
             if (!confirm(confirmMessage)) {
@@ -2946,6 +2968,59 @@
                     showProcessFailModal(
                         '고도몰 단종처리 실패',
                         getFailMessage(res, '고도몰 단종처리에 실패했습니다.'),
+                        function() { location.reload(); }
+                    );
+                });
+        }
+
+        /**
+         * 고도몰 단종 해제
+         * 복구되는 항목과 복구되지 않는 항목을 먼저 보여 준 뒤 진행 여부를 묻는다.
+         */
+        function restoreGodoProductDiscontinued(prd_idx) {
+            alert(
+                '고도몰 단종을 해제하면 아래처럼 복구됩니다.\n\n'
+                + '[복구되는 항목]\n'
+                + '- 단종 때 삭제된 카테고리 연결과 진열 순서\n'
+                + '- 단종 때 추가된 단종/판매종료 카테고리(048) 제거\n'
+                + '- 품절 해제, 재입고 가능\n'
+                + '- 판매가 문구 [단종상품] 제거\n'
+                + '- 대표 카테고리를 048이 아닌 카테고리로 되돌림\n'
+                + '- 단종 때 지운 아이콘 복구, 단종 아이콘 제거\n'
+                + '- 인트라넷 단종 해제\n\n'
+                + '[복구되지 않는 항목]\n'
+                + '- 상품명에서 빠진 [특가할인] 문구\n'
+                + '- 단종 전에 연결되어 있던 상품 혜택\n'
+                + '- 단종 전 판매가 문구의 원래 내용\n'
+                + '- 단종 전 품절, 재입고, 혜택, 할인 플래그의 원래 값\n'
+                + '- 단종 전 대표 카테고리 원본. 로그에 없으면 남은 카테고리 중 하나로 지정'
+            );
+            if (!confirm('고도몰 단종을 해제할까요?')) {
+                return;
+            }
+
+            var payload = {
+                action_mode: 'restore_godo_product_discontinued',
+                prd_idx: prd_idx
+            };
+
+            ajaxRequest('/admin/product/action', payload)
+                .done(function(res) {
+                    if (res && res.success) {
+                        alert(res.message || '고도몰 단종 해제가 완료되었습니다.');
+                        location.reload();
+                    } else {
+                        showProcessFailModal(
+                            '고도몰 단종해제 실패',
+                            getFailMessage(res, '고도몰 단종해제에 실패했습니다.'),
+                            function() { location.reload(); }
+                        );
+                    }
+                })
+                .fail(function(res) {
+                    showProcessFailModal(
+                        '고도몰 단종해제 실패',
+                        getFailMessage(res, '고도몰 단종해제에 실패했습니다.'),
                         function() { location.reload(); }
                     );
                 });
@@ -3004,7 +3079,7 @@
          */
         function unsetProductDiscontinued(prd_idx, isGodoDiscontinued) {
             if (isGodoDiscontinued) {
-                alert('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제를 해야 됩니다. 개발담당자에게 문의해주세요');
+                alert('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제 버튼으로 해제해 주세요.');
                 return;
             }
 
@@ -3366,6 +3441,7 @@
             unsetProductSale,
             setProductDiscontinued,
             setGodoProductDiscontinued,
+            restoreGodoProductDiscontinued,
             setGodoProductHandlingStopped,
             setGodoNewGoodsDisplay,
             openGodoSpecialDiscountModal,

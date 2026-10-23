@@ -498,6 +498,18 @@ class OrderSheetController extends BaseClass
                 $result = $orderSheetService->orderSheetProductOrderChange($requestData);
                 $message = $result['message'] ?? $result['msg'] ?? "주문서 상품 노출순서가 변경되었습니다.";
 
+            // 화면에 없는 선택 상품을 이 그룹으로 복구
+            }elseif( $actionMode == 'orderSheetRestoreMissingSelectProducts' ){
+
+                $result = $orderSheetService->orderSheetRestoreMissingSelectProducts($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "화면에 없는 선택 상품을 복구했습니다.";
+
+            // 화면에 없는 선택 상품을 선택 데이터에서 삭제
+            }elseif( $actionMode == 'orderSheetRemoveMissingSelectProducts' ){
+
+                $result = $orderSheetService->orderSheetRemoveMissingSelectProducts($requestData);
+                $message = $result['message'] ?? $result['msg'] ?? "화면에 없는 선택 상품을 삭제했습니다.";
+
             // 주문서 상품 그룹 이동
             }elseif( $actionMode == 'orderSheetProductMoveGroup' ){
 

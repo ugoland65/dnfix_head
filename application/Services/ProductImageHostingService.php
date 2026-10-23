@@ -740,6 +740,22 @@ class ProductImageHostingService
      * 이미지 호스팅 자격증명은 application/config에 별도 보관한다.
      * 공용 config() 헬퍼는 프로젝트 루트 config만 읽으므로 여기서 직접 로드한다.
      */
+    public function getPublicBaseUrl(): string
+    {
+        try {
+            $config = $this->getConfig();
+        } catch (\Throwable $e) {
+            return '';
+        }
+
+        $publicBaseUrl = rtrim((string)($config['public_base_url'] ?? ''), '/');
+        if ($publicBaseUrl === '' || $publicBaseUrl === 'CHANGE_ME') {
+            return '';
+        }
+
+        return $publicBaseUrl;
+    }
+
     private function getConfig(): array
     {
         $configPath = __DIR__ . '/../config/image_hosting.php';

@@ -5,6 +5,9 @@ $totalCount = (int)($totalCount ?? 0);
 $searchValue = (string)($searchValue ?? '');
 $saleStatus = (string)($saleStatus ?? '');
 $inStock = (string)($inStock ?? 'all');
+$rackCode = (string)($rackCode ?? '');
+$rackGroups = $rackGroups ?? ['A' => [], 'B' => [], 'C' => [], 'ETC' => []];
+$rackGroupsJson = json_encode($rackGroups, JSON_UNESCAPED_UNICODE | JSON_HEX_TAG | JSON_HEX_AMP | JSON_HEX_APOS | JSON_HEX_QUOT);
 ?>
 <section class="admobile-product-list">
     <div class="admobile-product-heading">
@@ -22,6 +25,7 @@ $inStock = (string)($inStock ?? 'all');
             <input id="product-search-value" name="search_value" type="search" value="<?= htmlspecialchars($searchValue, ENT_QUOTES, 'UTF-8') ?>" placeholder="상품명, 바코드, 상품코드 입력">
             <button type="submit">검색</button>
         </div>
+        <input type="hidden" name="rack_code" id="rack-code-value" value="<?= htmlspecialchars($rackCode, ENT_QUOTES, 'UTF-8') ?>">
         <div class="admobile-product-search__filters">
             <select name="in_stock" aria-label="재고 상태">
                 <option value="all" <?= $inStock === 'all' ? 'selected' : '' ?>>전체 재고</option>
@@ -41,6 +45,12 @@ $inStock = (string)($inStock ?? 'all');
                     <option value="<?= htmlspecialchars($value, ENT_QUOTES, 'UTF-8') ?>" <?= $saleStatus === $value ? 'selected' : '' ?>><?= htmlspecialchars($label, ENT_QUOTES, 'UTF-8') ?></option>
                 <?php } ?>
             </select>
+            <div class="admobile-product-search__rack">
+                <button type="button" id="rack-lookup-open" class="admobile-product-search__rack-open"><?= $rackCode !== '' ? htmlspecialchars($rackCode, ENT_QUOTES, 'UTF-8') : '랙조회' ?></button>
+                <?php if ($rackCode !== '') { ?>
+                    <button type="button" id="rack-lookup-clear" class="admobile-product-search__rack-clear" aria-label="랙 조건 해제">×</button>
+                <?php } ?>
+            </div>
         </div>
     </form>
 
@@ -125,6 +135,28 @@ $inStock = (string)($inStock ?? 'all');
     </section>
 </div>
 
+<div id="admobile-rack-modal" class="admobile-rack-modal" hidden>
+    <div class="admobile-rack-modal__backdrop" data-action="close"></div>
+    <section class="admobile-rack-modal__content" role="dialog" aria-modal="true" aria-labelledby="admobile-rack-modal-title">
+        <div class="admobile-rack-modal__head">
+            <h3 id="admobile-rack-modal-title">랙조회</h3>
+            <button type="button" class="admobile-rack-modal__close" data-action="close">닫기</button>
+        </div>
+        <div class="admobile-rack-modal__search">
+            <input id="rack-lookup-input" type="search" placeholder="랙번호 입력" autocomplete="off" enterkeyhint="search" aria-label="랙번호">
+            <button type="button" id="rack-lookup-submit">검색</button>
+        </div>
+        <p id="rack-lookup-message" class="admobile-rack-modal__message" aria-live="polite"></p>
+        <div class="admobile-rack-modal__groups" role="tablist" aria-label="랙 그룹">
+            <button type="button" data-rack-group="A" role="tab" aria-selected="false">A그룹</button>
+            <button type="button" data-rack-group="B" role="tab" aria-selected="false">B그룹</button>
+            <button type="button" data-rack-group="C" role="tab" aria-selected="false">C그룹</button>
+            <button type="button" data-rack-group="ETC" role="tab" aria-selected="false">기타</button>
+        </div>
+        <div id="rack-lookup-codes" class="admobile-rack-modal__codes"></div>
+    </section>
+</div>
+
 <style>
     .admobile-product-heading { display: flex; align-items: flex-start; gap: 10px; margin-bottom: 14px; }
     .admobile-product-heading > a { color: #344054; font-size: 30px; line-height: 24px; text-decoration: none; }
@@ -137,12 +169,16 @@ $inStock = (string)($inStock ?? 'all');
     .admobile-product-search__input { display: flex; overflow: hidden; border: 1px solid #aab9d6; border-radius: 7px; background: #fff; }
     .admobile-product-search__input input { width: 100%; min-width: 0; padding: 11px 10px; border: 0; color: #172033; font: inherit; font-size: 15px; outline: 0; }
     .admobile-product-search__input button { width: 58px; border: 0; border-left: 1px solid #e2e8f3; background: #3056a8; color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
-    .admobile-product-search__filters { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 7px; margin-top: 9px; }
-    .admobile-product-search__filters select { width: 100%; min-width: 0; padding: 9px; border: 1px solid #cfd6e1; border-radius: 7px; background: #fff; color: #475467; font: inherit; font-size: 12px; }
+    .admobile-product-search__filters { display: grid; grid-template-columns: minmax(0, 1fr) minmax(0, 1fr) minmax(72px, .85fr); gap: 6px; margin-top: 9px; }
+    .admobile-product-search__filters select { width: 100%; min-width: 0; padding: 9px 6px; border: 1px solid #cfd6e1; border-radius: 7px; background: #fff; color: #475467; font: inherit; font-size: 12px; }
+    .admobile-product-search__rack { display: flex; min-width: 0; overflow: hidden; border: 1px solid #3056a8; border-radius: 7px; background: #3056a8; color: #fff; }
+    .admobile-product-search__rack-open { flex: 1; min-width: 0; padding: 9px 6px; border: 0; background: transparent; color: inherit; font: inherit; font-size: 12px; font-weight: 700; overflow: hidden; text-overflow: ellipsis; white-space: nowrap; }
+    .admobile-product-search__rack-clear { flex: 0 0 26px; border: 0; border-left: 1px solid rgba(255, 255, 255, .35); background: transparent; color: #fff; font: inherit; font-size: 16px; line-height: 1; }
     .admobile-product-search.is-stuck { padding-top: calc(8px + env(safe-area-inset-top)); padding-bottom: 8px; border-width: 0 0 1px; border-radius: 0; background: #172b4d; box-shadow: 0 4px 12px rgba(16, 24, 40, .18); }
     .admobile-product-search.is-stuck > label { color: #fff; font-size: 11px; }
     .admobile-product-search.is-stuck .admobile-product-search__filters { margin-top: 6px; }
-    .admobile-product-search.is-stuck .admobile-product-search__filters select { padding-top: 7px; padding-bottom: 7px; }
+    .admobile-product-search.is-stuck .admobile-product-search__filters select,
+    .admobile-product-search.is-stuck .admobile-product-search__rack-open { padding-top: 7px; padding-bottom: 7px; }
     .admobile-product-results { display: grid; gap: 9px; margin-top: 12px; }
     .admobile-product-card { display: flex; gap: 12px; padding: 12px; border: 1px solid #e3e7ee; border-radius: 10px; background: #fff; box-shadow: 0 1px 2px rgba(16, 24, 40, .04); }
     .admobile-product-card__image { display: flex; flex: 0 0 82px; align-items: center; justify-content: center; width: 82px; height: 82px; overflow: hidden; border: 1px solid #edf0f4; border-radius: 8px; background: #f8fafc; color: #98a2b3; font-size: 10px; text-align: center; }
@@ -174,6 +210,24 @@ $inStock = (string)($inStock ?? 'all');
     .admobile-product-list-image-modal__content img { display: block; width: 100%; max-height: calc(90vh - 94px); object-fit: contain; }
     .admobile-product-list-image-modal__content p { margin: 9px 0 0; color: #344054; font-size: 13px; font-weight: 700; }
     .admobile-product-list-image-modal__close { position: absolute; top: 8px; right: 8px; padding: 7px 10px; border: 0; border-radius: 6px; background: #344054; color: #fff; font-size: 12px; font-weight: 700; }
+    .admobile-rack-modal[hidden] { display: none; }
+    .admobile-rack-modal { position: fixed; z-index: 1200; inset: 0; display: flex; align-items: flex-end; justify-content: center; }
+    .admobile-rack-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .55); }
+    .admobile-rack-modal__content { position: relative; display: flex; flex-direction: column; width: min(100%, 720px); max-height: min(88vh, 760px); padding: 16px 14px calc(16px + env(safe-area-inset-bottom)); overflow: hidden; border-radius: 16px 16px 0 0; background: #fff; }
+    .admobile-rack-modal__head { display: flex; align-items: center; justify-content: space-between; margin-bottom: 12px; }
+    .admobile-rack-modal__head h3 { margin: 0; color: #172033; font-size: 16px; }
+    .admobile-rack-modal__close { padding: 7px 10px; border: 0; border-radius: 6px; background: #344054; color: #fff; font: inherit; font-size: 12px; font-weight: 700; }
+    .admobile-rack-modal__search { display: flex; overflow: hidden; border: 1px solid #aab9d6; border-radius: 7px; background: #fff; }
+    .admobile-rack-modal__search input { width: 100%; min-width: 0; padding: 11px 10px; border: 0; color: #172033; font: inherit; font-size: 15px; outline: 0; }
+    .admobile-rack-modal__search button { width: 64px; border: 0; border-left: 1px solid #e2e8f3; background: #3056a8; color: #fff; font: inherit; font-size: 13px; font-weight: 700; }
+    .admobile-rack-modal__message { min-height: 18px; margin: 6px 0 0; color: #b42318; font-size: 12px; }
+    .admobile-rack-modal__groups { display: grid; grid-template-columns: repeat(4, minmax(0, 1fr)); gap: 6px; margin-top: 10px; }
+    .admobile-rack-modal__groups button { padding: 10px 4px; border: 1px solid #cfd6e1; border-radius: 7px; background: #fff; color: #344054; font: inherit; font-size: 13px; font-weight: 700; }
+    .admobile-rack-modal__groups button.is-active { border-color: #3056a8; background: #3056a8; color: #fff; }
+    .admobile-rack-modal__codes { display: grid; grid-template-columns: repeat(3, minmax(0, 1fr)); gap: 8px; align-content: start; flex: 1 1 auto; min-height: 0; margin-top: 12px; overflow: auto; }
+    .admobile-rack-modal__code { min-height: 42px; padding: 8px 6px; border: 1px solid #d0d5dd; border-radius: 7px; background: #f8fafc; color: #172033; font: inherit; font-size: 13px; font-weight: 700; word-break: break-all; }
+    .admobile-rack-modal__code.is-current { border-color: #3056a8; background: #e4ebfb; color: #2450a6; }
+    .admobile-rack-modal__empty { grid-column: 1 / -1; margin: 8px 0; color: #667085; font-size: 13px; text-align: center; }
 </style>
 
 <script>
@@ -203,6 +257,107 @@ $inStock = (string)($inStock ?? 'all');
             if (event.target.closest('[data-action="close"]')) {
                 modal.hidden = true;
                 image.src = '';
+            }
+        });
+
+        var rackGroups = <?= $rackGroupsJson ?: '{}' ?>;
+        var rackModal = document.getElementById('admobile-rack-modal');
+        var rackInput = document.getElementById('rack-lookup-input');
+        var rackMessage = document.getElementById('rack-lookup-message');
+        var rackCodes = document.getElementById('rack-lookup-codes');
+        var rackValue = document.getElementById('rack-code-value');
+        var currentRack = rackValue ? rackValue.value : '';
+
+        function searchByRack(code) {
+            if (!rackValue || !search) {
+                return;
+            }
+            rackValue.value = code;
+            search.submit();
+        }
+
+        function renderRackGroup(group) {
+            var codes = rackGroups[group] || [];
+            rackCodes.innerHTML = '';
+            document.querySelectorAll('[data-rack-group]').forEach(function(button) {
+                var active = button.getAttribute('data-rack-group') === group;
+                button.classList.toggle('is-active', active);
+                button.setAttribute('aria-selected', active ? 'true' : 'false');
+            });
+            if (!codes.length) {
+                rackCodes.innerHTML = '<p class="admobile-rack-modal__empty">해당 그룹의 랙이 없습니다.</p>';
+                return;
+            }
+            codes.forEach(function(code) {
+                var button = document.createElement('button');
+                button.type = 'button';
+                button.className = 'admobile-rack-modal__code';
+                button.textContent = code;
+                if (code === currentRack) {
+                    button.classList.add('is-current');
+                }
+                button.addEventListener('click', function() {
+                    searchByRack(code);
+                });
+                rackCodes.appendChild(button);
+            });
+        }
+
+        function openRackModal() {
+            rackMessage.textContent = '';
+            rackInput.value = currentRack;
+            rackModal.hidden = false;
+            document.body.style.overflow = 'hidden';
+            rackInput.focus();
+        }
+
+        function closeRackModal() {
+            rackModal.hidden = true;
+            document.body.style.overflow = '';
+        }
+
+        document.getElementById('rack-lookup-open').addEventListener('click', openRackModal);
+
+        var rackClear = document.getElementById('rack-lookup-clear');
+        if (rackClear) {
+            rackClear.addEventListener('click', function() {
+                searchByRack('');
+            });
+        }
+
+        document.getElementById('rack-lookup-submit').addEventListener('click', function() {
+            var code = rackInput.value.trim();
+            if (code === '') {
+                rackMessage.textContent = '랙번호를 입력하세요.';
+                rackInput.focus();
+                return;
+            }
+            searchByRack(code);
+        });
+
+        rackInput.addEventListener('keydown', function(event) {
+            if (event.key === 'Enter') {
+                event.preventDefault();
+                document.getElementById('rack-lookup-submit').click();
+            }
+        });
+
+        document.querySelectorAll('[data-rack-group]').forEach(function(button) {
+            button.addEventListener('click', function() {
+                rackMessage.textContent = '';
+                renderRackGroup(button.getAttribute('data-rack-group'));
+            });
+        });
+
+        rackModal.addEventListener('click', function(event) {
+            if (event.target.closest('[data-action="close"]')) {
+                closeRackModal();
+            }
+        });
+
+        document.addEventListener('keydown', function(event) {
+            if (event.key === 'Escape' && !rackModal.hidden) {
+                closeRackModal();
             }
         });
     })();

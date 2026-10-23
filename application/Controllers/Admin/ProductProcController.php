@@ -9,6 +9,7 @@ use App\Classes\Request;
 
 use App\Models\ProductStockModel;
 use App\Models\RackModel;
+use App\Services\AdminActionLogService;
 
 /**
  * 상품 처리 컨트롤러
@@ -36,23 +37,33 @@ class ProductProcController extends BaseClass
                 throw new Exception('선택된 상품이 없습니다.');
             }
 
-            if (empty($rackCode)) {
+            $rackCode = trim((string)$rackCode);
+            if ($rackCode === '') {
                 throw new Exception('랙코드를 입력해주세요.');
             }
+            if (function_exists('mb_strlen') && mb_strlen($rackCode, 'UTF-8') > 100) {
+                throw new Exception('랙 코드는 100자 이하로 입력해주세요.');
+            }
 
-            // 배열 값 검증 (빈 값 제거)
-            $checkIdx = array_filter($checkIdx, function($value) {
-                return !empty($value) && is_numeric($value);
-            });
+            // 체크값은 상품번호(CD_IDX)다. 재고번호(ps_idx)로 갱신하면 다른 상품이 바뀐다.
+            $prdIdxList = array_values(array_unique(array_filter(array_map('intval', $checkIdx), static function ($value) {
+                return $value > 0;
+            })));
 
-            if (empty($checkIdx)) {
+            if (empty($prdIdxList)) {
                 throw new Exception('유효한 상품이 선택되지 않았습니다.');
             }
 
-            //랙 조회
+            $stocks = ProductStockModel::query()
+                ->whereIn('ps_prd_idx', $prdIdxList)
+                ->get()
+                ->toArray();
+            if (empty($stocks)) {
+                throw new Exception('선택한 상품의 재고 정보를 찾을 수 없습니다.');
+            }
+
             $rackInfo = RackModel::where('code', $rackCode)->first();
             if (empty($rackInfo)) {
-                //랙 생성
                 RackModel::create([
                     'code' => $rackCode,
                     'name' => $rackCode,
@@ -61,17 +72,56 @@ class ProductProcController extends BaseClass
                 ]);
             }
 
-            // 랙코드 일괄 업데이트
-            $updated = ProductStockModel::whereIn('ps_idx', $checkIdx)
-                ->update([
-                    'ps_rack_code' => $rackCode
-                ]);
+            $actionLog = new AdminActionLogService();
+            $updatedCount = 0;
+            foreach ($stocks as $stock) {
+                if (!is_array($stock)) {
+                    $stock = $stock->toArray();
+                }
+                $psIdx = (int)($stock['ps_idx'] ?? 0);
+                $prdIdx = (int)($stock['ps_prd_idx'] ?? 0);
+                if ($psIdx <= 0 || $prdIdx <= 0) {
+                    continue;
+                }
 
-            $updatedCount = count($checkIdx);
+                $beforeRack = (string)($stock['ps_rack_code'] ?? '');
+                if ($beforeRack === $rackCode) {
+                    continue;
+                }
+
+                ProductStockModel::query()
+                    ->where('ps_idx', '=', $psIdx)
+                    ->update([
+                        'ps_rack_code' => $rackCode,
+                    ]);
+                $updatedCount++;
+
+                $beforeData = ['ps_rack_code' => $beforeRack];
+                $afterData = ['ps_rack_code' => $rackCode];
+                try {
+                    $actionLog->log([
+                        'target_type' => 'product',
+                        'target_table' => 'prd_stock',
+                        'target_pk' => (string)$prdIdx,
+                        'action_mode' => 'rack_code_update',
+                        'action_summary' => '랙코드 일괄변경',
+                        'before_json' => $beforeData,
+                        'after_json' => $afterData,
+                        'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                        'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                        'source' => 'admin',
+                    ]);
+                } catch (Throwable $e) {
+                }
+            }
+
+            $message = $updatedCount > 0
+                ? $updatedCount . '개 상품의 랙코드가 변경되었습니다.'
+                : '변경된 랙코드가 없습니다.';
 
             return response()->json([
                 'success' => true,
-                'message' => $updatedCount . '개 상품의 랙코드가 변경되었습니다.',
+                'message' => $message,
                 'updated_count' => $updatedCount
             ]);
 

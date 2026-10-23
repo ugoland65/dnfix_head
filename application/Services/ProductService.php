@@ -112,7 +112,7 @@ class ProductService extends BaseClass
         $perPage = $criteria['per_page'] ?? 100;
         $page = $criteria['page'] ?? 1;
         $show_mode = $criteria['show_mode'] ?? '';
-        $rack_code = $criteria['rack_code'] ?? null;
+        $rack_code = trim((string)($criteria['rack_code'] ?? ''));
         $sort_mode = $criteria['sort_mode'] ?? 'idx';
 
         $in_stock = $criteria['in_stock'] ?? 'all';
@@ -391,11 +391,11 @@ class ProductService extends BaseClass
             $query->whereNotNull('D.ps_prd_idx');
         }
 
-        if ($isProductStockMode) {
-            if( $rack_code ){
-                $query->where('D.ps_rack_code', $rack_code);
-            }
+        if ($rack_code !== '') {
+            $query->where('D.ps_rack_code', $rack_code);
+        }
 
+        if ($isProductStockMode) {
             // 할인모드 검색
             if ( !empty($s_sale_mode) ) {
         
@@ -2189,6 +2189,8 @@ class ProductService extends BaseClass
             'cd_site_show' => $cdSiteShow,
             'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'cd_accessories' => json_encode($accessories, JSON_UNESCAPED_UNICODE),
+            'cd_update_time' => date('Y-m-d H:i:s'),
+            'cd_reg' => $this->buildProductCdRegJson($oldProduct['cd_reg'] ?? null, 'update', (string)($oldProduct['cd_reg_time'] ?? '')),
         ];
 
         ProductModel::query()
@@ -2341,6 +2343,260 @@ class ProductService extends BaseClass
         }
 
         return null;
+    }
+
+    /**
+     * 상품 등록/수정 담당자 정보를 cd_reg JSON으로 만든다.
+     * modify는 마지막 수정 1건만 남긴다.
+     *
+     * @param mixed $existingCdReg
+     * @param string $mode create|update
+     * @param string|null $fallbackRegDate
+     * @return string
+     */
+    private function buildProductCdRegJson($existingCdReg, string $mode, ?string $fallbackRegDate = null): string
+    {
+        $now = date('Y-m-d H:i:s');
+        $actor = $this->buildProductRegActor($now);
+        $existing = json_decode((string)$existingCdReg, true);
+        if (!is_array($existing)) {
+            $existing = [];
+        }
+
+        if ($mode === 'create' || empty($existing['reg']) || !is_array($existing['reg'])) {
+            $regDate = $mode === 'create' ? $now : trim((string)$fallbackRegDate);
+            if ($regDate === '' || $regDate === '0000-00-00' || $regDate === '0000-00-00 00:00:00') {
+                $regDate = $now;
+            }
+            $regInfo = $mode === 'create' ? $actor : [
+                'date' => $regDate,
+                'idx' => '',
+                'id' => '',
+                'name' => '',
+                'ip' => '',
+                'domain' => '',
+            ];
+            $reg = [
+                'mode' => 'v3',
+                'info' => $regInfo,
+            ];
+        } else {
+            $reg = $existing['reg'];
+            if (!isset($reg['info']) || !is_array($reg['info'])) {
+                $reg['info'] = [];
+            }
+            if (!isset($reg['mode']) || trim((string)$reg['mode']) === '') {
+                $reg['mode'] = 'v3';
+            }
+        }
+
+        $payload = ['reg' => $reg];
+        if ($mode !== 'create') {
+            $payload['modify'] = [$actor];
+        }
+
+        return json_encode($payload, JSON_UNESCAPED_UNICODE);
+    }
+
+    /**
+     * @param string $date
+     * @return array
+     */
+    private function buildProductRegActor(string $date): array
+    {
+        $auth = AdminAuth::user() ?? [];
+        return [
+            'date' => $date,
+            'idx' => (string)($auth['sess_idx'] ?? ''),
+            'id' => (string)($auth['sess_id'] ?? ''),
+            'name' => (string)($auth['sess_name'] ?? ''),
+            'ip' => (string)AdminAuth::getIp(),
+            'domain' => (string)AdminAuth::getDomain(),
+        ];
+    }
+
+    /**
+     * 이미 저장된 상품의 cd_reg를 마지막 수정 정보로 갱신한다.
+     *
+     * @param int $prdIdx
+     * @param string $mode
+     * @return void
+     */
+    private function applyProductCdReg(int $prdIdx, string $mode): void
+    {
+        if ($prdIdx <= 0) {
+            return;
+        }
+
+        $row = ProductModel::query()
+            ->select(['cd_reg', 'cd_reg_time'])
+            ->where('CD_IDX', '=', $prdIdx)
+            ->first();
+        $row = $row ? (is_array($row) ? $row : $row->toArray()) : [];
+        $now = date('Y-m-d H:i:s');
+        $updateData = [
+            'cd_reg' => $this->buildProductCdRegJson($row['cd_reg'] ?? null, $mode, (string)($row['cd_reg_time'] ?? '')),
+        ];
+        if ($mode === 'create') {
+            $updateData['cd_reg_time'] = $now;
+        } else {
+            $updateData['cd_update_time'] = $now;
+        }
+
+        ProductModel::query()
+            ->where('CD_IDX', '=', $prdIdx)
+            ->update($updateData);
+    }
+
+    /**
+     * cd_reg가 비어 있는 상품을 admin_action_log의 최초 등록과 마지막 수정으로 채운다.
+     *
+     * @return array
+     */
+    public function backfillNullProductCdRegFromActionLog(): array
+    {
+        $productStmt = $this->db->query("
+            SELECT CD_IDX, cd_reg_time, cd_update_time
+            FROM COMPARISON_DB
+            WHERE cd_reg IS NULL OR TRIM(cd_reg) = ''
+        ");
+        $products = $productStmt ? $productStmt->fetchAll(\PDO::FETCH_ASSOC) : [];
+        if (empty($products)) {
+            return ['updated' => 0, 'skipped' => 0];
+        }
+
+        $updated = 0;
+        $skipped = 0;
+        $updateStmt = $this->db->prepare("
+            UPDATE COMPARISON_DB
+            SET cd_reg = :cd_reg,
+                cd_reg_time = CASE
+                    WHEN cd_reg_time IS NULL OR cd_reg_time IN ('', '0000-00-00', '0000-00-00 00:00:00') THEN :cd_reg_time
+                    ELSE cd_reg_time
+                END,
+                cd_update_time = CASE
+                    WHEN :has_modify = 1 AND (cd_update_time IS NULL OR cd_update_time IN ('', '0000-00-00', '0000-00-00 00:00:00')) THEN :cd_update_time
+                    ELSE cd_update_time
+                END
+            WHERE CD_IDX = :cd_idx
+              AND (cd_reg IS NULL OR TRIM(cd_reg) = '')
+        ");
+
+        foreach (array_chunk($products, 300) as $productChunk) {
+            $idxList = [];
+            foreach ($productChunk as $productRow) {
+                $prdIdx = (int)($productRow['CD_IDX'] ?? 0);
+                if ($prdIdx > 0) {
+                    $idxList[] = $prdIdx;
+                }
+            }
+            if (empty($idxList)) {
+                continue;
+            }
+
+            $placeholders = implode(',', array_fill(0, count($idxList), '?'));
+            $logStmt = $this->db->prepare("
+                SELECT idx, target_pk, action_mode, action_url, ip_address, operator_pk, operator_id, operator_name, processed_at
+                FROM admin_action_log
+                WHERE target_type = 'product'
+                  AND target_table = 'COMPARISON_DB'
+                  AND (is_success = 1 OR is_success IS NULL)
+                  AND target_pk IN ({$placeholders})
+                ORDER BY target_pk ASC, processed_at ASC, idx ASC
+            ");
+            $logStmt->execute($idxList);
+            $logsByPk = [];
+            foreach ($logStmt->fetchAll(\PDO::FETCH_ASSOC) as $logRow) {
+                $targetPk = (string)($logRow['target_pk'] ?? '');
+                if ($targetPk === '') {
+                    continue;
+                }
+                $logsByPk[$targetPk][] = $logRow;
+            }
+
+            foreach ($productChunk as $productRow) {
+                $prdIdx = (int)($productRow['CD_IDX'] ?? 0);
+                $logs = $logsByPk[(string)$prdIdx] ?? [];
+                if ($prdIdx <= 0 || empty($logs)) {
+                    $skipped++;
+                    continue;
+                }
+
+                $regLog = null;
+                foreach ($logs as $logRow) {
+                    $actionMode = (string)($logRow['action_mode'] ?? '');
+                    if ($actionMode === 'create' || $actionMode === 'copy') {
+                        $regLog = $logRow;
+                        break;
+                    }
+                }
+                if ($regLog === null) {
+                    $regLog = $logs[0];
+                }
+
+                $modifyLog = null;
+                for ($logIndex = count($logs) - 1; $logIndex >= 0; $logIndex--) {
+                    if ((int)($logs[$logIndex]['idx'] ?? 0) !== (int)($regLog['idx'] ?? 0)) {
+                        $modifyLog = $logs[$logIndex];
+                        break;
+                    }
+                }
+
+                $payload = [
+                    'reg' => [
+                        'mode' => 'v3',
+                        'info' => $this->productRegInfoFromActionLog($regLog),
+                    ],
+                ];
+                if (is_array($modifyLog)) {
+                    $payload['modify'] = [$this->productRegInfoFromActionLog($modifyLog)];
+                }
+                $encoded = json_encode($payload, JSON_UNESCAPED_UNICODE);
+                if ($encoded === false) {
+                    $skipped++;
+                    continue;
+                }
+
+                $regDate = (string)($payload['reg']['info']['date'] ?? '');
+                $modifyDate = is_array($modifyLog) ? (string)($payload['modify'][0]['date'] ?? '') : '';
+                $updateStmt->execute([
+                    'cd_reg' => $encoded,
+                    'cd_reg_time' => $regDate,
+                    'has_modify' => is_array($modifyLog) ? 1 : 0,
+                    'cd_update_time' => $modifyDate,
+                    'cd_idx' => $prdIdx,
+                ]);
+                $updated++;
+            }
+        }
+
+        return [
+            'updated' => $updated,
+            'skipped' => $skipped,
+        ];
+    }
+
+    /**
+     * @param array $logRow
+     * @return array
+     */
+    private function productRegInfoFromActionLog(array $logRow): array
+    {
+        $actionUrl = trim((string)($logRow['action_url'] ?? ''));
+        $domain = '';
+        if ($actionUrl !== '') {
+            $host = parse_url($actionUrl, PHP_URL_HOST);
+            $domain = is_string($host) ? $host : '';
+        }
+
+        return [
+            'date' => (string)($logRow['processed_at'] ?? ''),
+            'idx' => (string)($logRow['operator_pk'] ?? ''),
+            'id' => (string)($logRow['operator_id'] ?? ''),
+            'name' => (string)($logRow['operator_name'] ?? ''),
+            'ip' => (string)($logRow['ip_address'] ?? ''),
+            'domain' => $domain,
+        ];
     }
 
     /**
@@ -2645,6 +2901,7 @@ class ProductService extends BaseClass
             'cd_hbti_data' => $cdHbtiData,
             'cd_hbti' => $cdHbt,
             'cd_reg_time' => $now,
+            'cd_reg' => $this->buildProductCdRegJson(null, 'create', $now),
             'cd_site_show' => $cdSiteShow,
             'cd_reference_links' => json_encode($referenceLinks, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES),
             'cd_accessories' => json_encode($accessories, JSON_UNESCAPED_UNICODE),
@@ -2746,6 +3003,7 @@ class ProductService extends BaseClass
                 'CD_KIND_CODE' => $cdKindCode,
                 'CD_CATEGORY_CODE' => $cdCategoryCode,
             ]);
+        $this->applyProductCdReg($prdIdx, 'update');
 
         return [
             'success' => true,
@@ -2784,6 +3042,7 @@ class ProductService extends BaseClass
             ->update([
                 'cd_memo2' => $cdMemo2,
             ]);
+        $this->applyProductCdReg($prdIdx, 'update');
 
         return [
             'success' => true,
@@ -2846,6 +3105,7 @@ class ProductService extends BaseClass
             ->update([
                 'sale_status' => $saleStatus,
             ]);
+        $this->applyProductCdReg($prdIdx, 'update');
 
         return [
             'success' => true,
@@ -2923,9 +3183,56 @@ class ProductService extends BaseClass
     }
 
     /**
+     * 목록 상품에 판매/입출고 내역 존재 여부를 붙인다.
+     *
+     * @param array $products
+     * @return array
+     */
+    public function attachProductStockHistoryFlag(array $products): array
+    {
+        if (empty($products)) {
+            return $products;
+        }
+
+        $psIdxs = [];
+        foreach ($products as $product) {
+            $productRow = is_array($product) ? $product : (array)$product;
+            $psIdx = (int)($productRow['ps_idx'] ?? 0);
+            if ($psIdx > 0) {
+                $psIdxs[$psIdx] = $psIdx;
+            }
+        }
+
+        $historyMap = [];
+        if (!empty($psIdxs)) {
+            $psIdxList = array_values($psIdxs);
+            $placeholders = implode(',', array_fill(0, count($psIdxList), '?'));
+            $stmt = $this->db->prepare("
+                SELECT DISTINCT psu_stock_idx
+                FROM prd_stock_unit
+                WHERE psu_stock_idx IN ({$placeholders})
+            ");
+            $stmt->execute($psIdxList);
+            foreach ($stmt->fetchAll(\PDO::FETCH_ASSOC) as $row) {
+                $historyMap[(int)($row['psu_stock_idx'] ?? 0)] = true;
+            }
+        }
+
+        foreach ($products as $index => $product) {
+            $productRow = is_array($product) ? $product : (array)$product;
+            $psIdx = (int)($productRow['ps_idx'] ?? 0);
+            $productRow['has_stock_history'] = isset($historyMap[$psIdx]);
+            $products[$index] = $productRow;
+        }
+
+        return $products;
+    }
+
+    /**
      * 재고 상품과 연결된 상품 DB를 함께 소프트 삭제한다.
      *
-     * 재고가 남아 있거나 입출고 이력이 존재하는 상품은 삭제할 수 없다.
+     * 재고가 남아 있는 상품은 삭제할 수 없다.
+     * 판매/입출고 내역이 있어도 소프트 삭제는 진행한다.
      *
      * @param array $postData
      * @return array
@@ -2979,13 +3286,6 @@ class ProductService extends BaseClass
                 throw new Exception('현재 재고가 남아 있어 삭제할 수 없습니다.');
             }
 
-            $hasStockHistory = ProductStockUnitModel::query()
-                ->where('psu_stock_idx', '=', $psIdx)
-                ->exists();
-            if ($hasStockHistory) {
-                throw new Exception('판매/입출고 이력이 있어 삭제할 수 없습니다.');
-            }
-
             $deletedAt = date('Y-m-d H:i:s');
             $stockUpdated = ProductStockModel::query()
                 ->where('ps_idx', '=', $psIdx)
@@ -3023,6 +3323,23 @@ class ProductService extends BaseClass
             }
             throw $e;
         }
+
+        $this->logProductSoftDelete($prdIdx, '재고 목록 상품 삭제', [
+            'CD_DELETED_YN' => 'N',
+            'ps_idx' => $psIdx,
+            'ps_stock' => 0,
+            'ps_deleted_yn' => 'N',
+        ], [
+            'CD_DELETED_YN' => 'Y',
+            'CD_DELETED_AT' => $deletedAt,
+            'CD_DELETED_ADMIN_IDX' => $adminIdx,
+            'CD_DELETED_ADMIN_NAME' => $adminName,
+            'ps_idx' => $psIdx,
+            'ps_deleted_yn' => 'Y',
+            'ps_deleted_at' => $deletedAt,
+            'ps_deleted_admin_idx' => $adminIdx,
+            'ps_deleted_admin_name' => $adminName,
+        ], $postData);
 
         return [
             'success' => true,
@@ -3082,11 +3399,55 @@ class ProductService extends BaseClass
             throw new Exception('상품 상태가 변경되어 삭제할 수 없습니다. 목록을 새로고침 후 다시 시도해주세요.');
         }
 
+        $this->logProductSoftDelete($prdIdx, '상품 DB 삭제', [
+            'CD_DELETED_YN' => 'N',
+        ], [
+            'CD_DELETED_YN' => 'Y',
+            'CD_DELETED_AT' => $deletedAt,
+            'CD_DELETED_ADMIN_IDX' => $adminIdx,
+            'CD_DELETED_ADMIN_NAME' => $adminName,
+        ], $postData);
+
         return [
             'success' => true,
             'message' => '상품이 삭제 처리되었습니다.',
             'prd_idx' => $prdIdx,
         ];
+    }
+
+    /**
+     * 상품 소프트 삭제 작업 로그를 남긴다.
+     *
+     * @param int $prdIdx
+     * @param string $summary
+     * @param array $before
+     * @param array $after
+     * @param array $postData
+     * @return void
+     */
+    private function logProductSoftDelete(int $prdIdx, string $summary, array $before, array $after, array $postData): void
+    {
+        if ($prdIdx <= 0) {
+            return;
+        }
+
+        try {
+            $adminActionLogService = new AdminActionLogService();
+            $actionUrl = trim((string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? '')));
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$prdIdx,
+                'action_mode' => 'soft_delete',
+                'action_summary' => $summary,
+                'before_json' => $before,
+                'after_json' => $after,
+                'diff_json' => $adminActionLogService->buildDiff($before, $after),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+            ]);
+        } catch (\Throwable $e) {
+            // 로그 저장 실패는 삭제 성공에 영향을 주지 않는다.
+        }
     }
 
     /**
@@ -4225,9 +4586,15 @@ class ProductService extends BaseClass
         // Legacy prd_copy 동작 유지: 대표이미지(CD_IMG)는 복사 제외
         unset($sourceData['CD_IMG']);
         unset($sourceData['cd_reg']);
+        // 이미지 저장소 경로는 상품마다 고유하므로 복사하지 않는다.
+        $sourceData['CD_IMAGE_STORAGE_PATH'] = '';
+        // 고도몰 상품코드는 원본 상품에만 남겨 둔다.
+        $sourceData['cd_godo_code'] = 0;
 
         $actionTime = date('Y-m-d H:i:s');
         $sourceData['cd_reg_time'] = $actionTime;
+        $sourceData['cd_update_time'] = null;
+        $sourceData['cd_reg'] = $this->buildProductCdRegJson(null, 'create', $actionTime);
 
         $newIdx = (int)ProductModel::query()->insertGetId($sourceData);
         if ($newIdx <= 0) {
@@ -4509,6 +4876,8 @@ class ProductService extends BaseClass
             'cd_cost_price_info' => $cdCostPriceInfo,
             'supplier_prd_idx' => $supplierPrdIdx,
             'cd_cost_price_memo' => $cdCostPriceMemo,
+            'cd_update_time' => date('Y-m-d H:i:s'),
+            'cd_reg' => $this->buildProductCdRegJson($oldProduct['cd_reg'] ?? null, 'update', (string)($oldProduct['cd_reg_time'] ?? '')),
         ];
         $updateData = array_merge($updateData, $salePriceChangeData);
 
@@ -6508,6 +6877,234 @@ class ProductService extends BaseClass
         ];
     }
 
+    /**
+     * 고도몰 단종 복구
+     * 검수 로그의 삭제 카테고리와 아이콘을 고도몰에 다시 넣고 인트라넷 단종을 해제한다.
+     *
+     * @param array $postData
+     * @return array
+     */
+    public function restoreGodoProductDiscontinued(array $postData): array
+    {
+        $idx = (int)($postData['prd_idx'] ?? 0);
+        if ($idx <= 0) {
+            throw new Exception('상품번호가 없습니다.');
+        }
+
+        $product = ProductModel::query()
+            ->select('CD_IDX', 'cd_godo_code', 'is_discontinued', 'is_handling_stopped')
+            ->where('CD_IDX', '=', $idx)
+            ->first();
+        if (empty($product)) {
+            throw new Exception('상품 정보를 찾을 수 없습니다.');
+        }
+        $product = is_array($product) ? $product : $product->toArray();
+
+        $goodsNo = trim((string)($product['cd_godo_code'] ?? ''));
+        if ($goodsNo === '' || $goodsNo === '0') {
+            throw new Exception('고도몰 상품번호가 등록되지 않았습니다.');
+        }
+
+        $inspectionProcessLogService = new InspectionProcessLogService();
+        $discontinuedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+            $idx,
+            InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED
+        );
+        $restoreLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+            $idx,
+            InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED_RESTORE
+        );
+        if (!$this->isGodoDiscontinuedRestorePending($discontinuedLog, $restoreLog)) {
+            throw new Exception('복구할 고도몰 단종 처리 내역이 없습니다.');
+        }
+
+        $resultContent = (isset($discontinuedLog['result_content']) && is_array($discontinuedLog['result_content']))
+            ? $discontinuedLog['result_content']
+            : [];
+        $snapshot = $this->buildGodoDiscontinuedRestoreSnapshot($resultContent);
+        $sourceLogIdx = (int)($discontinuedLog['ipl_idx'] ?? 0);
+
+        $godoSuccess = false;
+        $godoError = '';
+        $godoResponse = [];
+        try {
+            $godoResponse = (new GodoApiService())->restoreGodoProductDiscontinued($goodsNo, $snapshot, 'discontinued');
+            $godoSuccess = (($godoResponse['status'] ?? '') === 'success');
+            if (!$godoSuccess) {
+                $godoError = trim((string)($godoResponse['message'] ?? ''));
+                if ($godoError === '') {
+                    $godoError = '고도몰 단종 해제에 실패했습니다.';
+                }
+            }
+        } catch (\Throwable $e) {
+            $godoError = $e->getMessage();
+            $godoResponse = [
+                'status' => 'error',
+                'message' => $godoError,
+            ];
+        }
+
+        $successMessage = '고도몰 단종 해제가 완료되었습니다.';
+        $restoreResult = [
+            'success' => $godoSuccess,
+            'status' => $godoSuccess ? '복구완료' : '실패',
+            'message' => $godoSuccess ? $successMessage : $godoError,
+            'source_log_idx' => $sourceLogIdx,
+            'snapshot' => $snapshot,
+            'godo_response' => $godoResponse,
+            'benefit_link_restored' => false,
+        ];
+        try {
+            $inspectionProcessLogService->logProductGodoDiscontinuedRestore([
+                'prd_idx' => $idx,
+                'godo_goods_no' => $goodsNo,
+                'process_content' => [
+                    'source_log_idx' => $sourceLogIdx,
+                    'source_location_code' => InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED,
+                    'snapshot' => $snapshot,
+                ],
+                'result_content' => $restoreResult,
+            ]);
+        } catch (\Throwable $e) {
+            // 검수 로그 저장 실패는 복구 결과와 분리한다.
+        }
+
+        $intranetCleared = false;
+        if ($godoSuccess && (int)($product['is_discontinued'] ?? 0) === 1) {
+            ProductModel::query()
+                ->where('CD_IDX', '=', $idx)
+                ->update(['is_discontinued' => 0]);
+            $intranetCleared = true;
+        }
+
+        $beforeLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'is_discontinued' => (int)($product['is_discontinued'] ?? 0),
+            'godo_sales_stop' => 1,
+        ];
+        $afterLog = [
+            'CD_IDX' => $idx,
+            'cd_godo_code' => $goodsNo,
+            'is_discontinued' => $intranetCleared ? 0 : (int)($product['is_discontinued'] ?? 0),
+            'godo_sales_stop' => $godoSuccess ? 0 : 1,
+            'godo_message' => $godoSuccess ? $successMessage : $godoError,
+            'restored_category_cds' => array_values(array_filter(array_map(static function ($row) {
+                return is_array($row) ? trim((string)($row['cateCd'] ?? '')) : '';
+            }, $snapshot['deletedCategories']))),
+            'removed_category_cds' => $snapshot['addedCategoryCds'],
+        ];
+        $adminActionLogService = new AdminActionLogService();
+        $actionUrl = (string)($postData['action_url'] ?? ($_SERVER['REQUEST_URI'] ?? ''));
+        try {
+            $adminActionLogService->log([
+                'target_type' => 'product',
+                'target_table' => 'COMPARISON_DB',
+                'target_pk' => (string)$idx,
+                'action_mode' => 'restore_godo_product_discontinued',
+                'action_summary' => $godoSuccess ? '고도몰 단종 해제' : '고도몰 단종 해제 실패',
+                'before_json' => $beforeLog,
+                'after_json' => $afterLog,
+                'diff_json' => $adminActionLogService->buildDiff($beforeLog, $afterLog),
+                'action_url' => $actionUrl !== '' ? $actionUrl : null,
+                'is_success' => $godoSuccess ? 1 : 0,
+                'error_message' => $godoSuccess ? null : $godoError,
+            ]);
+        } catch (\Throwable $e) {
+            // 액션 로그 저장 실패는 복구 결과와 분리한다.
+        }
+
+        if (!$godoSuccess) {
+            throw new Exception('고도몰 단종 해제 실패: ' . $godoError);
+        }
+
+        return [
+            'success' => true,
+            'message' => $intranetCleared
+                ? '고도몰 단종 해제와 인트라넷 단종 해제를 완료했습니다.'
+                : '고도몰 단종 해제를 완료했습니다.',
+            'msg' => '완료',
+            'idx' => $idx,
+            'godo_response' => $godoResponse,
+        ];
+    }
+
+    /**
+     * 최신 단종 로그가 성공이고, 그 이후 복구 성공 로그가 없으면 복구 대상이다.
+     *
+     * @param array $discontinuedLog
+     * @param array $restoreLog
+     * @return bool
+     */
+    private function isGodoDiscontinuedRestorePending(array $discontinuedLog, array $restoreLog): bool
+    {
+        $discontinuedResult = (isset($discontinuedLog['result_content']) && is_array($discontinuedLog['result_content']))
+            ? $discontinuedLog['result_content']
+            : [];
+        if (empty($discontinuedResult['success'])) {
+            return false;
+        }
+
+        $restoreResult = (isset($restoreLog['result_content']) && is_array($restoreLog['result_content']))
+            ? $restoreLog['result_content']
+            : [];
+        $discontinuedLogIdx = (int)($discontinuedLog['ipl_idx'] ?? 0);
+        $restoreLogIdx = (int)($restoreLog['ipl_idx'] ?? 0);
+        if (!empty($restoreResult['success']) && $restoreLogIdx > $discontinuedLogIdx) {
+            return false;
+        }
+
+        return true;
+    }
+
+    /**
+     * 단종 검수 로그에서 고도몰 복구 요청에 넣을 스냅샷을 만든다.
+     *
+     * @param array $resultContent
+     * @return array
+     */
+    private function buildGodoDiscontinuedRestoreSnapshot(array $resultContent): array
+    {
+        $godoResponse = (isset($resultContent['godo_response']) && is_array($resultContent['godo_response']))
+            ? $resultContent['godo_response']
+            : [];
+        $updated = (isset($godoResponse['updated']) && is_array($godoResponse['updated']))
+            ? $godoResponse['updated']
+            : [];
+
+        $deletedCategories = $resultContent['deleted_categories'] ?? ($godoResponse['deletedCategories'] ?? []);
+        if (!is_array($deletedCategories)) {
+            $deletedCategories = [];
+        }
+
+        $addedCategoryCds = $updated['addedCategoryCds'] ?? null;
+        if (!is_array($addedCategoryCds)) {
+            $addedCategoryCds = ['048'];
+        }
+
+        $keptCategoryCds = $resultContent['kept_category_cds']
+            ?? ($updated['keptCategoryCds'] ?? ($godoResponse['keptCategoryCds'] ?? []));
+        if (!is_array($keptCategoryCds)) {
+            $keptCategoryCds = [];
+        }
+
+        $goodsIcon = (isset($updated['goodsIcon']) && is_array($updated['goodsIcon']))
+            ? $updated['goodsIcon']
+            : [];
+        $deletedGoodsIconCds = $goodsIcon['deletedGoodsIconCds'] ?? [];
+        if (!is_array($deletedGoodsIconCds)) {
+            $deletedGoodsIconCds = [];
+        }
+
+        return [
+            'deletedCategories' => array_values($deletedCategories),
+            'addedCategoryCds' => array_values($addedCategoryCds),
+            'keptCategoryCds' => array_values($keptCategoryCds),
+            'deletedGoodsIconCds' => array_values($deletedGoodsIconCds),
+            'goodsIconCreated' => !empty($goodsIcon['created']),
+        ];
+    }
+
 
     /**
      * 고도몰 상품 카테고리 선택 삭제
@@ -7170,15 +7767,17 @@ class ProductService extends BaseClass
             throw new Exception('이미 단종 해제된 상품입니다.');
         }
 
-        $godoDiscontinuedLog = (new InspectionProcessLogService())->getLatestByPrdIdxAndLocation(
+        $inspectionProcessLogService = new InspectionProcessLogService();
+        $godoDiscontinuedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
             $idx,
             InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED
         );
-        $godoDiscontinuedResult = (isset($godoDiscontinuedLog['result_content']) && is_array($godoDiscontinuedLog['result_content']))
-            ? $godoDiscontinuedLog['result_content']
-            : [];
-        if (!empty($godoDiscontinuedResult['success'])) {
-            throw new Exception('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제를 해야 됩니다. 개발담당자에게 문의해주세요');
+        $godoDiscontinuedRestoreLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+            $idx,
+            InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED_RESTORE
+        );
+        if ($this->isGodoDiscontinuedRestorePending($godoDiscontinuedLog, $godoDiscontinuedRestoreLog)) {
+            throw new Exception('이미 고도몰 단종처리가 된 상품입니다. 고도몰 단종해제 버튼으로 해제해 주세요.');
         }
 
         $updateData = [
@@ -7434,6 +8033,15 @@ class ProductService extends BaseClass
             }
         }
 
+        if ($godoApiErrorMessage === '') {
+            if ($godoCode === '' && $resolvedPsIdx <= 0) {
+                $godoApiErrorMessage = '고도몰 상품번호와 재고코드가 없어 상품 정보를 조회할 수 없습니다.';
+            } elseif (empty($godoGoods) || trim((string)($godoGoods['goodsNo'] ?? '')) === '') {
+                $godoApiErrorMessage = '고도몰 API에서 해당 상품 정보를 찾지 못했습니다.';
+            }
+        }
+        $godoGoodsLoaded = ($godoApiErrorMessage === '');
+
         $godoGoodsNo = trim((string)($godoGoods['goodsNo'] ?? ''));
 
         $cdWeightData = json_decode($product['cd_weight_fn'] ?? '{}', true);
@@ -7509,8 +8117,9 @@ class ProductService extends BaseClass
         return [
             'item' => $item,
             'godoApiErrorMessage' => $godoApiErrorMessage,
-            'godoInfoLoadedAt' => date('Y-m-d H:i:s'),
-            'godoInfoLoadMs' => (int)round((microtime(true) - $godoApiStartAt) * 1000),
+            'godoGoodsLoaded' => $godoGoodsLoaded,
+            'godoInfoLoadedAt' => $godoGoodsLoaded ? date('Y-m-d H:i:s') : '',
+            'godoInfoLoadMs' => $godoGoodsLoaded ? (int)round((microtime(true) - $godoApiStartAt) * 1000) : 0,
         ];
     }
 
@@ -7548,6 +8157,10 @@ class ProductService extends BaseClass
 
         $inspectionData = $this->getSingleProductGodoInspectionData($prdIdx, $psIdx);
         $item = (array)($inspectionData['item'] ?? []);
+        $godoApiErrorMessage = trim((string)($inspectionData['godoApiErrorMessage'] ?? ''));
+        if ($godoApiErrorMessage !== '' || trim((string)($item['godo_goods_no'] ?? '')) === '') {
+            throw new Exception($godoApiErrorMessage !== '' ? $godoApiErrorMessage : '고도몰 API에서 상품 정보를 불러오지 못했습니다.');
+        }
         $godoInspectionService = new GodoInspectionService();
         $inspectionVersion = $godoInspectionService->getInspectionVersion();
         $inspectionContext = $godoInspectionService->buildInspectionContext(

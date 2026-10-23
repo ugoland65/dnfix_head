@@ -777,6 +777,7 @@
                                                 type="button"
                                                 class="btnstyle1 btnstyle1-xs product-soft-delete-btn"
                                                 data-prd-idx="<?= (int)($product['CD_IDX'] ?? 0) ?>"
+                                                data-has-stock-history="<?= !empty($product['has_stock_history']) ? '1' : '0' ?>"
                                             >삭제</button>
                                         <?php } ?>
                                     </td>
@@ -1746,7 +1747,11 @@
                 alert('상품 정보를 확인할 수 없습니다.');
                 return;
             }
-            if (!confirm('상품과 연결된 재고 정보를 삭제 처리할까요?\n삭제된 상품은 목록에서 노출되지 않습니다.')) {
+            var confirmMessage = '상품과 연결된 재고 정보를 삭제 처리할까요?\n삭제된 상품은 목록에서 노출되지 않습니다.';
+            if (String($button.data('has-stock-history')) === '1') {
+                confirmMessage += '\n판매 입출고 내역이 존재합니다. 꼭 확인바랍니다.';
+            }
+            if (!confirm(confirmMessage)) {
                 return;
             }
 
@@ -1764,10 +1769,21 @@
                     location.reload();
                 })
                 .fail(function(xhr) {
-                    var message = xhr && xhr.responseJSON && xhr.responseJSON.message
-                        ? xhr.responseJSON.message
-                        : '삭제 처리 중 서버 오류가 발생했습니다.';
-                    alert(message);
+                    var message = '';
+                    var responseBody = xhr && xhr.responseJSON ? xhr.responseJSON : null;
+                    if (!responseBody && xhr && typeof xhr.responseText === 'string' && xhr.responseText !== '') {
+                        try {
+                            responseBody = JSON.parse(xhr.responseText);
+                        } catch (e) {
+                            responseBody = null;
+                        }
+                    }
+                    if (responseBody && (responseBody.message || responseBody.msg)) {
+                        message = responseBody.message || responseBody.msg;
+                    } else if (xhr && typeof xhr.message === 'string') {
+                        message = xhr.message;
+                    }
+                    alert(message || '삭제 처리 중 서버 오류가 발생했습니다.');
                 })
                 .always(function() {
                     $button.prop('disabled', false);

@@ -76,6 +76,7 @@ foreach ($ooFalseRows as $ooFalseRow) {
 
 // 주문 JSON의 bidx(ona_order_prd.oop_idx)로 실제 상품그룹 가격코드를 복원한다.
 $oopCodeByIdx = [];
+$oopNameByIdx = [];
 $oopIdxList = [];
 foreach ($_order_sec_json as $orderGroup) {
 	if (!is_array($orderGroup)) {
@@ -88,11 +89,12 @@ foreach ($_order_sec_json as $orderGroup) {
 }
 if (!empty($oopIdxList)) {
 	$oopIdxSql = implode(',', array_map('intval', array_values($oopIdxList)));
-	$oopResult = wepix_query_error("select oop_idx, oop_code from ona_order_prd where oop_idx in (".$oopIdxSql.")");
+	$oopResult = wepix_query_error("select oop_idx, oop_code, oop_name from ona_order_prd where oop_idx in (".$oopIdxSql.")");
 	while ($oopRow = wepix_fetch_array($oopResult)) {
 		$oopIdx = (int)($oopRow['oop_idx'] ?? 0);
 		if ($oopIdx > 0) {
 			$oopCodeByIdx[$oopIdx] = (string)($oopRow['oop_code'] ?? '');
+			$oopNameByIdx[$oopIdx] = (string)($oopRow['oop_name'] ?? '');
 		}
 	}
 }
@@ -318,6 +320,11 @@ include "../layout/header_popup.php";
 <STYLE TYPE="text/css">
 .exel-table{}
 .exel-table tr td{ border:1px solid #b4b4b4; padding:5px; }
+.exel-table tr.order-group-row td{ background:#eef4ff; font-weight:bold; text-align:left; padding:8px 10px; cursor:pointer; }
+.exel-table tr.order-group-row .order-group-line{ display:flex; align-items:center; width:100%; }
+.exel-table tr.order-group-row .order-group-qty{ margin-left:18px; }
+.exel-table tr.order-group-row .order-group-toggle{ margin-left:auto; min-width:52px; text-align:right; color:#1d4ed8; }
+.exel-table tr.order-group-product.is-collapsed{ display:none; }
 
 .top_menu{ position:fixed; width:100%; height:50px; padding:10px 0 0 10px; border-bottom:1px solid #ddd; background-color:#f5f5f5; box-sizing:border-box;  }
 .top_menu_back{ width:100%; height:50px; }
@@ -401,6 +408,35 @@ include "../layout/header_popup.php";
 			$_select_json = [];
 		}
 
+		$_group_has_product = false;
+		foreach ($_select_json as $_group_product) {
+			if (!is_array($_group_product)) {
+				continue;
+			}
+			if (!empty($_group_product['false']) || isset($ooFalsePidxMap[(int)($_group_product['pidx'] ?? 0)])) {
+				continue;
+			}
+			$_group_has_product = true;
+			break;
+		}
+		if ($_group_has_product) {
+			$_group_name = trim((string)($oopNameByIdx[(int)$_os_data_idx] ?? ''));
+			$_group_qty = $_order_sec_json[$i]['qty'] ?? 0;
+			$_group_item = $_order_sec_json[$i]['item'] ?? 0;
+?>
+	<tr class="order-group-row" data-group-id="order-group-<?=$i?>" onclick="toggleOrderGroup(this)">
+		<td colspan="13">
+			<div class="order-group-line">
+				<span>그룹명 : <?=htmlspecialchars($_group_name, ENT_QUOTES, 'UTF-8')?></span>
+				<span class="order-group-qty">상품수 : <?=htmlspecialchars((string)$_group_item, ENT_QUOTES, 'UTF-8')?></span>
+				<span class="order-group-qty">주문수량 : <?=htmlspecialchars((string)$_group_qty, ENT_QUOTES, 'UTF-8')?></span>
+				<span class="order-group-toggle">▼ 접기</span>
+			</div>
+		</td>
+	</tr>
+<?php
+		}
+
 		for ($z=0; $z<count($_select_json); $z++){
 
 			// 배열 요소 검증
@@ -476,7 +512,7 @@ include "../layout/header_popup.php";
 			}
 
 ?>
-	<tr bgcolor="<?=$trcolor ?? ''?>">
+	<tr class="order-group-product" data-group-id="order-group-<?=$i?>" bgcolor="<?=$trcolor ?? ''?>">
 		<td class="xl65"><?=$stock_data['ps_idx'] ?? ''?></td>
 		<td class="xl65">
 			<?php if( !empty($comparison_data['CD_IMG']) ){?><img src="<?=$img_path?>" width="80px" height="80px"><?php } ?>
@@ -543,6 +579,24 @@ if( $_mode == "stock" ){
 
 <script type="text/javascript"> 
 <!-- 
+function toggleOrderGroup(row){
+	var groupId = row.getAttribute('data-group-id');
+	var products = document.querySelectorAll('tr.order-group-product[data-group-id="' + groupId + '"]');
+	var collapsed = row.getAttribute('data-collapsed') === '1';
+	var mark = row.querySelector('.order-group-toggle');
+	row.setAttribute('data-collapsed', collapsed ? '0' : '1');
+	if (mark) {
+		mark.textContent = collapsed ? '▼ 접기' : '▶ 펴기';
+	}
+	for (var n = 0; n < products.length; n++) {
+		if (collapsed) {
+			products[n].classList.remove('is-collapsed');
+		} else {
+			products[n].classList.add('is-collapsed');
+		}
+	}
+}
+
 //가격비교 퀵 창
 function comparisonQuick(idx, vmode){
 	if( vmode == undefined ) vmode = "comparison"; 

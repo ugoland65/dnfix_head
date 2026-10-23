@@ -30,6 +30,7 @@
     $godoFound = !empty($godoContent['found']);
     $productImage = trim((string)($product_image ?? ''));
     $imageStoragePath = trim((string)($image_storage_path ?? ''));
+    $imageStorageUrl = trim((string)($image_storage_url ?? ''));
     $imageLibrary = (isset($image_library) && is_array($image_library)) ? $image_library : [];
     $bottomItems = (isset($content['bottom_items']) && is_array($content['bottom_items'])) ? $content['bottom_items'] : [];
     $bottomPosition = trim((string)($content['bottom_position'] ?? 'bottom'));
@@ -284,6 +285,44 @@
     border-bottom: 1px solid #fff;
 }
 .prd-content-tab-panel[hidden] { display: none !important; }
+.prd-image-manage { max-width: 980px; }
+.prd-image-manage-location { margin: 0 0 12px; padding: 12px 14px; border: 1px solid #dbe3f0; border-radius: 8px; background: #f8fafc; }
+.prd-image-manage-location[hidden] { display: none; }
+.prd-image-manage-location p { display: flex; gap: 8px; margin: 0; color: #111827; font-size: 13px; line-height: 1.5; word-break: break-all; }
+.prd-image-manage-location p + p { margin-top: 4px; }
+.prd-image-manage-location span { flex: 0 0 36px; color: #64748b; font-weight: 700; }
+.prd-image-manage-location a { color: #1d4ed8; }
+.prd-image-manage-notice { margin: 0 0 12px; padding: 9px 11px; border-radius: 5px; color: #92400e; background: #fef3c7; font-size: 13px; }
+.prd-image-manage-notice[hidden],
+.prd-image-manage-work[hidden] { display: none; }
+.prd-image-manage-drop { display: flex; flex-direction: column; align-items: center; justify-content: center; gap: 6px; min-height: 160px; margin-top: 8px; padding: 22px 16px; border: 2px dashed #93c5fd; border-radius: 12px; background: #f8fbff; color: #1e3a8a; text-align: center; cursor: pointer; }
+.prd-image-manage-drop.is-over { border-color: #2563eb; background: #dbeafe; }
+.prd-image-manage-drop strong { font-size: 15px; }
+.prd-image-manage-drop span { color: #64748b; font-size: 12px; }
+.prd-image-manage-queue { display: grid; grid-template-columns: repeat(auto-fill, minmax(140px, 1fr)); gap: 8px; margin-top: 12px; }
+.prd-image-manage-queue[hidden] { display: none; }
+.prd-image-manage-queue-item { position: relative; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; }
+.prd-image-manage-queue-item img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #f8fafc; }
+.prd-image-manage-queue-item span { display: block; padding: 6px 28px 6px 8px; overflow: hidden; color: #374151; font-size: 11px; font-weight: 700; text-overflow: ellipsis; white-space: nowrap; }
+.prd-image-manage-queue-remove { position: absolute; top: 4px; right: 4px; width: 22px; height: 22px; padding: 0; border: 0; border-radius: 999px; background: rgba(17, 24, 39, .72); color: #fff; font-size: 14px; line-height: 22px; cursor: pointer; }
+.prd-image-manage-actions { display: flex; flex-wrap: wrap; gap: 8px; margin-top: 12px; }
+.prd-image-manage-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(150px, 1fr)); gap: 8px; margin-top: 10px; }
+.prd-image-manage-grid[hidden] { display: none; }
+.prd-image-manage-html-bar { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; margin-top: 10px; }
+.prd-image-manage-select-all { display: inline-flex; align-items: center; gap: 4px; color: #374151; font-size: 12px; }
+.prd-image-manage-html { box-sizing: border-box; width: 100%; min-height: 88px; margin: 8px 0 0; padding: 8px 10px; border: 1px solid #d1d5db; border-radius: 6px; background: #f8fafc; color: #111827; font-family: Consolas, Monaco, monospace; font-size: 12px; line-height: 1.5; resize: vertical; }
+.prd-image-manage-order-help { margin: 8px 0 0; color: #6b7280; font-size: 12px; }
+.prd-image-manage-card { display: block; overflow: hidden; border: 1px solid #e5e7eb; border-radius: 8px; background: #fff; color: inherit; text-decoration: none; cursor: grab; }
+.prd-image-manage-card.is-dragging { opacity: .45; cursor: grabbing; }
+.prd-image-manage-card.is-drop-target { outline: 2px dashed #2563eb; outline-offset: -2px; }
+.prd-image-manage-card.is-checked { border-color: #2563eb; box-shadow: inset 0 0 0 1px #2563eb; }
+.prd-image-manage-check { display: flex; align-items: center; gap: 4px; padding: 6px 8px 0; color: #374151; font-size: 12px; cursor: pointer; }
+.prd-image-manage-card > a { display: block; color: inherit; text-decoration: none; }
+.prd-image-manage-card img { display: block; width: 100%; aspect-ratio: 1; object-fit: contain; background: #f8fafc; }
+.prd-image-manage-card strong,
+.prd-image-manage-card em { display: block; padding: 0 8px; overflow: hidden; font-style: normal; text-overflow: ellipsis; white-space: nowrap; }
+.prd-image-manage-card strong { padding-top: 6px; color: #111827; font-size: 12px; }
+.prd-image-manage-card em { padding-bottom: 8px; color: #6b7280; font-size: 11px; }
 .prd-content-bottom-layout { display: flex; gap: 16px; align-items: flex-start; }
 .prd-content-bottom-main { flex: 1; min-width: 0; padding-bottom: 8px; }
 .prd-content-library-head { margin-bottom: 12px; }
@@ -565,9 +604,29 @@
     </div>
 </div>
 
+<div id="prd_image_storage_location" class="prd-image-manage-location" hidden>
+    <p>
+        <span>URL</span>
+        <?php if ($imageStorageUrl !== '') { ?>
+            <a href="<?= htmlspecialchars($imageStorageUrl, ENT_QUOTES, 'UTF-8') ?>" target="_blank" rel="noopener"><?= htmlspecialchars($imageStorageUrl, ENT_QUOTES, 'UTF-8') ?></a>
+        <?php } else { ?>
+            <b>미설정</b>
+        <?php } ?>
+    </p>
+    <p>
+        <span>경로</span>
+        <?php if ($imageStoragePath !== '') { ?>
+            <code><?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?></code>
+        <?php } else { ?>
+            <b>미설정</b>
+        <?php } ?>
+    </p>
+</div>
+
 <div class="prd-content-tab-nav" role="tablist">
     <button type="button" class="prd-content-tab-btn is-active" data-content-tab="top" role="tab" aria-selected="true">상단</button>
     <button type="button" class="prd-content-tab-btn" data-content-tab="bottom" role="tab" aria-selected="false">하단</button>
+    <button type="button" class="prd-content-tab-btn" data-content-tab="images" role="tab" aria-selected="false">이미지 관리</button>
 </div>
 
 <div class="prd-content-tab-panel" data-content-tab-panel="top" role="tabpanel">
@@ -908,9 +967,9 @@
         <aside class="prd-content-library-col">
             <div class="prd-content-library-tools">
                 <?php if ($imageStoragePath !== '') { ?>
-                    <p class="prd-content-library-path">저장소 경로: <code><?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?></code></p>
+                    <p class="prd-content-library-path" id="prd_content_library_path_box">저장소 경로: <code id="prd_content_library_path_code"><?= htmlspecialchars($imageStoragePath, ENT_QUOTES, 'UTF-8') ?></code></p>
                 <?php } else { ?>
-                    <p class="prd-content-library-path">이미지 저장소 경로가 없습니다. 상품 정보수집에서 먼저 설정해 주세요.</p>
+                    <p class="prd-content-library-path" id="prd_content_library_path_box">이미지 저장소 경로가 없습니다. 상단 이미지 저장소에서 먼저 등록해 주세요.</p>
                 <?php } ?>
                 <div class="prd-content-bottom-toolbar">
                     <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="prd_content_library_import_btn" <?= $imageStoragePath === '' ? 'disabled' : '' ?>>
@@ -943,6 +1002,35 @@
     </div>
 </div>
 
+<div class="prd-content-tab-panel" data-content-tab-panel="images" role="tabpanel" hidden>
+    <div class="prd-image-manage">
+        <p class="prd-image-manage-notice" id="prd_image_manage_unset" <?= $imageStoragePath === '' ? '' : 'hidden' ?>>이미지 저장소가 없습니다. 상단 이미지 저장소에서 먼저 등록해 주세요.</p>
+        <section id="prd_image_manage_work" class="prd-image-manage-work" <?= $imageStoragePath === '' ? 'hidden' : '' ?>>
+            <h2 class="section-title-name">이미지 담기</h2>
+            <div id="prd_image_manage_drop" class="prd-image-manage-drop" tabindex="0" role="button" aria-label="이미지를 끌어다 놓거나 클릭해서 선택">
+                <strong>PC에서 이미지를 이 영역으로 끌어다 놓으세요.</strong>
+                <span>클릭해서 파일을 고를 수도 있습니다. jpg, png, gif, webp</span>
+            </div>
+            <input type="file" id="prd_image_manage_input" accept="image/jpeg,image/png,image/gif,image/webp" multiple hidden>
+            <div id="prd_image_manage_queue" class="prd-image-manage-queue" hidden></div>
+            <div class="prd-image-manage-actions">
+                <button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-sm" id="prd_image_manage_upload" disabled>저장소에 업로드</button>
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="prd_image_manage_clear" hidden>담은 이미지 비우기</button>
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="prd_image_manage_refresh">저장소 목록 갱신</button>
+            </div>
+            <h2 class="section-title-name" style="margin-top:18px;">저장소 이미지 <span id="prd_image_manage_count"><?= count($imageLibrary) ?></span></h2>
+            <div class="prd-image-manage-html-bar">
+                <label class="prd-image-manage-select-all"><input type="checkbox" id="prd_image_manage_select_all"> 전체선택</label>
+                <button type="button" class="btnstyle1 btnstyle1-sm" id="prd_image_manage_html_copy">HTML 복사</button>
+            </div>
+            <textarea id="prd_image_manage_html" class="prd-image-manage-html" readonly placeholder="이미지를 선택하면 img 태그가 여기에 만들어집니다."></textarea>
+            <p class="prd-image-manage-order-help">카드를 끌어 순서를 바꾸면 선택한 이미지의 HTML 순서도 함께 바뀝니다.</p>
+            <div id="prd_image_manage_list" class="prd-image-manage-grid" <?= empty($imageLibrary) ? 'hidden' : '' ?>></div>
+            <p id="prd_image_manage_empty" class="prd-content-library-empty" <?= empty($imageLibrary) ? '' : 'hidden' ?>>저장소에 올린 이미지가 없습니다.</p>
+        </section>
+    </div>
+</div>
+
 <div id="prd_content_real_preview" class="prd-content-real-preview" hidden>
     <div class="prd-content-real-preview__backdrop" data-real-preview-close="1"></div>
     <div class="prd-content-real-preview__panel">
@@ -969,6 +1057,8 @@
     var bottomDeployVersion = <?= (int)$bottomDeployVersion ?>;
     var godoBottomMatchesLocal = <?= $godoBottomMatchesLocal ? 'true' : 'false' ?>;
     var imageLibraryItems = <?= json_encode($imageLibrary, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || [];
+    var imageStoragePath = <?= json_encode($imageStoragePath, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || '';
+    var imageManageQueue = [];
     var bottomItems = <?= json_encode($bottomItems, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || [];
     var bottomPosition = <?= json_encode($bottomPosition, JSON_UNESCAPED_UNICODE | JSON_UNESCAPED_SLASHES) ?> || 'bottom';
 
@@ -1505,11 +1595,16 @@
     });
 
     function activateContentTab(name) {
-        var tabName = name === 'bottom' ? 'bottom' : 'top';
+        var tabName = (name === 'bottom' || name === 'images') ? name : 'top';
         $('[data-content-tab]').removeClass('is-active').attr('aria-selected', 'false');
         $('[data-content-tab="' + tabName + '"]').addClass('is-active').attr('aria-selected', 'true');
         $('[data-content-tab-panel]').attr('hidden', true);
         $('[data-content-tab-panel="' + tabName + '"]').removeAttr('hidden');
+        if (tabName === 'images') {
+            $('#prd_image_storage_location').removeAttr('hidden');
+        } else {
+            $('#prd_image_storage_location').attr('hidden', true);
+        }
         if (tabName === 'top') {
             fitPreview();
         }
@@ -1646,7 +1741,343 @@
             $empty.removeAttr('hidden');
         }
         markUsedLibraryItems();
+        renderImageManageList();
     }
+
+    function renderImageManageList() {
+        var $list = $('#prd_image_manage_list');
+        var $empty = $('#prd_image_manage_empty');
+        var $count = $('#prd_image_manage_count');
+        if (!$list.length) {
+            return;
+        }
+        var selectedUrls = {};
+        $list.find('.prd-image-manage-select:checked').each(function() {
+            selectedUrls[$(this).attr('data-hosting-url') || ''] = true;
+        });
+        var html = '';
+        var count = 0;
+        imageLibraryItems.forEach(function(item) {
+            var url = String((item && item.hosting_url) || '');
+            var name = String((item && item.filename) || '');
+            var meta = String((item && item.meta_label) || '');
+            if (!url) {
+                return;
+            }
+            if (!name) {
+                name = url.split('/').pop() || url;
+            }
+            var checked = !!selectedUrls[url];
+            html += '<div class="prd-image-manage-card' + (checked ? ' is-checked' : '') + '" draggable="true">'
+                + '<label class="prd-image-manage-check"><input type="checkbox" class="prd-image-manage-select" data-hosting-url="' + escapeHtml(url) + '"' + (checked ? ' checked' : '') + '> 선택</label>'
+                + '<a href="' + escapeHtml(url) + '" target="_blank" rel="noopener" title="' + escapeHtml(name) + '">'
+                + '<img src="' + escapeHtml(url) + '" alt="' + escapeHtml(name) + '" draggable="false">'
+                + '<strong>' + escapeHtml(name) + '</strong>'
+                + '<em>' + escapeHtml(meta || '저장소 이미지') + '</em>'
+                + '</a>'
+                + '</div>';
+            count += 1;
+        });
+        $list.html(html);
+        $count.text(count);
+        if (html) {
+            $list.removeAttr('hidden');
+            $empty.attr('hidden', true);
+        } else {
+            $list.attr('hidden', true);
+            $empty.removeAttr('hidden');
+        }
+        syncImageManageSelectAll();
+        buildImageManageHtml();
+    }
+
+    function selectedImageManageUrls() {
+        var urls = [];
+        $('#prd_image_manage_list .prd-image-manage-select:checked').each(function() {
+            var url = $(this).attr('data-hosting-url') || '';
+            if (url) {
+                urls.push(url);
+            }
+        });
+        return urls;
+    }
+
+    function buildImageManageHtml() {
+        var html = selectedImageManageUrls().map(function(url) {
+            return '<img src="' + url + '"><br>';
+        }).join('\n');
+        $('#prd_image_manage_html').val(html);
+    }
+
+    function syncImageManageOrder() {
+        var order = [];
+        $('#prd_image_manage_list .prd-image-manage-select').each(function() {
+            var url = $(this).attr('data-hosting-url') || '';
+            if (url) {
+                order.push(url);
+            }
+        });
+        var byUrl = {};
+        imageLibraryItems.forEach(function(item) {
+            var url = String((item && item.hosting_url) || '');
+            if (url && !byUrl[url]) {
+                byUrl[url] = item;
+            }
+        });
+        var nextItems = [];
+        order.forEach(function(url) {
+            if (!byUrl[url]) {
+                return;
+            }
+            nextItems.push(byUrl[url]);
+            delete byUrl[url];
+        });
+        Object.keys(byUrl).forEach(function(url) {
+            nextItems.push(byUrl[url]);
+        });
+        imageLibraryItems = nextItems;
+        buildImageManageHtml();
+    }
+
+    var draggedImageManageCard = null;
+
+    $('#prd_image_manage_list').on('dragstart', '.prd-image-manage-card', function(event) {
+        draggedImageManageCard = this;
+        this.classList.add('is-dragging');
+        var transfer = event.originalEvent && event.originalEvent.dataTransfer;
+        if (transfer) {
+            transfer.effectAllowed = 'move';
+            transfer.setData('text/plain', $(this).find('.prd-image-manage-select').attr('data-hosting-url') || '');
+        }
+    }).on('dragend', '.prd-image-manage-card', function() {
+        this.classList.remove('is-dragging');
+        $('#prd_image_manage_list .prd-image-manage-card').removeClass('is-drop-target');
+        draggedImageManageCard = null;
+    }).on('dragover', '.prd-image-manage-card', function(event) {
+        if (!draggedImageManageCard || draggedImageManageCard === this) {
+            return;
+        }
+        event.preventDefault();
+        $(this).addClass('is-drop-target');
+        var transfer = event.originalEvent && event.originalEvent.dataTransfer;
+        if (transfer) {
+            transfer.dropEffect = 'move';
+        }
+    }).on('dragleave', '.prd-image-manage-card', function() {
+        this.classList.remove('is-drop-target');
+    }).on('drop', '.prd-image-manage-card', function(event) {
+        event.preventDefault();
+        this.classList.remove('is-drop-target');
+        if (!draggedImageManageCard || draggedImageManageCard === this) {
+            return;
+        }
+        var pointer = event.originalEvent || event;
+        var rect = this.getBoundingClientRect();
+        var centerY = rect.top + (rect.height / 2);
+        var sameRow = Math.abs(pointer.clientY - centerY) < (rect.height / 2);
+        var insertAfter = sameRow
+            ? pointer.clientX > rect.left + (rect.width / 2)
+            : pointer.clientY > centerY;
+        this.parentNode.insertBefore(draggedImageManageCard, insertAfter ? this.nextSibling : this);
+        syncImageManageOrder();
+    });
+
+    function syncImageManageSelectAll() {
+        var $boxes = $('#prd_image_manage_list .prd-image-manage-select');
+        var checkedCount = $boxes.filter(':checked').length;
+        var $all = $('#prd_image_manage_select_all');
+        $all.prop('checked', $boxes.length > 0 && checkedCount === $boxes.length);
+        $all.prop('indeterminate', checkedCount > 0 && checkedCount < $boxes.length);
+    }
+
+    $('#prd_image_manage_list').on('change', '.prd-image-manage-select', function() {
+        $(this).closest('.prd-image-manage-card').toggleClass('is-checked', this.checked);
+        syncImageManageSelectAll();
+        buildImageManageHtml();
+    });
+
+    $('#prd_image_manage_select_all').on('change', function() {
+        var checked = this.checked;
+        $('#prd_image_manage_list .prd-image-manage-select').prop('checked', checked);
+        $('#prd_image_manage_list .prd-image-manage-card').toggleClass('is-checked', checked);
+        buildImageManageHtml();
+    });
+
+    $('#prd_image_manage_html_copy').on('click', function() {
+        var $button = $(this);
+        var text = $('#prd_image_manage_html').val();
+        if (!text) {
+            showAlert('이미지 관리', '복사할 이미지를 선택해 주세요.', 'alert2');
+            return;
+        }
+        var originalLabel = $button.text();
+        var complete = function() {
+            $button.text('복사 완료');
+            setTimeout(function() {
+                $button.text(originalLabel);
+            }, 1500);
+        };
+        var textarea = document.getElementById('prd_image_manage_html');
+        if (navigator.clipboard && window.isSecureContext) {
+            navigator.clipboard.writeText(text).then(complete);
+            return;
+        }
+        textarea.focus();
+        textarea.select();
+        document.execCommand('copy');
+        complete();
+    });
+
+    function revokeImageManageQueue() {
+        imageManageQueue.forEach(function(item) {
+            if (item.previewUrl) {
+                URL.revokeObjectURL(item.previewUrl);
+            }
+        });
+        imageManageQueue = [];
+    }
+
+    function renderImageManageQueue() {
+        var $queue = $('#prd_image_manage_queue');
+        var html = '';
+        imageManageQueue.forEach(function(item, index) {
+            html += '<div class="prd-image-manage-queue-item">'
+                + '<img src="' + escapeHtml(item.previewUrl) + '" alt="">'
+                + '<span>' + escapeHtml(item.file.name) + '</span>'
+                + '<button type="button" class="prd-image-manage-queue-remove" data-image-queue-remove="' + index + '" aria-label="빼기">×</button>'
+                + '</div>';
+        });
+        $queue.html(html);
+        if (html) {
+            $queue.removeAttr('hidden');
+            $('#prd_image_manage_clear').removeAttr('hidden');
+        } else {
+            $queue.attr('hidden', true);
+            $('#prd_image_manage_clear').attr('hidden', true);
+        }
+        var $upload = $('#prd_image_manage_upload');
+        $upload.prop('disabled', imageManageQueue.length === 0 || imageStoragePath === '');
+        $upload.text(imageManageQueue.length > 0 ? imageManageQueue.length + '장 저장소에 업로드' : '저장소에 업로드');
+    }
+
+    function addImageManageFiles(fileList) {
+        if (!imageStoragePath) {
+            showAlert('이미지 관리', '이미지 저장소 설정을 먼저 완료해 주세요.', 'alert2');
+            return;
+        }
+        var allowed = { 'image/jpeg': true, 'image/png': true, 'image/gif': true, 'image/webp': true };
+        Array.prototype.forEach.call(fileList || [], function(file) {
+            if (!file || !allowed[file.type]) {
+                return;
+            }
+            var exists = imageManageQueue.some(function(item) {
+                return item.file.name === file.name && item.file.size === file.size && item.file.lastModified === file.lastModified;
+            });
+            if (exists) {
+                return;
+            }
+            imageManageQueue.push({
+                file: file,
+                previewUrl: URL.createObjectURL(file)
+            });
+        });
+        renderImageManageQueue();
+    }
+
+    $('#prd_image_manage_drop').on('click', function() {
+        if (!imageStoragePath) {
+            return;
+        }
+        $('#prd_image_manage_input').val('').trigger('click');
+    }).on('dragenter dragover', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).addClass('is-over');
+    }).on('dragleave drop', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        $(this).removeClass('is-over');
+    }).on('drop', function(event) {
+        var files = event.originalEvent && event.originalEvent.dataTransfer ? event.originalEvent.dataTransfer.files : null;
+        addImageManageFiles(files);
+    });
+
+    $('#prd_image_manage_input').on('change', function() {
+        addImageManageFiles(this.files);
+    });
+
+    $(document).on('click.prdDetailContent', '[data-image-queue-remove]', function(event) {
+        event.preventDefault();
+        event.stopPropagation();
+        var index = parseInt($(this).attr('data-image-queue-remove'), 10);
+        if (isNaN(index) || !imageManageQueue[index]) {
+            return;
+        }
+        if (imageManageQueue[index].previewUrl) {
+            URL.revokeObjectURL(imageManageQueue[index].previewUrl);
+        }
+        imageManageQueue.splice(index, 1);
+        renderImageManageQueue();
+    });
+
+    $('#prd_image_manage_clear').on('click', function() {
+        revokeImageManageQueue();
+        renderImageManageQueue();
+    });
+
+    $('#prd_image_manage_upload').on('click', function() {
+        var $btn = $(this);
+        if ($btn.prop('disabled') || imageManageQueue.length === 0) {
+            return;
+        }
+        var formData = new FormData();
+        formData.append('prd_pk', prdPk);
+        imageManageQueue.forEach(function(item) {
+            formData.append('images[]', item.file);
+        });
+        $btn.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/image_library/upload', formData, {
+            processData: false,
+            contentType: false
+        }).done(function(res) {
+            if (res && res.success) {
+                renderImageLibrary((res.data && res.data.items) ? res.data.items : imageLibraryItems);
+                revokeImageManageQueue();
+                renderImageManageQueue();
+                toast2('success', '이미지 관리', res.message || '이미지를 저장소에 업로드했습니다.');
+            } else {
+                showAlert('이미지 관리', (res && (res.message || res.msg)) || '이미지를 업로드하지 못했습니다.', 'alert2');
+                $btn.prop('disabled', false);
+            }
+        }).fail(function(err) {
+            var message = (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : '이미지를 업로드하지 못했습니다.';
+            showAlert('이미지 관리', message, 'alert2');
+            $btn.prop('disabled', false);
+        });
+    });
+
+    $('#prd_image_manage_refresh').on('click', function() {
+        var $btn = $(this);
+        if ($btn.prop('disabled') || !imageStoragePath) {
+            return;
+        }
+        $btn.prop('disabled', true);
+        ajaxRequest('/admin/product/detail_content/image_library/import', {
+            prd_pk: prdPk
+        }).done(function(res) {
+            if (res && res.success) {
+                renderImageLibrary((res.data && res.data.items) ? res.data.items : []);
+                toast2('success', '이미지 관리', res.message || '저장소 목록을 갱신했습니다.');
+            } else {
+                showAlert('이미지 관리', (res && (res.message || res.msg)) || '저장소 목록을 불러오지 못했습니다.', 'alert2');
+            }
+        }).fail(function(err) {
+            var message = (err && err.responseJSON && err.responseJSON.message) ? err.responseJSON.message : '저장소 목록을 불러오지 못했습니다.';
+            showAlert('이미지 관리', message, 'alert2');
+        }).always(function() {
+            $btn.prop('disabled', false);
+        });
+    });
 
     function currentBottomPosition() {
         var selected = $.trim($('input[name="bottom_position"]:checked').val() || '');
@@ -1838,6 +2269,11 @@
             $btn.prop('disabled', false);
         });
     });
+
+    if (window.__prdContentOpenTab === 'images' || window.__prdContentOpenTab === 'bottom' || window.__prdContentOpenTab === 'top') {
+        activateContentTab(window.__prdContentOpenTab);
+        window.__prdContentOpenTab = '';
+    }
 
     renderImageLibrary(imageLibraryItems);
     renderBottomList();

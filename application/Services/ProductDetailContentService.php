@@ -47,6 +47,13 @@ class ProductDetailContentService
             && empty($godoBottomContent['matches_local']);
 
         $imageStoragePath = trim((string)($product['CD_IMAGE_STORAGE_PATH'] ?? ''));
+        $imageStorageUrl = '';
+        if ($imageStoragePath !== '') {
+            $publicBaseUrl = (new ProductImageHostingService())->getPublicBaseUrl();
+            if ($publicBaseUrl !== '') {
+                $imageStorageUrl = $publicBaseUrl . $imageStoragePath;
+            }
+        }
         $imageLibrary = [];
         try {
             $imageLibrary = (new ProductImageLibraryService())->getLibrary($prdPk);
@@ -65,6 +72,7 @@ class ProductDetailContentService
             'can_deploy_bottom' => $canDeployBottom,
             'can_recommend_specs' => !empty($recommended['supported']),
             'image_storage_path' => $imageStoragePath,
+            'image_storage_url' => $imageStorageUrl,
             'image_library' => $imageLibrary,
         ];
     }

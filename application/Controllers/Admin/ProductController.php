@@ -275,6 +275,7 @@ class ProductController extends BaseClass
             ];
 
             $productList = $this->productService->getProductListForAdmin($payload);
+            $productList['data'] = $this->productService->attachProductStockHistoryFlag($productList['data'] ?? []);
 
             $pagination = new Pagination(
                 $productList['total'],
@@ -545,6 +546,10 @@ class ProductController extends BaseClass
                 (int)$prdIdx,
                 InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED
             );
+            $godoDiscontinuedRestoreLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
+                (int)$prdIdx,
+                InspectionProcessLogService::LOCATION_PRODUCT_GODO_DISCONTINUED_RESTORE
+            );
             $godoHandlingStoppedLog = $inspectionProcessLogService->getLatestByPrdIdxAndLocation(
                 (int)$prdIdx,
                 InspectionProcessLogService::LOCATION_PRODUCT_GODO_HANDLING_STOPPED
@@ -595,6 +600,7 @@ class ProductController extends BaseClass
                 'brandForSelect' => $brandForSelect,
                 'sale_status_options' => $saleStatusOptions,
                 'godoDiscontinuedLog' => $godoDiscontinuedLog,
+                'godoDiscontinuedRestoreLog' => $godoDiscontinuedRestoreLog,
                 'godoHandlingStoppedLog' => $godoHandlingStoppedLog,
                 'godoSpecialDiscountLog' => $godoSpecialDiscountLog,
                 'orderGroupCodeOptions' => (new OrderGroupService())->getOrderGroupCodeOptions(),
@@ -973,11 +979,21 @@ class ProductController extends BaseClass
                 }
             }
 
-            ProductModel::update(['CD_IDX' => $prdIdx], [
+            $national = strtolower(trim((string)($requestData['cd_national'] ?? '')));
+            $allowedNationals = ['jp', 'cn', 'kr', 'dollar'];
+            $updateData = [
                 'CD_IMAGE_STORAGE_PATH' => $storagePath,
-            ]);
+            ];
+            if ($national !== '') {
+                if (!in_array($national, $allowedNationals, true)) {
+                    throw new \InvalidArgumentException('수입국가 값이 올바르지 않습니다.');
+                }
+                $updateData['cd_national'] = $national;
+            }
+
+            ProductModel::update(['CD_IDX' => $prdIdx], $updateData);
             $savedProduct = ProductModel::query()
-                ->select('CD_IMAGE_STORAGE_PATH')
+                ->select('CD_IMAGE_STORAGE_PATH', 'cd_national')
                 ->where('CD_IDX', '=', $prdIdx)
                 ->first();
             if (empty($savedProduct)) {
@@ -988,10 +1004,22 @@ class ProductController extends BaseClass
                 throw new \RuntimeException('이미지 저장소 경로 저장을 확인하지 못했습니다.');
             }
 
+            $nationalLabels = [
+                'jp' => '일본수입',
+                'cn' => '중국수입',
+                'kr' => '한국사입',
+                'dollar' => '달러',
+            ];
+            $savedNational = strtolower(trim((string)($savedProduct['cd_national'] ?? '')));
+
             return response()->json([
                 'success' => true,
-                'message' => '이미지 저장소 경로를 저장했습니다.',
+                'message' => $national !== ''
+                    ? '이미지 저장소 경로와 수입국가를 저장했습니다.'
+                    : '이미지 저장소 경로를 저장했습니다.',
                 'image_storage_path' => $storagePath,
+                'cd_national' => $savedNational,
+                'cd_national_label' => $nationalLabels[$savedNational] ?? '',
             ]);
         } catch (Throwable $e) {
             return response()->json([
@@ -2658,6 +2686,10 @@ class ProductController extends BaseClass
 
                 case 'set_godo_product_discontinued':
                     $result = $this->productService->setGodoProductDiscontinued($requestData);
+                    break;
+
+                case 'restore_godo_product_discontinued':
+                    $result = $this->productService->restoreGodoProductDiscontinued($requestData);
                     break;
 
                 case 'set_godo_product_handling_stopped':

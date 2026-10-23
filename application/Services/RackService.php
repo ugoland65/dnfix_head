@@ -4,6 +4,7 @@ namespace App\Services;
 use Exception;
 use App\Models\RackModel;
 use App\Models\ProductStockModel;
+use App\Services\AdminActionLogService;
 
 class RackService
 {
@@ -231,9 +232,11 @@ class RackService
                 'code' => $newCode
             ]);
 
+            $stocks = ProductStockModel::where('ps_rack_code', $oldCode)->get()->toArray();
             ProductStockModel::where('ps_rack_code', $oldCode)->update([
                 'ps_rack_code' => $newCode
             ]);
+            $this->logProductRackChanges($stocks, $newCode, '랙 그룹명 변경');
         }
 
         return ['success' => true, 'updated_count' => count($rackList)];
@@ -259,12 +262,54 @@ class RackService
             throw new Exception('변경할 랙 코드가 없습니다.');
         }
 
+        $stocks = ProductStockModel::where('ps_rack_code', $code)->get()->toArray();
         ProductStockModel::where('ps_rack_code', $code)->update([
             'ps_rack_code' => $changeCode
         ]);
+        $this->logProductRackChanges($stocks, $changeCode, '랙 상품 이동');
 
         return true;
 
+    }
+
+    /**
+     * 랙코드가 바뀐 상품마다 수정 로그를 남긴다.
+     *
+     * @param array $stocks
+     * @param string $newCode
+     * @param string $summary
+     */
+    private function logProductRackChanges(array $stocks, string $newCode, string $summary): void
+    {
+        $actionLog = new AdminActionLogService();
+        foreach ($stocks as $stock) {
+            if (!is_array($stock)) {
+                continue;
+            }
+            $prdIdx = (int)($stock['ps_prd_idx'] ?? 0);
+            $beforeRack = (string)($stock['ps_rack_code'] ?? '');
+            if ($prdIdx <= 0 || $beforeRack === $newCode) {
+                continue;
+            }
+
+            $beforeData = ['ps_rack_code' => $beforeRack];
+            $afterData = ['ps_rack_code' => $newCode];
+            try {
+                $actionLog->log([
+                    'target_type' => 'product',
+                    'target_table' => 'prd_stock',
+                    'target_pk' => (string)$prdIdx,
+                    'action_mode' => 'rack_code_update',
+                    'action_summary' => $summary,
+                    'before_json' => $beforeData,
+                    'after_json' => $afterData,
+                    'diff_json' => $actionLog->buildDiff($beforeData, $afterData),
+                    'action_url' => $_SERVER['REQUEST_URI'] ?? null,
+                    'source' => 'admin',
+                ]);
+            } catch (\Throwable $e) {
+            }
+        }
     }
 
 }

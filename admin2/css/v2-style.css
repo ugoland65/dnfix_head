@@ -462,7 +462,7 @@ tr.selected-row:hover {
 	--bs-table-accent-bg: transparent;
 	--bs-table-striped-bg: rgba(0, 0, 0, 0.05);
     --dn-table-color1: #bbb;
-    --dn-table-line-color: #e4e4e4; 
+    --dn-table-line-color: #ccc; 
 	--dn-table-hover-bg:#ddd;
 
     width:auto;

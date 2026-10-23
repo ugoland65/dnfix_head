@@ -114,108 +114,7 @@ class CompetitorController extends BaseClass
                 }
                 $matchIdxs = array_values(array_unique($matchIdxs));
 
-                if (!empty($matchIdxs)) {
-                    $matchedProducts = ProductModel::query()
-                        ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code', 'delivery_type', 'CD_IMG')
-                        ->whereIn('CD_IDX', $matchIdxs)
-                        ->where('CD_DELETED_YN', '=', 'N')
-                        ->get();
-                    $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
-                    $stockQtyByCdIdx = [];
-                    $stockRows = ProductStockModel::query()
-                        ->select('ps_prd_idx', 'ps_stock')
-                        ->whereIn('ps_prd_idx', $matchIdxs)
-                        ->where('ps_deleted_yn', '=', 'N')
-                        ->get();
-                    $stockRows = is_array($stockRows) ? $stockRows : $stockRows->toArray();
-                    foreach ($stockRows as $stockRow) {
-                        $prdIdx = (int)($stockRow['ps_prd_idx'] ?? 0);
-                        if ($prdIdx <= 0) {
-                            continue;
-                        }
-                        $stockQtyByCdIdx[$prdIdx] = (int)($stockRow['ps_stock'] ?? 0);
-                    }
-
-                    $brandIdxs = [];
-                    foreach ($matchedProducts as $matchedProduct) {
-                        $brandIdx = (int)($matchedProduct['CD_BRAND_IDX'] ?? 0);
-                        if ($brandIdx > 0) {
-                            $brandIdxs[] = $brandIdx;
-                        }
-                    }
-                    $brandIdxs = array_values(array_unique($brandIdxs));
-
-                    $brandNameByIdx = [];
-                    if (!empty($brandIdxs)) {
-                        $brands = BrandModel::query()
-                            ->select('BD_IDX', 'BD_NAME')
-                            ->whereIn('BD_IDX', $brandIdxs)
-                            ->get();
-                        $brands = is_array($brands) ? $brands : $brands->toArray();
-                        foreach ($brands as $brand) {
-                            $bdIdx = (int)($brand['BD_IDX'] ?? 0);
-                            if ($bdIdx > 0) {
-                                $brandNameByIdx[$bdIdx] = (string)($brand['BD_NAME'] ?? '');
-                            }
-                        }
-                    }
-
-                    foreach ($matchedProducts as $matchedProduct) {
-                        $cdIdx = (int)($matchedProduct['CD_IDX'] ?? 0);
-                        if ($cdIdx <= 0) {
-                            continue;
-                        }
-                        $brandIdx = (int)($matchedProduct['CD_BRAND_IDX'] ?? 0);
-                        $img = trim((string)($matchedProduct['CD_IMG'] ?? ''));
-                        $salePrice = (int)($matchedProduct['cd_sale_price'] ?? 0);
-                        $costPrice = (int)($matchedProduct['cd_cost_price'] ?? 0);
-                        $deliveryType = trim((string)($matchedProduct['delivery_type'] ?? 'small'));
-                        if ($deliveryType === 'tiny_80') {
-                            $deliveryType = 'tiny';
-                        }
-                        $deliveryFeeMap = [
-                            'tiny' => 2300,
-                            'small' => 2800,
-                            'medium' => 3300,
-                            'large' => 5000,
-                            'xlarge' => 5400,
-                        ];
-                        $deliveryFee = (int)($deliveryFeeMap[$deliveryType] ?? 2800);
-
-                        $marginAmount = $salePrice - $costPrice;
-                        if ($salePrice > 29999) {
-                            $marginAmount = $salePrice - ($costPrice + $deliveryFee);
-                        }
-                        $marginRate = 0;
-                        if ($salePrice > 0) {
-                            $marginRate = round(($marginAmount / $salePrice) * 100, 2);
-                        }
-                        $marginGrade = '';
-                        if ($marginRate > 39) $marginGrade = 'A';
-                        else if ($marginRate >= 35) $marginGrade = 'B';
-                        else if ($marginRate >= 30) $marginGrade = 'C';
-                        else if ($marginRate >= 25) $marginGrade = 'D';
-                        else if ($marginRate >= 20) $marginGrade = 'E';
-                        else if ($marginRate >= 15) $marginGrade = 'F';
-                        else if ($marginRate >= 10) $marginGrade = 'G';
-                        else if ($marginRate >= 5) $marginGrade = 'H';
-                        else if ($marginRate > 0) $marginGrade = 'I';
-
-                        $matchedProductMap[$cdIdx] = [
-                            'CD_IDX' => $cdIdx,
-                            'CD_NAME' => (string)($matchedProduct['CD_NAME'] ?? ''),
-                            'CD_BRAND_IDX' => $brandIdx,
-                            'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
-                            'cd_sale_price' => $salePrice,
-                            'cd_cost_price' => $costPrice,
-                            'cd_godo_code' => (string)($matchedProduct['cd_godo_code'] ?? ''),
-                            'margin_grade' => $marginGrade,
-                            'delivery_type' => $deliveryType,
-                            'stock_qty' => (int)($stockQtyByCdIdx[$cdIdx] ?? 0),
-                            'img_path' => $img !== '' ? ('/data/comparion/' . $img) : '',
-                        ];
-                    }
-                }
+                $matchedProductMap = $this->buildMatchedProductMap($matchIdxs);
 
                 $pagination_total = $CompetitorProductApiData['data']['pagination']['total'];
                 $pagination_per_page = $CompetitorProductApiData['data']['pagination']['per_page'];
@@ -585,6 +484,7 @@ class CompetitorController extends BaseClass
             return response()->json([
                 'success' => true,
                 'message' => '매칭 처리 완료',
+                'cells_html' => $this->buildMatchCellsHtml($requestData, $responseData),
                 'data' => $responseData['data'] ?? [],
             ]);
         } catch (Throwable $e) {
@@ -676,6 +576,7 @@ class CompetitorController extends BaseClass
             return response()->json([
                 'success' => true,
                 'message' => '매칭 해지 완료',
+                'cells_html' => $this->buildMatchCellsHtml($requestData, $responseData),
                 'data' => $responseData['data'] ?? [],
             ]);
         } catch (Throwable $e) {
@@ -684,6 +585,289 @@ class CompetitorController extends BaseClass
                 'message' => $e->getMessage(),
             ], 400);
         }
+    }
+
+    private function buildMatchedProductMap(array $matchIdxs): array
+    {
+        $matchedProductMap = [];
+        $matchIdxs = array_values(array_unique(array_filter(array_map('intval', $matchIdxs))));
+        if (empty($matchIdxs)) {
+            return $matchedProductMap;
+        }
+
+        $matchedProducts = ProductModel::query()
+            ->select('CD_IDX', 'CD_NAME', 'CD_BRAND_IDX', 'cd_sale_price', 'cd_cost_price', 'cd_godo_code', 'delivery_type', 'CD_IMG')
+            ->whereIn('CD_IDX', $matchIdxs)
+            ->where('CD_DELETED_YN', '=', 'N')
+            ->get();
+        $matchedProducts = is_array($matchedProducts) ? $matchedProducts : $matchedProducts->toArray();
+        $stockQtyByCdIdx = [];
+        $stockRows = ProductStockModel::query()
+            ->select('ps_prd_idx', 'ps_stock')
+            ->whereIn('ps_prd_idx', $matchIdxs)
+            ->where('ps_deleted_yn', '=', 'N')
+            ->get();
+        $stockRows = is_array($stockRows) ? $stockRows : $stockRows->toArray();
+        foreach ($stockRows as $stockRow) {
+            $prdIdx = (int)($stockRow['ps_prd_idx'] ?? 0);
+            if ($prdIdx <= 0) {
+                continue;
+            }
+            $stockQtyByCdIdx[$prdIdx] = (int)($stockRow['ps_stock'] ?? 0);
+        }
+
+        $brandIdxs = [];
+        foreach ($matchedProducts as $matchedProduct) {
+            $brandIdx = (int)($matchedProduct['CD_BRAND_IDX'] ?? 0);
+            if ($brandIdx > 0) {
+                $brandIdxs[] = $brandIdx;
+            }
+        }
+        $brandIdxs = array_values(array_unique($brandIdxs));
+
+        $brandNameByIdx = [];
+        if (!empty($brandIdxs)) {
+            $brands = BrandModel::query()
+                ->select('BD_IDX', 'BD_NAME')
+                ->whereIn('BD_IDX', $brandIdxs)
+                ->get();
+            $brands = is_array($brands) ? $brands : $brands->toArray();
+            foreach ($brands as $brand) {
+                $bdIdx = (int)($brand['BD_IDX'] ?? 0);
+                if ($bdIdx > 0) {
+                    $brandNameByIdx[$bdIdx] = (string)($brand['BD_NAME'] ?? '');
+                }
+            }
+        }
+
+        foreach ($matchedProducts as $matchedProduct) {
+            $cdIdx = (int)($matchedProduct['CD_IDX'] ?? ($matchedProduct['cd_idx'] ?? 0));
+            if ($cdIdx <= 0) {
+                continue;
+            }
+            $brandIdx = (int)($matchedProduct['CD_BRAND_IDX'] ?? 0);
+            $img = trim((string)($matchedProduct['CD_IMG'] ?? ''));
+            $salePrice = (int)($matchedProduct['cd_sale_price'] ?? 0);
+            $costPrice = (int)($matchedProduct['cd_cost_price'] ?? 0);
+            $deliveryType = trim((string)($matchedProduct['delivery_type'] ?? 'small'));
+            if ($deliveryType === 'tiny_80') {
+                $deliveryType = 'tiny';
+            }
+            $deliveryFeeMap = [
+                'tiny' => 2300,
+                'small' => 2800,
+                'medium' => 3300,
+                'large' => 5000,
+                'xlarge' => 5400,
+            ];
+            $deliveryFee = (int)($deliveryFeeMap[$deliveryType] ?? 2800);
+
+            $marginAmount = $salePrice - $costPrice;
+            if ($salePrice > 29999) {
+                $marginAmount = $salePrice - ($costPrice + $deliveryFee);
+            }
+            $marginRate = 0;
+            if ($salePrice > 0) {
+                $marginRate = round(($marginAmount / $salePrice) * 100, 2);
+            }
+            $marginGrade = '';
+            if ($marginRate > 39) $marginGrade = 'A';
+            else if ($marginRate >= 35) $marginGrade = 'B';
+            else if ($marginRate >= 30) $marginGrade = 'C';
+            else if ($marginRate >= 25) $marginGrade = 'D';
+            else if ($marginRate >= 20) $marginGrade = 'E';
+            else if ($marginRate >= 15) $marginGrade = 'F';
+            else if ($marginRate >= 10) $marginGrade = 'G';
+            else if ($marginRate >= 5) $marginGrade = 'H';
+            else if ($marginRate > 0) $marginGrade = 'I';
+
+            $matchedProductMap[$cdIdx] = [
+                'CD_IDX' => $cdIdx,
+                'CD_NAME' => (string)($matchedProduct['CD_NAME'] ?? ''),
+                'CD_BRAND_IDX' => $brandIdx,
+                'brand_name' => (string)($brandNameByIdx[$brandIdx] ?? ''),
+                'cd_sale_price' => $salePrice,
+                'cd_cost_price' => $costPrice,
+                'cd_godo_code' => (string)($matchedProduct['cd_godo_code'] ?? ''),
+                'margin_grade' => $marginGrade,
+                'delivery_type' => $deliveryType,
+                'stock_qty' => (int)($stockQtyByCdIdx[$cdIdx] ?? 0),
+                'img_path' => $img !== '' ? ('/data/comparion/' . $img) : '',
+            ];
+        }
+
+        return $matchedProductMap;
+    }
+
+    private function renderCompetitorMatchCellsHtml(array $row, array $matchedProductMap): string
+    {
+        $configCompetitor = config('admin.competitor');
+        $competitor_data = $configCompetitor['competitor_data'] ?? [];
+        ob_start();
+        include dirname(__DIR__, 3) . '/resources/views/admin/competitor/competitor_product_match_cells.php';
+        return (string) ob_get_clean();
+    }
+
+    private function buildMatchCellsHtml(array $requestData, array $responseData): string
+    {
+        try {
+            $apiData = $responseData['data'] ?? [];
+            if (!is_array($apiData)) {
+                $apiData = [];
+            }
+            $product = $apiData['competitorProduct'] ?? [];
+            if (is_object($product)) {
+                $encodedProduct = json_decode(json_encode($product), true);
+                $product = is_array($encodedProduct) ? $encodedProduct : [];
+            }
+            if (!is_array($product)) {
+                $product = [];
+            }
+
+            $matchedItems = $this->normalizeMatchItems($apiData['matched_items'] ?? []);
+            $actionMode = trim((string)($requestData['action_mode'] ?? ($apiData['action_mode'] ?? '')));
+            $requestPrimaryCdIdx = (int)($requestData['primary_cd_idx'] ?? 0);
+            if ($requestPrimaryCdIdx <= 0) {
+                $requestPrimaryCdIdx = (int)($requestData['match_idx'] ?? 0);
+            }
+            if ($actionMode === 'upsert_many' || $actionMode === 'match' || $actionMode === 'set_primary') {
+                $requestItems = $this->normalizeMatchItems($requestData['match_idx_list'] ?? []);
+                if ($requestPrimaryCdIdx > 0) {
+                    $requestItems = $this->mergeMatchItems(
+                        $requestItems,
+                        [['cd_idx' => $requestPrimaryCdIdx, 'match_source' => 'manual']],
+                        $requestPrimaryCdIdx
+                    );
+                }
+                $matchedItems = $this->mergeMatchItems($matchedItems, $requestItems, $requestPrimaryCdIdx);
+            }
+
+            $requestPrice = (int)($requestData['competitor_price'] ?? 0);
+            $requestName = trim((string)($requestData['competitor_name'] ?? ''));
+            $requestBrand = trim((string)($requestData['competitor_brand_name'] ?? ''));
+            $requestImage = trim((string)($requestData['competitor_image'] ?? ''));
+            $requestDetailUrl = trim((string)($requestData['competitor_detail_url'] ?? ''));
+            $requestIdx = (int)($requestData['competitor_idx'] ?? 0);
+
+            $row = $product;
+            $row['site'] = trim((string)($requestData['site'] ?? ($apiData['site'] ?? ($product['site'] ?? ''))));
+            $row['prd_pk'] = (int)($requestData['prd_pk'] ?? ($apiData['prd_pk'] ?? ($product['prd_pk'] ?? 0)));
+            $row['idx'] = $requestIdx > 0 ? $requestIdx : (int)($product['idx'] ?? 0);
+            $row['name'] = $requestName !== '' ? $requestName : (string)($product['name'] ?? '');
+            $row['brand_name'] = $requestBrand !== '' ? $requestBrand : (string)($product['brand_name'] ?? '');
+            $row['image_url'] = $requestImage !== '' ? $requestImage : (string)($product['image_url'] ?? '');
+            $row['detail_url'] = $requestDetailUrl !== '' ? $requestDetailUrl : (string)($product['detail_url'] ?? '');
+            $row['price'] = $requestPrice > 0 ? $requestPrice : (int)($product['price'] ?? 0);
+            $responsePrimaryCdIdx = (int)($apiData['primary_match_idx'] ?? ($apiData['match_idx'] ?? 0));
+            if ($responsePrimaryCdIdx <= 0 && $requestPrimaryCdIdx > 0 && !in_array($actionMode, ['unmatch', 'unmatch_all', 'unmatch_one'], true)) {
+                $responsePrimaryCdIdx = $requestPrimaryCdIdx;
+            }
+            $row['primary_match_idx'] = $responsePrimaryCdIdx > 0 ? $responsePrimaryCdIdx : null;
+            $row['match_idx'] = $row['primary_match_idx'];
+            $row['matched_items'] = $matchedItems;
+
+            $matchIdxs = [];
+            foreach ($matchedItems as $matchedItem) {
+                if (!is_array($matchedItem)) {
+                    continue;
+                }
+                $cdIdx = (int)($matchedItem['cd_idx'] ?? 0);
+                if ($cdIdx > 0) {
+                    $matchIdxs[] = $cdIdx;
+                }
+            }
+            $primaryMatchIdx = (int)($row['primary_match_idx'] ?? 0);
+            if ($primaryMatchIdx > 0) {
+                $matchIdxs[] = $primaryMatchIdx;
+            }
+
+            return $this->renderCompetitorMatchCellsHtml($row, $this->buildMatchedProductMap($matchIdxs));
+        } catch (Throwable $e) {
+            return '';
+        }
+    }
+
+    private function normalizeMatchItems($rawItems): array
+    {
+        if (is_string($rawItems)) {
+            $decoded = json_decode($rawItems, true);
+            if (is_array($decoded)) {
+                $rawItems = $decoded;
+            } else {
+                $rawItems = preg_split('/\s*,\s*/', trim($rawItems)) ?: [];
+            }
+        }
+        if (is_numeric($rawItems)) {
+            $rawItems = [$rawItems];
+        }
+        if (!is_array($rawItems)) {
+            return [];
+        }
+
+        $items = [];
+        foreach ($rawItems as $rawItem) {
+            if (is_object($rawItem)) {
+                $encodedItem = json_decode(json_encode($rawItem), true);
+                $rawItem = is_array($encodedItem) ? $encodedItem : [];
+            }
+
+            $cdIdx = 0;
+            $isPrimary = 0;
+            $matchSource = '';
+            if (is_array($rawItem)) {
+                $cdIdx = (int)($rawItem['cd_idx'] ?? ($rawItem['CD_IDX'] ?? ($rawItem['match_idx'] ?? 0)));
+                $isPrimary = (int)($rawItem['is_primary'] ?? 0) === 1 ? 1 : 0;
+                $matchSource = strtolower(trim((string)($rawItem['match_source'] ?? '')));
+            } elseif (is_numeric($rawItem)) {
+                $cdIdx = (int)$rawItem;
+                $matchSource = 'manual';
+            }
+            if ($cdIdx <= 0) {
+                continue;
+            }
+
+            $items[$cdIdx] = [
+                'cd_idx' => $cdIdx,
+                'is_primary' => $isPrimary,
+                'match_source' => $matchSource,
+            ];
+        }
+
+        return array_values($items);
+    }
+
+    private function mergeMatchItems(array $baseItems, array $extraItems, int $primaryCdIdx): array
+    {
+        $merged = [];
+        foreach ([$baseItems, $extraItems] as $group) {
+            foreach ($this->normalizeMatchItems($group) as $item) {
+                $cdIdx = (int)$item['cd_idx'];
+                if (!isset($merged[$cdIdx])) {
+                    $merged[$cdIdx] = $item;
+                    continue;
+                }
+                if ($merged[$cdIdx]['match_source'] === '' && $item['match_source'] !== '') {
+                    $merged[$cdIdx]['match_source'] = $item['match_source'];
+                }
+                if ((int)$item['is_primary'] === 1) {
+                    $merged[$cdIdx]['is_primary'] = 1;
+                }
+            }
+        }
+
+        if ($primaryCdIdx > 0 && !isset($merged[$primaryCdIdx])) {
+            $merged[$primaryCdIdx] = [
+                'cd_idx' => $primaryCdIdx,
+                'is_primary' => 1,
+                'match_source' => 'manual',
+            ];
+        }
+
+        foreach ($merged as $cdIdx => $item) {
+            $merged[$cdIdx]['is_primary'] = ($primaryCdIdx > 0 && $cdIdx === $primaryCdIdx) ? 1 : (int)$item['is_primary'];
+        }
+
+        return array_values($merged);
     }
 
     private function buildExternalApiEmptyResponseMessage(int $httpCode, string $curlError): string
