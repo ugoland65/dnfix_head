@@ -155,17 +155,24 @@ $orderList['error'] = is_array($orderList['error'] ?? null) ? $orderList['error'
     <h1>고도몰 주문 상품별 가져오기</h1>
     <div class="m-l-20">
         <select name="mode" id="mode">
-            <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료</option>
+            <option value="p" <?= $mode == 'p' ? 'selected' : '' ?>>결제완료 (전체)</option>
+            <option value="p1" <?= $mode == 'p1' ? 'selected' : '' ?>>결제완료</option>
             <option value="p2" <?= $mode == 'p2' ? 'selected' : '' ?>>결제완료 - 출고일 조정</option>
-            <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>준비중 전체</option>
+            <option value="p3" <?= $mode == 'p3' ? 'selected' : '' ?>>결제완료 - CS 처리 대기</option>
+            <option value="p4" <?= $mode == 'p4' ? 'selected' : '' ?>>결제완료 - CS 처리중</option>
+            <option>------------------------</option>
+            <option value="g" <?= $mode == 'g' ? 'selected' : '' ?>>상품준비중 (전체)</option>
             <option value="g1" <?= $mode == 'g1' ? 'selected' : '' ?>>상품준비중</option>
+            <option value="g3" <?= $mode == 'g3' ? 'selected' : '' ?>>구매대행</option>
+            <option value="g4" <?= $mode == 'g4' ? 'selected' : '' ?>>상품출고</option>
             <option value="g5" <?= $mode == 'g5' ? 'selected' : '' ?>>배송준비중-핸디</option>
             <option value="g6" <?= $mode == 'g6' ? 'selected' : '' ?>>배송준비중-공급사 주문대기</option>
-            <option value="g7" <?= $mode == 'g7' ? 'selected' : '' ?>>배송준비중- CS 처리 대기</option>
-            <option value="g8" <?= $mode == 'g8' ? 'selected' : '' ?>>배송준비중-CS 처리중</option>
-            <option value="g9" <?= $mode == 'g9' ? 'selected' : '' ?>>배송준비중-공급사 주문완료</option>
+            <option value="g7" <?= $mode == 'g7' ? 'selected' : '' ?>>배송준비중-공급사 주문완료</option>
+            <option>------------------------</option>
             <option value="d" <?= $mode == 'd' ? 'selected' : '' ?>>배송중</option>
+            <!--
             <option value="ds" <?= $mode == 'ds' ? 'selected' : '' ?>>배송완료</option>
+            -->
             <option value="s1" <?= $mode == 's1' ? 'selected' : '' ?>>구매확정</option>
         </select>
         <label class="calendar-input">

@@ -1649,6 +1649,7 @@ class ProductController extends BaseClass
                 'yelolab' => '옐로랩',
                 'maccos' => '막코스재팬',
                 'magiceyes' => '매직아이즈',
+                'lunegift' => '루네기프트',
             ];
             $siteName = $siteCodeNames[$siteCode] ?? '';
             $siteLabel = $siteCode === ''

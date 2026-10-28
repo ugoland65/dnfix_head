@@ -168,6 +168,7 @@ $siteCodeNames = [
     'yelolab' => '옐로랩',
     'maccos' => '막코스재팬',
     'magiceyes' => '매직아이즈',
+    'lunegift' => '루네기프트',
 ];
 $formatSiteCodeName = static function (string $siteCode) use ($siteCodeNames): string {
     return $siteCodeNames[strtolower(trim($siteCode))] ?? '';
@@ -446,8 +447,9 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
                         <li>
                             <label class="brand">브랜드</label>매직아이즈 ex) <a href="https://magiceyes.jp" target="_blank" rel="noopener noreferrer">https://magiceyes.jp/products/item/-paradox.php</a>
                         </li>
-
-                        
+                        <li>
+                            <label class="brand">브랜드</label>루네기프트 ex) <a href="https://lune-soft.jp" target="_blank" rel="noopener noreferrer">https://www.lune-soft.jp/goods/32395</a>
+                        </li>
                         <li>
                             <label class="local_supplier">현지 공급사</label>N.P.G ex) <a href="http://www.nipporigift.net" target="_blank" rel="noopener noreferrer">http://www.nipporigift.net/products/detail.php?product_id=31373</a>
                         </li>
@@ -1830,6 +1832,19 @@ $sellerCommentText = trim((string)($collectionItem['seller_comment'] ?? ''));
             var magiceyesMatch = url.pathname.match(/^\/products\/item\/([^/]+)\.php\/?$/);
             if (!magiceyesMatch) {
                 showMessage('매직아이즈 URL은 /products/item/상품페이지.php 형식이어야 합니다.', false);
+                return;
+            }
+        } else if (normalizedHost === 'lune-soft.jp') {
+            var lunegiftPath = url.pathname || '';
+            try {
+                lunegiftPath = decodeURIComponent(lunegiftPath);
+            } catch (decodeError) {
+                lunegiftPath = url.pathname || '';
+            }
+            lunegiftPath = lunegiftPath.split('#')[0].split('?')[0].replace(/\/+$/, '');
+            var lunegiftMatch = lunegiftPath.match(/^\/goods\/([1-9][0-9]*)$/);
+            if (!lunegiftMatch) {
+                showMessage('루네기프트 URL은 /goods/상품번호 형식이어야 합니다.', false);
                 return;
             }
         } else {

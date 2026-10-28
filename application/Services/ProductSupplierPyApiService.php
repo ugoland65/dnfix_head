@@ -384,6 +384,15 @@ class ProductSupplierPyApiService
                 'omit_product_pk' => true,
                 'path_error' => '매직아이즈 URL은 /products/item/상품페이지.php 형식이어야 합니다.',
             ],
+            'lune-soft.jp' => [
+                'endpoint' => '/maker-products/lunegift/crawl',
+                'identifier_type' => 'path_numeric',
+                'required_path_prefix' => '/goods/',
+                'payload_key' => 'product_pk',
+                'payload_value_type' => 'int',
+                'path_error' => '루네기프트 URL은 /goods/상품번호 형식이어야 합니다.',
+                'identifier_error' => '루네기프트 상품 번호가 올바르지 않습니다.',
+            ],
         ];
         $collector = $collectorEndpoints[$host] ?? null;
         if ($collector === null) {
@@ -448,6 +457,17 @@ class ProductSupplierPyApiService
             if ($slug === '' || $slug === '.' || $slug === '..') {
                 throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
             }
+        } elseif ($collector['identifier_type'] === 'path_numeric') {
+            $pathPrefix = rtrim((string)$collector['required_path_prefix'], '/');
+            $goodsUrl = preg_replace('/#.*$/', '', $collectionUrl);
+            $goodsPath = (string)(parse_url((string)$goodsUrl, PHP_URL_PATH) ?? '');
+            $goodsPath = rawurldecode($goodsPath);
+            $goodsPath = preg_replace('/[?#].*$/', '', $goodsPath);
+            $goodsPath = rtrim((string)$goodsPath, '/');
+            if (!preg_match('#^' . preg_quote($pathPrefix, '#') . '/([1-9][0-9]*)$#', $goodsPath, $numericPathMatches)) {
+                throw new \InvalidArgumentException((string)($collector['path_error'] ?? '상품 상세 페이지 URL이 올바르지 않습니다.'));
+            }
+            $identifier = $numericPathMatches[1];
         }
 
         $matchedProductPk = (int)($data['matched_product_pk'] ?? 0);

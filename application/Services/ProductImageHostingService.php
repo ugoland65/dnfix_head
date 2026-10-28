@@ -284,6 +284,7 @@ class ProductImageHostingService
             'yelolab.jp' => 'https://yelolab.jp/',
             'maccos.jp' => 'https://maccos.jp/',
             'magiceyes.jp' => 'https://magiceyes.jp/',
+            'lune-soft.jp' => 'https://www.lune-soft.jp/',
         ];
     }
 
