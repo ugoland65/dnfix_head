@@ -162,7 +162,9 @@
 								<th class="list-idx">고유번호</th>
 								<th>수입구분</th>
 								<th>상태</th>
-								<th>상태 변경일</th>
+								
+								<th>주문예상일</th>
+								<th>입고예상일</th>
 								<th>주문서폼</th>
 								<th>이름</th>
 								<th>주문금액</th>
@@ -170,6 +172,7 @@
 								<th>결제금액</th>
 								
 								<th>관리</th>
+								<th>상태 변경일</th>
 								<th>등록일</th>
 								<th>입고처리</th>
 								<th>댓글</th>
@@ -178,6 +181,20 @@
 						</thead>
 						<tbody>
 							<?php
+							$formatOrderSheetListDate = static function ($value): string {
+								$text = trim((string)$value);
+								if ($text === '' || strpos($text, '0000-00-00') === 0) {
+									return '';
+								}
+								if (strlen($text) >= 10) {
+									$text = substr($text, 0, 10);
+								}
+								$timestamp = strtotime($text);
+								if ($timestamp === false) {
+									return '';
+								}
+								return date('y.m.d', $timestamp);
+							};
 							foreach ($orderSheetList as $orderSheet) {
 
 								if ($orderSheet['oo_state'] == '7' ) {
@@ -212,6 +229,8 @@
 										: 0;
 									$expectedAmountText = number_format($expectedAmount) . ' 원';
 								}
+								$expectedOrderDateText = $formatOrderSheetListDate($orderSheet['oo_expected_order_date'] ?? '');
+								$expectedInDateText = $formatOrderSheetListDate($orderSheet['oo_expected_in_date'] ?? '');
 							?>
 								<tr class="<?= $tr_class ?>">
 									<td><input type="checkbox" name="order_sheet_idx[]" value="<?= $orderSheet['oo_idx'] ?>"></td>
@@ -232,18 +251,14 @@
 										<?php } ?>
 									</td>
 									
-									<!-- 상태 변경일 -->
+									
+									<!-- 주문예상일 -->
 									<td class="text-center">
-										<?php
-											$stateChangedAt = trim((string)($orderSheet['state_changed_at'] ?? ''));
-											$stateChangedName = trim((string)($orderSheet['state_changed_name'] ?? ''));
-										?>
-										<?php if ($stateChangedAt !== '') { ?>
-											<?= date('y.m.d H:i', strtotime($stateChangedAt)) ?><br>
-											( <?= htmlspecialchars($stateChangedName, ENT_QUOTES, 'UTF-8') ?> )
-										<?php } else { ?>
-											-
-										<?php } ?>
+										<?= $expectedOrderDateText !== '' ? htmlspecialchars($expectedOrderDateText, ENT_QUOTES, 'UTF-8') : '-' ?>
+									</td>
+									<!-- 입고예상일 -->
+									<td class="text-center">
+										<?= $expectedInDateText !== '' ? htmlspecialchars($expectedInDateText, ENT_QUOTES, 'UTF-8') : '-' ?>
 									</td>
 
 									<!-- 주문서폼 -->
@@ -269,6 +284,21 @@
 										*/ ?>
 
 									</td>
+
+									<!-- 상태 변경일 -->
+									<td class="text-center">
+										<?php
+											$stateChangedAt = trim((string)($orderSheet['state_changed_at'] ?? ''));
+											$stateChangedName = trim((string)($orderSheet['state_changed_name'] ?? ''));
+										?>
+										<?php if ($stateChangedAt !== '') { ?>
+											<?= date('y.m.d H:i', strtotime($stateChangedAt)) ?><br>
+											( <?= htmlspecialchars($stateChangedName, ENT_QUOTES, 'UTF-8') ?> )
+										<?php } else { ?>
+											-
+										<?php } ?>
+									</td>
+
 									<td class="text-center">
 										<?= date('y.m.d H:i', strtotime($orderSheet['created_at'])) ?><br>
 										( <?= $orderSheet['created_name'] ?> )

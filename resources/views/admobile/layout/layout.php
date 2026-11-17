@@ -51,6 +51,7 @@ $adminName = trim((string)($auth['ad_name'] ?? ($_ad_name ?? '관리자')));
                 <a href="/admobile/product/grouping">상품 그룹핑</a>
                 <div class="admobile-navigation-group">재고/발주</div>
                 <a href="/admobile/order/sheet/list">주문(발주)</a>
+                <a href="/admobile/product/rack">랙별 상품 재고관리</a>
                 <div class="admobile-navigation-group">계정관리</div>
                 <a href="/admobile/profile">내 정보 수정</a>
             </nav>

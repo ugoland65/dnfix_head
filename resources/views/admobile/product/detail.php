@@ -124,7 +124,21 @@ if ($shippingImage !== '') {
                     <button type="button" id="admobile-product-barcode-edit" data-barcode="<?= htmlspecialchars((string)($product['cd_code_fn']['jan'] ?? ''), ENT_QUOTES, 'UTF-8') ?>">변경</button>
                 </dd>
             </div>
-            <div><dt>현재고</dt><dd class="is-stock"><?= number_format((int)($product['ps_stock'] ?? 0)) ?>개</dd></div>
+            <div class="admobile-product-detail__stock">
+                <dt>현재고</dt>
+                <dd class="is-stock">
+                    <span>
+                        <strong id="admobile-product-stock"><?= number_format((int)($product['ps_stock'] ?? 0)) ?>개</strong>
+                        <small id="admobile-product-stock-hold">보류 <?= number_format((int)($product['ps_stock_hold'] ?? 0)) ?>개</small>
+                    </span>
+                    <button
+                        type="button"
+                        id="admobile-product-stock-edit"
+                        data-stock="<?= (int)($product['ps_stock'] ?? 0) ?>"
+                        data-stock-hold="<?= (int)($product['ps_stock_hold'] ?? 0) ?>"
+                    >변경</button>
+                </dd>
+            </div>
             <div class="admobile-product-detail__rack">
                 <dt>랙 코드</dt>
                 <dd>
@@ -199,6 +213,61 @@ if ($shippingImage !== '') {
             <div class="admobile-product-rack-modal__actions">
                 <button type="button" data-action="close">취소</button>
                 <button type="submit">저장</button>
+            </div>
+        </form>
+    </section>
+</div>
+
+<div id="admobile-product-stock-modal" class="admobile-product-rack-modal admobile-product-stock-modal" hidden>
+    <div class="admobile-product-rack-modal__backdrop" data-action="close"></div>
+    <section class="admobile-product-rack-modal__content admobile-product-stock-modal__content" role="dialog" aria-modal="true" aria-labelledby="admobile-product-stock-title">
+        <form id="admobile-product-stock-form">
+            <div class="admobile-product-rack-modal__heading">
+                <div>
+                    <p>재고 · 주문</p>
+                    <h2 id="admobile-product-stock-title">재고 변경등록</h2>
+                </div>
+                <button type="button" data-action="close" aria-label="재고 변경 닫기">×</button>
+            </div>
+            <p class="admobile-product-stock-modal__summary">
+                현재 재고 <b id="admobile-product-stock-modal-current">0</b>
+                · 보류 재고 <b id="admobile-product-stock-modal-hold">0</b>
+            </p>
+            <label for="admobile-product-stock-day">날짜</label>
+            <input id="admobile-product-stock-day" name="stock_day" type="date" required>
+            <label for="admobile-product-stock-mode">종류</label>
+            <select id="admobile-product-stock-mode" name="stock_mode">
+                <option value="plus">입고</option>
+                <option value="minus">출고</option>
+                <option value="to_hold">보류 전환</option>
+                <option value="to_stock">재고 전환</option>
+                <option value="plus_hold">보류 입고</option>
+                <option value="minus_hold">보류 출고</option>
+            </select>
+            <label for="admobile-product-stock-kind">구분</label>
+            <select id="admobile-product-stock-kind" name="stock_kind">
+                <option value="조정">( ± ) 조정</option>
+                <option value="판매">( - ) 판매 (출고전용)</option>
+                <option value="서비스">( - ) 서비스 (출고전용)</option>
+                <option value="반품">( + ) 반품,주문취소 (입고전용)</option>
+                <option value="신규입고">( + ) 신규입고</option>
+                <option value="샘플">샘플</option>
+            </select>
+            <ul class="admobile-product-stock-modal__guide">
+                <li>보류 전환은 현재 재고를 보류 재고로 보냅니다.</li>
+                <li>재고 전환은 보류 재고를 현재 재고로 보냅니다.</li>
+                <li>보류 입고·출고는 보류 재고만 더하거나 뺍니다.</li>
+                <li>신규입고는 주문 후 입고된 경우에만 선택합니다.</li>
+                <li>재고 파악이나 단순 수량 조정은 조정을 선택합니다.</li>
+            </ul>
+            <label for="admobile-product-stock-qty">수량</label>
+            <input id="admobile-product-stock-qty" name="stock_qty" type="number" min="1" step="1" inputmode="numeric" value="1" required>
+            <label for="admobile-product-stock-memo">메모</label>
+            <input id="admobile-product-stock-memo" name="stock_memo" type="text" maxlength="200" autocomplete="off">
+            <p id="admobile-product-stock-message" class="admobile-product-rack-modal__message" aria-live="polite"></p>
+            <div class="admobile-product-rack-modal__actions">
+                <button type="button" data-action="close">취소</button>
+                <button type="submit">전송</button>
             </div>
         </form>
     </section>
@@ -288,6 +357,10 @@ if ($shippingImage !== '') {
     .admobile-product-detail__info dt { margin-bottom: 4px; color: #98a2b3; font-size: 10px; }
     .admobile-product-detail__info dd { overflow-wrap: anywhere; margin: 0; color: #344054; font-size: 13px; line-height: 1.4; }
     .admobile-product-detail__info .is-stock { color: #2450a6; font-size: 16px; font-weight: 800; }
+    .admobile-product-detail__stock dd { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
+    .admobile-product-detail__stock dd > span { display: flex; flex-direction: column; min-width: 0; }
+    .admobile-product-detail__stock small { color: #98a2b3; font-size: 11px; font-weight: 600; }
+    .admobile-product-detail__stock button { flex: 0 0 auto; padding: 5px 7px; border: 1px solid #8fa5d3; border-radius: 5px; background: #fff; color: #2c4d92; font: inherit; font-size: 11px; font-weight: 700; }
     .admobile-product-detail__rack { background: #f1f5ff; }
     .admobile-product-detail__rack dt { color: #2c4d92; font-weight: 700; }
     .admobile-product-detail__rack dd { display: flex; align-items: center; justify-content: space-between; gap: 7px; }
@@ -327,6 +400,12 @@ if ($shippingImage !== '') {
     .admobile-product-rack-modal__actions { display: grid; grid-template-columns: 88px 1fr; gap: 8px; margin-top: 10px; }
     .admobile-product-rack-modal__actions button { min-height: 46px; border: 0; border-radius: 8px; background: #eef1f5; color: #475467; font: inherit; font-size: 14px; font-weight: 700; }
     .admobile-product-rack-modal__actions button[type="submit"] { background: #3056a8; color: #fff; }
+    .admobile-product-stock-modal__content { max-height: 92vh; overflow: auto; }
+    .admobile-product-stock-modal__summary { margin: 14px 0 0; color: #344054; font-size: 13px; }
+    .admobile-product-stock-modal__summary b { color: #173d8f; }
+    .admobile-product-stock-modal select,
+    .admobile-product-stock-modal input { width: 100%; padding: 13px; border: 1px solid #8fa5d3; border-radius: 8px; background: #fff; color: #172033; font-family: inherit; font-size: 15px; font-weight: 600; letter-spacing: 0; outline-color: #3056a8; }
+    .admobile-product-stock-modal__guide { margin: 8px 0 0; padding-left: 16px; color: #667085; font-size: 11px; line-height: 1.5; }
     .admobile-product-weight-modal[hidden] { display: none; }
     .admobile-product-weight-modal { position: fixed; z-index: 1200; inset: 0; display: flex; align-items: flex-end; }
     .admobile-product-weight-modal__backdrop { position: absolute; inset: 0; background: rgba(16, 24, 40, .58); }
@@ -433,6 +512,107 @@ if ($shippingImage !== '') {
                     editButton.dataset.totalWeight = totalValue;
                     productWeight.textContent = toDisplayWeight(productValue);
                     totalWeight.textContent = toDisplayWeight(totalValue);
+                    closeModal();
+                })
+                .catch(function(error) {
+                    message.textContent = error.message;
+                })
+                .finally(function() {
+                    saveButton.disabled = false;
+                });
+        });
+    })();
+</script>
+
+<script>
+    (function() {
+        var modal = document.getElementById('admobile-product-stock-modal');
+        var form = document.getElementById('admobile-product-stock-form');
+        var editButton = document.getElementById('admobile-product-stock-edit');
+        if (!modal || !form || !editButton) {
+            return;
+        }
+
+        var message = document.getElementById('admobile-product-stock-message');
+        var stockText = document.getElementById('admobile-product-stock');
+        var stockHoldText = document.getElementById('admobile-product-stock-hold');
+        var modalStock = document.getElementById('admobile-product-stock-modal-current');
+        var modalHold = document.getElementById('admobile-product-stock-modal-hold');
+        var dayInput = document.getElementById('admobile-product-stock-day');
+        var modeInput = document.getElementById('admobile-product-stock-mode');
+        var kindInput = document.getElementById('admobile-product-stock-kind');
+        var qtyInput = document.getElementById('admobile-product-stock-qty');
+        var memoInput = document.getElementById('admobile-product-stock-memo');
+        var prdIdx = <?= (int)($product['CD_IDX'] ?? 0) ?>;
+        var psIdx = <?= (int)($product['ps_idx'] ?? 0) ?>;
+
+        function formatCount(value) {
+            return Number(value || 0).toLocaleString('ko-KR');
+        }
+
+        function todayText() {
+            var today = new Date();
+            var month = String(today.getMonth() + 1).padStart(2, '0');
+            var day = String(today.getDate()).padStart(2, '0');
+            return today.getFullYear() + '-' + month + '-' + day;
+        }
+
+        function closeModal() {
+            modal.hidden = true;
+        }
+
+        editButton.addEventListener('click', function() {
+            modalStock.textContent = formatCount(editButton.dataset.stock);
+            modalHold.textContent = formatCount(editButton.dataset.stockHold);
+            dayInput.value = todayText();
+            modeInput.value = 'plus';
+            kindInput.value = '조정';
+            qtyInput.value = '1';
+            memoInput.value = '';
+            message.textContent = '';
+            modal.hidden = false;
+            window.setTimeout(function() { qtyInput.focus(); }, 100);
+        });
+
+        modal.addEventListener('click', function(event) {
+            if (event.target.closest('[data-action="close"]')) {
+                closeModal();
+            }
+        });
+
+        form.addEventListener('submit', function(event) {
+            event.preventDefault();
+            var saveButton = form.querySelector('[type="submit"]');
+            saveButton.disabled = true;
+            message.textContent = '';
+
+            fetch('/admobile/product/action', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/x-www-form-urlencoded; charset=UTF-8' },
+                body: new URLSearchParams({
+                    action_mode: 'register_stock_change',
+                    prd_idx: prdIdx,
+                    ps_idx: psIdx,
+                    stock_day: dayInput.value,
+                    stock_mode: modeInput.value,
+                    stock_kind: kindInput.value,
+                    stock_qty: qtyInput.value,
+                    stock_memo: memoInput.value
+                })
+            })
+                .then(function(response) { return response.json(); })
+                .then(function(result) {
+                    if (!result.success) {
+                        throw new Error(result.message || '재고 변경에 실패했습니다.');
+                    }
+
+                    if (result.ps_idx) {
+                        psIdx = result.ps_idx;
+                    }
+                    editButton.dataset.stock = String(result.stock || 0);
+                    editButton.dataset.stockHold = String(result.stock_hold || 0);
+                    stockText.textContent = formatCount(result.stock) + '개';
+                    stockHoldText.textContent = '보류 ' + formatCount(result.stock_hold) + '개';
                     closeModal();
                 })
                 .catch(function(error) {

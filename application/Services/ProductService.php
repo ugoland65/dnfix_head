@@ -392,7 +392,7 @@ class ProductService extends BaseClass
         }
 
         if ($rack_code !== '') {
-            $query->where('D.ps_rack_code', $rack_code);
+            $query->whereRaw('INSTR(D.ps_rack_code, ?) > 0', [$rack_code]);
         }
 
         if ($isProductStockMode) {
@@ -1720,12 +1720,21 @@ class ProductService extends BaseClass
         if (!is_array($codeData)) {
             $codeData = [];
         }
-        $beforeData = ['barcode' => (string)($codeData['jan'] ?? '')];
+        $beforeData = [
+            'barcode' => (string)($codeData['jan'] ?? ''),
+            'CD_CODE' => (string)($product['CD_CODE'] ?? ''),
+        ];
         $codeData['jan'] = $barcode;
         ProductModel::query()
             ->where('CD_IDX', '=', $prdIdx)
-            ->update(['cd_code_fn' => json_encode($codeData, JSON_UNESCAPED_UNICODE)]);
-        $afterData = ['barcode' => $barcode];
+            ->update([
+                'cd_code_fn' => json_encode($codeData, JSON_UNESCAPED_UNICODE),
+                'CD_CODE' => $barcode,
+            ]);
+        $afterData = [
+            'barcode' => $barcode,
+            'CD_CODE' => $barcode,
+        ];
 
         try {
             $actionLog = new AdminActionLogService();

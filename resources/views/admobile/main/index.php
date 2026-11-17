@@ -16,6 +16,10 @@
         <span>주문(발주) 리스트</span>
         <span aria-hidden="true">›</span>
     </a>
+    <a class="admobile-menu-item" href="/admobile/product/rack">
+        <span>랙별 상품 재고관리</span>
+        <span aria-hidden="true">›</span>
+    </a>
 </section>
 
 <section class="admobile-menu">

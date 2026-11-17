@@ -22,7 +22,11 @@ class View
     {
         $this->template = $template;
         $this->data = $data;
-        self::$viewPath = dirname(__DIR__, 2) . '/resources/views/';
+
+        // 다른 앱에서 setViewPath()로 지정한 경로를 유지한다.
+        if (self::$viewPath === '') {
+            self::$viewPath = dirname(__DIR__, 2) . '/resources/views/';
+        }
     }
 
     /**

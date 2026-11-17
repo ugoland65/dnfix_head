@@ -87,6 +87,7 @@ error_reporting(E_ALL);
 						<li><label onclick="calendar.view();"><input type="checkbox" data-mode="event" class="calendar-view-checkbox" checked> <i class="fas fa-democrat"></i> 행사</label></li>
 						<li><label onclick="calendar.view();"><input type="checkbox" data-mode="individual" class="calendar-view-checkbox" checked> <i class="fas fa-tag"></i> 개인 (나만보임)</label></li>
 						<li><label onclick="calendar.view();"><input type="checkbox" data-mode="holiday" class="calendar-view-checkbox" checked> <i class="fas fa-user-alt-slash"></i> 월차,반차,조퇴</label></li>
+						<li><label onclick="calendar.view();"><input type="checkbox" data-mode="order_expected" class="calendar-view-checkbox" checked> <i class="fas fa-clipboard-list"></i> 주문/입고예상</label></li>
 					<ul>
 				</div>
 
@@ -141,7 +142,22 @@ var calendar = function() {
 		init : function() {
 
 			var cvStorageOtput = localStorage.getItem("cvStorage");		
-			var cvStorageArr = JSON.parse(cvStorageOtput);
+			var cvStorageArr = [];
+			try {
+				cvStorageArr = cvStorageOtput ? JSON.parse(cvStorageOtput) : [];
+			} catch (e) {
+				cvStorageArr = [];
+			}
+			if (!Array.isArray(cvStorageArr)) {
+				cvStorageArr = [];
+			}
+			if (cvStorageOtput && localStorage.getItem("cvStorageVersion") !== "2") {
+				if (cvStorageArr.indexOf("order_expected") < 0) {
+					cvStorageArr.push("order_expected");
+				}
+				localStorage.setItem("cvStorage", JSON.stringify(cvStorageArr));
+				localStorage.setItem("cvStorageVersion", "2");
+			}
 
 			$(".calendar-view-checkbox").each(function() { 
 				var objname = $(this).data("mode");

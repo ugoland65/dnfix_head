@@ -1,6 +1,7 @@
 <?php
 $staffHolidayByDay = is_array($staffHolidayByDay ?? null) ? $staffHolidayByDay : [];
 $calendarByDay = is_array($calendarByDay ?? null) ? $calendarByDay : [];
+$calendarWeekBars = is_array($calendarWeekBars ?? null) ? $calendarWeekBars : [];
 $commentDayMap = is_array($commentDayMap ?? null) ? $commentDayMap : [];
 
 $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendarByDay) {
@@ -29,6 +30,7 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
         $state = (string)($val['state'] ?? '');
         $subject = (string)($val['subject'] ?? '');
         $calendarIdx = (int)($val['idx'] ?? 0);
+        $unitClass = 'calendar-unit-ul';
 
         if ($mode === '결제기한' && ($kind === '배송비' || $kind === '관/부가세')) {
             $icon = '';
@@ -51,6 +53,24 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
 
             $onclick = "onlyAD.orderSheetView('{$ooIdx}', 'global');";
             $title = $priceText;
+        } elseif ($mode === '주문서예상') {
+            $icon = $kind === '입고예상'
+                ? '<i class="fas fa-box" style="font-size:10px !important;"></i> '
+                : '<i class="fas fa-clipboard-list" style="font-size:10px !important;"></i> ';
+            $thisData = json_decode((string)($val['data'] ?? '{}'), true);
+            if (!is_array($thisData)) {
+                $thisData = [];
+            }
+            $ooIdx = (int)($thisData['oo_idx'] ?? 0);
+            $safeKind = htmlspecialchars($kind, ENT_QUOTES, 'UTF-8');
+            $safeSubject = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
+            $thisSubject = $icon . $safeKind . ' ' . $safeSubject;
+            if ($state === 'E') {
+                $thisSubject = "<font class='calendar-approval-state-end'>{$thisSubject}</font>";
+            }
+            $onclick = "onlyAD.orderSheetView('{$ooIdx}', 'global');";
+            $title = htmlspecialchars(trim($kind . ' ' . $subject), ENT_QUOTES, 'UTF-8');
+            $unitClass .= $kind === '입고예상' ? ' calendar-unit-inbound' : ' calendar-unit-order';
         } else {
             $icon = '';
             switch ($kind) {
@@ -90,10 +110,114 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
             $title = htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
         }
 
-        $html .= '<ul class="calendar-unit-ul" title="' . $title . '"><span style="cursor:pointer;" onclick="' . $onclick . '">' . $thisSubject . '</span></ul>';
+        $html .= '<ul class="' . $unitClass . '" title="' . $title . '"><span style="cursor:pointer;" onclick="' . $onclick . '">' . $thisSubject . '</span></ul>';
     }
 
     $html .= "</div>";
+    return $html;
+};
+
+$renderSpanBars = function (array $bars): string {
+    $kindClassMap = [
+        '회의' => 'is-staff-meeting',
+        '방문미팅' => 'is-meeting',
+        '외부미팅' => 'is-meeting',
+        '일정' => 'is-schedule',
+        '체크' => 'is-check',
+        '중요' => 'is-point',
+        '행사' => 'is-event',
+        '개인' => 'is-individual',
+        '배송비' => 'is-delivery',
+        '관/부가세' => 'is-tax',
+    ];
+    $html = '';
+    foreach ($bars as $bar) {
+        if (!is_array($bar)) {
+            continue;
+        }
+        $mode = (string)($bar['mode'] ?? '');
+        $kind = (string)($bar['kind'] ?? '');
+        $state = (string)($bar['state'] ?? '');
+        $subject = (string)($bar['subject'] ?? '');
+        $calendarIdx = (int)($bar['idx'] ?? 0);
+        $startCol = (int)($bar['startCol'] ?? 0);
+        $span = max(1, (int)($bar['span'] ?? 1));
+        $lane = (int)($bar['lane'] ?? 0);
+        $continuesBefore = !empty($bar['continuesBefore']);
+        $continuesAfter = !empty($bar['continuesAfter']);
+
+        if ($mode === '결제기한' && ($kind === '배송비' || $kind === '관/부가세')) {
+            $icon = $kind === '배송비'
+                ? '<i class="fas fa-truck"></i>'
+                : '<i class="fas fa-receipt"></i>';
+            $thisData = json_decode((string)($bar['data'] ?? '{}'), true);
+            if (!is_array($thisData)) {
+                $thisData = [];
+            }
+            $priceText = number_format((float)($thisData['price'] ?? 0));
+            $labelText = trim($kind . ' ' . $priceText);
+            $labelHtml = $icon . ' ' . htmlspecialchars($labelText, ENT_QUOTES, 'UTF-8');
+            $onclick = "onlyAD.orderSheetView('" . htmlspecialchars((string)($thisData['oo_idx'] ?? ''), ENT_QUOTES, 'UTF-8') . "', 'global');";
+        } else {
+            $icon = '';
+            switch ($kind) {
+                case '회의':
+                    $icon = '<i class="far fa-comment-dots"></i>';
+                    break;
+                case '방문미팅':
+                case '외부미팅':
+                    $icon = '<i class="far fa-handshake"></i>';
+                    break;
+                case '일정':
+                    $icon = '<i class="fas fa-hiking"></i>';
+                    break;
+                case '체크':
+                    $icon = '<i class="fas fa-calendar-check"></i>';
+                    break;
+                case '중요':
+                    $icon = '<i class="fas fa-star"></i>';
+                    break;
+                case '행사':
+                    $icon = '<i class="fas fa-democrat"></i>';
+                    break;
+                case '개인':
+                    $icon = '<i class="fas fa-tag"></i>';
+                    break;
+            }
+            $labelText = trim($kind . ' ' . $subject);
+            $labelHtml = $icon . ($icon !== '' ? ' ' : '') . htmlspecialchars($subject, ENT_QUOTES, 'UTF-8');
+            $onclick = "calendar.detail(this, '{$calendarIdx}');";
+        }
+
+        if ($state === 'C') {
+            $labelHtml = '<s>' . $labelHtml . '</s>';
+        }
+
+        $startText = substr((string)($bar['start_date'] ?? ''), 5);
+        $endText = substr((string)($bar['end_date'] ?? ''), 5);
+        $title = $labelText;
+        if ($startText !== '' && $endText !== '') {
+            $title .= ' (' . str_replace('-', '.', $startText) . ' ~ ' . str_replace('-', '.', $endText) . ')';
+        }
+
+        $classes = ['calendar-span-bar', $kindClassMap[$kind] ?? 'is-default'];
+        if ($continuesBefore) {
+            $classes[] = 'is-continued-before';
+        }
+        if ($continuesAfter) {
+            $classes[] = 'is-continued-after';
+        }
+        if ($state === 'E') {
+            $classes[] = 'is-end';
+        }
+        if ($state === 'C') {
+            $classes[] = 'is-cancel';
+        }
+
+        $style = 'grid-column:' . ($startCol + 1) . ' / span ' . $span . ';grid-row:' . ($lane + 1) . ';';
+        $html .= '<div class="' . implode(' ', $classes) . '" style="' . $style . '" title="' . htmlspecialchars($title, ENT_QUOTES, 'UTF-8') . '" onclick="' . htmlspecialchars($onclick, ENT_QUOTES, 'UTF-8') . '"><span>' . $labelHtml . '</span></div>';
+    }
+
     return $html;
 };
 ?>
@@ -124,6 +248,58 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
 .calendar-unit-ul span i{ font-size:12px !important; width:16px; text-align:center; }
 .calendar-unit-ul:hover{ background-color:#fff; border:1px solid #ff0000; }
 .calendar-unit-ul:hover span{ color:#ff0000; }
+.calendar-unit-order{ background:#e8f1ff; border-color:#c9ddff; }
+.calendar-unit-inbound{ background:#e9f8ef; border-color:#b7ebc6; }
+.calendal-table tbody tr td.calendar-week-cell{ height:auto; padding:0; border:0; background:transparent; }
+.calendar-week-wrap{ position:relative; }
+.calendar-week{ display:grid; grid-template-columns:repeat(7, minmax(0, 1fr)); }
+.calendar-day{ min-height:115px; box-sizing:border-box; padding:4px 4px 6px; border-right:1px solid #666; border-bottom:1px solid #666; background:#fff; }
+.calendar-day:first-child{ border-left:1px solid #666; }
+.calendar-day.today{ background:#ffffd9; }
+.calendar-day-head{ display:flex; align-items:center; justify-content:space-between; gap:4px; height:28px; margin-bottom:4px; }
+.calendar-day-bar-space{ height:calc(var(--calendar-lanes, 0) * 24px); }
+.calendar-span-layer{
+    position:absolute;
+    left:0;
+    right:0;
+    top:36px;
+    display:grid;
+    grid-template-columns:repeat(7, minmax(0, 1fr));
+    grid-auto-rows:24px;
+    pointer-events:none;
+    z-index:2;
+}
+.calendar-span-bar{
+    pointer-events:auto;
+    margin:2px 4px;
+    height:20px;
+    padding:0 6px;
+    border-radius:4px;
+    box-sizing:border-box;
+    font-size:12px;
+    line-height:20px;
+    color:#1d2939;
+    background:#e8eefc;
+    cursor:pointer;
+    overflow:hidden;
+}
+.calendar-span-bar span{ display:block; overflow:hidden; white-space:nowrap; text-overflow:ellipsis; }
+.calendar-span-bar span i{ font-size:11px !important; width:14px; text-align:center; }
+.calendar-span-bar.is-continued-before{ margin-left:0; border-top-left-radius:0; border-bottom-left-radius:0; }
+.calendar-span-bar.is-continued-after{ margin-right:0; border-top-right-radius:0; border-bottom-right-radius:0; }
+.calendar-span-bar.is-end,
+.calendar-span-bar.is-cancel{ color:#98a2b3; background:#f2f4f7; }
+.calendar-span-bar.is-cancel span{ text-decoration:line-through; }
+.calendar-span-bar.is-staff-meeting{ background:#dbeafe; }
+.calendar-span-bar.is-meeting{ background:#fce7f3; }
+.calendar-span-bar.is-schedule{ background:#dcfce7; }
+.calendar-span-bar.is-check{ background:#fef3c7; }
+.calendar-span-bar.is-point{ background:#fee2e2; }
+.calendar-span-bar.is-event{ background:#ede9fe; }
+.calendar-span-bar.is-individual{ background:#e5e7eb; }
+.calendar-span-bar.is-delivery{ background:#fff4e5; }
+.calendar-span-bar.is-tax{ background:#e0f2fe; }
+.calendar-span-bar:hover{ outline:1px solid #ff0000; }
 </style>
 
 <div>
@@ -150,7 +326,17 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
             $afterMonthCursor = 1;
 
             for ($i = 1; $i <= (int)$totalWeek; $i++) {
-                echo '<tr>';
+                $weekBars = $calendarWeekBars[$i] ?? [];
+                if (!is_array($weekBars)) {
+                    $weekBars = [];
+                }
+                $laneCount = 0;
+                foreach ($weekBars as $weekBar) {
+                    if (is_array($weekBar)) {
+                        $laneCount = max($laneCount, (int)($weekBar['lane'] ?? 0) + 1);
+                    }
+                }
+                echo '<tr><td colspan="7" class="calendar-week-cell"><div class="calendar-week-wrap" style="--calendar-lanes:' . $laneCount . '"><div class="calendar-week">';
                 for ($j = 0; $j < 7; $j++) {
                     $isCurrentMonthDay = !(($i === 1 && $j < (int)$startWeek) || ($i === (int)$totalWeek && $j > (int)$lastWeek));
 
@@ -171,16 +357,19 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
                         $calendarIdx = (int)($commentInfo['idx'] ?? 0);
                         $commentCount = (int)($commentInfo['comment_count'] ?? 0);
                         ?>
-                        <td class="<?= $holyStyle ?> <?= $todayStyle ?>">
-                            <div>
+                        <div class="calendar-day <?= $todayStyle ?>">
+                            <div class="calendar-day-head">
                                 <div class="day <?= $holyStyle ?>" onclick="calendar.reg('<?= $year ?>','<?= $month ?>','<?= $dayCursor ?>')"><?= $dayCursor ?></div>
                                 <button type="button" id="show_type_all" class="btnstyle1 btnstyle1-xs" onclick="footerGlobal.comment('calendar','<?= $calendarIdx ?>','<?= $dayCode2 ?>')">
                                     댓글
                                     <?php if ($commentCount > 0) { ?> : <b><?= $commentCount ?></b><?php } ?>
                                 </button>
                             </div>
+                            <?php if ($laneCount > 0) { ?>
+                                <div class="calendar-day-bar-space"></div>
+                            <?php } ?>
                             <?= $renderCalendarContents($dayCode) ?>
-                        </td>
+                        </div>
                         <?php
                         $dayCursor++;
                     } else {
@@ -194,14 +383,23 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
                             $afterMonthCursor++;
                         }
                         ?>
-                        <td>
-                            <div class="day-before"><?= $thisDay ?></div>
+                        <div class="calendar-day">
+                            <div class="calendar-day-head">
+                                <div class="day-before"><?= $thisDay ?></div>
+                            </div>
+                            <?php if ($laneCount > 0) { ?>
+                                <div class="calendar-day-bar-space"></div>
+                            <?php } ?>
                             <?= $renderCalendarContents($dayCode) ?>
-                        </td>
+                        </div>
                         <?php
                     }
                 }
-                echo '</tr>';
+                echo '</div>';
+                if ($weekBars !== []) {
+                    echo '<div class="calendar-span-layer">' . $renderSpanBars($weekBars) . '</div>';
+                }
+                echo '</div></td></tr>';
             }
             ?>
         </tbody>
@@ -210,7 +408,7 @@ $renderCalendarContents = function ($dayCode) use ($staffHolidayByDay, $calendar
 
 <script type="text/javascript">
 $(document).ready(function() {
-    $(".calendar-unit-ul").mouseover(function() {
+    $(".calendar-unit-ul, .calendar-span-bar").mouseover(function() {
         $(this).tooltip();
     });
 });

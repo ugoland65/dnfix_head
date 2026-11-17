@@ -21,6 +21,7 @@ try {
     $router->get('/profile', ProfileController::class, 'profile');
     $router->post('/profile', ProfileController::class, 'update');
     $router->get('/product/list', ProductController::class, 'list');
+    $router->get('/product/rack', ProductController::class, 'rackStock');
     $router->get('/product/detail', ProductController::class, 'detail');
     $router->post('/product/action', ProductController::class, 'action');
     $router->get('/product/grouping', ProductGroupingController::class, 'list');

@@ -6,6 +6,7 @@ use App\Core\AuthAdmin;
 use App\Models\CalendarModel;
 use App\Models\ScheduleSttafModel;
 use App\Models\AdminModel;
+use App\Models\OrderSheetModel;
 
 class CalendarService
 {
@@ -49,6 +50,7 @@ class CalendarService
             'event',
             'individual',
             'holiday',
+            'order_expected',
         ];
 
         $calendarViewMap = [];
@@ -126,8 +128,8 @@ class CalendarService
         }
 
         $calendarQuery = CalendarModel::query()
-            ->where('date_s', '>=', $startDate . ' 00:00:00')
-            ->where('date_e', '<=', $endDate . ' 23:59:59');
+            ->where('date_s', '<=', $endDate . ' 23:59:59')
+            ->where('date_e', '>=', $startDate . ' 00:00:00');
 
         if (($calendarViewMap['delivery'] ?? '') !== 'show') {
             $calendarQuery->where('kind', '!=', '배송비');
@@ -168,28 +170,115 @@ class CalendarService
 
         $commentDayMap = [];
         $calendarByDay = [];
+        $multiDayEvents = [];
         foreach ($calendarRows as $row) {
-            $dayCode = date('Ymd', strtotime((string)($row['date_s'] ?? '')));
+            $startTs = strtotime((string)($row['date_s'] ?? ''));
+            if ($startTs === false) {
+                continue;
+            }
+            $endTs = strtotime((string)($row['date_e'] ?? ''));
+            if ($endTs === false || $endTs < $startTs) {
+                $endTs = $startTs;
+            }
+
+            $startDay = date('Y-m-d', $startTs);
+            $endDay = date('Y-m-d', $endTs);
+            $dayCode = date('Ymd', $startTs);
             if ($dayCode === '19700101') {
                 continue;
             }
 
             if (($row['mode'] ?? '') === 'comment') {
-                $commentDayMap[$dayCode] = [
-                    'idx' => $row['idx'] ?? '',
-                    'comment_count' => (int)($row['comment_count'] ?? 0),
+                if ($startDay >= $startDate && $startDay <= $endDate) {
+                    $commentDayMap[$dayCode] = [
+                        'idx' => $row['idx'] ?? '',
+                        'comment_count' => (int)($row['comment_count'] ?? 0),
+                    ];
+                }
+                continue;
+            }
+
+            $item = [
+                'idx' => $row['idx'] ?? '',
+                'mode' => $row['mode'] ?? '',
+                'kind' => $row['kind'] ?? '',
+                'state' => $row['state'] ?? '',
+                'subject' => $row['subject'] ?? '',
+                'data' => $row['data'] ?? '',
+            ];
+            if ($startDay !== $endDay) {
+                $multiDayEvents[] = $item + [
+                    'start_date' => $startDay,
+                    'end_date' => $endDay,
                 ];
-            } else {
-                $calendarByDay[$dayCode][] = [
-                    'idx' => $row['idx'] ?? '',
-                    'mode' => $row['mode'] ?? '',
-                    'kind' => $row['kind'] ?? '',
-                    'state' => $row['state'] ?? '',
-                    'subject' => $row['subject'] ?? '',
-                    'data' => $row['data'] ?? '',
+                continue;
+            }
+            if ($startDay < $startDate || $startDay > $endDate) {
+                continue;
+            }
+            $calendarByDay[$dayCode][] = $item;
+        }
+
+        if (($calendarViewMap['order_expected'] ?? '') === 'show') {
+            $orderSheetRows = OrderSheetModel::query()
+                ->select(['oo_idx', 'oo_name', 'oo_state', 'oo_expected_order_date', 'oo_expected_in_date'])
+                ->whereRaw(
+                    "((oo_expected_order_date >= ? AND oo_expected_order_date <= ?) OR (oo_expected_in_date >= ? AND oo_expected_in_date <= ?))",
+                    [
+                        $startDate . ' 00:00:00',
+                        $endDate . ' 23:59:59',
+                        $startDate . ' 00:00:00',
+                        $endDate . ' 23:59:59',
+                    ]
+                )
+                ->orderBy('oo_idx', 'desc')
+                ->get()
+                ->toArray();
+
+            $expectedDateInRange = static function ($value) use ($startDate, $endDate): string {
+                $text = trim((string)$value);
+                if ($text === '' || strpos($text, '0000-00-00') === 0) {
+                    return '';
+                }
+                $timestamp = strtotime($text);
+                if ($timestamp === false) {
+                    return '';
+                }
+                $day = date('Y-m-d', $timestamp);
+                if ($day < $startDate || $day > $endDate) {
+                    return '';
+                }
+                return date('Ymd', $timestamp);
+            };
+
+            foreach ($orderSheetRows as $orderSheetRow) {
+                $orderSheetIdx = (int)($orderSheetRow['oo_idx'] ?? 0);
+                if ($orderSheetIdx < 1) {
+                    continue;
+                }
+                $orderSheetName = trim((string)($orderSheetRow['oo_name'] ?? ''));
+                $orderSheetState = ((string)($orderSheetRow['oo_state'] ?? '') === '7') ? 'E' : 'I';
+                $expectedDates = [
+                    '주문예상' => $expectedDateInRange($orderSheetRow['oo_expected_order_date'] ?? ''),
+                    '입고예상' => $expectedDateInRange($orderSheetRow['oo_expected_in_date'] ?? ''),
                 ];
+                foreach ($expectedDates as $expectedKind => $expectedDayCode) {
+                    if ($expectedDayCode === '') {
+                        continue;
+                    }
+                    $calendarByDay[$expectedDayCode][] = [
+                        'idx' => $orderSheetIdx,
+                        'mode' => '주문서예상',
+                        'kind' => $expectedKind,
+                        'state' => $orderSheetState,
+                        'subject' => $orderSheetName !== '' ? $orderSheetName : ('주문서 #' . $orderSheetIdx),
+                        'data' => json_encode(['oo_idx' => $orderSheetIdx], JSON_UNESCAPED_UNICODE),
+                    ];
+                }
             }
         }
+
+        $calendarWeekBars = self::buildMultiDayWeekBars($multiDayEvents, $startDate, $totalWeek);
 
         return [
             'year' => $year,
@@ -210,8 +299,92 @@ class CalendarService
             'afterMonthEndDay' => $afterMonthEndDay,
             'staffHolidayByDay' => $staffHolidayByDay,
             'calendarByDay' => $calendarByDay,
+            'calendarWeekBars' => $calendarWeekBars,
             'commentDayMap' => $commentDayMap,
         ];
+    }
+
+    /**
+     * 여러 날 일정을 주 단위 막대로 나눈다.
+     * 주를 넘어가는 일정은 토요일에서 끊고 다음 주 일요일부터 이어진다.
+     *
+     * @param array $events start_date, end_date (Y-m-d)와 표시용 필드
+     * @return array<int, array<int, array>>
+     */
+    public static function buildMultiDayWeekBars(array $events, string $visibleStart, int $totalWeeks): array
+    {
+        $weekStart = \DateTime::createFromFormat('Y-m-d', $visibleStart);
+        if (!$weekStart instanceof \DateTime || $totalWeeks < 1) {
+            return [];
+        }
+        $weekStart->setTime(0, 0, 0);
+
+        $barsByWeek = [];
+        for ($week = 1; $week <= $totalWeeks; $week++) {
+            $weekEnd = clone $weekStart;
+            $weekEnd->modify('+6 days');
+            $segments = [];
+
+            foreach ($events as $event) {
+                if (!is_array($event)) {
+                    continue;
+                }
+                $eventStart = \DateTime::createFromFormat('Y-m-d', (string)($event['start_date'] ?? ''));
+                $eventEnd = \DateTime::createFromFormat('Y-m-d', (string)($event['end_date'] ?? ''));
+                if (!$eventStart instanceof \DateTime || !$eventEnd instanceof \DateTime) {
+                    continue;
+                }
+                $eventStart->setTime(0, 0, 0);
+                $eventEnd->setTime(0, 0, 0);
+                if ($eventEnd < $eventStart) {
+                    $eventEnd = clone $eventStart;
+                }
+                if ($eventEnd < $weekStart || $eventStart > $weekEnd) {
+                    continue;
+                }
+
+                $segStart = $eventStart > $weekStart ? clone $eventStart : clone $weekStart;
+                $segEnd = $eventEnd < $weekEnd ? clone $eventEnd : clone $weekEnd;
+                $segments[] = $event + [
+                    'startCol' => (int)$weekStart->diff($segStart)->days,
+                    'span' => (int)$segStart->diff($segEnd)->days + 1,
+                    'continuesBefore' => $eventStart < $weekStart,
+                    'continuesAfter' => $eventEnd > $weekEnd,
+                ];
+            }
+
+            usort($segments, static function (array $a, array $b): int {
+                if ($a['startCol'] !== $b['startCol']) {
+                    return $a['startCol'] <=> $b['startCol'];
+                }
+                if ($a['span'] !== $b['span']) {
+                    return $b['span'] <=> $a['span'];
+                }
+                return ((int)($a['idx'] ?? 0)) <=> ((int)($b['idx'] ?? 0));
+            });
+
+            $laneEnds = [];
+            foreach ($segments as &$segment) {
+                $placedLane = null;
+                foreach ($laneEnds as $lane => $endCol) {
+                    if ($segment['startCol'] >= $endCol) {
+                        $placedLane = $lane;
+                        break;
+                    }
+                }
+                if ($placedLane === null) {
+                    $placedLane = count($laneEnds);
+                }
+                $segment['lane'] = $placedLane;
+                $laneEnds[$placedLane] = $segment['startCol'] + $segment['span'];
+            }
+            unset($segment);
+
+            $barsByWeek[$week] = $segments;
+            $weekStart->modify('+7 days');
+        }
+
+        return $barsByWeek;
     }
 
     /**
