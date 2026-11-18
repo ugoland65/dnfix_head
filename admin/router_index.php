@@ -20,6 +20,7 @@ use App\Controllers\Admin\AdminActionLogController;
 use App\Controllers\Admin\AiRulebookController;
 use App\Controllers\Admin\ProductGroupingController;
 use App\Controllers\Admin\PaymentRequestController;
+use App\Controllers\Admin\PersonalPaymentController;
 use App\Controllers\Admin\OrderGroupController;
 use App\Controllers\Admin\OrderController;
 use App\Controllers\Admin\PurchaseController;
@@ -251,6 +252,9 @@ try {
     $router->post('/payment/payment_request_create', PaymentRequestController::class, 'paymentRequestCreate'); //결제요청 생성
     $router->get('/payment/payment_request_detail', PaymentRequestController::class, 'paymentRequestDetail'); //결제요청 상세
     $router->post('/payment/payment_request_save', PaymentRequestController::class, 'paymentRequestSave'); //결제요청 저장
+    $router->post('/payment/personal_payment_create', PersonalPaymentController::class, 'create');
+    $router->get('/payment/personal_payment_detail', PersonalPaymentController::class, 'detail');
+    $router->post('/payment/personal_payment_save', PersonalPaymentController::class, 'save');
 
     // 라우트 처리
     $router->dispatch();

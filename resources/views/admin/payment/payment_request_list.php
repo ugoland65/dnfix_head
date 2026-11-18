@@ -75,13 +75,109 @@
 	<h3>결제요청 목록입니다.</h3>
 
     <div id="head_write_btn">
-		<button type="button" id="" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="paymentRequestCreate()" > 
+		<button type="button" class="btnstyle1 btnstyle1-danger btnstyle1-lg" onclick="paymentRequestCreate()">
 			<i class="fas fa-plus-circle"></i>
-			신규 등록
+			결제요청 등록
+		</button>
+		<button type="button" class="btnstyle1 btnstyle1-primary btnstyle1-lg" onclick="personalPaymentCreate()" style="margin-left:6px;">
+			<i class="fas fa-plus-circle"></i>
+			개인결제 등록
 		</button>
 	</div>
 
 </div>
+<?php $tab = ($tab ?? '') === 'personal' ? 'personal' : 'vendor'; ?>
+<div style="display:flex; gap:8px; margin:0 0 12px;">
+    <a class="btnstyle1 <?= $tab === 'vendor' ? 'btnstyle1-primary' : '' ?> btnstyle1-sm" href="/admin/payment/payment_request_list">거래처 결제요청</a>
+    <a class="btnstyle1 <?= $tab === 'personal' ? 'btnstyle1-primary' : '' ?> btnstyle1-sm" href="/admin/payment/payment_request_list?tab=personal">개인결제 정산</a>
+</div>
+<?php if ($tab === 'personal') {
+    $personalList = $personalList ?? [];
+    $personalSummary = $personalSummary ?? [];
+?>
+<div id="contents_body">
+    <div id="contents_body_wrap">
+        <div id="list_new_wrap">
+            <div class="table-top">
+                <ul class="total">
+                    정산요청 <b><?= number_format((float)($personalSummary['request_total'] ?? 0)) ?></b>원
+                    · 검토중 <b><?= number_format((float)($personalSummary['review_total'] ?? 0)) ?></b>원
+                    · 지급예정 <b><?= number_format((float)($personalSummary['scheduled_total'] ?? 0)) ?></b>원
+                    · 미지급 <b><?= number_format((float)($personalSummary['unpaid_total'] ?? 0)) ?></b>원
+                    · 지급완료 <b><?= number_format((float)($personalSummary['paid_total'] ?? 0)) ?></b>원
+                </ul>
+                <ul>
+                    <select name="s_status" id="s_status">
+                        <option value="">정산상태</option>
+                        <?php foreach (['정산요청', '확인중', '지급예정', '지급완료', '보류', '반려'] as $statusOption) { ?>
+                            <option value="<?= $statusOption ?>" <?= ($s_status ?? '') === $statusOption ? 'selected' : '' ?>><?= $statusOption ?></option>
+                        <?php } ?>
+                    </select>
+                </ul>
+                <ul>
+                    <input type="text" id="s_use_date_start" value="<?= htmlspecialchars((string)($s_use_date_start ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="사용일 시작" style="width:110px;">
+                    <input type="text" id="s_use_date_end" value="<?= htmlspecialchars((string)($s_use_date_end ?? ''), ENT_QUOTES, 'UTF-8') ?>" placeholder="사용일 종료" style="width:110px;">
+                </ul>
+                <ul>
+                    <input type="text" id="s_keyword" placeholder="신청자, 사용처, 사용내용" value="<?= htmlspecialchars((string)($s_keyword ?? ''), ENT_QUOTES, 'UTF-8') ?>">
+                </ul>
+                <ul>
+                    <button type="button" id="searchBtn" class="btnstyle1 btnstyle1-primary btnstyle1-sm"><i class="fas fa-search"></i> 검색</button>
+                </ul>
+                <ul>
+                    <button type="button" id="searchResetBtn" class="btnstyle1 btnstyle1-sm"><i class="fas fa-undo"></i> 검색초기화</button>
+                </ul>
+            </div>
+            <div class="table-wrap5 m-t-5">
+                <div class="scroll-wrap">
+                    <table class="table-st1">
+                        <thead>
+                            <tr>
+                                <th>번호</th>
+                                <th>상태</th>
+                                <th>신청자</th>
+                                <th>사용일자</th>
+                                <th>사용처</th>
+                                <th>사용내용</th>
+                                <th>결제수단</th>
+                                <th>결제금액</th>
+                                <th>정산요청</th>
+                                <th>지급계좌</th>
+                                <th>증빙</th>
+                                <th>상세</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            <?php if (empty($personalList)) { ?>
+                                <tr><td colspan="12">등록된 개인결제 정산요청이 없습니다.</td></tr>
+                            <?php } ?>
+                            <?php foreach ($personalList as $row) { ?>
+                                <tr>
+                                    <td><?= (int)($row['idx'] ?? 0) ?></td>
+                                    <td><?= htmlspecialchars((string)($row['status'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><?= htmlspecialchars((string)($row['applicant_name'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><?= htmlspecialchars((string)($row['use_date'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><?= htmlspecialchars((string)($row['vendor'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td><?= nl2br(htmlspecialchars((string)($row['purpose'] ?? ''), ENT_QUOTES, 'UTF-8')) ?></td>
+                                    <td><?= htmlspecialchars((string)($row['pay_method'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td class="text-right"><?= number_format((float)($row['payment_amount'] ?? 0)) ?></td>
+                                    <td class="text-right"><b><?= number_format((float)($row['request_amount'] ?? 0)) ?></b></td>
+                                    <td><?= htmlspecialchars((string)($row['bank'] ?? ''), ENT_QUOTES, 'UTF-8') ?> <?= htmlspecialchars((string)($row['bank_account_masked'] ?? ''), ENT_QUOTES, 'UTF-8') ?></td>
+                                    <td class="text-center"><?= (int)($row['file_count'] ?? 0) ?></td>
+                                    <td><button type="button" class="btnstyle1 btnstyle1-sm" onclick="personalPaymentDetail('<?= (int)($row['idx'] ?? 0) ?>')">상세</button></td>
+                                </tr>
+                            <?php } ?>
+                        </tbody>
+                    </table>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+<div id="contents_bottom">
+    <div class="pageing-wrap"><?= $personalPaginationHtml ?? '' ?></div>
+</div>
+<?php } else { ?>
 <div id="contents_body">
 	<div id="contents_body_wrap">
 		<div id="list_new_wrap">
@@ -286,6 +382,7 @@
 
 	</div>
 </div>
+<?php } ?>
 <script src="/admin2/js/order_sheet.js?ver=<?=time()?>"></script>
 <script>
 
@@ -354,6 +451,14 @@
         openDialog("/admin/payment/payment_request_create", { mode: 'create' }, "결제요청 생성", "800px", "POST" );
     }
 
+    function personalPaymentCreate(){
+        openDialog("/admin/payment/personal_payment_create", { mode: 'create' }, "개인결제 정산요청", "860px", "POST" );
+    }
+
+    function personalPaymentDetail(idx){
+        openDialog("/admin/payment/personal_payment_detail", { idx: idx }, "개인결제 정산 상세", "860px", "GET" );
+    }
+
     function paymentRequestDetail(idx){
         openDialog("/admin/payment/payment_request_detail", { mode: 'detail', idx: idx }, "결제요청 상세", "800px", "GET" );
     }
@@ -364,8 +469,11 @@
 
 		// 각 입력 필드의 값을 가져와서 빈 값이나 undefined가 아닌 경우에만 params 객체에 추가
 		var fields = {
+			'tab': <?= json_encode($tab ?? 'vendor') ?>,
 			's_status': $("#s_status").val(),
 			's_keyword': $("#s_keyword").val(),
+			's_use_date_start': $("#s_use_date_start").val(),
+			's_use_date_end': $("#s_use_date_end").val(),
 		};
 
 		// 추가 파라미터가 있으면 병합
@@ -407,8 +515,11 @@
         });
 
         $("#searchResetBtn").on('click', function() {
-            location.href = '/admin/payment/payment_request_list';
+            location.href = '/admin/payment/payment_request_list<?= ($tab ?? '') === 'personal' ? '?tab=personal' : '' ?>';
         });
+        if (typeof clareCalendar !== 'undefined') {
+            $('#s_use_date_start, #s_use_date_end').datepicker(clareCalendar);
+        }
 
     });
 

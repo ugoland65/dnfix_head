@@ -6,6 +6,7 @@ use Throwable;
 use App\Core\BaseClass;
 use App\Classes\Request;
 use App\Services\PaymentRequestService;
+use App\Controllers\Admin\PersonalPaymentController;
 use App\Utils\Pagination;
 use App\Services\OrderGroupService;
 use App\Models\PurchaseOrderModel;
@@ -25,6 +26,15 @@ class PaymentRequestController extends BaseClass
         try{
 
             $requestData = $request->all();
+            if ((string)($requestData['tab'] ?? '') === 'personal') {
+                $data = array_merge(['tab' => 'personal'], (new PersonalPaymentController())->listData($request));
+
+                return view('admin.payment.payment_request_list', $data)
+                    ->extends('admin.layout.layout',[
+                        'pageGroup2' => 'work',
+                        'pageNameCode' => 'payment_request_list'
+                    ]);
+            }
 
             $page = (int)($requestData['page'] ?? ($requestData['pn'] ?? 1));
             if ($page < 1) {
@@ -52,6 +62,7 @@ class PaymentRequestController extends BaseClass
             $paginationHtml = $pagination->renderLinks();
 
             $data = [
+                'tab' => 'vendor',
                 's_status' => $status,
                 's_keyword' => $keyword,
                 'paymentRequestList' => $paymentRequestList['data'],
