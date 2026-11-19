@@ -123,6 +123,27 @@ class ProductImageHostingService
      * @param callable|null $needsMeta filename => bool. null이면 전부 크기/해상도를 읽는다.
      * @return array<int,array{filename:string,hosting_url:string,remote_path:string,file_size:int,width:int,height:int}>
      */
+    /**
+     * 이미지 저장소 폴더가 없으면 만든다.
+     */
+    public function ensureStorageDirectory(string $storagePath): void
+    {
+        $config = $this->getConfig();
+        $this->validateConfig($config);
+        $storagePath = $this->normalizeStoragePath($storagePath);
+        $remoteDir = rtrim((string)$config['remote_base_path'], '/') . rtrim($storagePath, '/');
+        $connection = $this->connect($config);
+        try {
+            if (($connection['protocol'] ?? '') === 'sftp') {
+                $this->createSftpDirectories($connection['sftp'], $remoteDir);
+            } else {
+                $this->createFtpDirectories($connection['connection'], $remoteDir);
+            }
+        } finally {
+            $this->disconnect($connection);
+        }
+    }
+
     public function listStorageImages(string $storagePath, ?callable $needsMeta = null): array
     {
         $config = $this->getConfig();

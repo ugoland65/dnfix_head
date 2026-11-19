@@ -14,6 +14,7 @@ use App\Services\BrandService;
 use App\Services\InspectionProcessLogService;
 use App\Core\AuthAdmin;
 use App\Services\ProductStockService;
+use App\Classes\Database;
 
 class ProductPartnerService extends BaseClass
 {
@@ -173,6 +174,7 @@ class ProductPartnerService extends BaseClass
      */
     public function getProductPartnerInfo($prdIdx) 
     {
+        $this->ensureImageStorageColumn(false);
 
         $result = ProductPartnerModel::query()
             ->select([
@@ -212,6 +214,245 @@ class ProductPartnerService extends BaseClass
         
         return $result;
 
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 경로를 저장하고 호스팅 폴더를 만든다.
+     */
+    public function saveImageStoragePath(int $prdIdx, string $storagePath): array
+    {
+        $this->ensureImageStorageColumn(true);
+        if ($prdIdx < 1) {
+            throw new \InvalidArgumentException('위탁상품 번호가 올바르지 않습니다.');
+        }
+
+        $storagePath = preg_replace('#/+#', '/', trim($storagePath));
+        if (!is_string($storagePath) || $storagePath === '' || $storagePath[0] !== '/') {
+            throw new \InvalidArgumentException('이미지 저장소 경로는 / 로 시작해야 합니다.');
+        }
+        if (substr($storagePath, -1) !== '/') {
+            $storagePath .= '/';
+        }
+        if (strpos($storagePath, '..') !== false || !preg_match('#^/[A-Za-z0-9._-]+(?:/[A-Za-z0-9._-]+)*/$#', $storagePath)) {
+            throw new \InvalidArgumentException('이미지 저장소 경로 형식이 올바르지 않습니다.');
+        }
+
+        $product = ProductPartnerModel::query()
+            ->select('idx')
+            ->where('idx', '=', $prdIdx)
+            ->first();
+        $product = $product ? (is_array($product) ? $product : $product->toArray()) : [];
+        if ($product === []) {
+            throw new \RuntimeException('위탁상품을 찾을 수 없습니다.');
+        }
+
+        $sameProducts = ProductModel::query()
+            ->select('CD_IDX')
+            ->where('CD_IMAGE_STORAGE_PATH', '=', $storagePath)
+            ->get();
+        $sameProducts = is_array($sameProducts) ? $sameProducts : $sameProducts->toArray();
+        if ($sameProducts !== []) {
+            throw new \InvalidArgumentException('이미 다른 상품에 사용 중인 이미지 저장소 경로입니다.');
+        }
+
+        $samePartners = ProductPartnerModel::query()
+            ->select('idx')
+            ->where('image_storage_path', '=', $storagePath)
+            ->get();
+        $samePartners = is_array($samePartners) ? $samePartners : $samePartners->toArray();
+        foreach ($samePartners as $samePartner) {
+            if ((int)($samePartner['idx'] ?? 0) !== $prdIdx) {
+                throw new \InvalidArgumentException('이미 다른 위탁상품에 사용 중인 이미지 저장소 경로입니다.');
+            }
+        }
+
+        $hosting = new ProductImageHostingService();
+        $hosting->ensureStorageDirectory($storagePath);
+        ProductPartnerModel::update(['idx' => $prdIdx], [
+            'image_storage_path' => $storagePath,
+        ]);
+
+        $saved = ProductPartnerModel::query()
+            ->select('image_storage_path')
+            ->where('idx', '=', $prdIdx)
+            ->first();
+        $saved = $saved ? (is_array($saved) ? $saved : $saved->toArray()) : [];
+        if ((string)($saved['image_storage_path'] ?? '') !== $storagePath) {
+            throw new \RuntimeException('이미지 저장소 경로 저장을 확인하지 못했습니다.');
+        }
+
+        $publicBaseUrl = $hosting->getPublicBaseUrl();
+
+        return [
+            'image_storage_path' => $storagePath,
+            'image_storage_url' => $publicBaseUrl !== '' ? $publicBaseUrl . $storagePath : '',
+        ];
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 관리 화면 데이터
+     */
+    public function getImageStoragePageData(int $prdIdx): array
+    {
+        $product = $this->getProductPartnerInfo($prdIdx);
+        $storagePath = trim((string)($product['image_storage_path'] ?? ''));
+        $images = [];
+        $listError = '';
+        $publicUrl = '';
+        if ($storagePath !== '') {
+            $hosting = new ProductImageHostingService();
+            $publicBaseUrl = $hosting->getPublicBaseUrl();
+            $publicUrl = $publicBaseUrl !== '' ? $publicBaseUrl . $storagePath : '';
+            try {
+                $images = $this->listNormalizedStorageImages($storagePath);
+            } catch (\Throwable $e) {
+                $listError = $e->getMessage();
+            }
+        }
+
+        return [
+            'prd_idx' => $prdIdx,
+            'image_storage_path' => $storagePath,
+            'image_storage_url' => $publicUrl,
+            'images' => $images,
+            'list_error' => $listError,
+        ];
+    }
+
+    /**
+     * 위탁상품 이미지 저장소에 파일을 업로드한다.
+     */
+    public function uploadImageStorageFiles(int $prdIdx, array $files): array
+    {
+        $product = $this->getProductPartnerInfo($prdIdx);
+        $storagePath = trim((string)($product['image_storage_path'] ?? ''));
+        if ($storagePath === '') {
+            throw new \InvalidArgumentException('이미지 저장소를 먼저 생성해 주세요.');
+        }
+        if ($files === []) {
+            throw new \InvalidArgumentException('업로드할 이미지를 선택해 주세요.');
+        }
+
+        $uploaded = (new ProductImageHostingService())->uploadLocalImages($storagePath, $files);
+        try {
+            $items = $this->listNormalizedStorageImages($storagePath);
+        } catch (\Throwable $e) {
+            $items = [];
+            foreach ($uploaded as $file) {
+                if (is_array($file)) {
+                    $items[] = $this->normalizeStorageImage($file);
+                }
+            }
+        }
+
+        return [
+            'image_storage_path' => $storagePath,
+            'uploaded' => $uploaded,
+            'items' => $items,
+            'message' => count($uploaded) . '장을 저장소에 업로드했습니다.',
+        ];
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 폴더를 다시 읽어 목록을 만든다.
+     */
+    public function refreshImageStorageFiles(int $prdIdx): array
+    {
+        $page = $this->getImageStoragePageData($prdIdx);
+        if (trim((string)($page['image_storage_path'] ?? '')) === '') {
+            throw new \InvalidArgumentException('이미지 저장소를 먼저 생성해 주세요.');
+        }
+        if (trim((string)($page['list_error'] ?? '')) !== '') {
+            throw new \RuntimeException((string)$page['list_error']);
+        }
+        $items = is_array($page['images'] ?? null) ? $page['images'] : [];
+        $count = count($items);
+
+        return [
+            'items' => $items,
+            'message' => $count > 0
+                ? '저장소 목록을 갱신했습니다.'
+                : '이미지 저장소 폴더에서 이미지를 찾지 못했습니다.',
+        ];
+    }
+
+    private function listNormalizedStorageImages(string $storagePath): array
+    {
+        $files = (new ProductImageHostingService())->listStorageImages($storagePath);
+        $items = [];
+        foreach ($files as $file) {
+            if (!is_array($file)) {
+                continue;
+            }
+            $items[] = $this->normalizeStorageImage($file);
+        }
+
+        return $items;
+    }
+
+    private function normalizeStorageImage(array $file): array
+    {
+        $fileSize = (int)($file['file_size'] ?? 0);
+        $width = (int)($file['width'] ?? 0);
+        $height = (int)($file['height'] ?? 0);
+        $dimensionLabel = ($width > 0 && $height > 0) ? ($width . '×' . $height) : '';
+        $fileSizeLabel = $this->formatStorageFileSize($fileSize);
+        $metaParts = array_values(array_filter([$dimensionLabel, $fileSizeLabel], static function ($value) {
+            return $value !== '';
+        }));
+
+        return [
+            'filename' => (string)($file['filename'] ?? ''),
+            'hosting_url' => (string)($file['hosting_url'] ?? ''),
+            'remote_path' => (string)($file['remote_path'] ?? ''),
+            'file_size' => $fileSize,
+            'width' => $width,
+            'height' => $height,
+            'file_size_label' => $fileSizeLabel,
+            'dimension_label' => $dimensionLabel,
+            'meta_label' => implode(' · ', $metaParts),
+        ];
+    }
+
+    private function formatStorageFileSize(int $bytes): string
+    {
+        if ($bytes <= 0) {
+            return '';
+        }
+        if ($bytes < 1024) {
+            return $bytes . ' B';
+        }
+        if ($bytes < 1024 * 1024) {
+            return rtrim(rtrim(number_format($bytes / 1024, 1, '.', ''), '0'), '.') . ' KB';
+        }
+
+        return rtrim(rtrim(number_format($bytes / (1024 * 1024), 1, '.', ''), '0'), '.') . ' MB';
+    }
+
+    private function ensureImageStorageColumn(bool $throwOnFailure): void
+    {
+        static $ensured = false;
+        if ($ensured) {
+            return;
+        }
+
+        try {
+            $columns = Database::getInstance()->fetchAll('SHOW COLUMNS FROM `prd_partner`');
+            foreach ($columns as $column) {
+                if ((string)($column['Field'] ?? '') === 'image_storage_path') {
+                    $ensured = true;
+                    return;
+                }
+            }
+            Database::getInstance()->execute(
+                "ALTER TABLE `prd_partner` ADD COLUMN `image_storage_path` varchar(255) NOT NULL DEFAULT ''"
+            );
+            $ensured = true;
+        } catch (\Throwable $e) {
+            if ($throwOnFailure) {
+                throw new \RuntimeException('이미지 저장소 컬럼을 준비하지 못했습니다. ' . $e->getMessage(), 0, $e);
+            }
+        }
     }
 
 

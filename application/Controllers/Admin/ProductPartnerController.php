@@ -318,7 +318,7 @@ class ProductPartnerController extends BaseClass
                 throw new \Exception('prd_idx가 비어있습니다.');
             }
 
-            $allowedModes = ['info', 'discount_sale_log', 'match', 'log', 'godo_inspection'];
+            $allowedModes = ['info', 'discount_sale_log', 'match', 'log', 'godo_inspection', 'content'];
             if (!in_array($vmode, $allowedModes, true)) {
                 $vmode = 'info';
             }
@@ -1087,6 +1087,134 @@ class ProductPartnerController extends BaseClass
             
         }
 
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 경로를 저장하고 폴더를 만든다.
+     */
+    public function saveProviderProductImageStoragePath(Request $request)
+    {
+        try {
+            $requestData = $request->all();
+            $prdIdx = (int)($requestData['prd_idx'] ?? 0);
+            $storagePath = trim((string)($requestData['image_storage_path'] ?? ''));
+            $saved = (new ProductPartnerService())->saveImageStoragePath($prdIdx, $storagePath);
+
+            return response()->json([
+                'success' => true,
+                'message' => '이미지 저장소를 생성했습니다.',
+                'image_storage_path' => $saved['image_storage_path'],
+                'image_storage_url' => $saved['image_storage_url'],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 관리
+     */
+    public function getProviderProductImageStorage(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            if ($prdIdx < 1) {
+                throw new \InvalidArgumentException('위탁상품 번호가 올바르지 않습니다.');
+            }
+            $data = (new ProductPartnerService())->getImageStoragePageData($prdIdx);
+
+            return view('admin.provider.provider_prd_content', $data);
+        } catch (Throwable $e) {
+            return '<div class="text-danger p-10">이미지 저장소 조회 실패: ' . htmlspecialchars($e->getMessage(), ENT_QUOTES, 'UTF-8') . '</div>';
+        }
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 업로드
+     */
+    public function uploadProviderProductImageStorage(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            $files = $this->collectProviderImageFiles();
+            $result = (new ProductPartnerService())->uploadImageStorageFiles($prdIdx, $files);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data' => [
+                    'items' => $result['items'] ?? [],
+                ],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    /**
+     * 위탁상품 이미지 저장소 목록 갱신
+     */
+    public function refreshProviderProductImageStorage(Request $request)
+    {
+        try {
+            $prdIdx = (int)($request->input('prd_idx') ?? 0);
+            $result = (new ProductPartnerService())->refreshImageStorageFiles($prdIdx);
+
+            return response()->json([
+                'success' => true,
+                'message' => $result['message'],
+                'data' => [
+                    'items' => $result['items'] ?? [],
+                ],
+            ]);
+        } catch (Throwable $e) {
+            return response()->json([
+                'success' => false,
+                'message' => $e->getMessage(),
+            ], 400);
+        }
+    }
+
+    private function collectProviderImageFiles(): array
+    {
+        $bag = $_FILES['images'] ?? null;
+        if (!is_array($bag) || !isset($bag['tmp_name'])) {
+            return [];
+        }
+        if (!is_array($bag['tmp_name'])) {
+            if ((int)($bag['error'] ?? 0) === UPLOAD_ERR_NO_FILE || trim((string)($bag['tmp_name'] ?? '')) === '') {
+                return [];
+            }
+            return [[
+                'name' => (string)($bag['name'] ?? ''),
+                'tmp_name' => (string)$bag['tmp_name'],
+                'size' => (int)($bag['size'] ?? 0),
+                'error' => (int)($bag['error'] ?? 0),
+            ]];
+        }
+
+        $files = [];
+        foreach ($bag['tmp_name'] as $index => $tmpName) {
+            $tmpName = (string)$tmpName;
+            $error = (int)($bag['error'][$index] ?? 0);
+            if ($tmpName === '' || $error === UPLOAD_ERR_NO_FILE) {
+                continue;
+            }
+            $files[] = [
+                'name' => (string)($bag['name'][$index] ?? ''),
+                'tmp_name' => $tmpName,
+                'size' => (int)($bag['size'][$index] ?? 0),
+                'error' => $error,
+            ];
+        }
+
+        return $files;
     }
 
 

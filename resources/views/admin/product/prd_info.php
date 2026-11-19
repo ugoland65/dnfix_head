@@ -96,9 +96,12 @@ $recommendedImageStoragePath = '/goods/' . $imageStorageNationalCode . '/' . $im
 		text-align: left;
 	}
 	.prd-image-storage-status { display: inline-flex; align-items: center; gap: 6px; min-width: 0; }
-	.prd-image-storage-badge { display: inline-flex; align-items: center; padding: 2px 7px; border-radius: 999px; font-size: 11px; font-weight: 700; }
+	.prd-image-storage-badge { display: inline-flex; align-items: center; padding: 2px 7px; border: 0; border-radius: 999px; background: transparent; font-size: 11px; font-weight: 700; line-height: 1.4; cursor: default; }
 	.prd-image-storage-badge.is-empty { color: #92400e; background: #fef3c7; }
 	.prd-image-storage-badge.is-set { color: #166534; background: #dcfce7; }
+	.prd-image-storage-badge.is-link { cursor: pointer; }
+	.prd-image-storage-badge.is-link:hover { filter: brightness(.96); }
+	#prd_image_storage_open[hidden] { display: none; }
 	.prd-image-storage-path { max-width: 220px; overflow: hidden; color: #374151; font-family: Consolas, Monaco, monospace; font-size: 11px; text-overflow: ellipsis; white-space: nowrap; }
 	.prd-image-storage-modal[hidden] { display: none; }
 	.prd-image-storage-modal { position: fixed; z-index: 12000; inset: 0; display: flex; align-items: center; justify-content: center; padding: 18px; }
@@ -483,11 +486,10 @@ $recommendedImageStoragePath = '/goods/' . $imageStorageNationalCode . '/' . $im
 					<dt>이미지 저장소</dt>
 					<dd>
 						<span class="prd-image-storage-status">
-							<span id="prd_image_storage_badge" class="prd-image-storage-badge <?= $imageStoragePath === '' ? 'is-empty' : 'is-set' ?>">
-								<?= $imageStoragePath === '' ? '미등록' : '등록' ?>
-							</span>
-							<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_open"><?= $imageStoragePath === '' ? '등록' : '수정' ?></button>
-							<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_manage">관리</button>
+							<button type="button" id="prd_image_storage_badge" class="prd-image-storage-badge <?= $imageStoragePath === '' ? 'is-empty' : 'is-set is-link' ?>">
+								<?= $imageStoragePath === '' ? '미등록' : '생성완료' ?>
+							</button>
+							<button type="button" class="btnstyle1 btnstyle1-xs" id="prd_image_storage_open" <?= $imageStoragePath === '' ? '' : 'hidden' ?>>등록</button>
 						</span>
 					</dd>
 				</dl>
@@ -1022,22 +1024,29 @@ $recommendedImageStoragePath = '/goods/' . $imageStorageNationalCode . '/' . $im
 					$status.find('b').text(label);
 				}
 
+				function openImageStorageManage() {
+					window.__prdContentOpenTab = 'images';
+					mode('', 'content');
+				}
+
 				function renderStorageStatus(path) {
 					imageStoragePath = path || '';
 					var $badge = $('#prd_image_storage_badge');
 					var $button = $('#prd_image_storage_open');
 					if (imageStoragePath === '') {
-						$badge.text('미등록').removeClass('is-set').addClass('is-empty');
-						$button.text('등록');
+						$badge.text('미등록').removeClass('is-set is-link').addClass('is-empty');
+						$button.removeAttr('hidden');
 						return;
 					}
-					$badge.text('등록').removeClass('is-empty').addClass('is-set');
-					$button.text('수정');
+					$badge.text('생성완료').removeClass('is-empty').addClass('is-set is-link');
+					$button.attr('hidden', true);
 				}
 
-				$(document).off('click.prdImageStorageManage').on('click.prdImageStorageManage', '#prd_image_storage_manage', function() {
-					window.__prdContentOpenTab = 'images';
-					mode('', 'content');
+				$(document).off('click.prdImageStorageManage').on('click.prdImageStorageManage', '#prd_image_storage_badge', function() {
+					if (imageStoragePath === '') {
+						return;
+					}
+					openImageStorageManage();
 				});
 
 				$(document).off('click.prdImageStorageOpen').on('click.prdImageStorageOpen', '#prd_image_storage_open', function() {

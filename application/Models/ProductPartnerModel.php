@@ -17,6 +17,7 @@ class ProductPartnerModel extends BaseModel
 		'status',
 		'img_mode',
 		'img_src',
+		'image_storage_path',
 		'sale_price',
 		'order_price',
 		'cost_price',
