@@ -9,6 +9,7 @@ use App\Models\ProductStockModel;
 use App\Services\ProductService;
 use App\Services\ProductStockService;
 use App\Services\RackService;
+use App\Services\RackStockInspectionService;
 use App\Utils\Pagination;
 
 class ProductController extends BaseClass
@@ -87,11 +88,34 @@ class ProductController extends BaseClass
             $productGroups = $this->rackStockProducts($group, $searchValue);
         }
 
+        $inspections = [];
+        $activeInspection = null;
+        $inspectionChecks = [];
+        if ($group !== '') {
+            $inspectionService = new RackStockInspectionService();
+            $inspections = $inspectionService->listByGroup($group);
+            $requestedInspection = (int)($requestData['inspection'] ?? 0);
+            if ($requestedInspection > 0) {
+                foreach ($inspections as $inspection) {
+                    if ((int)($inspection['idx'] ?? 0) === $requestedInspection) {
+                        $activeInspection = $inspection;
+                        break;
+                    }
+                }
+            }
+            if (is_array($activeInspection)) {
+                $inspectionChecks = $inspectionService->checksFor((int)$activeInspection['idx']);
+            }
+        }
+
         return view('admobile.product.rack_stock', [
             'rackGroups' => $rackGroups,
             'productGroups' => $productGroups,
             'group' => $group,
             'searchValue' => $searchValue,
+            'inspections' => $inspections,
+            'activeInspection' => $activeInspection,
+            'inspectionChecks' => $inspectionChecks,
         ])->extends('admobile.layout.layout', [
             'pageTitle' => '랙별 상품 재고관리',
         ]);
@@ -181,7 +205,8 @@ class ProductController extends BaseClass
                 $rackCode = $service->updateProductRackCode(
                     (int)($requestData['prd_idx'] ?? 0),
                     (string)($requestData['rack_code'] ?? ''),
-                    $actor
+                    $actor,
+                    (int)($requestData['ps_idx'] ?? 0)
                 );
 
                 return response()->json([
@@ -246,6 +271,50 @@ class ProductController extends BaseClass
                     'stock' => (int)($result['stock'] ?? 0),
                     'stock_hold' => (int)($result['stock_hold'] ?? 0),
                     'ps_idx' => $psIdx,
+                ]);
+            }
+            if ($actionMode === 'start_rack_stock_inspection') {
+                $group = strtoupper(trim((string)($requestData['group'] ?? '')));
+                if (!isset($this->rackStockGroups()[$group])) {
+                    throw new \Exception('랙 그룹을 찾을 수 없습니다.');
+                }
+
+                $inspection = (new RackStockInspectionService())->start($group, $actor);
+
+                return response()->json([
+                    'success' => true,
+                    'message' => '재고검수를 시작했습니다.',
+                    'inspection' => $inspection,
+                ]);
+            }
+            if ($actionMode === 'complete_rack_stock_inspection') {
+                $item = (new RackStockInspectionService())->completeItem(
+                    (int)($requestData['inspection_idx'] ?? 0),
+                    (int)($requestData['prd_idx'] ?? 0),
+                    (int)($requestData['ps_idx'] ?? 0),
+                    $actor
+                );
+                $checkedAt = strtotime((string)($item['checked_at'] ?? ''));
+
+                return response()->json([
+                    'success' => true,
+                    'message' => '검수완료로 표시했습니다.',
+                    'item' => $item,
+                    'checked_at_text' => $checkedAt ? date('Y-m-d H:i', $checkedAt) : (string)($item['checked_at'] ?? ''),
+                    'checked_by_name' => (string)($item['checked_by_name'] ?? ''),
+                    'stock_qty' => $item['stock_qty'],
+                ]);
+            }
+            if ($actionMode === 'cancel_rack_stock_inspection') {
+                (new RackStockInspectionService())->cancelItem(
+                    (int)($requestData['inspection_idx'] ?? 0),
+                    (int)($requestData['prd_idx'] ?? 0),
+                    (int)($requestData['ps_idx'] ?? 0)
+                );
+
+                return response()->json([
+                    'success' => true,
+                    'message' => '검수완료를 취소했습니다.',
                 ]);
             }
             if ($actionMode === 'measured_weight_update') {

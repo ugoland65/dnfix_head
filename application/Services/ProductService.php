@@ -1643,7 +1643,7 @@ class ProductService extends BaseClass
     /**
      * 모바일 상품정보 화면에서 랙 코드를 변경한다.
      */
-    public function updateProductRackCode(int $prdIdx, string $rackCode, array $actor): string
+    public function updateProductRackCode(int $prdIdx, string $rackCode, array $actor, int $psIdx = 0): string
     {
         if ($prdIdx <= 0 || (int)($actor['idx'] ?? 0) <= 0) {
             throw new Exception('상품 또는 관리자 정보가 올바르지 않습니다.');
@@ -1654,9 +1654,12 @@ class ProductService extends BaseClass
             throw new Exception('랙 코드는 100자 이하로 입력해주세요.');
         }
 
-        $stock = ProductStockModel::query()
-            ->where('ps_prd_idx', '=', $prdIdx)
-            ->first();
+        $stockQuery = ProductStockModel::query()
+            ->where('ps_prd_idx', '=', $prdIdx);
+        if ($psIdx > 0) {
+            $stockQuery->where('ps_idx', '=', $psIdx);
+        }
+        $stock = $stockQuery->first();
         $stock = $stock ? $stock->toArray() : [];
         if (empty($stock)) {
             throw new Exception('상품 재고 정보를 찾을 수 없습니다.');

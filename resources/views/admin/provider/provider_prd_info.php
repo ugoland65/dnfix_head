@@ -455,6 +455,7 @@ const prdProviderInfo = (function(){
             .done(res => {
                 if (res.status == 'success') {
                     alert('저장되었습니다.');
+                    location.reload();
                 } else {
                     alert('저장에 실패했습니다: ' + (res.message || '알 수 없는 오류'));
                 }

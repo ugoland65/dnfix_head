@@ -10,6 +10,7 @@ $prd_kind_name = [
     'ANAL' => "애널",
     'MAN' => "남성보조",
     'WOMAN' => "여성용품",
+    'SUCTION_LICKING' => "흡입/릭킹",
     'GEL' => "윤활젤",
     'CONDOM' => "콘돔",
     'NIPPLE' => "니플(유두)",
@@ -172,7 +173,68 @@ $categories = [
         'code' => '03000000',
         'key' => 'VIBRATOR',
         'name' => '바이브레이터',
-        'children' => []
+        'children' => [
+            [
+                'code' => '03010000',
+                'key' => 'VIBRATOR_MULTI',
+                'name' => '멀티 바이브',
+                'children' => []
+            ],
+            [
+                'code' => '03020000',
+                'key' => 'VIBRATOR_RABBIT',
+                'name' => '래빗 바이브',
+                'children' => []
+            ],
+            [
+                'code' => '03030000',
+                'key' => 'VIBRATOR_WAND',
+                'name' => '완드 바이브',
+                'children' => []
+            ],
+            [
+                'code' => '03040000',
+                'key' => 'VIBRATOR_WEARABLE',
+                'name' => '웨어러블',
+                'children' => []
+            ],
+            [
+                'code' => '03050000',
+                'key' => 'VIBRATOR_FAIRY',
+                'name' => '페어리',
+                'children' => []
+            ],
+            [
+                'code' => '03060000',
+                'key' => 'VIBRATOR_SPIRO_TIP',
+                'name' => '스파이로 팁',
+                'children' => []
+            ],
+            [
+                'code' => '03070000',
+                'key' => 'VIBRATOR_EGG',
+                'name' => '에그 진동기',
+                'children' => []
+            ],
+            [
+                'code' => '03080000',
+                'key' => 'VIBRATOR_MINI',
+                'name' => '미니 진동기',
+                'children' => []
+            ],
+            [
+                'code' => '03090000',
+                'key' => 'VIBRATOR_STICK',
+                'name' => '스틱형 진동기',
+                'children' => []
+            ],
+            [
+                'code' => '03100000',
+                'key' => 'VIBRATOR_FINGER',
+                'name' => '핑거 바이브',
+                'children' => []
+            ],
+        ]
     ],
     [
         'code' => '04000000',
@@ -295,6 +357,25 @@ $categories = [
         'key' => 'WOMAN',
         'name' => '여성용품',
         'children' => []
+    ],
+    [
+        'code' => '21000000',
+        'key' => 'SUCTION_LICKING',
+        'name' => '흡입/릭킹',
+        'children' => [
+            [
+                'code' => '21010000',
+                'key' => 'SUCTION_LICKING_SUCTION',
+                'name' => '흡입/석션 토이',
+                'children' => []
+            ],
+            [
+                'code' => '21020000',
+                'key' => 'SUCTION_LICKING_LICKING',
+                'name' => '핥기/릭킹 토이',
+                'children' => []
+            ]
+        ]
     ],
     [
         'code' => '08000000',
